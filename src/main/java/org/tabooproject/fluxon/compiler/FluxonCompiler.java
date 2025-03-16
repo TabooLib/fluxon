@@ -1,12 +1,13 @@
 package org.tabooproject.fluxon.compiler;
 
+import org.tabooproject.fluxon.ast.expression.Expr;
 import org.tabooproject.fluxon.ast.statement.Program;
 import org.tabooproject.fluxon.ir.IRGenerator;
 import org.tabooproject.fluxon.ir.IRModule;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.optimization.Optimizer;
-import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.PrattParser;
 import org.tabooproject.fluxon.semantic.SemanticAnalyzer;
 import org.tabooproject.fluxon.semantic.SemanticError;
 
@@ -35,8 +36,8 @@ public class FluxonCompiler {
         context.setAttribute("tokens", tokens);
         
         // 2. 语法分析：将词法单元序列转换为 AST
-        Parser parser = new Parser(tokens);
-        Program ast = parser.process(context);
+        PrattParser parser = new PrattParser(tokens);
+        Expr ast = parser.process(context);
         context.setAttribute("ast", ast);
         
         // 3. 语义分析：进行符号解析和类型检查
