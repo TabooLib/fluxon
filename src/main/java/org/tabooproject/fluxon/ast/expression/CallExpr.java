@@ -10,19 +10,19 @@ import java.util.List;
  * 表示函数调用
  */
 public class CallExpr extends Expr {
-    private final String name;
+    private final String functionName;
     private final List<Expr> arguments;
     
     /**
      * 创建函数调用表达式节点
      * 
-     * @param name 函数名
+     * @param functionName 函数名
      * @param arguments 参数列表
      * @param location 源代码位置
      */
-    public CallExpr(String name, List<Expr> arguments, SourceLocation location) {
+    public CallExpr(String functionName, List<Expr> arguments, SourceLocation location) {
         super(location);
-        this.name = name;
+        this.functionName = functionName;
         this.arguments = arguments;
     }
     
@@ -31,8 +31,8 @@ public class CallExpr extends Expr {
      * 
      * @return 函数名
      */
-    public String getName() {
-        return name;
+    public String getFunctionName() {
+        return functionName;
     }
     
     /**
@@ -47,5 +47,10 @@ public class CallExpr extends Expr {
     @Override
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitCallExpr(this);
+    }
+
+    @Override
+    public String toString() {
+        return functionName + "(" + String.join(", ", arguments.stream().map(Object::toString).toList()) + ")";
     }
 }

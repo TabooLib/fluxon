@@ -71,4 +71,22 @@ public class VarDeclStmt extends Stmt {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitVarDeclStmt(this);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        if (isVal) {
+            builder.append("val ");
+        } else {
+            builder.append("var ");
+        }
+        builder.append(name);
+        if (typeAnnotation != null) {
+            builder.append(": ").append(typeAnnotation);
+        }
+        if (initializer != null) {
+            builder.append(" = ").append(initializer);
+        }
+        return builder.toString();
+    }
 }

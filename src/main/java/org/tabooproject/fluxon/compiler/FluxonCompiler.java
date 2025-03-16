@@ -1,15 +1,9 @@
 package org.tabooproject.fluxon.compiler;
 
-import org.tabooproject.fluxon.ast.expression.Expr;
-import org.tabooproject.fluxon.ast.statement.Program;
-import org.tabooproject.fluxon.ir.IRGenerator;
-import org.tabooproject.fluxon.ir.IRModule;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.optimization.Optimizer;
-import org.tabooproject.fluxon.parser.PrattParser;
-import org.tabooproject.fluxon.semantic.SemanticAnalyzer;
-import org.tabooproject.fluxon.semantic.SemanticError;
+import org.tabooproject.fluxon.ast.statement.Program;
+import org.tabooproject.fluxon.parser.TypeAwareParser;
 
 import java.util.List;
 
@@ -34,31 +28,13 @@ public class FluxonCompiler {
         Lexer lexer = new Lexer(source);
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
+
+        // 2. 语法分析：将词法单元序列转换为AST
+        TypeAwareParser parser = new TypeAwareParser(tokens, context);
+        Program program = parser.parse();
+        context.setAttribute("ast", program);
         
-        // 2. 语法分析：将词法单元序列转换为 AST
-        PrattParser parser = new PrattParser(tokens);
-        Expr ast = parser.process(context);
-        context.setAttribute("ast", ast);
-        
-        // 3. 语义分析：进行符号解析和类型检查
-        SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer(context.isStrictMode());
-        semanticAnalyzer.process(context);
-        
-        // 检查是否有语义错误
-        List<SemanticError> semanticErrors = semanticAnalyzer.getErrors();
-        
-        if (!semanticErrors.isEmpty()) {
-            // 如果有语义错误，不继续编译
-            return new byte[0];
-        }
-        
-        // 4. IR 生成：将 AST 转换为中间表示
-        IRGenerator irGenerator = new IRGenerator();
-        IRModule irModule = irGenerator.process(context);
-        
-        // 5. 优化：对 IR 进行优化
-        Optimizer optimizer = new Optimizer();
-        IRModule optimizedModule = optimizer.process(context);
+        // 后续步骤：语义分析、优化和代码生成
         
         // 暂时返回空字节码，后续实现优化和代码生成
         return new byte[0];

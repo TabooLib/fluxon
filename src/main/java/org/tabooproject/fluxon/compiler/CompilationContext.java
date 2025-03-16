@@ -8,10 +8,10 @@ import java.util.Map;
  * 存储编译过程中的各种信息和中间结果
  */
 public class CompilationContext {
+
     private final String source;
     private String sourceName;
     private final boolean strictMode;
-    private final PredefFunctions functions = new PredefFunctions();
     private final Map<String, Object> attributes = new HashMap<>();
     
     /**
@@ -60,15 +60,6 @@ public class CompilationContext {
      */
     public boolean isStrictMode() {
         return strictMode;
-    }
-    
-    /**
-     * 获取函数管理器
-     * 
-     * @return 函数管理器
-     */
-    public PredefFunctions getFunctions() {
-        return functions;
     }
     
     /**

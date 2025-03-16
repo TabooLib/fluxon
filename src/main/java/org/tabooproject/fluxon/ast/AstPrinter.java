@@ -32,7 +32,7 @@ public class AstPrinter implements AstVisitor<String> {
 
     @Override
     public String visitCallExpr(CallExpr node) {
-        return parenthesize(node.getName() != null ? node.getName() : "call", node.getArguments().toArray(new Expr[0]));
+        return parenthesize(node.getFunctionName() != null ? node.getFunctionName() : "call", node.getArguments().toArray(new Expr[0]));
     }
 
     @Override
@@ -150,11 +150,6 @@ public class AstPrinter implements AstVisitor<String> {
         builder.append(" = ").append(node.getBody().accept(this));
 
         return builder.toString();
-    }
-
-    @Override
-    public String visitAsyncFunctionDeclStmt(AsyncFunctionDeclStmt node) {
-        return "async def";
     }
 
     @Override

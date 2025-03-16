@@ -46,7 +46,12 @@ public class UnaryExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitUnaryExpr(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return operator + "" + operand;
+    }
+
     /**
      * 一元运算符
      */

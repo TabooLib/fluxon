@@ -58,4 +58,9 @@ public class IfExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitIfExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return "if (" + condition + ") then { " + thenBranch + " } else { " + elseBranch + " }";
+    }
 }

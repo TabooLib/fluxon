@@ -35,4 +35,9 @@ public class ExpressionStmt extends Stmt {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitExpressionStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return expression.toString();
+    }
 }

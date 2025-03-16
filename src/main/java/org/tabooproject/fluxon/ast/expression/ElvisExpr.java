@@ -46,4 +46,9 @@ public class ElvisExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitElvisExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return condition + " ?: " + fallback;
+    }
 }

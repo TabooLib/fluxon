@@ -58,4 +58,13 @@ public class RangeExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitRangeExpr(this);
     }
+
+    @Override
+    public String toString() {
+        if (inclusive) {
+            return start + ".." + end;
+        } else {
+            return start + "..<" + end;
+        }
+    }
 }

@@ -30,7 +30,12 @@ public class BlockExpr extends Expr {
     public BlockStmt getBlock() {
         return block;
     }
-    
+
+    @Override
+    public String toString() {
+        return block.toString();
+    }
+
     @Override
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitBlockExpr(this);

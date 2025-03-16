@@ -35,4 +35,9 @@ public class AwaitStmt extends Stmt {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitAwaitStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return "await " + expression;
+    }
 }

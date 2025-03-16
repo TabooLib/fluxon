@@ -159,14 +159,6 @@ public interface AstVisitor<T> {
     T visitFunctionDeclStmt(FunctionDeclStmt node);
     
     /**
-     * 访问异步函数声明语句节点
-     * 
-     * @param node 异步函数声明语句节点
-     * @return 访问结果
-     */
-    T visitAsyncFunctionDeclStmt(AsyncFunctionDeclStmt node);
-    
-    /**
      * 访问返回语句节点
      * 
      * @param node 返回语句节点

@@ -9,7 +9,7 @@ import org.tabooproject.fluxon.ast.SourceLocation;
  */
 public class LiteralExpr extends Expr {
     private final Object value;
-    private final LiteralType type;
+    private final Type type;
     
     /**
      * 创建字面量表达式节点
@@ -18,7 +18,7 @@ public class LiteralExpr extends Expr {
      * @param type 字面量类型
      * @param location 源代码位置
      */
-    public LiteralExpr(Object value, LiteralType type, SourceLocation location) {
+    public LiteralExpr(Object value, Type type, SourceLocation location) {
         super(location);
         this.value = value;
         this.type = type;
@@ -38,7 +38,7 @@ public class LiteralExpr extends Expr {
      * 
      * @return 字面量类型
      */
-    public LiteralType getType() {
+    public Type getType() {
         return type;
     }
     
@@ -46,11 +46,16 @@ public class LiteralExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitLiteralExpr(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return type + "(" + value + ")";
+    }
+
     /**
      * 字面量类型
      */
-    public enum LiteralType {
+    public enum Type {
         /**
          * 字符串字面量
          */

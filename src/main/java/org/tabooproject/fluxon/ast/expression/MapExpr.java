@@ -36,7 +36,12 @@ public class MapExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitMapExpr(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return entries.toString();
+    }
+
     /**
      * 字典键值对
      */
@@ -71,6 +76,11 @@ public class MapExpr extends Expr {
          */
         public Expr getValue() {
             return value;
+        }
+
+        @Override
+        public String toString() {
+            return key + " = " + value;
         }
     }
 }

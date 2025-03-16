@@ -68,6 +68,39 @@ public class LexerTest {
         assertEquals(expectedTypes.length, tokens.size(), "Token 数量不匹配，期望: " + Arrays.toString(expectedTypes) + ", 实际: " + tokens);
     }
 
+    /**
+     * 查找指定类型 Token 的索引
+     *
+     * @param tokens Token 列表
+     * @param type   Token 类型
+     * @return 找到的索引，未找到返回 -1
+     */
+    private int findTokenIndex(List<Token> tokens, TokenType type) {
+        for (int i = 0; i < tokens.size(); i++) {
+            if (tokens.get(i).getType() == type) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 查找指定类型和值的 Token 索引
+     *
+     * @param tokens Token 列表
+     * @param type   Token 类型
+     * @param value  Token 值
+     * @return 找到的索引，未找到返回 -1
+     */
+    private int findTokenIndexByTypeAndValue(List<Token> tokens, TokenType type, String value) {
+        for (int i = 0; i < tokens.size(); i++) {
+            if (tokens.get(i).getType() == type && tokens.get(i).getValue().equals(value)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     @Nested
     @DisplayName("基础 Token 识别测试")
     class BasicTokenTests {
@@ -91,21 +124,26 @@ public class LexerTest {
             List<Token> tokens = getTokens(source);
 
             // 验证所有关键字都被正确识别
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.DEF), "应识别 'def' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.FUN), "应识别 'fun' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.VAL), "应识别 'val' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.VAR), "应识别 'var' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.IF), "应识别 'if' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.THEN), "应识别 'then' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.ELSE), "应识别 'else' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.WHEN), "应识别 'when' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.IS), "应识别 'is' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.IN), "应识别 'in' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.ASYNC), "应识别 'async' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.AWAIT), "应识别 'await' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.RETURN), "应识别 'return' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.TRY), "应识别 'try' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.CATCH), "应识别 'catch' 关键字");
+            // 使用 index 判定，确保每个关键字在正确的位置上被识别
+            assertEquals(TokenType.DEF, tokens.get(0).getType(), "第1个 token 应为 'def' 关键字");
+            assertEquals(TokenType.FUN, tokens.get(1).getType(), "第2个 token 应为 'fun' 关键字");
+            assertEquals(TokenType.VAL, tokens.get(2).getType(), "第3个 token 应为 'val' 关键字");
+            assertEquals(TokenType.VAR, tokens.get(3).getType(), "第4个 token 应为 'var' 关键字");
+            assertEquals(TokenType.IF, tokens.get(4).getType(), "第5个 token 应为 'if' 关键字");
+            assertEquals(TokenType.THEN, tokens.get(5).getType(), "第6个 token 应为 'then' 关键字");
+            assertEquals(TokenType.ELSE, tokens.get(6).getType(), "第7个 token 应为 'else' 关键字");
+            assertEquals(TokenType.WHEN, tokens.get(7).getType(), "第8个 token 应为 'when' 关键字");
+            assertEquals(TokenType.IS, tokens.get(8).getType(), "第9个 token 应为 'is' 关键字");
+            assertEquals(TokenType.IN, tokens.get(9).getType(), "第10个 token 应为 'in' 关键字");
+            assertEquals(TokenType.ASYNC, tokens.get(10).getType(), "第11个 token 应为 'async' 关键字");
+            assertEquals(TokenType.AWAIT, tokens.get(11).getType(), "第12个 token 应为 'await' 关键字");
+            assertEquals(TokenType.RETURN, tokens.get(12).getType(), "第13个 token 应为 'return' 关键字");
+            assertEquals(TokenType.TRY, tokens.get(13).getType(), "第14个 token 应为 'try' 关键字");
+            assertEquals(TokenType.CATCH, tokens.get(14).getType(), "第15个 token 应为 'catch' 关键字");
+            
+            // 验证值也正确
+            assertEquals("def", tokens.get(0).getValue(), "第1个 token 的值应为 'def'");
+            assertEquals("catch", tokens.get(14).getValue(), "第15个 token 的值应为 'catch'");
 
             // 关键字数量
             assertEquals(15, tokens.size() - 1, "应识别 15 个关键字 (不计 EOF)");
@@ -404,33 +442,45 @@ public class LexerTest {
             assertEquals(TokenType.EOF, tokens.get(tokens.size() - 1).getType(), "最后一个 token 应为 EOF");
 
             // 验证关键字
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.DEF), "应识别 'def' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.IF), "应识别 'if' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.THEN), "应识别 'then' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.ELSE), "应识别 'else' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.VAL), "应识别 'val' 关键字");
+            // 查找并验证关键字在正确位置
+            int defIndex = findTokenIndex(tokens, TokenType.DEF);
+            int ifIndex = findTokenIndex(tokens, TokenType.IF);
+            int thenIndex = findTokenIndex(tokens, TokenType.THEN);
+            int elseIndex = findTokenIndex(tokens, TokenType.ELSE);
+            int valIndex = findTokenIndex(tokens, TokenType.VAL);
+            
+            assertTrue(defIndex >= 0, "应识别 'def' 关键字");
+            assertTrue(ifIndex >= 0, "应识别 'if' 关键字");
+            assertTrue(thenIndex >= 0, "应识别 'then' 关键字");
+            assertTrue(elseIndex >= 0, "应识别 'else' 关键字");
+            assertTrue(valIndex >= 0, "应识别 'val' 关键字");
+
+            
+            // 验证关键字的相对位置
+            assertTrue(ifIndex > defIndex, "'if' 应在 'def' 之后");
+            assertTrue(thenIndex > ifIndex, "'then' 应在 'if' 之后");
+            assertTrue(elseIndex > thenIndex, "'else' 应在 'then' 之后");
 
             // 验证标识符
-            List<String> identifiers = getValuesByType(tokens, TokenType.IDENTIFIER);
-            assertTrue(identifiers.contains("factorial"), "应识别 'factorial' 标识符");
-            assertTrue(identifiers.contains("n"), "应识别 'n' 标识符");
-            assertTrue(identifiers.contains("x"), "应识别 'x' 标识符");
-            assertTrue(identifiers.contains("print"), "应识别 'print' 标识符");
+            int factorialIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "factorial");
+            int nIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "n");
+            int xIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "x");
+            int printIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "print");
+
+            
+            assertTrue(factorialIndex >= 0, "应识别 'factorial' 标识符");
+            assertTrue(nIndex >= 0, "应识别 'n' 标识符");
+            assertTrue(xIndex >= 0, "应识别 'x' 标识符");
+            assertTrue(printIndex >= 0, "应识别 'print' 标识符");
 
             // 验证运算符
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.MULTIPLY), "应识别 '*' 运算符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.MINUS), "应识别 '-' 运算符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.LESS_EQUAL), "应识别 '<=' 运算符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.ASSIGN), "应识别 '=' 运算符");
-
-            // 验证分隔符和括号
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.LEFT_PAREN), "应识别 '(' 分隔符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.RIGHT_PAREN), "应识别 ')' 分隔符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.LEFT_BRACE), "应识别 '{' 分隔符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.RIGHT_BRACE), "应识别 '}' 分隔符");
+            assertTrue(findTokenIndex(tokens, TokenType.MULTIPLY) >= 0, "应识别 '*' 运算符");
+            assertTrue(findTokenIndex(tokens, TokenType.MINUS) >= 0, "应识别 '-' 运算符");
+            assertTrue(findTokenIndex(tokens, TokenType.LESS_EQUAL) >= 0, "应识别 '<=' 运算符");
+            assertTrue(findTokenIndex(tokens, TokenType.ASSIGN) >= 0, "应识别 '=' 运算符");
 
             // 验证变量引用前缀
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.AMPERSAND), "应识别 '&' 变量引用前缀");
+            assertTrue(findTokenIndex(tokens, TokenType.AMPERSAND) >= 0, "应识别 '&' 变量引用前缀");
 
             // 验证数字字面量
             List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
@@ -465,39 +515,165 @@ public class LexerTest {
             List<Token> tokens = getTokens(source);
 
             // 验证范围操作符
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.RANGE), "应识别 '..' 范围操作符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.RANGE_EXCLUSIVE), "应识别 '..<' 范围操作符");
+            int rangeIndex = findTokenIndex(tokens, TokenType.RANGE);
+            int rangeExclusiveIndex = findTokenIndex(tokens, TokenType.RANGE_EXCLUSIVE);
+            assertTrue(rangeIndex >= 0, "应识别 '..' 范围操作符");
+            assertTrue(rangeExclusiveIndex >= 0, "应识别 '..<' 范围操作符");
 
             // 验证空安全操作符
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.QUESTION_DOT), "应识别 '?.' 空安全访问操作符");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.QUESTION_COLON), "应识别 '?:' Elvis 操作符");
+            int questionDotIndex = findTokenIndex(tokens, TokenType.QUESTION_DOT);
+            int questionColonIndex = findTokenIndex(tokens, TokenType.QUESTION_COLON);
+            assertTrue(questionDotIndex >= 0, "应识别 '?.' 空安全访问操作符");
+            assertTrue(questionColonIndex >= 0, "应识别 '?:' Elvis 操作符");
 
             // 验证 when 表达式相关 token
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.WHEN), "应识别 'when' 关键字");
-            assertTrue(tokens.stream().anyMatch(t -> t.getType() == TokenType.ARROW), "应识别 '->' 箭头操作符");
+            int whenIndex = findTokenIndex(tokens, TokenType.WHEN);
+            int arrowIndex = findTokenIndex(tokens, TokenType.ARROW);
+            assertTrue(whenIndex >= 0, "应识别 'when' 关键字");
+            assertTrue(arrowIndex >= 0, "应识别 '->' 箭头操作符");
 
             // 验证函数调用相关 token
-            List<String> identifiers = getValuesByType(tokens, TokenType.IDENTIFIER);
-            assertTrue(identifiers.contains("min"), "应识别 'min' 标识符");
-            assertTrue(identifiers.contains("score"), "应识别 'score' 标识符");
+            int minIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "min");
+            int scoreIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "score");
+            assertTrue(minIndex >= 0, "应识别 'min' 标识符");
+            assertTrue(scoreIndex >= 0, "应识别 'score' 标识符");
+            
+            // 验证相对位置
+            assertTrue(whenIndex < arrowIndex, "'when' 应在 '->' 之前");
+            assertTrue(questionDotIndex < questionColonIndex, "'?.' 应在 '?:' 之前");
 
             // 验证数值
-            List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
-            assertTrue(integers.contains("1"), "应识别 '1' 整数字面量");
-            assertTrue(integers.contains("10"), "应识别 '10' 整数字面量");
-            assertTrue(integers.contains("3"), "应识别 '3' 整数字面量");
-            assertTrue(integers.contains("5"), "应识别 '5' 整数字面量");
-            assertTrue(integers.contains("90"), "应识别 '90' 整数字面量");
-            assertTrue(integers.contains("80"), "应识别 '80' 整数字面量");
-            assertTrue(integers.contains("70"), "应识别 '70' 整数字面量");
+            int int1Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "1");
+            int int10Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "10");
+            int int3Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "3");
+            int int5Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "5");
+            int int90Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "90");
+            int int80Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "80");
+            int int70Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "70");
+            
+            assertTrue(int1Index >= 0, "应识别 '1' 整数字面量");
+            assertTrue(int10Index >= 0, "应识别 '10' 整数字面量");
+            assertTrue(int3Index >= 0, "应识别 '3' 整数字面量");
+            assertTrue(int5Index >= 0, "应识别 '5' 整数字面量");
+            assertTrue(int90Index >= 0, "应识别 '90' 整数字面量");
+            assertTrue(int80Index >= 0, "应识别 '80' 整数字面量");
+            assertTrue(int70Index >= 0, "应识别 '70' 整数字面量");
 
             // 验证字符串
-            List<String> strings = getValuesByType(tokens, TokenType.STRING);
-            assertTrue(strings.contains("Guest"), "应识别 'Guest' 字符串字面量");
-            assertTrue(strings.contains("A"), "应识别 'A' 字符串字面量");
-            assertTrue(strings.contains("B"), "应识别 'B' 字符串字面量");
-            assertTrue(strings.contains("C"), "应识别 'C' 字符串字面量");
-            assertTrue(strings.contains("D"), "应识别 'D' 字符串字面量");
+            int guestIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "Guest");
+            int aIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "A");
+            int bIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "B");
+            int cIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "C");
+            int dIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "D");
+            
+            assertTrue(guestIndex >= 0, "应识别 'Guest' 字符串字面量");
+            assertTrue(aIndex >= 0, "应识别 'A' 字符串字面量");
+            assertTrue(bIndex >= 0, "应识别 'B' 字符串字面量");
+            assertTrue(cIndex >= 0, "应识别 'C' 字符串字面量");
+            assertTrue(dIndex >= 0, "应识别 'D' 字符串字面量");
+            
+            // 验证字符串的相对位置
+            assertTrue(aIndex < bIndex, "'A' 应在 'B' 之前");
+            assertTrue(bIndex < cIndex, "'B' 应在 'C' 之前");
+            assertTrue(cIndex < dIndex, "'C' 应在 'D' 之前");
+        }
+    }
+
+    @Nested
+    @DisplayName("函数调用测试")
+    class FunctionCallTests {
+
+        @Test
+        @DisplayName("测试简单函数调用")
+        void testSimpleFunctionCall() {
+            String source = "greet \"World\"";
+            List<Token> tokens = getTokens(source);
+
+            // 验证函数名和参数
+            assertEquals(2, tokens.size() - 1, "应识别 2 个 token (不计 EOF)");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
+            assertEquals("greet", tokens.get(0).getValue(), "第1个 token 的值应为 'greet'");
+            assertEquals(TokenType.STRING, tokens.get(1).getType(), "第2个 token 应为字符串");
+            assertEquals("World", tokens.get(1).getValue(), "第2个 token 的值应为 'World'");
+        }
+
+        @Test
+        @DisplayName("测试无括号函数调用")
+        void testFunctionCallWithoutParentheses() {
+            String source = "print factorial 5";
+            List<Token> tokens = getTokens(source);
+
+            // 验证函数名和参数
+            assertEquals(3, tokens.size() - 1, "应识别 3 个 token (不计 EOF)");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
+            assertEquals("print", tokens.get(0).getValue(), "第1个 token 的值应为 'print'");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(1).getType(), "第2个 token 应为标识符");
+            assertEquals("factorial", tokens.get(1).getValue(), "第2个 token 的值应为 'factorial'");
+            assertEquals(TokenType.INTEGER, tokens.get(2).getType(), "第3个 token 应为整数");
+            assertEquals("5", tokens.get(2).getValue(), "第3个 token 的值应为 '5'");
+        }
+
+        @Test
+        @DisplayName("测试带括号函数调用")
+        void testFunctionCallWithParentheses() {
+            String source = "factorial(5)";
+            List<Token> tokens = getTokens(source);
+
+            // 验证函数名和参数
+            assertEquals(4, tokens.size() - 1, "应识别 4 个 token (不计 EOF)");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
+            assertEquals("factorial", tokens.get(0).getValue(), "第1个 token 的值应为 'factorial'");
+            assertEquals(TokenType.LEFT_PAREN, tokens.get(1).getType(), "第2个 token 应为左括号");
+            assertEquals(TokenType.INTEGER, tokens.get(2).getType(), "第3个 token 应为整数");
+            assertEquals("5", tokens.get(2).getValue(), "第3个 token 的值应为 '5'");
+            assertEquals(TokenType.RIGHT_PAREN, tokens.get(3).getType(), "第4个 token 应为右括号");
+            
+            // 验证括号的相对位置
+            assertTrue(tokens.get(1).getColumn() < tokens.get(3).getColumn(), "左括号应在右括号之前");
+        }
+
+        @Test
+        @DisplayName("测试嵌套函数调用")
+        void testNestedFunctionCall() {
+            String source = "print add min 5 3 3";
+            List<Token> tokens = getTokens(source);
+
+            // 验证函数名和参数
+            assertEquals(6, tokens.size() - 1, "应识别 6 个 token (不计 EOF)");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
+            assertEquals("print", tokens.get(0).getValue(), "第1个 token 的值应为 'print'");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(1).getType(), "第2个 token 应为标识符");
+            assertEquals("add", tokens.get(1).getValue(), "第2个 token 的值应为 'add'");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType(), "第3个 token 应为标识符");
+            assertEquals("min", tokens.get(2).getValue(), "第3个 token 的值应为 'min'");
+            assertEquals(TokenType.INTEGER, tokens.get(3).getType(), "第4个 token 应为整数");
+            assertEquals(TokenType.INTEGER, tokens.get(4).getType(), "第5个 token 应为整数");
+            assertEquals(TokenType.INTEGER, tokens.get(5).getType(), "第6个 token 应为整数");
+        }
+        
+        @Test
+        @DisplayName("测试带括号的嵌套函数调用")
+        void testNestedFunctionCallWithParentheses() {
+            String source = "print(add(min(5, 3), 3))";
+            List<Token> tokens = getTokens(source);
+            System.out.println(tokens);
+
+            // 验证函数名和参数
+            assertEquals(14, tokens.size() - 1, "应识别 14 个 token (不计 EOF)");
+            
+            // 验证第一层函数调用
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
+            assertEquals("print", tokens.get(0).getValue(), "第1个 token 的值应为 'print'");
+            assertEquals(TokenType.LEFT_PAREN, tokens.get(1).getType(), "第2个 token 应为左括号");
+            
+            // 验证第二层函数调用
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType(), "第3个 token 应为标识符");
+            assertEquals("add", tokens.get(2).getValue(), "第3个 token 的值应为 'add'");
+            assertEquals(TokenType.LEFT_PAREN, tokens.get(3).getType(), "第4个 token 应为左括号");
+            
+            // 验证最内层函数调用
+            assertEquals(TokenType.IDENTIFIER, tokens.get(4).getType(), "第5个 token 应为标识符");
+            assertEquals("min", tokens.get(4).getValue(), "第5个 token 的值应为 'min'");
         }
     }
 

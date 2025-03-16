@@ -58,7 +58,12 @@ public class BinaryExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitBinaryExpr(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return left + " " + operator.getSymbol() + " " + right;
+    }
+
     /**
      * 二元运算符
      */

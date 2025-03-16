@@ -36,4 +36,9 @@ public class BlockStmt extends Stmt {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitBlockStmt(this);
     }
+
+    @Override
+    public String toString() {
+        return statements.toString();
+    }
 }

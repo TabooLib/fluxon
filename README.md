@@ -1,11 +1,6 @@
 # Fluxon
 
-Fluxon 是一种强类型、编译型的 Java 领域特定语言（DSL）。具有以下特性：
-
-+ 🚀 **亚毫秒级响应**: 确保表达式解析 + 编译 + 执行全链路冷启动 <5ms
-+ 📦 **零 GC 压力**: 通过原始类型特化（Primitive Specialization）消除装箱
-+ 🔗 **无缝 JVM 生态集成**: 直接调用 Java 方法，无跨语言调用开销
-+ 📝 **简洁语义**: 类似 SQL 的声明式语法，降低学习成本
+Fluxon 是一种强类型、编译型的 Java 领域特定语言（DSL）。
 
 ## 语言特性
 
@@ -59,19 +54,6 @@ Fluxon 是一种强类型、编译型的 Java 领域特定语言（DSL）。具�
   }
   ```
 
-### 现代语法糖
-
-- **链式调用**：`obj.method().another()`。
-- **扩展函数**：为类型添加方法。
-  ```
-  fun Int.square() = this * this
-  &x.square()  // 调用扩展函数
-  ```
-- **空安全**：`?.` 和 `?:` 操作符。
-  ```
-  val name = user?.name ?: "Guest"
-  ```
-
 ### 集合与字面量
 
 - **列表/字典**：简洁初始化语法。
@@ -102,8 +84,10 @@ Fluxon 是一种强类型、编译型的 Java 领域特定语言（DSL）。具�
   ```
   def add(a: Int, b: Int): Int = &a + &b
   ```
-- **匿名函数**：`val square = { x -> x * x }`。
-- **运算符重载**：自定义 `+` 等操作符行为。
+- **空安全**：`?.` 和 `?:` 操作符。
+  ```
+  val name = user?.name ?: "Guest"
+  ```
 
 ### 优先级与结合性规则、
 
@@ -250,23 +234,13 @@ public CompletableFuture<Object> fetchData() {
 + 局部类型推断：基于变量使用上下文推断类型（如 `&a + &b` 推断 `a` 和 `b` 为 `int`）。
 + 多版本方法生成：为同一函数生成静态和动态版本，运行时根据参数类型选择最优版本。
 
-#### 空安全与扩展函数
+#### 空安全
 
 空安全操作符 `?.` 编译为条件跳转，避免反射调用：
 
 ```
 // Fluxon 代码: user?.name
 // 转换为 Java: (user != null) ? user.name : null
-```
-
-扩展函数编译为静态方法：
-
-```
-// Fluxon 扩展函数
-fun Int.square() = this * this
-
-// 转换为 Java 静态方法
-public static int square(int self) { return self * self; }
 ```
 
 #### 集合与字面量优化

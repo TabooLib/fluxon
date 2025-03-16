@@ -48,7 +48,12 @@ public class LambdaExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitLambdaExpr(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return "{ " + parameters.toString() + " -> " + body.toString() + " }";
+    }
+
     /**
      * Lambda 参数
      */
@@ -83,6 +88,11 @@ public class LambdaExpr extends Expr {
          */
         public String getType() {
             return type;
+        }
+
+        @Override
+        public String toString() {
+            return name + ": " + type;
         }
     }
 }

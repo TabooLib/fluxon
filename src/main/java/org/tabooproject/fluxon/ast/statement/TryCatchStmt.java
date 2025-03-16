@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.ast.statement;
 
 import org.tabooproject.fluxon.ast.AstVisitor;
 import org.tabooproject.fluxon.ast.SourceLocation;
-import org.tabooproject.fluxon.ast.expression.Expr;
 
 /**
  * try-catch 语句节点

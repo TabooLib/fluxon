@@ -36,4 +36,9 @@ public class ListExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitListExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return elements.toString();
+    }
 }

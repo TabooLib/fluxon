@@ -11,12 +11,13 @@ import java.util.List;
  * 表示函数声明
  */
 public class FunctionDeclStmt extends Stmt {
+
     private final String name;
     private final List<Parameter> parameters;
     private final Expr body;
     private final String returnType; // 返回类型注解，可能为 null
     private final boolean isAsync; // 是否为异步函数
-    
+
     /**
      * 创建函数声明语句节点
      * 
@@ -85,7 +86,12 @@ public class FunctionDeclStmt extends Stmt {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitFunctionDeclStmt(this);
     }
-    
+
+    @Override
+    public String toString() {
+        return "def " + name + "(" + parameters + ") -> " + returnType + " { " + body + " }";
+    }
+
     /**
      * 函数参数
      */
@@ -120,6 +126,11 @@ public class FunctionDeclStmt extends Stmt {
          */
         public String getType() {
             return type;
+        }
+
+        @Override
+        public String toString() {
+            return name + (type == null ? "" : ": " + type);
         }
     }
 }

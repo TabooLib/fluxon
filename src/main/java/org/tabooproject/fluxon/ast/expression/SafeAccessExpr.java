@@ -46,4 +46,9 @@ public class SafeAccessExpr extends Expr {
     public <T> T accept(AstVisitor<T> visitor) {
         return visitor.visitSafeAccessExpr(this);
     }
+
+    @Override
+    public String toString() {
+        return object + "?." + property;
+    }
 }
