@@ -2,8 +2,8 @@ package org.tabooproject.fluxon.compiler;
 
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.ast.statement.Program;
-import org.tabooproject.fluxon.parser.TypeAwareParser;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
 
 import java.util.List;
 
@@ -29,13 +29,11 @@ public class FluxonCompiler {
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
 
-        // 2. 语法分析：将词法单元序列转换为AST
-        TypeAwareParser parser = new TypeAwareParser(tokens, context);
-        Program program = parser.parse();
-        context.setAttribute("ast", program);
-        
-        // 后续步骤：语义分析、优化和代码生成
-        
+        // 2. 语法分析：将词法单元序列转换为语法结构
+        Parser parser = new Parser(tokens);
+        List<ParseResult> parseResults = parser.process(context);
+        context.setAttribute("parseResults", parseResults);
+
         // 暂时返回空字节码，后续实现优化和代码生成
         return new byte[0];
     }

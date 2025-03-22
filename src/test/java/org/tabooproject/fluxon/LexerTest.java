@@ -155,12 +155,8 @@ public class LexerTest {
             String source = "true false";
             List<Token> tokens = getTokens(source);
 
-            List<Token> booleans = filterByType(tokens, TokenType.BOOLEAN);
-            assertEquals(2, booleans.size(), "应识别 2 个布尔字面量");
-
-            List<String> values = booleans.stream().map(Token::getValue).collect(Collectors.toList());
-            assertTrue(values.contains("true"), "应识别 'true' 布尔值");
-            assertTrue(values.contains("false"), "应识别 'false' 布尔值");
+            assertEquals(TokenType.TRUE, tokens.get(0).getType(), "第1个 token 应为 'true' 关键字");
+            assertEquals(TokenType.FALSE, tokens.get(1).getType(), "第2个 token 应为 'false' 关键字");
         }
     }
 

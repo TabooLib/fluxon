@@ -51,8 +51,8 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("catch", TokenType.CATCH);
 
         // 布尔值特殊处理
-        KEYWORDS.put("true", TokenType.BOOLEAN);
-        KEYWORDS.put("false", TokenType.BOOLEAN);
+        KEYWORDS.put("true", TokenType.TRUE);
+        KEYWORDS.put("false", TokenType.FALSE);
     }
 
     /**
