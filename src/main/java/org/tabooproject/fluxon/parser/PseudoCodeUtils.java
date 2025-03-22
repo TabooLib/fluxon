@@ -12,11 +12,7 @@ public class PseudoCodeUtils {
      * @return 缩进字符串
      */
     public static String getIndent(int indent) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < indent; i++) {
-            sb.append("    "); // 4个空格表示一级缩进
-        }
-        return sb.toString();
+        return "    ".repeat(Math.max(0, indent));
     }
     
     /**

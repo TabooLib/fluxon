@@ -42,12 +42,19 @@ public class Statements {
      * 表示一组语句组成的代码块
      */
     public static class Block implements Statement {
+
+        private final String label;
         private final List<ParseResult> statements;
         
-        public Block(List<ParseResult> statements) {
+        public Block(String label, List<ParseResult> statements) {
+            this.label = label;
             this.statements = statements;
         }
-        
+
+        public String getLabel() {
+            return label;
+        }
+
         public List<ParseResult> getStatements() {
             return statements;
         }
@@ -61,13 +68,14 @@ public class Statements {
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
             String indentStr = PseudoCodeUtils.getIndent(indent);
-            
-            sb.append(indentStr).append("{\n");
-            
+            sb.append(indentStr);
+            if (label != null) {
+                sb.append("@").append(label).append(" ");
+            }
+            sb.append("{\n");
             for (ParseResult stmt : statements) {
                 sb.append(stmt.toPseudoCode(indent + 1)).append("\n");
             }
-            
             sb.append(indentStr).append("}");
             return sb.toString();
         }

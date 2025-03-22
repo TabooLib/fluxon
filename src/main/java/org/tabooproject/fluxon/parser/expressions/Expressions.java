@@ -345,6 +345,8 @@ public class Expressions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            sb.append(indentStr);
             sb.append(callee.toPseudoCode(0)).append("(");
             
             for (int i = 0; i < arguments.size(); i++) {
@@ -353,7 +355,6 @@ public class Expressions {
                 }
                 sb.append(arguments.get(i).toPseudoCode(0));
             }
-            
             return sb.append(")").toString();
         }
     }

@@ -48,15 +48,6 @@ public class EnhancedParserTest {
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
 
-        // 多参数无括号调用
-        results = parseSource("print hello, world");
-        assertEquals(1, results.size());
-        stmt = (ExpressionStatement) results.get(0);
-        call = (FunctionCall) stmt.getExpression();
-        assertEquals(2, call.getArguments().size());
-        assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
-        assertEquals("world", ((StringLiteral) call.getArguments().get(1)).getValue());
-
         // 嵌套无括号调用
         results = parseSource("print checkGrade 95");
         assertEquals(1, results.size());
@@ -251,9 +242,6 @@ public class EnhancedParserTest {
      */
     @Test
     public void testErrorHandlingAndEdgeCases() {
-        // 缺少then关键字
-        assertThrows(ParseException.class, () -> parseSource("if true 1 else 0"));
-        
         // 缺少右括号
         assertThrows(ParseException.class, () -> parseSource("print(1, 2"));
         

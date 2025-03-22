@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expressions.Expressions.*;
+import org.tabooproject.fluxon.parser.statements.Statements;
 import org.tabooproject.fluxon.parser.statements.Statements.Block;
 import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
 
@@ -170,7 +171,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, paramCounts));
         } else {
             // 函数不存在，创建新条目
-            symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, new ArrayList<>(parameters.size())));
+            symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, parameters.size()));
         }
 
         // 解析等号
@@ -217,7 +218,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
 
         consume(TokenType.RIGHT_BRACE, "Expected '}' after block");
-        return new Block(statements);
+        return new Block(null, statements);
     }
 
     /**
@@ -443,14 +444,47 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 if (info.supportsParameterCount(arguments.size())) {
                     expr = new FunctionCall(expr, arguments);
                 } else {
-                    throw new ParseException("Invalid number of arguments for function '" + functionName +
-                            "'. Expected one of " + info.getParameterCounts() +
-                            ", but got " + arguments.size(), currentToken, results);
+                    // 参数数量不匹配，找到最接近的参数数量
+                    List<Integer> paramCounts = info.getParameterCounts();
+                    int closestCount = findClosestParameterCount(paramCounts, arguments.size());
+                    List<ParseResult> block = new ArrayList<>();
+                    // 使用足额的参数
+                    block.add(new FunctionCall(expr, arguments.subList(0, closestCount)));
+                    // 和剩下的参数打包成代码块，避免回滚二次解析
+                    block.addAll(arguments.subList(closestCount, arguments.size()));
+                    expr = new Statements.Block("ipc", block);
                 }
             }
         }
 
         return expr;
+    }
+
+    /**
+     * 找到最接近的参数数量
+     *
+     * @param paramCounts 参数数量列表
+     * @param actualCount 实际参数数量
+     * @return 最接近的参数数量
+     */
+    private int findClosestParameterCount(List<Integer> paramCounts, int actualCount) {
+        if (paramCounts.isEmpty()) {
+            return 0;
+        }
+
+        // 找到最接近的参数数量
+        int closestCount = paramCounts.get(0);
+        int minDiff = Math.abs(closestCount - actualCount);
+
+        for (int count : paramCounts) {
+            int diff = Math.abs(count - actualCount);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestCount = count;
+            }
+        }
+
+        return closestCount;
     }
 
     /**
@@ -654,7 +688,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         SymbolInfo info = symbolTable.get(name);
         return info != null ? info.getMaxParameterCount() : 0;
     }
-    
+
     /**
      * 获取函数期望的参数数量
      *

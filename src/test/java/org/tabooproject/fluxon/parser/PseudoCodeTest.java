@@ -34,7 +34,7 @@ public class PseudoCodeTest {
         // @formatter:off
         testPseudoCode(
                 """
-                async def loadUser(id) = await fetch("users/${id}")
+                async def loadUser(id) = await fetch "users/${id}"
                 """
         );
         // @formatter:on
@@ -64,7 +64,7 @@ public class PseudoCodeTest {
         // @formatter:off
         testPseudoCode(
                 """
-                print checkGrade 85
+                print checkGrade 85 - 1
                 print head
                 player head
                 player head to player hand
