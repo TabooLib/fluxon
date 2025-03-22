@@ -73,7 +73,6 @@ public enum TokenType {
     QUESTION("?"),             // 问号
     QUESTION_DOT("?."),        // 空安全访问
     QUESTION_COLON("?:"),      // Elvis 操作符
-    NEWLINE("\n"),             // 换行符
     AMPERSAND("&"),            // 变量引用前缀
     
     // 其他

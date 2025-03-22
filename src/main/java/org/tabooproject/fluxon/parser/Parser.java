@@ -615,7 +615,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private boolean isEndOfExpression() {
         return check(TokenType.SEMICOLON) || check(TokenType.RIGHT_PAREN) ||
                 check(TokenType.RIGHT_BRACE) || check(TokenType.RIGHT_BRACKET) ||
-                check(TokenType.COMMA) || check(TokenType.EOF);
+                check(TokenType.COMMA) || isAtEnd();
     }
 
     /**
