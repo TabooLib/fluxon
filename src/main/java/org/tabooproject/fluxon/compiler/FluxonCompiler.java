@@ -30,7 +30,7 @@ public class FluxonCompiler {
         context.setAttribute("tokens", tokens);
 
         // 2. 语法分析：将词法单元序列转换为语法结构
-        Parser parser = new Parser(tokens);
+        Parser parser = new Parser();
         List<ParseResult> parseResults = parser.process(context);
         context.setAttribute("parseResults", parseResults);
 

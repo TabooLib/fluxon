@@ -18,30 +18,33 @@ import java.util.Map;
  * Fluxon解析器
  */
 public class Parser implements CompilationPhase<List<ParseResult>> {
-    private final List<Token> tokens;
-    private int position = 0;
-    private Token currentToken;
 
     // 符号表，用于跟踪已定义的函数和变量
     private final Map<String, SymbolInfo> symbolTable = new HashMap<>();
 
+    private List<Token> tokens;
+    private int position = 0;
+    private Token currentToken;
+
+    // 已经解析出的结果
+    private List<ParseResult> results;
+
     /**
      * 创建解析器
-     *
-     * @param tokens 词法单元序列
      */
-    public Parser(List<Token> tokens) {
-        this.tokens = tokens;
-        // 预加载第一个词法单元
-        if (!tokens.isEmpty()) {
-            currentToken = tokens.get(0);
-        }
-
+    public Parser() {
         // 预先添加一些常用函数到符号表，用于测试
         symbolTable.put("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
         symbolTable.put("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
         symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", 1));
         symbolTable.put("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
+    }
+
+    /**
+     * 创建带有符号表的解析器
+     */
+    public Parser(Map<String, SymbolInfo> symbolTable) {
+        this.symbolTable.putAll(symbolTable);
     }
 
     /**
@@ -54,14 +57,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public List<ParseResult> process(CompilationContext context) {
         // 从上下文中获取词法单元序列
         List<Token> tokens = context.getAttribute("tokens");
-
         if (tokens == null) {
             throw new IllegalStateException("No tokens found in compilation context");
         }
-
-        // 创建新的解析器实例并执行解析
-        Parser parser = new Parser(tokens);
-        return parser.parse();
+        this.tokens = tokens;
+        // 预加载第一个词法单元
+        if (!tokens.isEmpty()) {
+            currentToken = tokens.get(0);
+        }
+        return parse();
     }
 
     /**
@@ -70,7 +74,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 解析结果列表
      */
     public List<ParseResult> parse() {
-        List<ParseResult> results = new ArrayList<>();
+        results = new ArrayList<>();
 
         // 解析顶层语句
         while (!isAtEnd()) {
@@ -79,7 +83,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 results.add(result);
             }
         }
-
         return results;
     }
 
@@ -112,17 +115,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             advance(); // 消费 ASYNC
             advance(); // 消费 DEF
             return parseFunctionDefinition(true);
-        } else if (match(TokenType.DEF)) {
-            // 普通函数定义
+        }
+        // 普通函数定义
+        else if (match(TokenType.DEF)) {
             return parseFunctionDefinition(false);
         }
-
         // 解析表达式语句
         return parseExpressionStatement();
     }
 
     /**
      * 解析函数定义
+     * 关键特性：
+     * 1. 允许无括号参数定义，如：def factorial n = { ... }
+     * 2. 允许省略大括号
      *
      * @param isAsync 是否为异步函数
      * @return 函数定义解析结果
@@ -160,31 +166,34 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
 
         // 解析函数体
         ParseResult body;
+        // 如果有左大括号，则解析为 Block 函数体
         if (match(TokenType.LEFT_BRACE)) {
-            // 块函数体
             body = parseBlock();
         } else {
-            // 表达式函数体
+            // 如果是标识符，直接解析为变量
             if (check(TokenType.IDENTIFIER)) {
-                // 如果是标识符，直接解析为变量
                 Token identToken = consume(TokenType.IDENTIFIER, "Expected identifier");
                 body = new Variable(identToken.getValue());
-            } else if (check(TokenType.WHEN)) {
-                // 如果是when表达式
+            }
+            // When 结构
+            else if (check(TokenType.WHEN)) {
                 body = parseWhenExpression();
-            } else if (check(TokenType.IF)) {
+            }
+            // If 结构
+            else if (check(TokenType.IF)) {
                 body = parseIfExpression();
-            } else {
-                // 其他表达式
+            }
+            // 其他
+            else {
                 body = parseExpression();
             }
         }
-
         return new FunctionDefinition(functionName, parameters, body, isAsync);
     }
 
     /**
      * 解析代码块
+     * 代码块里包含多个语句（Statement）
      *
      * @return 代码块解析结果
      */
@@ -222,14 +231,18 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
 
     /**
      * 解析赋值表达式
+     * <p>
+     * 为什么要先解析逻辑或表达式，然后再解析赋值表达式？
+     * 在解析器设计中，通常会使用递归下降解析（Recursive Descent Parsing）的方法来处理不同优先级的表达式。
+     * 即当解析某一层次的表达式时，它会先调用解析更高优先级表达式的方法，然后再处理当前层次的操作符。
+     * 这种设计确保了表达式 a = b || c 被正确解析为 a = (b || c) 而不是 (a = b) || c。
      *
      * @return 赋值表达式解析结果
      */
     private ParseResult parseAssignment() {
         ParseResult expr = parseLogicalOr();
 
-        if (match(TokenType.ASSIGN, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN,
-                TokenType.MULTIPLY_ASSIGN, TokenType.DIVIDE_ASSIGN)) {
+        if (match(TokenType.ASSIGN, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN, TokenType.MULTIPLY_ASSIGN, TokenType.DIVIDE_ASSIGN)) {
             Token operator = previous();
             ParseResult value = parseAssignment();
 
@@ -238,10 +251,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 String name = ((Variable) expr).getName();
                 return new Assignment(name, operator, value);
             }
-
-            throw new ParseException("Invalid assignment target", operator);
+            throw new ParseException("Invalid assignment target", operator, new ArrayList<>(results));
         }
-
         return expr;
     }
 
@@ -258,7 +269,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseLogicalAnd();
             expr = new LogicalExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -275,7 +285,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseEquality();
             expr = new LogicalExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -292,7 +301,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseComparison();
             expr = new BinaryExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -309,7 +317,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseTerm();
             expr = new BinaryExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -326,7 +333,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseFactor();
             expr = new BinaryExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -343,7 +349,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parseUnary();
             expr = new BinaryExpression(expr, operator, right);
         }
-
         return expr;
     }
 
@@ -370,7 +375,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             ParseResult right = parsePrimary();
             return new ReferenceExpression(right);
         }
-
         return parseCall();
     }
 
@@ -391,8 +395,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             String functionName = ((Variable) expr).getName();
 
             // 检查是否为已知函数
+            // 只有已知函数才能进行无括号调用
             if (isFunction(functionName)) {
-                // 只有已知函数才能进行无括号调用
+                // 获取函数的参数数量
                 int expectedArgCount = getExpectedArgumentCount(functionName);
                 List<ParseResult> arguments = new ArrayList<>();
 
@@ -429,17 +434,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 解析函数调用参数
-     *
-     * @return 参数解析结果
-     */
-    private ParseResult parseArgument() {
-        // 检查是否为标识符
-        // 所有参数都按表达式解析
-        return parseExpression();
-    }
-
-    /**
      * 完成函数调用解析
      *
      * @param callee 被调用者
@@ -447,16 +441,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     private ParseResult finishCall(ParseResult callee) {
         List<ParseResult> arguments = new ArrayList<>();
-
         // 如果参数列表不为空
         if (!check(TokenType.RIGHT_PAREN)) {
             do {
                 arguments.add(parseExpression());
             } while (match(TokenType.COMMA));
         }
-
         consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-
         return new FunctionCall(callee, arguments);
     }
 
@@ -497,16 +488,16 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
 
         // When 表达式
-        if (match(TokenType.WHEN)) {
+        if (check(TokenType.WHEN)) {
             return parseWhenExpression();
         }
 
         // If 表达式
-        if (match(TokenType.IF)) {
+        if (check(TokenType.IF)) {
             return parseIfExpression();
         }
 
-        throw new ParseException("Expected expression", currentToken);
+        throw new ParseException("Expected expression", currentToken, new ArrayList<>(results));
     }
 
     /**
@@ -515,9 +506,11 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return When 表达式解析结果
      */
     private ParseResult parseWhenExpression() {
-        // 可选的条件表达式
+        // 消费 WHEN 标记
+        consume(TokenType.WHEN, "Expected 'when' before when expression");
+
+        // 则解析条件表达式
         ParseResult condition = null;
-        advance(); // 消费 WHEN 标记
         if (!check(TokenType.LEFT_BRACE)) {
             condition = parseExpression();
         }
@@ -525,7 +518,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 消费左花括号，如果存在的话
         match(TokenType.LEFT_BRACE);
 
-        // 如果当前是EOF，直接返回空的when表达式
+        // 如果当前是 EOF，直接返回空的 when 表达式
         if (isAtEnd()) {
             return new WhenExpression(condition, new ArrayList<>());
         }
@@ -534,83 +527,22 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         List<WhenBranch> branches = new ArrayList<>();
 
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-            // 解析分支条件
+            // 解析非 else 分支条件
             ParseResult branchCondition = null;
-
-            if (match(TokenType.ELSE)) {
-                // else 分支
-                // 消费箭头操作符
-                consume(TokenType.ARROW, "Expected '->' after else");
-            } else {
-                // 条件分支
-                // 解析引用表达式 &num
-                if (match(TokenType.AMPERSAND)) {
-                    Token ampersand = previous();
-                    Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier after &");
-                    ParseResult varRef = new ReferenceExpression(new Variable(identifier.getValue()));
-
-                    // 解析剩余的表达式
-                    branchCondition = parseRestOfExpression(varRef);
-                } else {
-                    branchCondition = parseExpression();
-                }
-                consume(TokenType.ARROW, "Expected '->' after branch condition");
+            if (!match(TokenType.ELSE)) {
+                branchCondition = parseExpression();
             }
-
+            // 消费箭头操作符
+            consume(TokenType.ARROW, "Expected '->' after else");
             // 解析分支结果
-            ParseResult branchResult;
-            branchResult = parseExpression();
-
-            branches.add(new WhenBranch(branchCondition, branchResult));
-
+            branches.add(new WhenBranch(branchCondition, parseExpression()));
             // 可选的分支结束符
             match(TokenType.SEMICOLON);
         }
 
         // 消费右花括号，如果存在的话
         match(TokenType.RIGHT_BRACE);
-
         return new WhenExpression(condition, branches);
-    }
-
-    /**
-     * 解析表达式的剩余部分，用于处理特殊情况
-     *
-     * @param left 左侧表达式
-     * @return 完整表达式
-     */
-    private ParseResult parseRestOfExpression(ParseResult left) {
-
-        // 处理二元操作符
-        if (match(TokenType.MODULO)) {
-            Token operator = previous();
-            ParseResult right = parsePrimary(); // 解析右侧操作数
-            left = new BinaryExpression(left, operator, right);
-        }
-
-        // 处理比较操作符
-        if (match(TokenType.EQUAL, TokenType.NOT_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL,
-                TokenType.GREATER, TokenType.GREATER_EQUAL)) {
-            Token operator = previous();
-            ParseResult right = parsePrimary(); // 解析右侧操作数
-            left = new BinaryExpression(left, operator, right);
-        }
-
-        // 处理加减操作符
-        if (match(TokenType.PLUS, TokenType.MINUS)) {
-            Token operator = previous();
-            ParseResult right = parsePrimary(); // 解析右侧操作数
-            left = new BinaryExpression(left, operator, right);
-        }
-
-        // 处理乘除操作符
-        if (match(TokenType.MULTIPLY, TokenType.DIVIDE)) {
-            Token operator = previous();
-            ParseResult right = parsePrimary(); // 解析右侧操作数
-            left = new BinaryExpression(left, operator, right);
-        }
-
-        return left;
     }
 
     /**
@@ -619,33 +551,34 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return If 表达式解析结果
      */
     private ParseResult parseIfExpression() {
-        advance(); // 消费 IF 标记
+        // 消费 IF 标记
+        consume(TokenType.IF, "Expected 'if' before if expression");
 
+        // 解析条件
         ParseResult condition = parseExpression();
-        // 检查是否有THEN关键字，如果没有，尝试继续解析
-        if (!match(TokenType.THEN)) {
-            throw new ParseException("Expected 'then' after if condition", currentToken);
-        }
 
-        // 解析then分支
+        // 尝试消费 then 标记，没有就不管
+        match(TokenType.THEN);
+
+        // 解析 then 分支
         ParseResult thenBranch;
+        // 如果是大括号，解析为代码块
         if (match(TokenType.LEFT_BRACE)) {
-            // 如果是大括号，解析为代码块
             thenBranch = parseBlock();
         } else {
             thenBranch = parseExpression();
         }
 
+        // 解析 else 分支
         ParseResult elseBranch = null;
+        // 如果是大括号，解析为代码块
         if (match(TokenType.ELSE)) {
             if (match(TokenType.LEFT_BRACE)) {
-                // 如果是大括号，解析为代码块
                 elseBranch = parseBlock();
             } else {
                 elseBranch = parseExpression();
             }
         }
-
         return new IfExpression(condition, thenBranch, elseBranch);
     }
 
@@ -716,6 +649,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             position++;
             currentToken = tokens.get(position);
         }
+    }
+
+    /**
+     * 检查当前标记是否为指定类型，如果是则消费并前进
+     *
+     * @param type 要检查的类型
+     * @return 是否匹配
+     */
+    private boolean match(TokenType type) {
+        if (check(type)) {
+            advance();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -794,14 +741,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             advance();
             return previous();
         }
-
-        throw new ParseException(message, currentToken);
+        throw new ParseException(message, currentToken, new ArrayList<>(results));
     }
 
     /**
      * 符号类型枚举
      */
-    private enum SymbolType {
+    public enum SymbolType {
         FUNCTION,
         VARIABLE
     }
@@ -809,7 +755,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     /**
      * 符号信息类
      */
-    private static class SymbolInfo {
+    public static class SymbolInfo {
         private final SymbolType type;
         private final String name;
         private final int parameterCount;
@@ -818,6 +764,10 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             this.type = type;
             this.name = name;
             this.parameterCount = parameterCount;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public SymbolType getType() {

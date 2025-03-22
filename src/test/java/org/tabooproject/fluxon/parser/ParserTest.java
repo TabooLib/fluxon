@@ -16,6 +16,22 @@ import static org.junit.jupiter.api.Assertions.*;
  * 解析器测试类
  */
 public class ParserTest {
+
+    /**
+     * 解析源代码
+     *
+     * @param source 源代码
+     * @return 解析结果列表
+     */
+    private List<ParseResult> parseSource(String source) {
+        // 创建编译上下文
+        CompilationContext context = new CompilationContext(source);
+        Lexer lexer = new Lexer(source);
+        List<Token> tokens = lexer.tokenize();
+        context.setAttribute("tokens", tokens);
+        Parser parser = new Parser();
+        return parser.process(context);
+    }
     
     /**
      * 测试简单的函数定义
@@ -144,21 +160,5 @@ public class ParserTest {
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
-    }
-    
-    /**
-     * 解析源代码
-     *
-     * @param source 源代码
-     * @return 解析结果列表
-     */
-    private List<ParseResult> parseSource(String source) {
-        // 词法分析
-        Lexer lexer = new Lexer(source);
-        List<Token> tokens = lexer.tokenize();
-        
-        // 语法分析
-        Parser parser = new Parser(tokens);
-        return parser.parse();
     }
 }

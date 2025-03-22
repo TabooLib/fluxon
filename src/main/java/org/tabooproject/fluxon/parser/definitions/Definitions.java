@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.PseudoCodeUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 定义类集合
@@ -61,19 +62,13 @@ public class Definitions {
                 sb.append("async ");
             }
             sb.append("def ").append(name).append("(");
-            
+
             // 参数列表
-            for (int i = 0; i < parameters.size(); i++) {
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                sb.append(parameters.get(i));
-            }
+            sb.append(String.join(", ", parameters));
             sb.append(") = ");
             
             // 函数体
             sb.append(body.toPseudoCode(0));
-            
             return sb.toString();
         }
     }
