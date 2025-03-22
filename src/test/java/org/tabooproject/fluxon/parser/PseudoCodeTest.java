@@ -66,6 +66,8 @@ public class PseudoCodeTest {
                 """
                 print checkGrade 85
                 print head
+                player head
+                player head to player hand
                 """
         );
         // @formatter:on
@@ -108,7 +110,7 @@ public class PseudoCodeTest {
             for (ParseResult result : ex.getResults()) {
                 System.out.println(result.toPseudoCode(0));
             }
-            ex.printStackTrace();
+            throw ex;
         }
     }
 }

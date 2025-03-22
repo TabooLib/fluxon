@@ -11,6 +11,7 @@ import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +37,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 预先添加一些常用函数到符号表，用于测试
         symbolTable.put("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
         symbolTable.put("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
-        symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", 1));
+        symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
         symbolTable.put("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
     }
 
@@ -159,7 +160,18 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
 
         // 将函数添加到符号表
-        symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, parameters.size()));
+        SymbolInfo existingInfo = symbolTable.get(functionName);
+        if (existingInfo != null && existingInfo.getType() == SymbolType.FUNCTION) {
+            // 函数已存在，添加新的参数数量
+            List<Integer> paramCounts = new ArrayList<>(existingInfo.getParameterCounts());
+            if (!paramCounts.contains(parameters.size())) {
+                paramCounts.add(parameters.size());
+            }
+            symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, paramCounts));
+        } else {
+            // 函数不存在，创建新条目
+            symbolTable.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, new ArrayList<>(parameters.size())));
+        }
 
         // 解析等号
         consume(TokenType.ASSIGN, "Expected '=' after function declaration");
@@ -397,12 +409,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
             if (isFunction(functionName)) {
-                // 获取函数的参数数量
-                int expectedArgCount = getExpectedArgumentCount(functionName);
+                // 获取函数的最大参数数量
+                int maxArgCount = getMaxExpectedArgumentCount(functionName);
                 List<ParseResult> arguments = new ArrayList<>();
+                SymbolInfo info = symbolTable.get(functionName);
 
                 // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
-                for (int i = 0; i < expectedArgCount && !isEndOfExpression() && !isOperator(); i++) {
+                for (int i = 0; i < maxArgCount && !isEndOfExpression() && !isOperator(); i++) {
                     // 检查当前标记是否为标识符
                     if (check(TokenType.IDENTIFIER)) {
                         String identifier = peek().getValue();
@@ -420,13 +433,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                         arguments.add(parseExpression());
                     }
 
-                    // 如果遇到逗号或者已经解析了足够的参数，继续解析下一个参数
-                    if (!match(TokenType.COMMA)) {
+                    // 如果遇到分号就跳出
+                    if (match(TokenType.SEMICOLON)) {
                         break;
                     }
                 }
 
-                expr = new FunctionCall(expr, arguments);
+                // 检查解析到的参数数量是否有效
+                if (info.supportsParameterCount(arguments.size())) {
+                    expr = new FunctionCall(expr, arguments);
+                } else {
+                    throw new ParseException("Invalid number of arguments for function '" + functionName +
+                            "'. Expected one of " + info.getParameterCounts() +
+                            ", but got " + arguments.size(), currentToken, results);
+                }
             }
         }
 
@@ -497,7 +517,12 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             return parseIfExpression();
         }
 
-        throw new ParseException("Expected expression", currentToken, new ArrayList<>(results));
+        // Eof
+        if (currentToken.getType() == TokenType.EOF) {
+            throw new ParseException("Eof", currentToken, new ArrayList<>(results));
+        } else {
+            throw new ParseException("Expected expression", currentToken, new ArrayList<>(results));
+        }
     }
 
     /**
@@ -620,14 +645,24 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 获取函数最大可能的参数数量
+     *
+     * @param name 函数名
+     * @return 最大可能的参数数量
+     */
+    private int getMaxExpectedArgumentCount(String name) {
+        SymbolInfo info = symbolTable.get(name);
+        return info != null ? info.getMaxParameterCount() : 0;
+    }
+    
+    /**
      * 获取函数期望的参数数量
      *
      * @param name 函数名
      * @return 期望的参数数量
      */
     private int getExpectedArgumentCount(String name) {
-        SymbolInfo info = symbolTable.get(name);
-        return info != null ? info.getParameterCount() : 0;
+        return getMaxExpectedArgumentCount(name);
     }
 
     /**
@@ -758,12 +793,21 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public static class SymbolInfo {
         private final SymbolType type;
         private final String name;
-        private final int parameterCount;
+        private final List<Integer> parameterCounts;
+        private final int maxParameterCount;
 
         public SymbolInfo(SymbolType type, String name, int parameterCount) {
             this.type = type;
             this.name = name;
-            this.parameterCount = parameterCount;
+            this.parameterCounts = Collections.singletonList(parameterCount);
+            this.maxParameterCount = parameterCount;
+        }
+
+        public SymbolInfo(SymbolType type, String name, List<Integer> parameterCounts) {
+            this.type = type;
+            this.name = name;
+            this.parameterCounts = parameterCounts;
+            this.maxParameterCount = parameterCounts.isEmpty() ? 0 : Collections.max(parameterCounts);
         }
 
         public String getName() {
@@ -774,8 +818,32 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             return type;
         }
 
-        public int getParameterCount() {
-            return parameterCount;
+        /**
+         * 获取参数数量列表
+         *
+         * @return 参数数量列表
+         */
+        public List<Integer> getParameterCounts() {
+            return parameterCounts;
+        }
+
+        /**
+         * 获取最大参数数量
+         *
+         * @return 最大参数数量
+         */
+        public int getMaxParameterCount() {
+            return maxParameterCount;
+        }
+
+        /**
+         * 检查是否支持指定的参数数量
+         *
+         * @param count 参数数量
+         * @return 是否支持
+         */
+        public boolean supportsParameterCount(int count) {
+            return parameterCounts.contains(count);
         }
     }
 }
