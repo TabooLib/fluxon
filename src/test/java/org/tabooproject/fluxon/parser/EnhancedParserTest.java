@@ -26,8 +26,8 @@ public class EnhancedParserTest {
     private List<ParseResult> parseSource(String source) {
         // 创建编译上下文
         CompilationContext context = new CompilationContext(source);
-        Lexer lexer = new Lexer(source);
-        List<Token> tokens = lexer.tokenize();
+        Lexer lexer = new Lexer();
+        List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
         Parser parser = new Parser();
         return parser.process(context);

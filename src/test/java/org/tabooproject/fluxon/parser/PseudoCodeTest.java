@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 伪代码生成测试
@@ -88,20 +89,24 @@ public class PseudoCodeTest {
     private void testPseudoCode(String source) {
         System.out.println("[Parse]: ");
         System.out.println(source);
-        // 创建编译上下文
-        CompilationContext context = new CompilationContext(source);
-        Lexer lexer = new Lexer(source);
-        List<Token> tokens = lexer.tokenize();
-        context.setAttribute("tokens", tokens);
-        Parser parser = new Parser();
         try {
-            List<ParseResult> results = parser.process(context);
+            AtomicReference<List<ParseResult>> results = new AtomicReference<>();
+            double time = measureTimeMillis(() -> {
+                // 创建编译上下文
+                CompilationContext context = new CompilationContext(source);
+                Lexer lexer = new Lexer();
+                List<Token> tokens = lexer.process(context);
+                context.setAttribute("tokens", tokens);
+                Parser parser = new Parser();
+                results.set(parser.process(context));
+            });
+            System.out.println(time + "ms");
             System.out.println("[Structure]:");
-            for (ParseResult result : results) {
+            for (ParseResult result : results.get()) {
                 System.out.println(result);
             }
             System.out.println("[PseudoCode]:");
-            for (ParseResult result : results) {
+            for (ParseResult result : results.get()) {
                 System.out.println(result.toPseudoCode(0));
             }
             System.out.println("----------------------------------");
@@ -112,5 +117,18 @@ public class PseudoCodeTest {
             }
             throw ex;
         }
+    }
+
+    /**
+     * 测量函数执行时间
+     *
+     * @param runnable 要执行的函数
+     * @return 执行时间（毫秒）
+     */
+    private double measureTimeMillis(Runnable runnable) {
+        long start = System.nanoTime();
+        runnable.run();
+        long end = System.nanoTime();
+        return (end - start) / 1_000_000.0; // 纳秒转毫秒
     }
 }

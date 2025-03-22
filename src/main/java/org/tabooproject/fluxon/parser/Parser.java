@@ -75,7 +75,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 解析结果列表
      */
-    public List<ParseResult> parse() {
+    private List<ParseResult> parse() {
         results = new ArrayList<>();
 
         // 解析顶层语句

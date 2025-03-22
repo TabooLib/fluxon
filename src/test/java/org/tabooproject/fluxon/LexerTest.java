@@ -29,7 +29,7 @@ public class LexerTest {
      */
     private List<Token> getTokens(String source) {
         CompilationContext context = new CompilationContext(source);
-        Lexer lexer = new Lexer(source);
+        Lexer lexer = new Lexer();
         return lexer.process(context);
     }
 

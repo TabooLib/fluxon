@@ -25,7 +25,7 @@ public class FluxonCompiler {
         
         // 执行编译流程
         // 1. 词法分析：将源代码转换为词法单元序列
-        Lexer lexer = new Lexer(source);
+        Lexer lexer = new Lexer();
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
 

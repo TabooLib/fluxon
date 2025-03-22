@@ -13,9 +13,10 @@ import java.util.Map;
  * 将源代码转换为词法单元序列
  */
 public class Lexer implements CompilationPhase<List<Token>> {
-    private final String source;
+
+    private String source;
     private int position = 0;
-    private final int sourceLength; // 缓存源代码长度，避免重复调用
+    private int sourceLength; // 缓存源代码长度，避免重复调用
     private int line = 1;
     private int column = 1;
     private char currentChar; // 当前字符缓存
@@ -56,12 +57,14 @@ public class Lexer implements CompilationPhase<List<Token>> {
     }
 
     /**
-     * 创建词法分析器
+     * 执行词法分析
      *
-     * @param source 源代码
+     * @param context 编译上下文
+     * @return 词法单元列表
      */
-    public Lexer(String source) {
-        this.source = source;
+    @Override
+    public List<Token> process(CompilationContext context) {
+        this.source = context.getSource();
         this.sourceLength = source.length();
 
         // 预加载第一个字符，避免重复边界检查
@@ -72,16 +75,6 @@ public class Lexer implements CompilationPhase<List<Token>> {
             currentChar = '\0';
             nextChar = '\0';
         }
-    }
-
-    /**
-     * 执行词法分析
-     *
-     * @param context 编译上下文
-     * @return 词法单元列表
-     */
-    @Override
-    public List<Token> process(CompilationContext context) {
         return tokenize();
     }
 
@@ -90,7 +83,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
      *
      * @return 词法单元列表
      */
-    public List<Token> tokenize() {
+    private List<Token> tokenize() {
         // 预分配合适大小的列表，避免频繁扩容
         List<Token> tokens = new ArrayList<>(Math.max(512, sourceLength / 8));
 
