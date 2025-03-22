@@ -11,4 +11,14 @@ public interface Expression extends ParseResult {
     default ResultType getType() {
         return ResultType.EXPRESSION;
     }
+    
+    /**
+     * 生成带缩进的伪代码表示
+     *
+     * @param indent 缩进级别
+     * @return 伪代码字符串
+     */
+    default String toPseudoCode(int indent) {
+        return "/* 未实现的表达式 */";
+    }
 }

@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser.definitions;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.PseudoCodeUtils;
 
 import java.util.List;
 
@@ -47,6 +48,33 @@ public class Definitions {
         public String toString() {
             return (isAsync ? "Async" : "") + "FunctionDefinition(" + name + ", " +
                     parameters + ", " + body + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            StringBuilder sb = new StringBuilder();
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            
+            // 函数声明
+            sb.append(indentStr);
+            if (isAsync) {
+                sb.append("async ");
+            }
+            sb.append("def ").append(name).append("(");
+            
+            // 参数列表
+            for (int i = 0; i < parameters.size(); i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(parameters.get(i));
+            }
+            sb.append(") = ");
+            
+            // 函数体
+            sb.append(body.toPseudoCode(0));
+            
+            return sb.toString();
         }
     }
 }

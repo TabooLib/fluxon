@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser.statements;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.PseudoCodeUtils;
 
 import java.util.List;
 
@@ -29,6 +30,11 @@ public class Statements {
         public String toString() {
             return "ExpressionStatement(" + expression + ")";
         }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            return PseudoCodeUtils.getIndent(indent) + expression.toPseudoCode(0);
+        }
     }
     
     /**
@@ -49,6 +55,21 @@ public class Statements {
         @Override
         public String toString() {
             return "Block(" + statements + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            StringBuilder sb = new StringBuilder();
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            
+            sb.append(indentStr).append("{\n");
+            
+            for (ParseResult stmt : statements) {
+                sb.append(stmt.toPseudoCode(indent + 1)).append("\n");
+            }
+            
+            sb.append(indentStr).append("}");
+            return sb.toString();
         }
     }
     
@@ -84,6 +105,12 @@ public class Statements {
             return "VariableDeclaration(" + (isVal ? "val" : "var") + ", " + 
                    name + ", " + initializer + ")";
         }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            return indentStr + (isVal ? "val " : "var ") + name + " = " + initializer.toPseudoCode(0);
+        }
     }
     
     /**
@@ -104,6 +131,12 @@ public class Statements {
         @Override
         public String toString() {
             return "Return(" + (value != null ? value : "") + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            return indentStr + "return" + (value != null ? " " + value.toPseudoCode(0) : "");
         }
     }
 }

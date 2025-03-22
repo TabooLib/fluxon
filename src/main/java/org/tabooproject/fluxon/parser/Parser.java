@@ -53,7 +53,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     @Override
     public List<ParseResult> process(CompilationContext context) {
         // 从上下文中获取词法单元序列
-        @SuppressWarnings("unchecked")
         List<Token> tokens = context.getAttribute("tokens");
 
         if (tokens == null) {
@@ -80,8 +79,25 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 results.add(result);
             }
         }
-        
+
         return results;
+    }
+
+    /**
+     * 将解析结果转换为伪代码
+     *
+     * @return 伪代码字符串
+     */
+    public String toPseudoCode() {
+        List<ParseResult> results = parse();
+        StringBuilder sb = new StringBuilder();
+
+        for (ParseResult result : results) {
+            sb.append(result.toPseudoCode(0));
+            sb.append("\n\n");
+        }
+
+        return sb.toString();
     }
 
     /**
@@ -609,15 +625,25 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 检查是否有THEN关键字，如果没有，尝试继续解析
         if (!match(TokenType.THEN)) {
             throw new ParseException("Expected 'then' after if condition", currentToken);
- // 保留警告，但抛出异常
         }
 
         // 解析then分支
-        ParseResult thenBranch = parseExpression();
+        ParseResult thenBranch;
+        if (match(TokenType.LEFT_BRACE)) {
+            // 如果是大括号，解析为代码块
+            thenBranch = parseBlock();
+        } else {
+            thenBranch = parseExpression();
+        }
 
         ParseResult elseBranch = null;
         if (match(TokenType.ELSE)) {
-            elseBranch = parseExpression();
+            if (match(TokenType.LEFT_BRACE)) {
+                // 如果是大括号，解析为代码块
+                elseBranch = parseBlock();
+            } else {
+                elseBranch = parseExpression();
+            }
         }
 
         return new IfExpression(condition, thenBranch, elseBranch);

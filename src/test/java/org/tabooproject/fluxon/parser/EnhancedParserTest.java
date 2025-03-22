@@ -1,0 +1,266 @@
+package org.tabooproject.fluxon.parser;
+
+import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.lexer.Lexer;
+import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
+import org.tabooproject.fluxon.parser.expressions.Expressions.*;
+import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * 增强版解析器测试，覆盖更多边缘情况和复杂场景
+ */
+public class EnhancedParserTest {
+
+    /**
+     * 解析给定的代码并返回解析结果
+     *
+     * @param code 要解析的代码
+     * @return 解析结果列表
+     */
+    private List<ParseResult> parseCode(String code) {
+        Lexer lexer = new Lexer(code);
+        List<Token> tokens = lexer.tokenize();
+        Parser parser = new Parser(tokens);
+        return parser.parse();
+    }
+
+    /**
+     * 测试无括号函数调用的各种情况
+     */
+    @Test
+    public void testNoBracketFunctionCalls() {
+        // 基本无括号调用
+        List<ParseResult> results = parseCode("print hello");
+        assertEquals(1, results.size());
+        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
+        FunctionCall call = (FunctionCall) stmt.getExpression();
+        assertEquals("print", ((Variable) call.getCallee()).getName());
+        assertEquals(1, call.getArguments().size());
+        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
+        assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
+
+        // 多参数无括号调用
+        results = parseCode("print hello, world");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        call = (FunctionCall) stmt.getExpression();
+        assertEquals(2, call.getArguments().size());
+        assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertEquals("world", ((StringLiteral) call.getArguments().get(1)).getValue());
+
+        // 嵌套无括号调用
+        results = parseCode("print checkGrade 95");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        call = (FunctionCall) stmt.getExpression();
+        assertEquals("print", ((Variable) call.getCallee()).getName());
+        assertEquals(1, call.getArguments().size());
+        assertTrue(call.getArguments().get(0) instanceof FunctionCall);
+        FunctionCall nestedCall = (FunctionCall) call.getArguments().get(0);
+        assertEquals("checkGrade", ((Variable) nestedCall.getCallee()).getName());
+        assertEquals(1, nestedCall.getArguments().size());
+        assertEquals("95", ((IntegerLiteral) nestedCall.getArguments().get(0)).getValue());
+    }
+
+    /**
+     * 测试未加引号的标识符自动转为字符串的情况
+     */
+    @Test
+    public void testUnquotedIdentifiersAsStrings() {
+        // 未知标识符作为字符串参数
+        List<ParseResult> results = parseCode("player head");
+        assertEquals(1, results.size());
+        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
+        FunctionCall call = (FunctionCall) stmt.getExpression();
+        assertEquals("player", ((Variable) call.getCallee()).getName());
+        assertEquals(1, call.getArguments().size());
+        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
+        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
+
+        // 混合已知函数和未知标识符
+        results = parseCode("player checkGrade");
+        System.out.println(results);
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        call = (FunctionCall) stmt.getExpression();
+        assertEquals(1, call.getArguments().size());
+        assertTrue(call.getArguments().get(0) instanceof Variable);
+        assertEquals("checkGrade", ((Variable) call.getArguments().get(0)).getName());
+
+        // 多个未知标识符
+        results = parseCode("player head body legs");
+        System.out.println(results);
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        call = (FunctionCall) stmt.getExpression();
+        assertEquals(3, call.getArguments().size());
+        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertEquals("body", ((StringLiteral) call.getArguments().get(1)).getValue());
+        assertEquals("legs", ((StringLiteral) call.getArguments().get(2)).getValue());
+    }
+
+    /**
+     * 测试嵌套表达式和复杂语法结构
+     */
+    @Test
+    public void testNestedExpressionsAndComplexStructures() {
+        // 嵌套的if表达式
+        List<ParseResult> results = parseCode("if if true then 1 else 0 then \"true\" else \"false\"");
+        assertEquals(1, results.size());
+        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
+        IfExpression ifExpr = (IfExpression) stmt.getExpression();
+        assertTrue(ifExpr.getCondition() instanceof IfExpression);
+        
+        // 嵌套的when表达式
+        results = parseCode("when when true { true -> 1 else -> 0 } { 1 -> \"one\" 0 -> \"zero\" else -> \"other\" }");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        WhenExpression whenExpr = (WhenExpression) stmt.getExpression();
+        assertTrue(whenExpr.getSubject() instanceof WhenExpression);
+        
+        // 复杂的二元表达式
+        results = parseCode("1 + 2 * 3 - 4 / 5 % 6");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        assertTrue(stmt.getExpression() instanceof BinaryExpression);
+    }
+
+    /**
+     * 测试异步函数和await表达式
+     */
+    @Test
+    public void testAsyncFunctionsAndAwaitExpressions() {
+        // 异步函数定义
+        List<ParseResult> results = parseCode("async def fetchData(url) = await fetch(url)");
+        assertEquals(1, results.size());
+        FunctionDefinition funcDef = (FunctionDefinition) results.get(0);
+        assertTrue(funcDef.isAsync());
+        assertEquals("fetchData", funcDef.getName());
+        assertEquals(1, funcDef.getParameters().size());
+        assertEquals("url", funcDef.getParameters().get(0));
+        assertTrue(funcDef.getBody() instanceof AwaitExpression);
+        
+        // 嵌套的await表达式
+        results = parseCode("async def processData() = await processResult(await fetchData(\"api/data\"))");
+        assertEquals(1, results.size());
+        funcDef = (FunctionDefinition) results.get(0);
+        assertTrue(funcDef.getBody() instanceof AwaitExpression);
+        AwaitExpression awaitExpr = (AwaitExpression) funcDef.getBody();
+        FunctionCall call = (FunctionCall) awaitExpr.getExpression();
+        assertTrue(call.getArguments().get(0) instanceof AwaitExpression);
+    }
+
+    /**
+     * 测试when表达式的各种分支情况
+     */
+    @Test
+    public void testWhenExpressionBranches() {
+        // 基本when表达式
+        List<ParseResult> results = parseCode("when { true -> 1 false -> 0 }");
+        assertEquals(1, results.size());
+        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
+        WhenExpression whenExpr = (WhenExpression) stmt.getExpression();
+        assertNull(whenExpr.getSubject());
+        assertEquals(2, whenExpr.getBranches().size());
+        
+        // 带条件的when表达式
+        results = parseCode("when x { 1 -> \"one\" 2 -> \"two\" else -> \"other\" }");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        whenExpr = (WhenExpression) stmt.getExpression();
+        assertTrue(whenExpr.getSubject() instanceof Variable);
+        assertEquals(3, whenExpr.getBranches().size());
+        
+        // 复杂条件的when分支
+        results = parseCode("when { &x % 2 == 0 -> \"even\" &x < 0 -> \"negative\" else -> \"positive odd\" }");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        whenExpr = (WhenExpression) stmt.getExpression();
+        assertEquals(3, whenExpr.getBranches().size());
+        assertTrue(whenExpr.getBranches().get(0).getCondition() instanceof BinaryExpression);
+        assertTrue(whenExpr.getBranches().get(1).getCondition() instanceof BinaryExpression);
+        assertNull(whenExpr.getBranches().get(2).getCondition());
+    }
+
+    /**
+     * 测试引用表达式(&)
+     */
+    @Test
+    public void testReferenceExpressions() {
+        // 基本引用表达式
+        List<ParseResult> results = parseCode("&variable");
+        assertEquals(1, results.size());
+        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
+        ReferenceExpression refExpr = (ReferenceExpression) stmt.getExpression();
+        assertTrue(refExpr.getExpression() instanceof Variable);
+        assertEquals("variable", ((Variable) refExpr.getExpression()).getName());
+        
+        // 引用表达式在二元操作中
+        results = parseCode("&x + &y");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        BinaryExpression binExpr = (BinaryExpression) stmt.getExpression();
+        assertTrue(binExpr.getLeft() instanceof ReferenceExpression);
+        assertTrue(binExpr.getRight() instanceof ReferenceExpression);
+        
+        // 引用表达式在函数调用中
+        results = parseCode("print(&value)");
+        assertEquals(1, results.size());
+        stmt = (ExpressionStatement) results.get(0);
+        FunctionCall call = (FunctionCall) stmt.getExpression();
+        assertEquals(1, call.getArguments().size());
+        assertTrue(call.getArguments().get(0) instanceof ReferenceExpression);
+    }
+
+    /**
+     * 测试递归函数定义
+     */
+    @Test
+    public void testRecursiveFunctionDefinition() {
+        // 递归阶乘函数
+        List<ParseResult> results = parseCode(
+                "def factorial(n) = if &n <= 1 then 1 else &n * factorial(&n - 1)");
+        assertEquals(1, results.size());
+        FunctionDefinition funcDef = (FunctionDefinition) results.get(0);
+        assertEquals("factorial", funcDef.getName());
+        assertEquals(1, funcDef.getParameters().size());
+        assertTrue(funcDef.getBody() instanceof IfExpression);
+        
+        // 递归斐波那契函数
+        results = parseCode(
+                "def fibonacci(n) = if &n <= 1 then &n else fibonacci(&n - 1) + fibonacci(&n - 2)");
+        assertEquals(1, results.size());
+        funcDef = (FunctionDefinition) results.get(0);
+        assertEquals("fibonacci", funcDef.getName());
+        assertTrue(funcDef.getBody() instanceof IfExpression);
+        IfExpression ifExpr = (IfExpression) funcDef.getBody();
+        assertTrue(ifExpr.getElseBranch() instanceof BinaryExpression);
+    }
+
+    /**
+     * 测试错误处理和边缘情况
+     */
+    @Test
+    public void testErrorHandlingAndEdgeCases() {
+        // 缺少then关键字
+        assertThrows(ParseException.class, () -> parseCode("if true 1 else 0"));
+        
+        // 缺少右括号
+        assertThrows(ParseException.class, () -> parseCode("print(1, 2"));
+        
+        // 无效的赋值目标
+        assertThrows(ParseException.class, () -> parseCode("1 + 2 = 3"));
+        
+        // 缺少箭头操作符
+        assertThrows(ParseException.class, () -> parseCode("when { true 1 }"));
+        
+        // 空的代码块
+        List<ParseResult> results = parseCode("def emptyFunc() = {}");
+        assertEquals(1, results.size());
+    }
+}
