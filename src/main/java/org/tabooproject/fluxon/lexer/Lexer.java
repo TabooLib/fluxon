@@ -442,30 +442,32 @@ public class Lexer implements CompilationPhase<List<Token>> {
         String value = String.valueOf(first);
 
         // 使用快速查找
-        return switch (first) {
-            case '+' -> new Token(TokenType.PLUS, "+", startLine, startColumn);
-            case '-' -> new Token(TokenType.MINUS, "-", startLine, startColumn);
-            case '*' -> new Token(TokenType.MULTIPLY, "*", startLine, startColumn);
-            case '/' -> new Token(TokenType.DIVIDE, "/", startLine, startColumn);
-            case '%' -> new Token(TokenType.MODULO, "%", startLine, startColumn);
-            case '=' -> new Token(TokenType.ASSIGN, "=", startLine, startColumn);
-            case '>' -> new Token(TokenType.GREATER, ">", startLine, startColumn);
-            case '<' -> new Token(TokenType.LESS, "<", startLine, startColumn);
-            case '!' -> new Token(TokenType.NOT, "!", startLine, startColumn);
-            case '.' -> new Token(TokenType.DOT, ".", startLine, startColumn);
-            case ',' -> new Token(TokenType.COMMA, ",", startLine, startColumn);
-            case ':' -> new Token(TokenType.COLON, ":", startLine, startColumn);
-            case ';' -> new Token(TokenType.SEMICOLON, ";", startLine, startColumn);
-            case '(' -> new Token(TokenType.LEFT_PAREN, "(", startLine, startColumn);
-            case ')' -> new Token(TokenType.RIGHT_PAREN, ")", startLine, startColumn);
-            case '{' -> new Token(TokenType.LEFT_BRACE, "{", startLine, startColumn);
-            case '}' -> new Token(TokenType.RIGHT_BRACE, "}", startLine, startColumn);
-            case '[' -> new Token(TokenType.LEFT_BRACKET, "[", startLine, startColumn);
-            case ']' -> new Token(TokenType.RIGHT_BRACKET, "]", startLine, startColumn);
-            case '?' -> new Token(TokenType.QUESTION, "?", startLine, startColumn);
-            case '|' -> new Token(TokenType.UNKNOWN, "|", startLine, startColumn); // 处理单个 |
-            default -> new Token(TokenType.UNKNOWN, value, startLine, startColumn);
-        };
+        // @formatter:off
+        switch (first) {
+            case '+': return new Token(TokenType.PLUS, "+", startLine, startColumn);
+            case '-': return new Token(TokenType.MINUS, "-", startLine, startColumn);
+            case '*': return new Token(TokenType.MULTIPLY, "*", startLine, startColumn);
+            case '/': return new Token(TokenType.DIVIDE, "/", startLine, startColumn);
+            case '%': return new Token(TokenType.MODULO, "%", startLine, startColumn);
+            case '=': return new Token(TokenType.ASSIGN, "=", startLine, startColumn);
+            case '>': return new Token(TokenType.GREATER, ">", startLine, startColumn);
+            case '<': return new Token(TokenType.LESS, "<", startLine, startColumn);
+            case '!': return new Token(TokenType.NOT, "!", startLine, startColumn);
+            case '.': return new Token(TokenType.DOT, ".", startLine, startColumn);
+            case ',': return new Token(TokenType.COMMA, ",", startLine, startColumn);
+            case ':': return new Token(TokenType.COLON, ":", startLine, startColumn);
+            case ';': return new Token(TokenType.SEMICOLON, ";", startLine, startColumn);
+            case '(': return new Token(TokenType.LEFT_PAREN, "(", startLine, startColumn);
+            case ')': return new Token(TokenType.RIGHT_PAREN, ")", startLine, startColumn);
+            case '{': return new Token(TokenType.LEFT_BRACE, "{", startLine, startColumn);
+            case '}': return new Token(TokenType.RIGHT_BRACE, "}", startLine, startColumn);
+            case '[': return new Token(TokenType.LEFT_BRACKET, "[", startLine, startColumn);
+            case ']': return new Token(TokenType.RIGHT_BRACKET, "]", startLine, startColumn);
+            case '?': return new Token(TokenType.QUESTION, "?", startLine, startColumn);
+            case '|': return new Token(TokenType.UNKNOWN, "|", startLine, startColumn);
+            default: return new Token(TokenType.UNKNOWN, value, startLine, startColumn);
+        }
+        // @formatter:on
     }
 
     /**

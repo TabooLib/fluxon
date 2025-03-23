@@ -7,12 +7,8 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.impl.StatementParser;
 import org.tabooproject.fluxon.parser.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.Deque;
+import java.util.*;
+import java.util.stream.Collector;
 
 /**
  * Fluxon解析器
@@ -77,7 +73,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 预先添加一些常用函数到符号表，用于测试
         defineFunction("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
         defineFunction("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
-        defineFunction("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
+        defineFunction("player", new SymbolInfo(SymbolType.FUNCTION, "player", Arrays.asList(1, 3)));
         defineFunction("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
     }
 
@@ -294,6 +290,17 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public Token peek(int n) {
         return position + n < tokens.size() ? tokens.get(position + n) : tokens.get(tokens.size() - 1);
+    }
+
+    /**
+     * 消费下一个标记
+     */
+    public Token consume() {
+        if (isAtEnd()) {
+            throw new ParseException("Eof", currentToken, results);
+        }
+        advance();
+        return previous();
     }
 
     /**

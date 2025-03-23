@@ -103,36 +103,40 @@ public enum TokenType {
      * 是否为表达式结束标记
      */
     public boolean isEndOfExpression() {
-        return switch (this) {
-            case EOF,
-                 SEMICOLON,
-                 RIGHT_PAREN,
-                 RIGHT_BRACE,
-                 RIGHT_BRACKET -> true;
-            default -> false;
-        };
+        switch (this) {
+            case EOF:
+            case SEMICOLON:
+            case RIGHT_PAREN:
+            case RIGHT_BRACE:
+            case RIGHT_BRACKET:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
      * 是否为操作符
      */
     public boolean isOperator() {
-        return switch (this) {
-            case PLUS,
-                 MINUS,
-                 MULTIPLY,
-                 DIVIDE,
-                 MODULO,
-                 EQUAL,
-                 NOT_EQUAL,
-                 LESS,
-                 LESS_EQUAL,
-                 GREATER,
-                 GREATER_EQUAL,
-                 AND,
-                 OR,
-                 ASSIGN -> true;
-            default -> false;
-        };
+        switch (this) {
+            case PLUS:
+            case MINUS:
+            case MULTIPLY:
+            case DIVIDE:
+            case MODULO:
+            case EQUAL:
+            case NOT_EQUAL:
+            case LESS:
+            case LESS_EQUAL:
+            case GREATER:
+            case GREATER_EQUAL:
+            case AND:
+            case OR:
+            case ASSIGN:
+                return true;
+            default:
+                return false;
+        }
     }
 }

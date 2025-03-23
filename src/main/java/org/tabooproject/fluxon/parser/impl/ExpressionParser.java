@@ -41,10 +41,8 @@ public class ExpressionParser {
             // 检查左侧是否为有效的赋值目标
             if (expr instanceof Expressions.Variable) {
                 String name = ((Expressions.Variable) expr).getName();
-                
                 // 将变量添加到当前作用域
                 parser.defineVariable(name);
-                
                 return new Expressions.Assignment(name, operator, value);
             }
             throw new ParseException("Invalid assignment target", operator, parser.getResults());
@@ -194,24 +192,31 @@ public class ExpressionParser {
      * @return 一元表达式解析结果
      */
     public static ParseResult parseUnary(Parser parser) {
-        if (parser.match(TokenType.NOT, TokenType.MINUS)) {
-            Token operator = parser.previous();
-            ParseResult right = parsePrimary(parser);
-            return new Expressions.UnaryExpression(operator, right);
+        switch (parser.peek().getType()) {
+            // 逻辑非、负号
+            case NOT:
+            case MINUS:
+                return new Expressions.UnaryExpression(parser.consume(), parsePrimary(parser));
+            // 等待
+            case AWAIT: {
+                parser.consume(); // 消费 await
+                return new Expressions.AwaitExpression(parseUnary(parser));
+            }
+            // 引用
+            case AMPERSAND: {
+                parser.consume(); // 消费 &
+                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getValue();
+                // 检查变量是否存在
+                if (!parser.isVariable(name)) {
+                    throw new RuntimeException("Unknown variable '" + name + "'.");
+                } else {
+                    return new Expressions.ReferenceExpression(new Expressions.Variable(name));
+                }
+            }
+            // 函数调用
+            default:
+                return FunctionCallParser.parse(parser);
         }
-
-        if (parser.match(TokenType.AWAIT)) {
-            Token operator = parser.previous();
-            ParseResult right = parseUnary(parser);
-            return new Expressions.AwaitExpression(right);
-        }
-
-        if (parser.match(TokenType.AMPERSAND)) {
-            Token operator = parser.previous();
-            ParseResult right = parsePrimary(parser);
-            return new Expressions.ReferenceExpression(right);
-        }
-        return FunctionCallParser.parse(parser);
     }
 
     /**
@@ -220,67 +225,54 @@ public class ExpressionParser {
      * @return 基本表达式解析结果
      */
     public static ParseResult parsePrimary(Parser parser) {
-        // 字面量
-        if (parser.match(TokenType.FALSE)) {
-            return new Expressions.BooleanLiteral(false);
-        }
-        if (parser.match(TokenType.TRUE)) {
-            return new Expressions.BooleanLiteral(true);
-        }
-        if (parser.match(TokenType.INTEGER)) {
-            return new Expressions.IntegerLiteral(parser.previous().getValue());
-        }
-        if (parser.match(TokenType.FLOAT)) {
-            return new Expressions.FloatLiteral(parser.previous().getValue());
-        }
-        if (parser.match(TokenType.STRING)) {
-            return new Expressions.StringLiteral(parser.previous().getValue());
-        }
-        if (parser.match(TokenType.LEFT_BRACKET)) {
-            return ListParser.parse(parser);
-        }
-
-        // 变量引用
-        if (parser.match(TokenType.IDENTIFIER)) {
-            String name = parser.previous().getValue();
-            return new Expressions.Variable(name);
-            
-            // 注意：这里不需要将变量添加到符号表
-            // 因为变量引用不一定是变量声明
-            // 只有在赋值表达式中，才会将变量添加到符号表
-            // 例如：a = 1 会将a添加到符号表
-            // 但是：print(a) 中的a只是引用，不会添加到符号表
-            // 如果a不存在，会在运行时报错
-        }
-
-        // 分组表达式
-        if (parser.match(TokenType.LEFT_PAREN)) {
-            ParseResult expr = parse(parser);
-            parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
-            return new Expressions.GroupingExpression(expr);
-        }
-
-        // When 表达式
-        if (parser.check(TokenType.WHEN)) {
-            return WhenParser.parse(parser);
-        }
-
-        // If 表达式
-        if (parser.check(TokenType.IF)) {
-            return IfParser.parse(parser);
-        }
-
-        // While 表达式
-        if (parser.check(TokenType.WHILE)) {
-            return WhileParser.parse(parser);
-        }
-
-        // Eof
-        Token peek = parser.peek();
-        if (peek.getType() == TokenType.EOF) {
-            throw new ParseException("Eof", peek, parser.getResults());
-        } else {
-            throw new ParseException("Expected expression", peek, parser.getResults());
+        switch (parser.peek().getType()) {
+            // 真
+            case TRUE: {
+                parser.consume();
+                return new Expressions.BooleanLiteral(true);
+            }
+            // 假
+            case FALSE: {
+                parser.consume();
+                return new Expressions.BooleanLiteral(false);
+            }
+            // 整型
+            case INTEGER:
+                return new Expressions.IntegerLiteral(parser.consume().getValue());
+            // 浮点数
+            case FLOAT:
+                return new Expressions.FloatLiteral(parser.consume().getValue());
+            // 字符串
+            case STRING:
+                return new Expressions.StringLiteral(parser.consume().getValue());
+            // 变量引用
+            case IDENTIFIER:
+                return new Expressions.Variable(parser.consume().getValue());
+            // 表达式
+            case IF:
+                return IfParser.parse(parser);
+            case WHEN:
+                return WhenParser.parse(parser);
+            case WHILE:
+                return WhileParser.parse(parser);
+            // 列表和字典
+            case LEFT_BRACKET: {
+                parser.consume(); // 消费左括号
+                return ListParser.parse(parser);
+            }
+            // 分组表达式
+            case LEFT_PAREN: {
+                parser.consume(); // 消费左括号
+                ParseResult expr = parse(parser);
+                parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
+                return new Expressions.GroupingExpression(expr);
+            }
+            // 文件结束
+            case EOF:
+                throw new ParseException("Eof", parser.peek(), parser.getResults());
+                // 未知符号
+            default:
+                throw new ParseException("Expected expression", parser.peek(), parser.getResults());
         }
     }
 }

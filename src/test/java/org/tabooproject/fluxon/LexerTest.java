@@ -12,7 +12,6 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -140,7 +139,7 @@ public class LexerTest {
             assertEquals(TokenType.RETURN, tokens.get(12).getType(), "第13个 token 应为 'return' 关键字");
             assertEquals(TokenType.TRY, tokens.get(13).getType(), "第14个 token 应为 'try' 关键字");
             assertEquals(TokenType.CATCH, tokens.get(14).getType(), "第15个 token 应为 'catch' 关键字");
-            
+
             // 验证值也正确
             assertEquals("def", tokens.get(0).getValue(), "第1个 token 的值应为 'def'");
             assertEquals("catch", tokens.get(14).getValue(), "第15个 token 的值应为 'catch'");
@@ -421,15 +420,13 @@ public class LexerTest {
         @Test
         @DisplayName("测试 Fluxon 语言语法元素")
         void testFluxonSyntaxElements() {
-            String source = """
-                    def factorial(n) = {
-                        if &n <= 1 then 1
-                        else &n * factorial(&n - 1)
-                    }
-                    
-                    val x = 5
-                    print factorial &x
-                    """;
+            String source = "def factorial(n) = {\n" +
+                    "    if &n <= 1 then 1\n" +
+                    "    else &n * factorial(&n - 1)\n" +
+                    "}\n" +
+                    "\n" +
+                    "val x = 5\n" +
+                    "print factorial &x";
 
             List<Token> tokens = getTokens(source);
 
@@ -444,14 +441,14 @@ public class LexerTest {
             int thenIndex = findTokenIndex(tokens, TokenType.THEN);
             int elseIndex = findTokenIndex(tokens, TokenType.ELSE);
             int valIndex = findTokenIndex(tokens, TokenType.VAL);
-            
+
             assertTrue(defIndex >= 0, "应识别 'def' 关键字");
             assertTrue(ifIndex >= 0, "应识别 'if' 关键字");
             assertTrue(thenIndex >= 0, "应识别 'then' 关键字");
             assertTrue(elseIndex >= 0, "应识别 'else' 关键字");
             assertTrue(valIndex >= 0, "应识别 'val' 关键字");
 
-            
+
             // 验证关键字的相对位置
             assertTrue(ifIndex > defIndex, "'if' 应在 'def' 之后");
             assertTrue(thenIndex > ifIndex, "'then' 应在 'if' 之后");
@@ -463,7 +460,7 @@ public class LexerTest {
             int xIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "x");
             int printIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "print");
 
-            
+
             assertTrue(factorialIndex >= 0, "应识别 'factorial' 标识符");
             assertTrue(nIndex >= 0, "应识别 'n' 标识符");
             assertTrue(xIndex >= 0, "应识别 'x' 标识符");
@@ -487,26 +484,24 @@ public class LexerTest {
         @Test
         @DisplayName("测试 Fluxon 特有语法特性")
         void testFluxonSpecificFeatures() {
-            String source = """
-                    // 测试范围操作符
-                    val range1 = 1 .. 10
-                    val range2 = 1 ..< 10
-                    
-                    // 测试空安全操作符
-                    
-                    // 测试函数调用链
-                    val user = { name: "John" }?.name ?: "Guest"
-                    .. // 直接测试范围操作符
-                    val result = min 5 + 3 10
-                    
-                    // 测试 when 表达式
-                    val grade = when {
-                        &score >= 90 -> "A"
-                        &score >= 80 -> "B"
-                        &score >= 70 -> "C"
-                        else -> "D"
-                    }
-                    """;
+            String source = "// 测试范围操作符\n" +
+                    "val range1 = 1 .. 10\n" +
+                    "val range2 = 1 ..< 10\n" +
+                    "\n" +
+                    "// 测试空安全操作符\n" +
+                    "\n" +
+                    "// 测试函数调用链\n" +
+                    "val user = { name: \"John\" }?.name ?: \"Guest\"\n" +
+                    ".. // 直接测试范围操作符\n" +
+                    "val result = min 5 + 3 10\n" +
+                    "\n" +
+                    "// 测试 when 表达式\n" +
+                    "val grade = when {\n" +
+                    "    &score >= 90 -> \"A\"\n" +
+                    "    &score >= 80 -> \"B\"\n" +
+                    "    &score >= 70 -> \"C\"\n" +
+                    "    else -> \"D\"\n" +
+                    "}";
 
             List<Token> tokens = getTokens(source);
 
@@ -533,7 +528,7 @@ public class LexerTest {
             int scoreIndex = findTokenIndexByTypeAndValue(tokens, TokenType.IDENTIFIER, "score");
             assertTrue(minIndex >= 0, "应识别 'min' 标识符");
             assertTrue(scoreIndex >= 0, "应识别 'score' 标识符");
-            
+
             // 验证相对位置
             assertTrue(whenIndex < arrowIndex, "'when' 应在 '->' 之前");
             assertTrue(questionDotIndex < questionColonIndex, "'?.' 应在 '?:' 之前");
@@ -546,7 +541,7 @@ public class LexerTest {
             int int90Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "90");
             int int80Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "80");
             int int70Index = findTokenIndexByTypeAndValue(tokens, TokenType.INTEGER, "70");
-            
+
             assertTrue(int1Index >= 0, "应识别 '1' 整数字面量");
             assertTrue(int10Index >= 0, "应识别 '10' 整数字面量");
             assertTrue(int3Index >= 0, "应识别 '3' 整数字面量");
@@ -561,13 +556,13 @@ public class LexerTest {
             int bIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "B");
             int cIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "C");
             int dIndex = findTokenIndexByTypeAndValue(tokens, TokenType.STRING, "D");
-            
+
             assertTrue(guestIndex >= 0, "应识别 'Guest' 字符串字面量");
             assertTrue(aIndex >= 0, "应识别 'A' 字符串字面量");
             assertTrue(bIndex >= 0, "应识别 'B' 字符串字面量");
             assertTrue(cIndex >= 0, "应识别 'C' 字符串字面量");
             assertTrue(dIndex >= 0, "应识别 'D' 字符串字面量");
-            
+
             // 验证字符串的相对位置
             assertTrue(aIndex < bIndex, "'A' 应在 'B' 之前");
             assertTrue(bIndex < cIndex, "'B' 应在 'C' 之前");
@@ -623,7 +618,7 @@ public class LexerTest {
             assertEquals(TokenType.INTEGER, tokens.get(2).getType(), "第3个 token 应为整数");
             assertEquals("5", tokens.get(2).getValue(), "第3个 token 的值应为 '5'");
             assertEquals(TokenType.RIGHT_PAREN, tokens.get(3).getType(), "第4个 token 应为右括号");
-            
+
             // 验证括号的相对位置
             assertTrue(tokens.get(1).getColumn() < tokens.get(3).getColumn(), "左括号应在右括号之前");
         }
@@ -646,7 +641,7 @@ public class LexerTest {
             assertEquals(TokenType.INTEGER, tokens.get(4).getType(), "第5个 token 应为整数");
             assertEquals(TokenType.INTEGER, tokens.get(5).getType(), "第6个 token 应为整数");
         }
-        
+
         @Test
         @DisplayName("测试带括号的嵌套函数调用")
         void testNestedFunctionCallWithParentheses() {
@@ -656,17 +651,17 @@ public class LexerTest {
 
             // 验证函数名和参数
             assertEquals(14, tokens.size() - 1, "应识别 14 个 token (不计 EOF)");
-            
+
             // 验证第一层函数调用
             assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
             assertEquals("print", tokens.get(0).getValue(), "第1个 token 的值应为 'print'");
             assertEquals(TokenType.LEFT_PAREN, tokens.get(1).getType(), "第2个 token 应为左括号");
-            
+
             // 验证第二层函数调用
             assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType(), "第3个 token 应为标识符");
             assertEquals("add", tokens.get(2).getValue(), "第3个 token 的值应为 'add'");
             assertEquals(TokenType.LEFT_PAREN, tokens.get(3).getType(), "第4个 token 应为左括号");
-            
+
             // 验证最内层函数调用
             assertEquals(TokenType.IDENTIFIER, tokens.get(4).getType(), "第5个 token 应为标识符");
             assertEquals("min", tokens.get(4).getValue(), "第5个 token 的值应为 'min'");
@@ -708,14 +703,12 @@ public class LexerTest {
         @Test
         @DisplayName("测试词法分析性能 - 小型输入")
         void testLexerPerformanceSmallInput() {
-            String source = """
-                    def factorial(n) = {
-                        if &n <= 1 then 1
-                        else &n * factorial(&n - 1)
-                    }
-                    val x = 5
-                    print factorial &x
-                    """;
+            String source = "def factorial(n) = {\n" +
+                    "    if &n <= 1 then 1\n" +
+                    "    else &n * factorial(&n - 1)\n" +
+                    "}\n" +
+                    "val x = 5\n" +
+                    "print factorial &x";
 
             // 预热JVM
             for (int i = 0; i < 100; i++) {
@@ -733,13 +726,11 @@ public class LexerTest {
         @Test
         @DisplayName("测试词法分析性能 - 中型输入")
         void testLexerPerformanceMediumInput() {
-            String baseSource = """
-                    def fibonacci(n) = {
-                        if &n <= 1 then &n
-                        else fibonacci(&n - 1) + fibonacci(&n - 2)
-                    }
-                    val result = fibonacci 10
-                    """;
+            String baseSource = "def fibonacci(n) = {\n" +
+                    "    if &n <= 1 then &n\n" +
+                    "    else fibonacci(&n - 1) + fibonacci(&n - 2)\n" +
+                    "}\n" +
+                    "val result = fibonacci 10";
 
             String source = generateLargeSource(baseSource, 10); // 重复10次
 
@@ -756,21 +747,19 @@ public class LexerTest {
         @Test
         @DisplayName("测试词法分析性能 - 大型输入")
         void testLexerPerformanceLargeInput() {
-            String baseSource = """
-                    def add(a, b) = &a + &b
-                    def subtract(a, b) = &a - &b
-                    def multiply(a, b) = &a * &b
-                    def divide(a, b) = &a / &b
-                    
-                    val x = 42
-                    val y = 10
-                    val sum = add &x &y
-                    val diff = subtract &x &y
-                    val product = multiply &x &y
-                    val quotient = divide &x &y
-                    
-                    print "Results: " sum diff product quotient
-                    """;
+            String baseSource = "def add(a, b) = &a + &b\n" +
+                    "def subtract(a, b) = &a - &b\n" +
+                    "def multiply(a, b) = &a * &b\n" +
+                    "def divide(a, b) = &a / &b\n" +
+                    "\n" +
+                    "val x = 42\n" +
+                    "val y = 10\n" +
+                    "val sum = add &x &y\n" +
+                    "val diff = subtract &x &y\n" +
+                    "val product = multiply &x &y\n" +
+                    "val quotient = divide &x &y\n" +
+                    "\n" +
+                    "print \"Results: \" sum diff product quotient";
 
             String source = generateLargeSource(baseSource, 100); // 重复100次，创建大型源代码
 

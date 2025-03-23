@@ -32,7 +32,11 @@ tasks.test {
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.compilerArgs.add("-Xlint:unchecked")
-    options.release.set(17)
+}
+
+configure<JavaPluginConvention> {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 java {
@@ -46,6 +50,5 @@ jmh {
     iterations.set(5)
     warmupIterations.set(3)
     fork.set(1)
-//    warmupFork.set(1)
     includeTests.set(true)
 }
