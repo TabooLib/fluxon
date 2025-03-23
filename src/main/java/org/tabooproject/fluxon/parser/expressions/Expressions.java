@@ -555,4 +555,218 @@ public class Expressions {
             return sb.toString();
         }
     }
+    
+    /**
+     * 列表字面量
+     */
+    public static class ListLiteral implements Expression {
+        private final List<ParseResult> elements;
+        
+        public ListLiteral(List<ParseResult> elements) {
+            this.elements = elements;
+        }
+        
+        public List<ParseResult> getElements() {
+            return elements;
+        }
+        
+        @Override
+        public String toString() {
+            return "ListLiteral(" + elements + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            
+            for (int i = 0; i < elements.size(); i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(elements.get(i).toPseudoCode(0));
+            }
+            
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+    
+    /**
+     * 字典字面量
+     */
+    public static class MapLiteral implements Expression {
+        private final List<MapEntry> entries;
+        
+        public MapLiteral(List<MapEntry> entries) {
+            this.entries = entries;
+        }
+        
+        public List<MapEntry> getEntries() {
+            return entries;
+        }
+        
+        @Override
+        public String toString() {
+            return "MapLiteral(" + entries + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            if (entries.isEmpty()) {
+                return "[:]";
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            
+            for (int i = 0; i < entries.size(); i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(entries.get(i).toPseudoCode(0));
+            }
+            
+            sb.append("]");
+            return sb.toString();
+        }
+    }
+    
+    /**
+     * 字典条目
+     */
+    public static class MapEntry {
+        private final ParseResult key;
+        private final ParseResult value;
+        
+        public MapEntry(ParseResult key, ParseResult value) {
+            this.key = key;
+            this.value = value;
+        }
+        
+        public ParseResult getKey() {
+            return key;
+        }
+        
+        public ParseResult getValue() {
+            return value;
+        }
+        
+        @Override
+        public String toString() {
+            return key + ": " + value;
+        }
+        
+        public String toPseudoCode(int indent) {
+            return key.toPseudoCode(0) + ": " + value.toPseudoCode(0);
+        }
+    }
+    
+    /**
+     * 范围表达式
+     */
+    public static class RangeExpression implements Expression {
+        private final ParseResult start;
+        private final ParseResult end;
+        private final boolean inclusive; // true表示包含上界，false表示不包含上界
+        
+        public RangeExpression(ParseResult start, ParseResult end, boolean inclusive) {
+            this.start = start;
+            this.end = end;
+            this.inclusive = inclusive;
+        }
+        
+        public ParseResult getStart() {
+            return start;
+        }
+        
+        public ParseResult getEnd() {
+            return end;
+        }
+        
+        public boolean isInclusive() {
+            return inclusive;
+        }
+        
+        @Override
+        public String toString() {
+            return "Range(" + start + ", " + end + ", " + inclusive + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            return start.toPseudoCode(0) + (inclusive ? ".." : "..<") + end.toPseudoCode(0);
+        }
+    }
+    
+    /**
+     * Elvis操作符表达式
+     */
+    public static class ElvisExpression implements Expression {
+        private final ParseResult condition;
+        private final ParseResult alternative;
+        
+        public ElvisExpression(ParseResult condition, ParseResult alternative) {
+            this.condition = condition;
+            this.alternative = alternative;
+        }
+        
+        public ParseResult getCondition() {
+            return condition;
+        }
+        
+        public ParseResult getAlternative() {
+            return alternative;
+        }
+        
+        @Override
+        public String toString() {
+            return "Elvis(" + condition + ", " + alternative + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            return condition.toPseudoCode(0) + " ?: " + alternative.toPseudoCode(0);
+        }
+    }
+    
+    /**
+     * While表达式
+     */
+    public static class WhileExpression implements Expression {
+        private final ParseResult condition;
+        private final ParseResult body;
+        
+        public WhileExpression(ParseResult condition, ParseResult body) {
+            this.condition = condition;
+            this.body = body;
+        }
+        
+        public ParseResult getCondition() {
+            return condition;
+        }
+        
+        public ParseResult getBody() {
+            return body;
+        }
+        
+        @Override
+        public String toString() {
+            return "While(" + condition + ", " + body + ")";
+        }
+        
+        @Override
+        public String toPseudoCode(int indent) {
+            StringBuilder sb = new StringBuilder();
+            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String innerIndentStr = PseudoCodeUtils.getIndent(indent + 1);
+            
+            sb.append(indentStr).append("while ").append(condition.toPseudoCode(0)).append(" ");
+            
+            // 输出循环体
+            sb.append(body instanceof Block ? body.toPseudoCode(indent) : "{\n" + innerIndentStr + body.toPseudoCode(0) + "\n" + indentStr + "}");
+            
+            return sb.toString();
+        }
+    }
 }

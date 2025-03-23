@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expressions.Expressions.*;
+import org.tabooproject.fluxon.parser.expressions.Expressions.MapEntry;
 import org.tabooproject.fluxon.parser.statements.Statements;
 import org.tabooproject.fluxon.parser.statements.Statements.Block;
 import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
@@ -18,6 +19,22 @@ import java.util.Map;
 
 /**
  * Fluxon解析器
+ * <p>
+ * 解析优先级（从高到低）：
+ * 1. Primary - 基本表达式（字面量、变量、括号表达式、when表达式、if表达式、while表达式、列表字面量、字典字面量等）
+ * 2. Call - 函数调用
+ * 3. Unary - 一元表达式（!、-、await、&）
+ * 4. Factor - 因子表达式（*、/、%）
+ * 5. Term - 项表达式（+、-）
+ * 6. Comparison - 比较表达式（>、>=、<、<=）
+ * 7. Equality - 相等性表达式（==、!=）
+ * 8. Range - 范围表达式（..、..<）
+ * 9. LogicalAnd - 逻辑与表达式（&&）
+ * 10. LogicalOr - 逻辑或表达式（||）
+ * 11. Elvis - Elvis操作符（?:）
+ * 12. Assignment - 赋值表达式（=、+=、-=、*=、/=）
+ * <p>
+ * 解析器使用递归下降解析方法，确保高优先级的操作符先于低优先级的操作符被处理。
  */
 public class Parser implements CompilationPhase<List<ParseResult>> {
 
@@ -25,6 +42,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private final Map<String, SymbolInfo> symbolTable = new HashMap<>();
 
     private List<Token> tokens;
+    private int mark = 0;
     private int position = 0;
     private Token currentToken;
 
@@ -252,7 +270,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 赋值表达式解析结果
      */
     public ParseResult parseAssignment() {
-        ParseResult expr = parseLogicalOr();
+        ParseResult expr = parseElvis();
 
         if (match(TokenType.ASSIGN, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN, TokenType.MULTIPLY_ASSIGN, TokenType.DIVIDE_ASSIGN)) {
             Token operator = previous();
@@ -265,6 +283,25 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             }
             throw new ParseException("Invalid assignment target", operator, new ArrayList<>(results));
         }
+        return expr;
+    }
+    
+    /**
+     * 解析Elvis操作符表达式
+     * Elvis操作符 ?: 用于提供默认值，例如：a ?: b 表示如果a为null则返回b，否则返回a
+     *
+     * @return Elvis操作符表达式解析结果
+     */
+    public ParseResult parseElvis() {
+        ParseResult expr = parseLogicalOr();
+        
+        // 检查是否有Elvis操作符
+        if (match(TokenType.QUESTION_COLON)) {
+            // 解析默认值表达式
+            ParseResult alternative = parseElvis();
+            expr = new ElvisExpression(expr, alternative);
+        }
+        
         return expr;
     }
 
@@ -290,13 +327,36 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 逻辑与表达式解析结果
      */
     public ParseResult parseLogicalAnd() {
-        ParseResult expr = parseEquality();
+        ParseResult expr = parseRange();
 
         while (match(TokenType.AND)) {
             Token operator = previous();
             ParseResult right = parseEquality();
             expr = new LogicalExpression(expr, operator, right);
         }
+        return expr;
+    }
+    
+    /**
+     * 解析范围表达式
+     * 范围表达式用于创建一个范围，例如：1..10 表示从1到10的范围（包含10）
+     * 1..<10 表示从1到9的范围（不包含10）
+     *
+     * @return 范围表达式解析结果
+     */
+    public ParseResult parseRange() {
+        ParseResult expr = parseEquality();
+        
+        // 检查是否有范围操作符
+        if (match(TokenType.RANGE, TokenType.RANGE_EXCLUSIVE)) {
+            Token operator = previous();
+            boolean inclusive = operator.getType() == TokenType.RANGE;
+            
+            // 解析范围的结束表达式
+            ParseResult end = parseEquality();
+            expr = new RangeExpression(expr, end, inclusive);
+        }
+        
         return expr;
     }
 
@@ -526,6 +586,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         if (match(TokenType.STRING)) {
             return new StringLiteral(previous().getValue());
         }
+        if (match(TokenType.LEFT_BRACKET)) {
+            return parseListOrMapLiteral();
+        }
 
         // 变量引用
         if (match(TokenType.IDENTIFIER)) {
@@ -550,6 +613,11 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             return parseIfExpression();
         }
 
+        // While 表达式
+        if (check(TokenType.WHILE)) {
+            return parseWhileExpression();
+        }
+        
         // Eof
         if (currentToken.getType() == TokenType.EOF) {
             throw new ParseException("Eof", currentToken, new ArrayList<>(results));
@@ -558,6 +626,92 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
     }
 
+    /**
+     * 尝试解析列表或字典字面量
+     */
+    public ParseResult parseListOrMapLiteral() {
+        // 空列表
+        if (match(TokenType.RIGHT_BRACKET)) {
+            return new ListLiteral(new ArrayList<>());
+        }
+
+        // 检查是否是字典字面量
+        boolean isDictionary = false;
+        // 标记当前位置
+        mark();
+
+        // 尝试解析一个表达式，然后检查后面是否跟着冒号
+        ParseResult testExpr = parseExpression();
+        if (check(TokenType.COLON)) {
+            isDictionary = true;
+        }
+        // 回滚
+        rollback();
+        return isDictionary ? parseMapLiteral() : parseListLiteral();
+    }
+
+    /**
+     * 解析列表字面量
+     *
+     * @return 列表字面量解析结果
+     */
+    public ParseResult parseListLiteral() {
+        List<ParseResult> elements = new ArrayList<>();
+        // 如果不是空列表
+        if (!check(TokenType.RIGHT_BRACKET)) {
+            do {
+                elements.add(parseExpression());
+            } while (match(TokenType.COMMA));
+        }
+        consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
+        return new ListLiteral(elements);
+    }
+    
+    /**
+     * 解析字典字面量
+     *
+     * @return 字典字面量解析结果
+     */
+    public ParseResult parseMapLiteral() {
+        List<MapEntry> entries = new ArrayList<>();
+        // 如果不是空字典
+        if (!check(TokenType.RIGHT_BRACKET)) {
+            do {
+                // 解析键
+                ParseResult key = parseExpression();
+                // 解析冒号
+                consume(TokenType.COLON, "Expected ':' after map key");
+                // 解析值
+                ParseResult value = parseExpression();
+                // 添加键值对
+                entries.add(new MapEntry(key, value));
+            } while (match(TokenType.COMMA));
+        }
+        consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
+        return new MapLiteral(entries);
+    }
+    
+    /**
+     * 解析 While 表达式
+     *
+     * @return While 表达式解析结果
+     */
+    private ParseResult parseWhileExpression() {
+        // 消费 WHILE 标记
+        consume(TokenType.WHILE, "Expected 'while' before while expression");
+        // 解析条件表达式
+        ParseResult condition = parseExpression();
+        // 解析循环体
+        ParseResult body;
+        // 如果有左大括号，则解析为 Block 函数体
+        if (match(TokenType.LEFT_BRACE)) {
+            body = parseBlock();
+        } else {
+            body = parseExpression();
+        }
+        return new WhileExpression(condition, body);
+    }
+    
     /**
      * 解析 When 表达式
      *
@@ -776,6 +930,21 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public Token previous() {
         return position > 0 ? tokens.get(position - 1) : tokens.get(0);
+    }
+
+    /**
+     * 记录当前位置
+     */
+    public void mark() {
+        mark = position;
+    }
+
+    /**
+     * 回滚到记录的位置
+     */
+    public void rollback() {
+        position = mark;
+        currentToken = tokens.get(position);
     }
 
     /**

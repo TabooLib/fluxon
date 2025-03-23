@@ -50,6 +50,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("return", TokenType.RETURN);
         KEYWORDS.put("try", TokenType.TRY);
         KEYWORDS.put("catch", TokenType.CATCH);
+        KEYWORDS.put("while", TokenType.WHILE);
 
         // 布尔值特殊处理
         KEYWORDS.put("true", TokenType.TRUE);
@@ -304,11 +305,18 @@ public class Lexer implements CompilationPhase<List<Token>> {
 
         // 检查是否有小数点
         if (position < sourceLength && currentChar == '.') {
-            isFloat = true;
-            // 消费小数部分 - 使用字符范围检查
-            do {
-                advance();
-            } while (position < sourceLength && currentChar >= '0' && currentChar <= '9');
+            // 检查下一个字符是否也是小数点（范围操作符的开始）
+            if (nextChar == '.') {
+                // 这是范围操作符的开始，不是浮点数的一部分
+                String value = source.substring(start, position);
+                return new Token(TokenType.INTEGER, value, startLine, startColumn);
+            } else {
+                isFloat = true;
+                // 消费小数点
+                // 消费小数部分 - 使用字符范围检查
+                do advance();
+                while (position < sourceLength && currentChar >= '0' && currentChar <= '9');
+            }
         }
 
         // 提前处理简单情况，减少后续不必要的检查

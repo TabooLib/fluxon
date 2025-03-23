@@ -110,6 +110,35 @@ public class PseudoCodeTest {
         // @formatter:on
     }
 
+    @Test
+    public void testWhile() {
+        // 测试 while
+        // @formatter:off
+        testPseudoCode(
+                """
+                i = 10
+                while i > 0 {
+                    print &i ?: 0
+                }
+                """
+        );
+        // @formatter:on
+    }
+
+    @Test
+    public void testList() {
+        // 测试 List 和 Map 字面量
+        // @formatter:off
+        testPseudoCode(
+                """
+                print 1..10
+                print [1,2,3,4,5]
+                print [a:1,b:2,c:3]
+                """
+        );
+        // @formatter:on
+    }
+
     private void testPseudoCode(String source) {
         System.out.println("[Parse]: ");
         System.out.println(source);

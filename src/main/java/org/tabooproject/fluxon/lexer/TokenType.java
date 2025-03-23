@@ -21,6 +21,7 @@ public enum TokenType {
     RETURN("return"),
     TRY("try"),
     CATCH("catch"),
+    WHILE("while"),
     
     // 标识符和字面量
     IDENTIFIER,    // 标识符
