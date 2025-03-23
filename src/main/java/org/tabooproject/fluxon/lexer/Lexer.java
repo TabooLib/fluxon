@@ -296,7 +296,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         int startLine = line;
         int startColumn = column;
         int start = position;
-        boolean isFloat = false;
+        boolean isDouble = false;
 
         // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()
         while (position < sourceLength && currentChar >= '0' && currentChar <= '9') {
@@ -308,10 +308,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
             // 检查下一个字符是否也是小数点（范围操作符的开始）
             if (nextChar == '.') {
                 // 这是范围操作符的开始，不是浮点数的一部分
-                String value = source.substring(start, position);
-                return new Token(TokenType.INTEGER, value, startLine, startColumn);
+                return new Token(TokenType.INTEGER, Integer.parseInt(source.substring(start, position)), startLine, startColumn);
             } else {
-                isFloat = true;
+                isDouble = true;
                 // 消费小数点
                 // 消费小数部分 - 使用字符范围检查
                 do advance();
@@ -320,15 +319,19 @@ public class Lexer implements CompilationPhase<List<Token>> {
         }
 
         // 提前处理简单情况，减少后续不必要的检查
-        if (!isFloat && position < sourceLength && currentChar != 'e' && currentChar != 'E') {
-            // 优化纯整数情况，直接提取子字符串
-            String value = source.substring(start, position);
-            return new Token(TokenType.INTEGER, value, startLine, startColumn);
+        if (!isDouble && position < sourceLength && currentChar != 'e' && currentChar != 'E') {
+            // 检查是否为LONG类型（带L或l后缀）
+            if (currentChar == 'L' || currentChar == 'l') {
+                advance(); // 消费 L 或 l
+                return new Token(TokenType.LONG, Long.parseLong(source.substring(start, position - 1)), startLine, startColumn);
+            }
+            // 优化纯整数情况，直接提取子字符串并返回
+            return new Token(TokenType.INTEGER, Integer.parseInt(source.substring(start, position)), startLine, startColumn);
         }
 
         // 检查是否有指数部分
         if (position < sourceLength && (currentChar == 'e' || currentChar == 'E')) {
-            isFloat = true;
+            isDouble = true;
             advance(); // 消费 e 或 E
             // 检查指数符号
             if (position < sourceLength && (currentChar == '+' || currentChar == '-')) {
@@ -339,9 +342,41 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费数字
             }
         }
-        // 处理 float 或科学计数法
-        TokenType type = isFloat ? TokenType.FLOAT : TokenType.INTEGER;
-        return new Token(type, source.substring(start, position), startLine, startColumn);
+
+        // 检查类型后缀
+        TokenType type;
+
+        // 记录最终取值的结束位置
+        if (position < sourceLength) {
+            char suffix = currentChar;
+            // 长整型
+            switch (suffix) {
+                case 'l':
+                case 'L':
+                    advance();
+                    return new Token(TokenType.LONG, Long.parseLong(source.substring(start, position - 1)), startLine, startColumn);
+                // 单精度浮点型
+                case 'f':
+                case 'F':
+                    advance();
+                    return new Token(TokenType.FLOAT, Float.parseFloat(source.substring(start, position - 1)), startLine, startColumn);
+                // 双精度浮点型
+                case 'd':
+                case 'D':
+                    advance();
+                    return new Token(TokenType.DOUBLE, Double.parseDouble(source.substring(start, position - 1)), startLine, startColumn);
+                // 默认双精度
+                default:
+                    return new Token(TokenType.DOUBLE, Double.parseDouble(source.substring(start, position)), startLine, startColumn);
+            }
+        } else {
+            // 到达文件末尾
+            if (isDouble) {
+                return new Token(TokenType.DOUBLE, Double.parseDouble(source.substring(start, position)), startLine, startColumn);
+            } else {
+                return new Token(TokenType.INTEGER, Integer.parseInt(source.substring(start, position)), startLine, startColumn);
+            }
+        }
     }
 
     /**

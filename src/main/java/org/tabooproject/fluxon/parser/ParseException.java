@@ -20,7 +20,7 @@ public class ParseException extends RuntimeException {
      * @param token 相关的词法单元
      */
     public ParseException(String message, Token token, List<ParseResult> results) {
-        super(String.format("%s at line %d, column %d: %s", message, token.getLine(), token.getColumn(), token.getValue()));
+        super(String.format("%s at line %d, column %d: %s", message, token.getLine(), token.getColumn(), token.getStringValue()));
         this.token = token;
         this.results = results;
     }

@@ -6,7 +6,7 @@ package org.tabooproject.fluxon.lexer;
  */
 public class Token {
     private final TokenType type;
-    private final String value;
+    private final Object value;
     private final int line;
     private final int column;
     
@@ -18,7 +18,7 @@ public class Token {
      * @param line 行号
      * @param column 列号
      */
-    public Token(TokenType type, String value, int line, int column) {
+    public Token(TokenType type, Object value, int line, int column) {
         this.type = type;
         this.value = value;
         this.line = line;
@@ -33,20 +33,23 @@ public class Token {
     public TokenType getType() {
         return type;
     }
-    
+
     /**
      * 获取词法单元值
-     * 
-     * @return 词法单元值
      */
-    public String getValue() {
+    public Object getValue() {
         return value;
     }
     
     /**
+     * 获取词法单元值的字符串形式
+     */
+    public String getStringValue() {
+        return value.toString();
+    }
+    
+    /**
      * 获取行号
-     * 
-     * @return 行号
      */
     public int getLine() {
         return line;
@@ -54,8 +57,6 @@ public class Token {
     
     /**
      * 获取列号
-     * 
-     * @return 列号
      */
     public int getColumn() {
         return column;

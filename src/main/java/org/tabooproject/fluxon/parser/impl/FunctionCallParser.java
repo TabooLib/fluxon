@@ -25,8 +25,8 @@ public class FunctionCallParser {
             expr = finishCall(parser, expr);
         }
         // 解析无括号的函数调用
-        else if (expr instanceof Expressions.Variable && !parser.isEndOfExpression() && !parser.isOperator()) {
-            String functionName = ((Expressions.Variable) expr).getName();
+        else if (expr instanceof Expressions.Identifier && !parser.isEndOfExpression() && !parser.isOperator()) {
+            String functionName = ((Expressions.Identifier) expr).getName();
 
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
@@ -40,7 +40,7 @@ public class FunctionCallParser {
                 for (int i = 0; i < maxArgCount && !parser.isEndOfExpression() && !parser.isOperator(); i++) {
                     // 检查当前标记是否为标识符
                     if (parser.check(TokenType.IDENTIFIER)) {
-                        String identifier = parser.peek().getValue();
+                        String identifier = parser.peek().getStringValue();
 
                         // 检查标识符是否为已知函数或变量
                         if (parser.isFunction(identifier) || parser.isVariable(identifier)) {

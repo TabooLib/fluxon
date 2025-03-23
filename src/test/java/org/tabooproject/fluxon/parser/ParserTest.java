@@ -49,8 +49,8 @@ public class ParserTest {
         assertEquals("factorial", func.getName());
         assertEquals(1, func.getParameters().size());
         assertEquals("n", func.getParameters().get(0));
-        assertTrue(func.getBody() instanceof Variable);
-        assertEquals("n", ((Variable) func.getBody()).getName());
+        assertTrue(func.getBody() instanceof Identifier);
+        assertEquals("n", ((Identifier) func.getBody()).getName());
     }
     
     /**
@@ -118,7 +118,7 @@ public class ParserTest {
     public void testNoBracketFunctionCall() {
         String source = "print checkGrade 85";
         List<ParseResult> results = parseSource(source);
-        
+
         assertEquals(1, results.size());
         assertTrue(results.get(0) instanceof ExpressionStatement);
         
@@ -126,19 +126,19 @@ public class ParserTest {
         assertTrue(stmt.getExpression() instanceof FunctionCall);
         
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertTrue(call.getCallee() instanceof Variable);
-        assertEquals("print", ((Variable) call.getCallee()).getName());
+        assertTrue(call.getCallee() instanceof Identifier);
+        assertEquals("print", ((Identifier) call.getCallee()).getName());
         assertEquals(1, call.getArguments().size());
         
         ParseResult arg = call.getArguments().get(0);
         assertTrue(arg instanceof FunctionCall);
         
         FunctionCall innerCall = (FunctionCall) arg;
-        assertTrue(innerCall.getCallee() instanceof Variable);
-        assertEquals("checkGrade", ((Variable) innerCall.getCallee()).getName());
+        assertTrue(innerCall.getCallee() instanceof Identifier);
+        assertEquals("checkGrade", ((Identifier) innerCall.getCallee()).getName());
         assertEquals(1, innerCall.getArguments().size());
-        assertTrue(innerCall.getArguments().get(0) instanceof IntegerLiteral);
-        assertEquals("85", ((IntegerLiteral) innerCall.getArguments().get(0)).getValue());
+        assertTrue(innerCall.getArguments().get(0) instanceof IntLiteral);
+        assertEquals(85, ((IntLiteral) innerCall.getArguments().get(0)).getValue());
     }
     
     /**
@@ -156,8 +156,8 @@ public class ParserTest {
         assertTrue(stmt.getExpression() instanceof FunctionCall);
         
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertTrue(call.getCallee() instanceof Variable);
-        assertEquals("player", ((Variable) call.getCallee()).getName());
+        assertTrue(call.getCallee() instanceof Identifier);
+        assertEquals("player", ((Identifier) call.getCallee()).getName());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
@@ -176,8 +176,8 @@ public class ParserTest {
         
         ReturnStatement returnStmt = (ReturnStatement) results.get(0);
         assertNotNull(returnStmt.getValue());
-        assertTrue(returnStmt.getValue() instanceof IntegerLiteral);
-        assertEquals("42", ((IntegerLiteral) returnStmt.getValue()).getValue());
+        assertTrue(returnStmt.getValue() instanceof IntLiteral);
+        assertEquals(42, ((IntLiteral) returnStmt.getValue()).getValue());
     }
     
     /**

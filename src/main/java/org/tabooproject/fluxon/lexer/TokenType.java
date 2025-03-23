@@ -28,6 +28,8 @@ public enum TokenType {
     STRING,        // 字符串字面量
     INTEGER,       // 整数字面量
     FLOAT,         // 浮点数字面量
+    LONG,          // 长整型字面量
+    DOUBLE,        // 双精度浮点数字面量
     TRUE,          // 布尔字面量
     FALSE,         // 布尔字面量
 

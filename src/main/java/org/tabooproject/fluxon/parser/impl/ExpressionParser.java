@@ -6,9 +6,6 @@ import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expressions.Expressions;
-import org.tabooproject.fluxon.parser.statements.Statements;
-
-import java.util.ArrayList;
 
 public class ExpressionParser {
 
@@ -39,8 +36,8 @@ public class ExpressionParser {
             ParseResult value = parseAssignment(parser);
 
             // 检查左侧是否为有效的赋值目标
-            if (expr instanceof Expressions.Variable) {
-                String name = ((Expressions.Variable) expr).getName();
+            if (expr instanceof Expressions.Identifier) {
+                String name = ((Expressions.Identifier) expr).getName();
                 // 将变量添加到当前作用域
                 parser.defineVariable(name);
                 return new Expressions.Assignment(name, operator, value);
@@ -205,12 +202,12 @@ public class ExpressionParser {
             // 引用
             case AMPERSAND: {
                 parser.consume(); // 消费 &
-                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getValue();
+                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getStringValue();
                 // 检查变量是否存在
                 if (!parser.isVariable(name)) {
                     throw new RuntimeException("Unknown variable '" + name + "'.");
                 } else {
-                    return new Expressions.ReferenceExpression(new Expressions.Variable(name));
+                    return new Expressions.ReferenceExpression(new Expressions.Identifier(name));
                 }
             }
             // 函数调用
@@ -226,6 +223,24 @@ public class ExpressionParser {
      */
     public static ParseResult parsePrimary(Parser parser) {
         switch (parser.peek().getType()) {
+            // 标识符
+            case IDENTIFIER:
+                return new Expressions.Identifier(parser.consume().getStringValue());
+            // 字符串
+            case STRING:
+                return new Expressions.StringLiteral(parser.consume().getStringValue());
+            // 整型
+            case INTEGER:
+                return new Expressions.IntLiteral((int) parser.consume().getValue());
+            // 长整型
+            case LONG:
+                return new Expressions.LongLiteral((long) parser.consume().getValue());
+            // 单精度
+            case FLOAT:
+                return new Expressions.FloatLiteral((float) parser.consume().getValue());
+            // 双精度
+            case DOUBLE:
+                return new Expressions.DoubleLiteral((double) parser.consume().getValue());
             // 真
             case TRUE: {
                 parser.consume();
@@ -236,25 +251,6 @@ public class ExpressionParser {
                 parser.consume();
                 return new Expressions.BooleanLiteral(false);
             }
-            // 整型
-            case INTEGER:
-                return new Expressions.IntegerLiteral(parser.consume().getValue());
-            // 浮点数
-            case FLOAT:
-                return new Expressions.FloatLiteral(parser.consume().getValue());
-            // 字符串
-            case STRING:
-                return new Expressions.StringLiteral(parser.consume().getValue());
-            // 变量引用
-            case IDENTIFIER:
-                return new Expressions.Variable(parser.consume().getValue());
-            // 表达式
-            case IF:
-                return IfParser.parse(parser);
-            case WHEN:
-                return WhenParser.parse(parser);
-            case WHILE:
-                return WhileParser.parse(parser);
             // 列表和字典
             case LEFT_BRACKET: {
                 parser.consume(); // 消费左括号
@@ -267,6 +263,13 @@ public class ExpressionParser {
                 parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
                 return new Expressions.GroupingExpression(expr);
             }
+            // 表达式
+            case IF:
+                return IfParser.parse(parser);
+            case WHEN:
+                return WhenParser.parse(parser);
+            case WHILE:
+                return WhileParser.parse(parser);
             // 文件结束
             case EOF:
                 throw new ParseException("Eof", parser.peek(), parser.getResults());

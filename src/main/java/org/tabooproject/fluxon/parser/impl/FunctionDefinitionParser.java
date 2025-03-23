@@ -11,7 +11,6 @@ import org.tabooproject.fluxon.parser.expressions.Expressions;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class FunctionDefinitionParser {
 
@@ -27,7 +26,7 @@ public class FunctionDefinitionParser {
     public static ParseResult parse(Parser parser, boolean isAsync) {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
-        String functionName = nameToken.getValue();
+        String functionName = nameToken.getStringValue();
 
         // 解析参数列表
         List<String> parameters = new ArrayList<>();
@@ -38,14 +37,14 @@ public class FunctionDefinitionParser {
             if (!parser.check(TokenType.RIGHT_PAREN)) {
                 do {
                     Token param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name");
-                    parameters.add(param.getValue());
+                    parameters.add(param.getStringValue());
                 } while (parser.match(TokenType.COMMA));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
         } else {
             // 无括号的参数列表
             while (parser.match(TokenType.IDENTIFIER)) {
-                parameters.add(parser.previous().getValue());
+                parameters.add(parser.previous().getStringValue());
             }
         }
 
@@ -84,7 +83,7 @@ public class FunctionDefinitionParser {
             // 如果是标识符，直接解析为变量
             if (parser.check(TokenType.IDENTIFIER)) {
                 Token identToken = parser.consume(TokenType.IDENTIFIER, "Expected identifier");
-                body = new Expressions.Variable(identToken.getValue());
+                body = new Expressions.Identifier(identToken.getStringValue());
             }
             // When 结构
             else if (parser.check(TokenType.WHEN)) {
