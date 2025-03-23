@@ -1,10 +1,9 @@
 package org.tabooproject.fluxon.parser.definitions;
 
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.PseudoCodeUtils;
+import org.tabooproject.fluxon.parser.util.StringUtils;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 定义类集合
@@ -54,7 +53,7 @@ public class Definitions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String indentStr = StringUtils.getIndent(indent);
             
             // 函数声明
             sb.append(indentStr);

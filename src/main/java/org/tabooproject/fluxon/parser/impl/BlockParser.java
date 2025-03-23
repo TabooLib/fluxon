@@ -17,12 +17,21 @@ public class BlockParser {
      * @return 代码块解析结果
      */
     public static ParseResult parse(Parser parser) {
+        // 进入新的作用域
+        parser.enterScope();
+        
         List<ParseResult> statements = new ArrayList<>();
         while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
             // 解析 Statement
             statements.add(StatementParser.parse(parser));
         }
+        
+        // 消费右大括号
         parser.consume(TokenType.RIGHT_BRACE, "Expected '}' after block");
+        
+        // 退出当前作用域
+        parser.exitScope();
+        
         return new Statements.Block(null, statements);
     }
 }

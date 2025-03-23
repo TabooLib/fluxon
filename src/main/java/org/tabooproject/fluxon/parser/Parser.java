@@ -4,19 +4,15 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
-import org.tabooproject.fluxon.parser.expressions.Expressions.*;
-import org.tabooproject.fluxon.parser.expressions.Expressions.MapEntry;
 import org.tabooproject.fluxon.parser.impl.StatementParser;
-import org.tabooproject.fluxon.parser.statements.Statements;
-import org.tabooproject.fluxon.parser.statements.Statements.Block;
-import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
+import org.tabooproject.fluxon.parser.util.StringUtils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
 
 /**
  * Fluxon解析器
@@ -39,8 +35,8 @@ import java.util.Map;
  */
 public class Parser implements CompilationPhase<List<ParseResult>> {
 
-    // 符号表，用于跟踪已定义的函数和变量
-    private final Map<String, SymbolInfo> symbolTable = new HashMap<>();
+    // 作用域栈，用于管理不同作用域的符号
+    private final Deque<SymbolScope> scopeStack = new ArrayDeque<>();
 
     private List<Token> tokens;
     private int position = 0;
@@ -53,15 +49,25 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 创建解析器
      */
     public Parser() {
+        // 初始化全局作用域
+        scopeStack.push(new SymbolScope());
         initDefaultSymbols();
     }
 
     /**
-     * 创建带有符号表的解析器
+     * 创建带有初始符号的解析器
      */
-    public Parser(Map<String, SymbolInfo> symbolTable) {
-        initDefaultSymbols();
-        this.symbolTable.putAll(symbolTable);
+    public Parser(Map<String, SymbolInfo> initialSymbols) {
+        this();
+        if (initialSymbols != null) {
+            for (Map.Entry<String, SymbolInfo> entry : initialSymbols.entrySet()) {
+                if (entry.getValue().getType() == SymbolType.FUNCTION) {
+                    defineFunction(entry.getKey(), entry.getValue());
+                } else {
+                    defineVariable(entry.getKey(), entry.getValue());
+                }
+            }
+        }
     }
 
     /**
@@ -69,10 +75,10 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public void initDefaultSymbols() {
         // 预先添加一些常用函数到符号表，用于测试
-        symbolTable.put("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
-        symbolTable.put("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
-        symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
-        symbolTable.put("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
+        defineFunction("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
+        defineFunction("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
+        defineFunction("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
+        defineFunction("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
     }
 
     /**
@@ -121,28 +127,16 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
 
     /**
      * 检查当前标记是否为表达式结束标记
-     *
-     * @return 是否为表达式结束标记
      */
     public boolean isEndOfExpression() {
-        return check(TokenType.SEMICOLON) || check(TokenType.RIGHT_PAREN) ||
-                check(TokenType.RIGHT_BRACE) || check(TokenType.RIGHT_BRACKET) ||
-                check(TokenType.COMMA) || isAtEnd();
+        return currentToken.getType().isEndOfExpression();
     }
 
     /**
      * 检查当前标记是否为操作符
-     *
-     * @return 是否为操作符
      */
     public boolean isOperator() {
-        return check(TokenType.PLUS) || check(TokenType.MINUS) ||
-                check(TokenType.MULTIPLY) || check(TokenType.DIVIDE) ||
-                check(TokenType.MODULO) || check(TokenType.EQUAL) ||
-                check(TokenType.NOT_EQUAL) || check(TokenType.LESS) ||
-                check(TokenType.LESS_EQUAL) || check(TokenType.GREATER) ||
-                check(TokenType.GREATER_EQUAL) || check(TokenType.AND) ||
-                check(TokenType.OR) || check(TokenType.ASSIGN);
+        return currentToken.getType().isOperator();
     }
 
     /**
@@ -152,8 +146,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 是否为已知函数
      */
     public boolean isFunction(String name) {
-        SymbolInfo info = symbolTable.get(name);
-        return info != null && info.getType() == SymbolType.FUNCTION;
+        return getCurrentScope().getFunction(name) != null;
     }
 
     /**
@@ -163,7 +156,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 最大可能的参数数量
      */
     public int getMaxExpectedArgumentCount(String name) {
-        SymbolInfo info = symbolTable.get(name);
+        SymbolInfo info = getCurrentScope().getFunction(name);
         return info != null ? info.getMaxParameterCount() : 0;
     }
 
@@ -184,8 +177,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 是否为已知变量
      */
     public boolean isVariable(String name) {
-        SymbolInfo info = symbolTable.get(name);
-        return info != null && info.getType() == SymbolType.VARIABLE;
+        return getCurrentScope().getVariable(name) != null;
     }
 
     /**
@@ -236,7 +228,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public boolean check(TokenType type) {
         if (isAtEnd()) return false;
-        return currentToken.getType() == type;
+        return currentToken.is(type);
+    }
+
+    /**
+     * 检查当前标记是否为指定类型之一
+     */
+    public boolean check(TokenType... types) {
+        if (isAtEnd()) return false;
+        for (TokenType type : types) {
+            if (currentToken.is(type)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -307,6 +312,82 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 进入新作用域
+     */
+    public void enterScope() {
+        SymbolScope newScope = new SymbolScope(getCurrentScope());
+        scopeStack.push(newScope);
+    }
+
+    /**
+     * 退出当前作用域
+     *
+     * @throws IllegalStateException 如果尝试退出全局作用域
+     */
+    public void exitScope() {
+        if (scopeStack.size() <= 1) {
+            throw new IllegalStateException("Cannot exit global scope");
+        }
+        scopeStack.pop();
+    }
+
+    /**
+     * 在当前作用域中定义函数
+     *
+     * @param name 函数名
+     * @param info 函数信息
+     */
+    public void defineFunction(String name, SymbolInfo info) {
+        getCurrentScope().defineFunction(name, info);
+    }
+
+    /**
+     * 在当前作用域中定义变量
+     *
+     * @param name 变量名
+     * @param info 变量信息
+     */
+    public void defineVariable(String name, SymbolInfo info) {
+        getCurrentScope().defineVariable(name, info);
+    }
+
+    /**
+     * 在当前作用域中定义变量（简化版）
+     *
+     * @param name 变量名
+     */
+    public void defineVariable(String name) {
+        defineVariable(name, new SymbolInfo(SymbolType.VARIABLE, name, 0));
+    }
+
+    /**
+     * 获取函数信息
+     *
+     * @param name 函数名
+     * @return 函数信息，如果不存在则返回 null
+     */
+    public SymbolInfo getFunctionInfo(String name) {
+        return getCurrentScope().getFunction(name);
+    }
+
+    /**
+     * 获取变量信息
+     *
+     * @param name 变量名
+     * @return 变量信息，如果不存在则返回 null
+     */
+    public SymbolInfo getVariableInfo(String name) {
+        return getCurrentScope().getVariable(name);
+    }
+
+    /**
+     * 获取当前作用域
+     */
+    public SymbolScope getCurrentScope() {
+        return scopeStack.peek();
+    }
+
+    /**
      * 获取当前解析结果
      */
     public List<ParseResult> getResults() {
@@ -314,9 +395,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 获取符号表
+     * 获取当前作用域栈
      */
-    public Map<String, SymbolInfo> getSymbolTable() {
-        return symbolTable;
+    public Deque<SymbolScope> getScopeStack() {
+        return scopeStack;
     }
 }

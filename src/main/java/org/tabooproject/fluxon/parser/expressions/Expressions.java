@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.parser.expressions;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.PseudoCodeUtils;
+import org.tabooproject.fluxon.parser.util.StringUtils;
 import org.tabooproject.fluxon.parser.statements.Statements.Block;
 
 import java.util.List;
@@ -345,7 +345,7 @@ public class Expressions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String indentStr = StringUtils.getIndent(indent);
             sb.append(indentStr);
             sb.append(callee.toPseudoCode(0)).append("(");
             
@@ -444,8 +444,8 @@ public class Expressions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
-            String innerIndentStr = PseudoCodeUtils.getIndent(indent + 1);
+            String indentStr = StringUtils.getIndent(indent);
+            String innerIndentStr = StringUtils.getIndent(indent + 1);
             
             sb.append(indentStr).append("if ").append(condition.toPseudoCode(0)).append(" then ");
             
@@ -535,8 +535,8 @@ public class Expressions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
-            String innerIndentStr = PseudoCodeUtils.getIndent(indent + 1);
+            String indentStr = StringUtils.getIndent(indent);
+            String innerIndentStr = StringUtils.getIndent(indent + 1);
             
             sb.append(indentStr).append("when");
             
@@ -758,8 +758,8 @@ public class Expressions {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
-            String innerIndentStr = PseudoCodeUtils.getIndent(indent + 1);
+            String indentStr = StringUtils.getIndent(indent);
+            String innerIndentStr = StringUtils.getIndent(indent + 1);
             
             sb.append(indentStr).append("while ").append(condition.toPseudoCode(0)).append(" ");
             

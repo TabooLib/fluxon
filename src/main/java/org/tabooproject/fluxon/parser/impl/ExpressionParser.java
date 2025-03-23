@@ -41,6 +41,10 @@ public class ExpressionParser {
             // 检查左侧是否为有效的赋值目标
             if (expr instanceof Expressions.Variable) {
                 String name = ((Expressions.Variable) expr).getName();
+                
+                // 将变量添加到当前作用域
+                parser.defineVariable(name);
+                
                 return new Expressions.Assignment(name, operator, value);
             }
             throw new ParseException("Invalid assignment target", operator, parser.getResults());
@@ -240,6 +244,13 @@ public class ExpressionParser {
         if (parser.match(TokenType.IDENTIFIER)) {
             String name = parser.previous().getValue();
             return new Expressions.Variable(name);
+            
+            // 注意：这里不需要将变量添加到符号表
+            // 因为变量引用不一定是变量声明
+            // 只有在赋值表达式中，才会将变量添加到符号表
+            // 例如：a = 1 会将a添加到符号表
+            // 但是：print(a) 中的a只是引用，不会添加到符号表
+            // 如果a不存在，会在运行时报错
         }
 
         // 分组表达式

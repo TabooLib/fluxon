@@ -22,13 +22,13 @@ public enum TokenType {
     TRY("try"),
     CATCH("catch"),
     WHILE("while"),
-    
+
     // 标识符和字面量
     IDENTIFIER,    // 标识符
     STRING,        // 字符串字面量
     INTEGER,       // 整数字面量
     FLOAT,         // 浮点数字面量
-    TRUE,         // 布尔字面量
+    TRUE,          // 布尔字面量
     FALSE,         // 布尔字面量
 
     // 操作符
@@ -37,24 +37,24 @@ public enum TokenType {
     MULTIPLY("*"),         // 乘法
     DIVIDE("/"),           // 除法
     MODULO("%"),           // 取模
-    
+
     EQUAL("=="),           // 等于
     NOT_EQUAL("!="),       // 不等于
     GREATER(">"),          // 大于
     LESS("<"),             // 小于
     GREATER_EQUAL(">="),   // 大于等于
     LESS_EQUAL("<="),      // 小于等于
-    
+
     ASSIGN("="),           // 赋值
     PLUS_ASSIGN("+="),     // 加法赋值
     MINUS_ASSIGN("-="),    // 减法赋值
     MULTIPLY_ASSIGN("*="), // 乘法赋值
     DIVIDE_ASSIGN("/="),   // 除法赋值
-    
+
     AND("&&"),             // 逻辑与
     OR("||"),              // 逻辑或
     NOT("!"),              // 逻辑非
-    
+
     // 特殊符号
     DOT("."),                  // 点
     COMMA(","),                // 逗号
@@ -63,39 +63,76 @@ public enum TokenType {
     ARROW("->"),               // 箭头
     RANGE(".."),               // 范围
     RANGE_EXCLUSIVE("..<"),    // 排除上界的范围
-    
+
     LEFT_PAREN("("),           // 左括号
     RIGHT_PAREN(")"),          // 右括号
     LEFT_BRACE("{"),           // 左花括号
     RIGHT_BRACE("}"),          // 右花括号
     LEFT_BRACKET("["),         // 左方括号
     RIGHT_BRACKET("]"),        // 右方括号
-    
+
     QUESTION("?"),             // 问号
     QUESTION_DOT("?."),        // 空安全访问
     QUESTION_COLON("?:"),      // Elvis 操作符
     AMPERSAND("&"),            // 变量引用前缀
-    
+
     // 其他
     EOF,        // 文件结束
     UNKNOWN;    // 未知类型
-    
+
     private final String text;
-    
+
     TokenType() {
         this.text = this.name().toLowerCase();
     }
-    
+
     TokenType(String text) {
         this.text = text;
     }
-    
+
     /**
      * 获取词法单元的文本表示
-     * 
+     *
      * @return 文本表示
      */
     public String getText() {
         return text;
+    }
+
+    /**
+     * 是否为表达式结束标记
+     */
+    public boolean isEndOfExpression() {
+        return switch (this) {
+            case EOF,
+                 SEMICOLON,
+                 RIGHT_PAREN,
+                 RIGHT_BRACE,
+                 RIGHT_BRACKET -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * 是否为操作符
+     */
+    public boolean isOperator() {
+        return switch (this) {
+            case PLUS,
+                 MINUS,
+                 MULTIPLY,
+                 DIVIDE,
+                 MODULO,
+                 EQUAL,
+                 NOT_EQUAL,
+                 LESS,
+                 LESS_EQUAL,
+                 GREATER,
+                 GREATER_EQUAL,
+                 AND,
+                 OR,
+                 ASSIGN -> true;
+            default -> false;
+        };
     }
 }

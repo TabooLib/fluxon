@@ -144,16 +144,13 @@ public class PseudoCodeTest {
         System.out.println(source);
         try {
             AtomicReference<List<ParseResult>> results = new AtomicReference<>();
-            double time = measureTimeMillis(() -> {
-                // 创建编译上下文
-                CompilationContext context = new CompilationContext(source);
-                Lexer lexer = new Lexer();
-                List<Token> tokens = lexer.process(context);
-                context.setAttribute("tokens", tokens);
-                Parser parser = new Parser();
-                results.set(parser.process(context));
-            });
-            System.out.println(time + "ms");
+            // 创建编译上下文
+            CompilationContext context = new CompilationContext(source);
+            Lexer lexer = new Lexer();
+            List<Token> tokens = lexer.process(context);
+            context.setAttribute("tokens", tokens);
+            Parser parser = new Parser();
+            results.set(parser.process(context));
             System.out.println("[Structure]:");
             for (ParseResult result : results.get()) {
                 System.out.println(result);

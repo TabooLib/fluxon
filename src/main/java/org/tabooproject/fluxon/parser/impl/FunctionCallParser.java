@@ -34,7 +34,7 @@ public class FunctionCallParser {
                 // 获取函数的最大参数数量
                 int maxArgCount = parser.getMaxExpectedArgumentCount(functionName);
                 List<ParseResult> arguments = new ArrayList<>();
-                SymbolInfo info = parser.getSymbolTable().get(functionName);
+                SymbolInfo info = parser.getFunctionInfo(functionName);
 
                 // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
                 for (int i = 0; i < maxArgCount && !parser.isEndOfExpression() && !parser.isOperator(); i++) {

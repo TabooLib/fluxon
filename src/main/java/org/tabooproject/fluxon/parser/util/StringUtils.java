@@ -1,9 +1,9 @@
-package org.tabooproject.fluxon.parser;
+package org.tabooproject.fluxon.parser.util;
 
 /**
  * 伪代码生成工具类
  */
-public class PseudoCodeUtils {
+public class StringUtils {
     
     /**
      * 生成指定数量的缩进空格

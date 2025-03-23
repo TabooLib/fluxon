@@ -61,4 +61,14 @@ public class SymbolInfo {
     public boolean supportsParameterCount(int count) {
         return parameterCounts.contains(count);
     }
+
+    @Override
+    public String toString() {
+        return "SymbolInfo{" +
+                "type=" + type +
+                ", name='" + name + '\'' +
+                ", parameterCounts=" + parameterCounts +
+                ", maxParameterCount=" + maxParameterCount +
+                '}';
+    }
 }

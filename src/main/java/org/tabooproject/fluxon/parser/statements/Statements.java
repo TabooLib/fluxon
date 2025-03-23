@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.parser.statements;
 
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.PseudoCodeUtils;
+import org.tabooproject.fluxon.parser.util.StringUtils;
 
 import java.util.List;
 
@@ -33,7 +33,7 @@ public class Statements {
         
         @Override
         public String toPseudoCode(int indent) {
-            return PseudoCodeUtils.getIndent(indent) + expression.toPseudoCode(0);
+            return StringUtils.getIndent(indent) + expression.toPseudoCode(0);
         }
     }
     
@@ -67,7 +67,7 @@ public class Statements {
         @Override
         public String toPseudoCode(int indent) {
             StringBuilder sb = new StringBuilder();
-            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String indentStr = StringUtils.getIndent(indent);
             sb.append(indentStr);
             if (label != null) {
                 sb.append("@").append(label).append(" ");
@@ -116,7 +116,7 @@ public class Statements {
         
         @Override
         public String toPseudoCode(int indent) {
-            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String indentStr = StringUtils.getIndent(indent);
             return indentStr + (isVal ? "val " : "var ") + name + " = " + initializer.toPseudoCode(0);
         }
     }
@@ -143,7 +143,7 @@ public class Statements {
         
         @Override
         public String toPseudoCode(int indent) {
-            String indentStr = PseudoCodeUtils.getIndent(indent);
+            String indentStr = StringUtils.getIndent(indent);
             return indentStr + "return" + (value != null ? " " + value.toPseudoCode(0) : "");
         }
     }

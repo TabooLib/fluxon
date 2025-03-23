@@ -49,19 +49,26 @@ public class FunctionDefinitionParser {
             }
         }
 
-        // 将函数添加到符号表
-        Map<String, SymbolInfo> symbols = parser.getSymbolTable();
-        SymbolInfo existingInfo = symbols.get(functionName);
+        // 将函数添加到当前作用域
+        SymbolInfo existingInfo = parser.getFunctionInfo(functionName);
         if (existingInfo != null && existingInfo.getType() == SymbolType.FUNCTION) {
             // 函数已存在，添加新的参数数量
             List<Integer> paramCounts = new ArrayList<>(existingInfo.getParameterCounts());
             if (!paramCounts.contains(parameters.size())) {
                 paramCounts.add(parameters.size());
             }
-            symbols.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, paramCounts));
+            parser.defineFunction(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, paramCounts));
         } else {
             // 函数不存在，创建新条目
-            symbols.put(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, parameters.size()));
+            parser.defineFunction(functionName, new SymbolInfo(SymbolType.FUNCTION, functionName, parameters.size()));
+        }
+
+        // 进入函数作用域
+        parser.enterScope();
+
+        // 将参数添加到函数作用域
+        for (String param : parameters) {
+            parser.defineVariable(param);
         }
 
         // 解析等号
@@ -69,6 +76,7 @@ public class FunctionDefinitionParser {
 
         // 解析函数体
         ParseResult body;
+        
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
             body = BlockParser.parse(parser);
@@ -91,6 +99,8 @@ public class FunctionDefinitionParser {
                 body = ExpressionParser.parse(parser);
             }
         }
+        // 退出函数作用域
+        parser.exitScope();
         return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync);
     }
 }
