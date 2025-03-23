@@ -40,7 +40,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             return "\"" + value + "\"";
         }
     }
@@ -65,7 +65,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             return value;
         }
     }
@@ -90,8 +90,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return value;
+        public String toPseudoCode() {
+            return value + "f";
         }
     }
     
@@ -115,7 +115,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             return String.valueOf(value);
         }
     }
@@ -140,7 +140,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             return name;
         }
     }
@@ -165,8 +165,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return "(" + expression.toPseudoCode(0) + ")";
+        public String toPseudoCode() {
+            return "(" + expression.toPseudoCode() + ")";
         }
     }
     
@@ -196,13 +196,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            String op = operator.getValue();
-            if (op.equals("!")) {
-                op = "not ";
-            }
-            
-            return op + right.toPseudoCode(0);
+        public String toPseudoCode() {
+            return operator.getValue() + right.toPseudoCode();
         }
     }
     
@@ -238,8 +233,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return left.toPseudoCode(0) + " " + operator.getValue() + " " + right.toPseudoCode(0);
+        public String toPseudoCode() {
+            return left.toPseudoCode() + " " + operator.getValue() + " " + right.toPseudoCode();
         }
     }
     
@@ -275,8 +270,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return left.toPseudoCode(0) + " " + operator.getValue() + " " + right.toPseudoCode(0);
+        public String toPseudoCode() {
+            return left.toPseudoCode() + " " + operator.getValue() + " " + right.toPseudoCode();
         }
     }
     
@@ -312,8 +307,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return name + " " + operator.getValue() + " " + value.toPseudoCode(0);
+        public String toPseudoCode() {
+            return name + " " + operator.getValue() + " " + value.toPseudoCode();
         }
     }
     
@@ -343,17 +338,15 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
-            String indentStr = StringUtils.getIndent(indent);
-            sb.append(indentStr);
-            sb.append(callee.toPseudoCode(0)).append("(");
-            
+            sb.append(callee.toPseudoCode()).append("(");
+            // 参数列表
             for (int i = 0; i < arguments.size(); i++) {
                 if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(arguments.get(i).toPseudoCode(0));
+                sb.append(arguments.get(i).toPseudoCode());
             }
             return sb.append(")").toString();
         }
@@ -379,8 +372,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return "await " + expression.toPseudoCode(0);
+        public String toPseudoCode() {
+            return "await " + expression.toPseudoCode();
         }
     }
     
@@ -404,8 +397,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return "&" + expression.toPseudoCode(0);
+        public String toPseudoCode() {
+            return "&" + expression.toPseudoCode();
         }
     }
     
@@ -437,40 +430,32 @@ public class Expressions {
         
         @Override
         public String toString() {
-            return "If(" + condition + ", " + thenBranch + 
-                   (elseBranch != null ? ", " + elseBranch : "") + ")";
+            return "If(" + condition + ", " + thenBranch + (elseBranch != null ? ", " + elseBranch : "") + ")";
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
-            String indentStr = StringUtils.getIndent(indent);
-            String innerIndentStr = StringUtils.getIndent(indent + 1);
-            
-            sb.append(indentStr).append("if ").append(condition.toPseudoCode(0)).append(" then ");
+            sb.append("if ").append(condition.toPseudoCode()).append(" then ");
             
             // 根据 thenBranch 的类型决定是否输出大括号
             if (thenBranch instanceof Block) {
                 // 如果是代码块，直接输出
-                sb.append(thenBranch.toPseudoCode(indent));
+                sb.append(thenBranch.toPseudoCode());
             } else {
                 // 如果是表达式，添加大括号
-                sb.append("{\n");
-                sb.append(innerIndentStr).append(thenBranch.toPseudoCode(0)).append("\n");
-                sb.append(indentStr).append("}");
+                sb.append("{").append(thenBranch.toPseudoCode()).append("}");
             }
             
             if (elseBranch != null) {
                 sb.append(" else ");
-                
                 // 根据 elseBranch 的类型决定是否输出大括号
                 if (elseBranch instanceof Block) {
-                    sb.append(elseBranch.toPseudoCode(indent));
+                    sb.append(elseBranch.toPseudoCode());
                 } else {
-                    sb.append("{\n").append(innerIndentStr).append(elseBranch.toPseudoCode(0)).append("\n").append(indentStr).append("}");
+                    sb.append("{").append(elseBranch.toPseudoCode()).append("}");
                 }
             }
-            
             return sb.toString();
         }
         
@@ -500,10 +485,10 @@ public class Expressions {
         public String toString() {
             return (condition != null ? condition : "else") + " -> " + result;
         }
-        
-        public String toPseudoCode(int indent) {
-            String condStr = condition != null ? condition.toPseudoCode(0) : "else";
-            return condStr + " -> " + result.toPseudoCode(0);
+
+        public String toPseudoCode() {
+            String condStr = condition != null ? condition.toPseudoCode() : "else";
+            return condStr + " -> " + result.toPseudoCode();
         }
     }
     
@@ -533,25 +518,20 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
-            String indentStr = StringUtils.getIndent(indent);
-            String innerIndentStr = StringUtils.getIndent(indent + 1);
-            
-            sb.append(indentStr).append("when");
+
+            sb.append("when ");
             
             if (subject != null) {
-                sb.append(" ").append(subject.toPseudoCode(0));
+                sb.append(subject.toPseudoCode());
             }
             
-            sb.append(" {\n");
-            
+            sb.append("{");
             for (WhenBranch branch : branches) {
-                sb.append(innerIndentStr).append(branch.toPseudoCode(0)).append("\n");
+                sb.append(branch.toPseudoCode()).append(";");
             }
-            
-            sb.append(indentStr).append("}");
-            
+            sb.append("}");
             return sb.toString();
         }
     }
@@ -576,7 +556,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
             sb.append("[");
             
@@ -584,9 +564,8 @@ public class Expressions {
                 if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(elements.get(i).toPseudoCode(0));
+                sb.append(elements.get(i).toPseudoCode());
             }
-            
             sb.append("]");
             return sb.toString();
         }
@@ -612,7 +591,7 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             if (entries.isEmpty()) {
                 return "[:]";
             }
@@ -624,7 +603,7 @@ public class Expressions {
                 if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(entries.get(i).toPseudoCode(0));
+                sb.append(entries.get(i).toPseudoCode());
             }
             
             sb.append("]");
@@ -657,8 +636,8 @@ public class Expressions {
             return key + ": " + value;
         }
         
-        public String toPseudoCode(int indent) {
-            return key.toPseudoCode(0) + ": " + value.toPseudoCode(0);
+        public String toPseudoCode() {
+            return key.toPseudoCode() + ": " + value.toPseudoCode();
         }
     }
     
@@ -694,8 +673,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return start.toPseudoCode(0) + (inclusive ? ".." : "..<") + end.toPseudoCode(0);
+        public String toPseudoCode() {
+            return start.toPseudoCode() + (inclusive ? ".." : "..<") + end.toPseudoCode();
         }
     }
     
@@ -725,8 +704,8 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
-            return condition.toPseudoCode(0) + " ?: " + alternative.toPseudoCode(0);
+        public String toPseudoCode() {
+            return condition.toPseudoCode() + " ?: " + alternative.toPseudoCode();
         }
     }
     
@@ -756,16 +735,15 @@ public class Expressions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
-            String indentStr = StringUtils.getIndent(indent);
-            String innerIndentStr = StringUtils.getIndent(indent + 1);
-            
-            sb.append(indentStr).append("while ").append(condition.toPseudoCode(0)).append(" ");
-            
+            sb.append("while ").append(condition.toPseudoCode()).append(" ");
             // 输出循环体
-            sb.append(body instanceof Block ? body.toPseudoCode(indent) : "{\n" + innerIndentStr + body.toPseudoCode(0) + "\n" + indentStr + "}");
-            
+            if (body instanceof Block) {
+                sb.append(body.toPseudoCode());
+            } else {
+                sb.append("{").append(body.toPseudoCode()).append("}");
+            }
             return sb.toString();
         }
     }

@@ -111,13 +111,13 @@ public class PseudoCodeTest {
             }
             System.out.println("[PseudoCode]:");
             for (ParseResult result : results.get()) {
-                System.out.println(result.toPseudoCode(0));
+                System.out.println(result.toPseudoCode());
             }
             System.out.println("----------------------------------");
         } catch (ParseException ex) {
             System.out.println("[PseudoCode]:");
             for (ParseResult result : ex.getResults()) {
-                System.out.println(result.toPseudoCode(0));
+                System.out.println(result.toPseudoCode());
             }
             throw ex;
         }

@@ -115,8 +115,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
         StringBuilder sb = new StringBuilder();
         for (ParseResult result : results) {
-            sb.append(result.toPseudoCode(0));
-            sb.append("\n\n");
+            sb.append(result.toPseudoCode());
+            sb.append(";");
         }
         return sb.toString();
     }

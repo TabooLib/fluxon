@@ -51,12 +51,10 @@ public class Definitions {
         }
         
         @Override
-        public String toPseudoCode(int indent) {
+        public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
-            String indentStr = StringUtils.getIndent(indent);
-            
+
             // 函数声明
-            sb.append(indentStr);
             if (isAsync) {
                 sb.append("async ");
             }
@@ -67,7 +65,7 @@ public class Definitions {
             sb.append(") = ");
             
             // 函数体
-            sb.append(body.toPseudoCode(0));
+            sb.append(body.toPseudoCode());
             return sb.toString();
         }
     }
