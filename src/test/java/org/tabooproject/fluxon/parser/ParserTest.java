@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expressions.Expressions.*;
 import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statements.Statements.ReturnStatement;
 
 import java.util.List;
 
@@ -161,4 +162,37 @@ public class ParserTest {
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
     }
+    
+    /**
+     * 测试带有返回值的return语句
+     */
+    @Test
+    public void testReturnStatementWithValue() {
+        String source = "return 42";
+        List<ParseResult> results = parseSource(source);
+        
+        assertEquals(1, results.size());
+        assertTrue(results.get(0) instanceof ReturnStatement);
+        
+        ReturnStatement returnStmt = (ReturnStatement) results.get(0);
+        assertNotNull(returnStmt.getValue());
+        assertTrue(returnStmt.getValue() instanceof IntegerLiteral);
+        assertEquals("42", ((IntegerLiteral) returnStmt.getValue()).getValue());
+    }
+    
+    /**
+     * 测试不带返回值的return语句
+     */
+    @Test
+    public void testReturnStatementWithoutValue() {
+        String source = "return";
+        List<ParseResult> results = parseSource(source);
+        
+        assertEquals(1, results.size());
+        assertTrue(results.get(0) instanceof ReturnStatement);
+        
+        ReturnStatement returnStmt = (ReturnStatement) results.get(0);
+        assertNull(returnStmt.getValue());
+    }
+    
 }

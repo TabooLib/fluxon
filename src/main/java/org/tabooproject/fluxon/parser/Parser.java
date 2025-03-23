@@ -16,16 +16,17 @@ import java.util.stream.Collector;
  * 解析优先级（从高到低）：
  * 1. Primary - 基本表达式（字面量、变量、括号表达式、when表达式、if表达式、while表达式、列表字面量、字典字面量等）
  * 2. Call - 函数调用
- * 3. Unary - 一元表达式（!、-、await、&）
- * 4. Factor - 因子表达式（*、/、%）
- * 5. Term - 项表达式（+、-）
- * 6. Comparison - 比较表达式（>、>=、<、<=）
- * 7. Equality - 相等性表达式（==、!=）
- * 8. Range - 范围表达式（..、..<）
- * 9. LogicalAnd - 逻辑与表达式（&&）
- * 10. LogicalOr - 逻辑或表达式（||）
- * 11. Elvis - Elvis操作符（?:）
- * 12. Assignment - 赋值表达式（=、+=、-=、*=、/=）
+ * 3. Return - 返回语句（return 表达式）
+ * 4. Unary - 一元表达式（!、-、await、&）
+ * 5. Factor - 因子表达式（*、/、%）
+ * 6. Term - 项表达式（+、-）
+ * 7. Comparison - 比较表达式（>、>=、<、<=）
+ * 8. Equality - 相等性表达式（==、!=）
+ * 9. Range - 范围表达式（..、..<）
+ * 10. LogicalAnd - 逻辑与表达式（&&）
+ * 11. LogicalOr - 逻辑或表达式（||）
+ * 12. Elvis - Elvis操作符（?:）
+ * 13. Assignment - 赋值表达式（=、+=、-=、*=、/=）
  * <p>
  * 解析器使用递归下降解析方法，确保高优先级的操作符先于低优先级的操作符被处理。
  */

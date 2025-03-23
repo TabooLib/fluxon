@@ -24,6 +24,17 @@ public class StatementParser {
         else if (parser.match(TokenType.DEF)) {
             return FunctionDefinitionParser.parse(parser, false);
         }
+        // 解析 return 语句
+        else if (parser.match(TokenType.RETURN)) {
+            // 检查是否有返回值
+            if (parser.isEndOfExpression()) {
+                parser.match(TokenType.SEMICOLON); // 可选的分号
+                return new Statements.ReturnStatement(null);
+            }
+            ParseResult returnValue = ExpressionParser.parse(parser);
+            parser.match(TokenType.SEMICOLON); // 可选的分号
+            return new Statements.ReturnStatement(returnValue);
+        }
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
         // 可选的分号
