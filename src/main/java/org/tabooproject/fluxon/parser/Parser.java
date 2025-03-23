@@ -251,7 +251,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 赋值表达式解析结果
      */
-    private ParseResult parseAssignment() {
+    public ParseResult parseAssignment() {
         ParseResult expr = parseLogicalOr();
 
         if (match(TokenType.ASSIGN, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN, TokenType.MULTIPLY_ASSIGN, TokenType.DIVIDE_ASSIGN)) {
@@ -273,7 +273,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 逻辑或表达式解析结果
      */
-    private ParseResult parseLogicalOr() {
+    public ParseResult parseLogicalOr() {
         ParseResult expr = parseLogicalAnd();
 
         while (match(TokenType.OR)) {
@@ -289,7 +289,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 逻辑与表达式解析结果
      */
-    private ParseResult parseLogicalAnd() {
+    public ParseResult parseLogicalAnd() {
         ParseResult expr = parseEquality();
 
         while (match(TokenType.AND)) {
@@ -305,7 +305,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 相等性表达式解析结果
      */
-    private ParseResult parseEquality() {
+    public ParseResult parseEquality() {
         ParseResult expr = parseComparison();
 
         while (match(TokenType.EQUAL, TokenType.NOT_EQUAL)) {
@@ -321,7 +321,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 比较表达式解析结果
      */
-    private ParseResult parseComparison() {
+    public ParseResult parseComparison() {
         ParseResult expr = parseTerm();
 
         while (match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
@@ -337,7 +337,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 项表达式解析结果
      */
-    private ParseResult parseTerm() {
+    public ParseResult parseTerm() {
         ParseResult expr = parseFactor();
 
         while (match(TokenType.PLUS, TokenType.MINUS)) {
@@ -353,7 +353,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 因子表达式解析结果
      */
-    private ParseResult parseFactor() {
+    public ParseResult parseFactor() {
         ParseResult expr = parseUnary();
 
         while (match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO)) {
@@ -369,7 +369,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 一元表达式解析结果
      */
-    private ParseResult parseUnary() {
+    public ParseResult parseUnary() {
         if (match(TokenType.NOT, TokenType.MINUS)) {
             Token operator = previous();
             ParseResult right = parsePrimary();
@@ -395,7 +395,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 函数调用表达式解析结果
      */
-    private ParseResult parseCall() {
+    public ParseResult parseCall() {
         ParseResult expr = parsePrimary();
 
         // 解析有括号的函数调用
@@ -466,7 +466,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param actualCount 实际参数数量
      * @return 最接近的参数数量
      */
-    private int findClosestParameterCount(List<Integer> paramCounts, int actualCount) {
+    public int findClosestParameterCount(List<Integer> paramCounts, int actualCount) {
         if (paramCounts.isEmpty()) {
             return 0;
         }
@@ -492,7 +492,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param callee 被调用者
      * @return 函数调用解析结果
      */
-    private ParseResult finishCall(ParseResult callee) {
+    public ParseResult finishCall(ParseResult callee) {
         List<ParseResult> arguments = new ArrayList<>();
         // 如果参数列表不为空
         if (!check(TokenType.RIGHT_PAREN)) {
@@ -509,7 +509,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 基本表达式解析结果
      */
-    private ParseResult parsePrimary() {
+    public ParseResult parsePrimary() {
         // 字面量
         if (match(TokenType.FALSE)) {
             return new BooleanLiteral(false);
@@ -563,7 +563,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return When 表达式解析结果
      */
-    private ParseResult parseWhenExpression() {
+    public ParseResult parseWhenExpression() {
         // 消费 WHEN 标记
         consume(TokenType.WHEN, "Expected 'when' before when expression");
 
@@ -608,7 +608,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return If 表达式解析结果
      */
-    private ParseResult parseIfExpression() {
+    public ParseResult parseIfExpression() {
         // 消费 IF 标记
         consume(TokenType.IF, "Expected 'if' before if expression");
 
@@ -645,7 +645,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 是否为表达式结束标记
      */
-    private boolean isEndOfExpression() {
+    public boolean isEndOfExpression() {
         return check(TokenType.SEMICOLON) || check(TokenType.RIGHT_PAREN) ||
                 check(TokenType.RIGHT_BRACE) || check(TokenType.RIGHT_BRACKET) ||
                 check(TokenType.COMMA) || isAtEnd();
@@ -656,7 +656,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 是否为操作符
      */
-    private boolean isOperator() {
+    public boolean isOperator() {
         return check(TokenType.PLUS) || check(TokenType.MINUS) ||
                 check(TokenType.MULTIPLY) || check(TokenType.DIVIDE) ||
                 check(TokenType.MODULO) || check(TokenType.EQUAL) ||
@@ -672,7 +672,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 标识符名称
      * @return 是否为已知函数
      */
-    private boolean isFunction(String name) {
+    public boolean isFunction(String name) {
         SymbolInfo info = symbolTable.get(name);
         return info != null && info.getType() == SymbolType.FUNCTION;
     }
@@ -683,7 +683,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @return 最大可能的参数数量
      */
-    private int getMaxExpectedArgumentCount(String name) {
+    public int getMaxExpectedArgumentCount(String name) {
         SymbolInfo info = symbolTable.get(name);
         return info != null ? info.getMaxParameterCount() : 0;
     }
@@ -694,7 +694,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @return 期望的参数数量
      */
-    private int getExpectedArgumentCount(String name) {
+    public int getExpectedArgumentCount(String name) {
         return getMaxExpectedArgumentCount(name);
     }
 
@@ -704,7 +704,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 标识符名称
      * @return 是否为已知变量
      */
-    private boolean isVariable(String name) {
+    public boolean isVariable(String name) {
         SymbolInfo info = symbolTable.get(name);
         return info != null && info.getType() == SymbolType.VARIABLE;
     }
@@ -712,7 +712,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     /**
      * 消费当前标记并前进
      */
-    private void advance() {
+    public void advance() {
         if (!isAtEnd()) {
             position++;
             currentToken = tokens.get(position);
@@ -725,7 +725,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param type 要检查的类型
      * @return 是否匹配
      */
-    private boolean match(TokenType type) {
+    public boolean match(TokenType type) {
         if (check(type)) {
             advance();
             return true;
@@ -739,7 +739,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param types 要检查的类型
      * @return 是否匹配
      */
-    private boolean match(TokenType... types) {
+    public boolean match(TokenType... types) {
         for (TokenType type : types) {
             if (check(type)) {
                 advance();
@@ -755,7 +755,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param type 要检查的类型
      * @return 是否匹配
      */
-    private boolean check(TokenType type) {
+    public boolean check(TokenType type) {
         if (isAtEnd()) return false;
         return currentToken.getType() == type;
     }
@@ -765,7 +765,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 是否到达末尾
      */
-    private boolean isAtEnd() {
+    public boolean isAtEnd() {
         return currentToken.is(TokenType.EOF);
     }
 
@@ -774,7 +774,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 前一个标记
      */
-    private Token previous() {
+    public Token previous() {
         return position > 0 ? tokens.get(position - 1) : tokens.get(0);
     }
 
@@ -783,7 +783,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @return 当前标记
      */
-    private Token peek() {
+    public Token peek() {
         return currentToken;
     }
 
@@ -793,7 +793,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param n 向前看的步数
      * @return 向前看n个标记
      */
-    private Token peek(int n) {
+    public Token peek(int n) {
         return position + n < tokens.size() ? tokens.get(position + n) : tokens.get(tokens.size() - 1);
     }
 
@@ -804,12 +804,21 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param message 错误消息
      * @return 消费的标记
      */
-    private Token consume(TokenType type, String message) {
+    public Token consume(TokenType type, String message) {
         if (check(type)) {
             advance();
             return previous();
         }
         throw new ParseException(message, currentToken, new ArrayList<>(results));
+    }
+
+    /**
+     * 获取当前解析结果
+     *
+     * @return 当前解析结果
+     */
+    public List<ParseResult> getResults() {
+        return results;
     }
 
     /**
