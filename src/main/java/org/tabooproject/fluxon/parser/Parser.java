@@ -35,18 +35,26 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 创建解析器
      */
     public Parser() {
-        // 预先添加一些常用函数到符号表，用于测试
-        symbolTable.put("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
-        symbolTable.put("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
-        symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
-        symbolTable.put("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
+        initDefaultSymbols();
     }
 
     /**
      * 创建带有符号表的解析器
      */
     public Parser(Map<String, SymbolInfo> symbolTable) {
+        initDefaultSymbols();
         this.symbolTable.putAll(symbolTable);
+    }
+
+    /**
+     * 初始化系统符号表
+     */
+    public void initDefaultSymbols() {
+        // 预先添加一些常用函数到符号表，用于测试
+        symbolTable.put("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
+        symbolTable.put("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
+        symbolTable.put("player", new SymbolInfo(SymbolType.FUNCTION, "player", List.of(1, 3)));
+        symbolTable.put("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
     }
 
     /**
@@ -77,7 +85,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     private List<ParseResult> parse() {
         results = new ArrayList<>();
-
         // 解析顶层语句
         while (!isAtEnd()) {
             ParseResult result = parseStatement();
@@ -94,14 +101,14 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 伪代码字符串
      */
     public String toPseudoCode() {
-        List<ParseResult> results = parse();
+        if (results == null) {
+            return "";
+        }
         StringBuilder sb = new StringBuilder();
-
         for (ParseResult result : results) {
             sb.append(result.toPseudoCode(0));
             sb.append("\n\n");
         }
-
         return sb.toString();
     }
 
