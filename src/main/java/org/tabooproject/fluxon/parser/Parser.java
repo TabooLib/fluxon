@@ -75,16 +75,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         if (!tokens.isEmpty()) {
             currentToken = tokens.get(0);
         }
-        return parse();
-    }
-
-    /**
-     * 解析词法单元序列
-     *
-     * @return 解析结果列表
-     */
-    private List<ParseResult> parse() {
-        results = new ArrayList<>();
+        this.position = 0;
+        this.results = new ArrayList<>();
         // 解析顶层语句
         while (!isAtEnd()) {
             ParseResult result = parseStatement();
