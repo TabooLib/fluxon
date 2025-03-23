@@ -1,0 +1,78 @@
+package org.tabooproject.fluxon.parser.impl;
+
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.expressions.Expressions;
+import org.tabooproject.fluxon.parser.statements.Statements;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class ListParser {
+
+    /**
+     * 尝试解析列表或字典字面量
+     */
+    public static ParseResult parse(Parser parser) {
+        // 空列表
+        if (parser.match(TokenType.RIGHT_BRACKET)) {
+            return new Expressions.ListLiteral(new ArrayList<>());
+        }
+
+        // 检查是否是字典字面量
+        boolean isDictionary = false;
+        // 标记当前位置
+        int mark = parser.mark();
+
+        // 尝试解析一个表达式，然后检查后面是否跟着冒号
+        ParseResult testExpr = ExpressionParser.parse(parser);
+        if (parser.check(TokenType.COLON)) {
+            isDictionary = true;
+        }
+        // 回滚
+        parser.rollback(mark);
+        return isDictionary ? parseMapLiteral(parser) : parseListLiteral(parser);
+    }
+
+    /**
+     * 解析列表字面量
+     *
+     * @return 列表字面量解析结果
+     */
+    private static ParseResult parseListLiteral(Parser parser) {
+        List<ParseResult> elements = new ArrayList<>();
+        // 如果不是空列表
+        if (!parser.check(TokenType.RIGHT_BRACKET)) {
+            do {
+                elements.add(ExpressionParser.parse(parser));
+            } while (parser.match(TokenType.COMMA));
+        }
+        parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
+        return new Expressions.ListLiteral(elements);
+    }
+
+    /**
+     * 解析字典字面量
+     *
+     * @return 字典字面量解析结果
+     */
+    private static ParseResult parseMapLiteral(Parser parser) {
+        List<Expressions.MapEntry> entries = new ArrayList<>();
+        // 如果不是空字典
+        if (!parser.check(TokenType.RIGHT_BRACKET)) {
+            do {
+                // 解析键
+                ParseResult key = ExpressionParser.parse(parser);
+                // 解析冒号
+                parser.consume(TokenType.COLON, "Expected ':' after map key");
+                // 解析值
+                ParseResult value = ExpressionParser.parse(parser);
+                // 添加键值对
+                entries.add(new Expressions.MapEntry(key, value));
+            } while (parser.match(TokenType.COMMA));
+        }
+        parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
+        return new Expressions.MapLiteral(entries);
+    }
+}

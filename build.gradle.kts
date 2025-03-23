@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("me.champeau.jmh") version "0.7.2"
+    kotlin("jvm")
 }
 
 group = "org.tabooproject.fluxon"
@@ -21,6 +22,7 @@ dependencies {
     
     implementation("org.ow2.asm:asm:9.4")
     implementation("org.ow2.asm:asm-commons:9.4")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.test {
