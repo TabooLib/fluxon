@@ -52,6 +52,7 @@ public enum TokenType {
     MINUS_ASSIGN("-="),    // 减法赋值
     MULTIPLY_ASSIGN("*="), // 乘法赋值
     DIVIDE_ASSIGN("/="),   // 除法赋值
+    MODULO_ASSIGN("%="),   // 取模赋值
 
     AND("&&"),             // 逻辑与
     OR("||"),              // 逻辑或

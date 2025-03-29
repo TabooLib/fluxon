@@ -3,8 +3,9 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
-import org.tabooproject.fluxon.parser.statements.Statements;
+import org.tabooproject.fluxon.parser.expressions.ListLiteral;
+import org.tabooproject.fluxon.parser.expressions.MapEntry;
+import org.tabooproject.fluxon.parser.expressions.MapLiteral;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ public class ListParser {
     public static ParseResult parse(Parser parser) {
         // 空列表
         if (parser.match(TokenType.RIGHT_BRACKET)) {
-            return new Expressions.ListLiteral(new ArrayList<>());
+            return new ListLiteral(new ArrayList<>());
         }
 
         // 检查是否是字典字面量
@@ -49,7 +50,7 @@ public class ListParser {
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
-        return new Expressions.ListLiteral(elements);
+        return new ListLiteral(elements);
     }
 
     /**
@@ -58,7 +59,7 @@ public class ListParser {
      * @return 字典字面量解析结果
      */
     private static ParseResult parseMapLiteral(Parser parser) {
-        List<Expressions.MapEntry> entries = new ArrayList<>();
+        List<MapEntry> entries = new ArrayList<>();
         // 如果不是空字典
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
             do {
@@ -69,10 +70,10 @@ public class ListParser {
                 // 解析值
                 ParseResult value = ExpressionParser.parse(parser);
                 // 添加键值对
-                entries.add(new Expressions.MapEntry(key, value));
+                entries.add(new MapEntry(key, value));
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
-        return new Expressions.MapLiteral(entries);
+        return new MapLiteral(entries);
     }
 }

@@ -13,6 +13,13 @@ public interface Statement extends ParseResult {
     }
     
     /**
+     * 获取语句具体类型
+     * 
+     * @return 语句类型枚举值
+     */
+    StatementType getStatementType();
+    
+    /**
      * 生成带缩进的伪代码表示
      *
      * @param indent 缩进级别

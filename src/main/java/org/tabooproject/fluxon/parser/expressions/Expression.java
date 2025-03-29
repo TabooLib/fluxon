@@ -13,6 +13,13 @@ public interface Expression extends ParseResult {
     }
     
     /**
+     * 获取表达式具体类型
+     * 
+     * @return 表达式类型枚举值
+     */
+    ExpressionType getExpressionType();
+    
+    /**
      * 生成带缩进的伪代码表示
      *
      * @param indent 缩进级别

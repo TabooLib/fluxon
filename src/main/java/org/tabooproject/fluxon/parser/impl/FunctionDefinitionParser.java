@@ -7,7 +7,7 @@ import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolInfo;
 import org.tabooproject.fluxon.parser.SymbolType;
 import org.tabooproject.fluxon.parser.definitions.Definitions;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
+import org.tabooproject.fluxon.parser.expressions.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +26,7 @@ public class FunctionDefinitionParser {
     public static ParseResult parse(Parser parser, boolean isAsync) {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
-        String functionName = nameToken.getStringValue();
+        String functionName = nameToken.getLexeme();
 
         // 解析参数列表
         List<String> parameters = new ArrayList<>();
@@ -37,14 +37,14 @@ public class FunctionDefinitionParser {
             if (!parser.check(TokenType.RIGHT_PAREN)) {
                 do {
                     Token param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name");
-                    parameters.add(param.getStringValue());
+                    parameters.add(param.getLexeme());
                 } while (parser.match(TokenType.COMMA));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
         } else {
             // 无括号的参数列表
             while (parser.match(TokenType.IDENTIFIER)) {
-                parameters.add(parser.previous().getStringValue());
+                parameters.add(parser.previous().getLexeme());
             }
         }
 
@@ -83,7 +83,7 @@ public class FunctionDefinitionParser {
             // 如果是标识符，直接解析为变量
             if (parser.check(TokenType.IDENTIFIER)) {
                 Token identToken = parser.consume(TokenType.IDENTIFIER, "Expected identifier");
-                body = new Expressions.Identifier(identToken.getStringValue());
+                body = new Identifier(identToken.getLexeme());
             }
             // When 结构
             else if (parser.check(TokenType.WHEN)) {

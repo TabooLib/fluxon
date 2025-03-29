@@ -3,7 +3,8 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
+import org.tabooproject.fluxon.parser.expressions.WhenBranch;
+import org.tabooproject.fluxon.parser.expressions.WhenExpression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,11 +31,11 @@ public class WhenParser {
 
         // 如果当前是 EOF，直接返回空的 when 表达式
         if (parser.isAtEnd()) {
-            return new Expressions.WhenExpression(condition, new ArrayList<>());
+            return new WhenExpression(condition, new ArrayList<>());
         }
 
         // 解析分支
-        List<Expressions.WhenBranch> branches = new ArrayList<>();
+        List<WhenBranch> branches = new ArrayList<>();
 
         while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
             // 解析非 else 分支条件
@@ -45,13 +46,13 @@ public class WhenParser {
             // 消费箭头操作符
             parser.consume(TokenType.ARROW, "Expected '->' after else");
             // 解析分支结果
-            branches.add(new Expressions.WhenBranch(branchCondition, ExpressionParser.parse(parser)));
+            branches.add(new WhenBranch(branchCondition, ExpressionParser.parse(parser)));
             // 可选的分支结束符
             parser.match(TokenType.SEMICOLON);
         }
 
         // 消费右花括号，如果存在的话
         parser.match(TokenType.RIGHT_BRACE);
-        return new Expressions.WhenExpression(condition, branches);
+        return new WhenExpression(condition, branches);
     }
 }

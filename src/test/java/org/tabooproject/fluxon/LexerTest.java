@@ -51,7 +51,7 @@ public class LexerTest {
      * @return 该类型 Token 的值列表
      */
     private List<String> getValuesByType(List<Token> tokens, TokenType type) {
-        return filterByType(tokens, type).stream().map(Token::getStringValue).collect(Collectors.toList());
+        return filterByType(tokens, type).stream().map(Token::getLexeme).collect(Collectors.toList());
     }
 
     /**
@@ -93,7 +93,7 @@ public class LexerTest {
      */
     private int findTokenIndexByTypeAndValue(List<Token> tokens, TokenType type, String value) {
         for (int i = 0; i < tokens.size(); i++) {
-            if (tokens.get(i).getType() == type && tokens.get(i).getStringValue().equals(value)) {
+            if (tokens.get(i).getType() == type && tokens.get(i).getLexeme().equals(value)) {
                 return i;
             }
         }
@@ -141,8 +141,8 @@ public class LexerTest {
             assertEquals(TokenType.CATCH, tokens.get(14).getType(), "第15个 token 应为 'catch' 关键字");
 
             // 验证值也正确
-            assertEquals("def", tokens.get(0).getStringValue(), "第1个 token 的值应为 'def'");
-            assertEquals("catch", tokens.get(14).getStringValue(), "第15个 token 的值应为 'catch'");
+            assertEquals("def", tokens.get(0).getLexeme(), "第1个 token 的值应为 'def'");
+            assertEquals("catch", tokens.get(14).getLexeme(), "第15个 token 的值应为 'catch'");
 
             // 关键字数量
             assertEquals(15, tokens.size() - 1, "应识别 15 个关键字 (不计 EOF)");
@@ -402,7 +402,7 @@ public class LexerTest {
             Token stringToken = filterByType(tokens, TokenType.STRING).get(0);
 
             // 验证字符串内容
-            assertEquals("line1\nline2", stringToken.getStringValue(), "字符串内容应包含换行符");
+            assertEquals("line1\nline2", stringToken.getLexeme(), "字符串内容应包含换行符");
 
             // 验证字符串 token 的位置
             assertEquals(1, stringToken.getLine(), "字符串 token 的行号应为起始行号");
@@ -617,14 +617,14 @@ public class LexerTest {
 
             // 验证函数名、括号和参数
             assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType(), "第1个 token 应为标识符");
-            assertEquals("max", tokens.get(0).getStringValue(), "标识符应为 'max'");
+            assertEquals("max", tokens.get(0).getLexeme(), "标识符应为 'max'");
 
             assertEquals(TokenType.LEFT_PAREN, tokens.get(1).getType(), "第2个 token 应为左括号");
             assertEquals(TokenType.INTEGER, tokens.get(2).getType(), "第3个 token 应为整数");
-            assertEquals("10", tokens.get(2).getStringValue(), "整数应为 '10'");
+            assertEquals("10", tokens.get(2).getLexeme(), "整数应为 '10'");
             assertEquals(TokenType.COMMA, tokens.get(3).getType(), "第4个 token 应为逗号");
             assertEquals(TokenType.INTEGER, tokens.get(4).getType(), "第5个 token 应为整数");
-            assertEquals("20", tokens.get(4).getStringValue(), "整数应为 '20'");
+            assertEquals("20", tokens.get(4).getLexeme(), "整数应为 '20'");
             assertEquals(TokenType.RIGHT_PAREN, tokens.get(5).getType(), "第6个 token 应为右括号");
         }
 

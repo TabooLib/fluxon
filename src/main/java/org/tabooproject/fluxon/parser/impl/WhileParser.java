@@ -3,11 +3,7 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
-import org.tabooproject.fluxon.parser.statements.Statements;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.tabooproject.fluxon.parser.expressions.WhileExpression;
 
 public class WhileParser {
 
@@ -29,6 +25,6 @@ public class WhileParser {
         } else {
             body = ExpressionParser.parse(parser);
         }
-        return new Expressions.WhileExpression(condition, body);
+        return new WhileExpression(condition, body);
     }
 }

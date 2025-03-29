@@ -1,11 +1,18 @@
 package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.FluxonCompiler;
+import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.lexer.Lexer;
+import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 
 /**
  * Fluxon 语言的主入口类
@@ -37,27 +44,46 @@ public class Fluxon {
     }
     
     /**
-     * 执行 Fluxon 源代码
+     * 解析 Fluxon 源代码
+     * 
+     * @param source Fluxon 源代码
+     * @return 解析结果列表
+     */
+    public static List<ParseResult> parse(String source) {
+        CompilationContext context = new CompilationContext(source);
+        
+        // 词法分析
+        Lexer lexer = new Lexer();
+        List<Token> tokens = lexer.process(context);
+        context.setAttribute("tokens", tokens);
+        
+        // 语法分析
+        Parser parser = new Parser();
+        return parser.process(context);
+    }
+    
+    /**
+     * 解释执行 Fluxon 源代码
      * 
      * @param source Fluxon 源代码
      * @return 执行结果
      */
     public static Object eval(String source) {
-        // 编译并加载生成的类
-        byte[] bytecode = compile(source);
-        // 使用自定义类加载器加载并执行
-        FluxonClassLoader classLoader = new FluxonClassLoader();
-        return classLoader.loadAndExecute(bytecode);
+        // 使用解释器直接执行
+        List<ParseResult> parseResults = parse(source);
+        Interpreter interpreter = new Interpreter();
+        return interpreter.execute(parseResults);
     }
     
     /**
-     * Fluxon 专用类加载器
+     * 执行 Fluxon 源文件
+     * 
+     * @param file Fluxon 源文件
+     * @return 执行结果
+     * @throws IOException 如果文件读取失败
      */
-    private static class FluxonClassLoader extends ClassLoader {
-        public Object loadAndExecute(byte[] bytecode) {
-            // 加载类并执行 main 方法或顶层代码
-            // 这里简化实现，实际需要更复杂的逻辑
-            return null; // 暂时返回 null
-        }
+    public static Object evalFile(File file) throws IOException {
+        String source = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        return eval(source);
     }
 }

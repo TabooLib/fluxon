@@ -12,7 +12,11 @@ public class StringUtils {
      * @return 缩进字符串
      */
     public static String getIndent(int indent) {
-        return "    ".repeat(Math.max(0, indent));
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < indent; i++) {
+            sb.append("    ");
+        }
+        return sb.toString();
     }
     
     /**

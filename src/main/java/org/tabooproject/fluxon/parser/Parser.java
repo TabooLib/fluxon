@@ -5,10 +5,9 @@ import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.impl.StatementParser;
-import org.tabooproject.fluxon.parser.util.StringUtils;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.*;
-import java.util.stream.Collector;
 
 /**
  * Fluxon解析器
@@ -48,7 +47,16 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public Parser() {
         // 初始化全局作用域
         scopeStack.push(new SymbolScope());
-        initDefaultSymbols();
+        
+        // 使用注册中心初始化符号
+        Map<String, SymbolInfo> symbols = FluxonRuntime.getInstance().getSymbolInfoMap();
+        for (Map.Entry<String, SymbolInfo> entry : symbols.entrySet()) {
+            if (entry.getValue().getType() == SymbolType.FUNCTION) {
+                defineFunction(entry.getKey(), entry.getValue());
+            } else {
+                defineVariable(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     /**
@@ -65,17 +73,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 }
             }
         }
-    }
-
-    /**
-     * 初始化系统符号表
-     */
-    public void initDefaultSymbols() {
-        // 预先添加一些常用函数到符号表，用于测试
-        defineFunction("print", new SymbolInfo(SymbolType.FUNCTION, "print", 1));
-        defineFunction("checkGrade", new SymbolInfo(SymbolType.FUNCTION, "checkGrade", 1));
-        defineFunction("player", new SymbolInfo(SymbolType.FUNCTION, "player", Arrays.asList(1, 3)));
-        defineFunction("fetch", new SymbolInfo(SymbolType.FUNCTION, "fetch", 1));
     }
 
     /**

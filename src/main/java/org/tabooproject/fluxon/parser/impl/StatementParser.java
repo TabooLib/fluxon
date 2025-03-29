@@ -3,7 +3,8 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.statements.Statements;
+import org.tabooproject.fluxon.parser.statements.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statements.ReturnStatement;
 
 public class StatementParser {
 
@@ -29,16 +30,16 @@ public class StatementParser {
             // 检查是否有返回值
             if (parser.isEndOfExpression()) {
                 parser.match(TokenType.SEMICOLON); // 可选的分号
-                return new Statements.ReturnStatement(null);
+                return new ReturnStatement(null);
             }
             ParseResult returnValue = ExpressionParser.parse(parser);
             parser.match(TokenType.SEMICOLON); // 可选的分号
-            return new Statements.ReturnStatement(returnValue);
+            return new ReturnStatement(returnValue);
         }
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
         // 可选的分号
         parser.match(TokenType.SEMICOLON);
-        return new Statements.ExpressionStatement(expr);
+        return new ExpressionStatement(expr);
     }
 }

@@ -44,7 +44,7 @@ public class Token {
     /**
      * 获取词法单元值的字符串形式
      */
-    public String getStringValue() {
+    public String getLexeme() {
         return value.toString();
     }
     

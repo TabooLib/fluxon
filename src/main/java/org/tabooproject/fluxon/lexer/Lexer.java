@@ -450,6 +450,10 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance();
                 advance();
                 return new Token(TokenType.DIVIDE_ASSIGN, "/=", startLine, startColumn);
+            } else if (first == '%' && second == '=') {
+                advance();
+                advance();
+                return new Token(TokenType.MODULO_ASSIGN, "/=", startLine, startColumn);
             } else if (first == '.' && second == '.') {
                 advance();
                 advance();

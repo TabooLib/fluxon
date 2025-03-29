@@ -5,9 +5,12 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
+import org.tabooproject.fluxon.parser.expressions.*;
 
 public class ExpressionParser {
+
+    private static final int MAX_RECURSION_DEPTH = 1000;
+    private static int currentDepth = 0;
 
     /**
      * 解析语句
@@ -15,7 +18,15 @@ public class ExpressionParser {
      * @return 解析结果
      */
     public static ParseResult parse(Parser parser) {
-        return parseAssignment(parser);
+        if (currentDepth > MAX_RECURSION_DEPTH) {
+            throw new ParseException("Maximum recursion depth exceeded", parser.peek(), parser.getResults());
+        }
+        currentDepth++;
+        try {
+            return parseAssignment(parser);
+        } finally {
+            currentDepth--;
+        }
     }
 
     /**
@@ -30,17 +41,23 @@ public class ExpressionParser {
      */
     public static ParseResult parseAssignment(Parser parser) {
         ParseResult expr = parseElvis(parser);
-
-        if (parser.match(TokenType.ASSIGN, TokenType.PLUS_ASSIGN, TokenType.MINUS_ASSIGN, TokenType.MULTIPLY_ASSIGN, TokenType.DIVIDE_ASSIGN)) {
+        if (parser.match(
+                TokenType.ASSIGN,
+                TokenType.PLUS_ASSIGN,
+                TokenType.MINUS_ASSIGN,
+                TokenType.MULTIPLY_ASSIGN,
+                TokenType.DIVIDE_ASSIGN,
+                TokenType.MODULO_ASSIGN
+        )) {
             Token operator = parser.previous();
             ParseResult value = parseAssignment(parser);
 
             // 检查左侧是否为有效的赋值目标
-            if (expr instanceof Expressions.Identifier) {
-                String name = ((Expressions.Identifier) expr).getName();
+            if (expr instanceof Identifier) {
+                String name = ((Identifier) expr).getName();
                 // 将变量添加到当前作用域
                 parser.defineVariable(name);
-                return new Expressions.Assignment(name, operator, value);
+                return new Assignment(name, operator, value);
             }
             throw new ParseException("Invalid assignment target", operator, parser.getResults());
         }
@@ -60,7 +77,7 @@ public class ExpressionParser {
         if (parser.match(TokenType.QUESTION_COLON)) {
             // 解析默认值表达式
             ParseResult alternative = parseElvis(parser);
-            expr = new Expressions.ElvisExpression(expr, alternative);
+            expr = new ElvisExpression(expr, alternative);
         }
         return expr;
     }
@@ -76,7 +93,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.OR)) {
             Token operator = parser.previous();
             ParseResult right = parseLogicalAnd(parser);
-            expr = new Expressions.LogicalExpression(expr, operator, right);
+            expr = new LogicalExpression(expr, operator, right);
         }
         return expr;
     }
@@ -92,7 +109,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.AND)) {
             Token operator = parser.previous();
             ParseResult right = parseEquality(parser);
-            expr = new Expressions.LogicalExpression(expr, operator, right);
+            expr = new LogicalExpression(expr, operator, right);
         }
         return expr;
     }
@@ -114,7 +131,7 @@ public class ExpressionParser {
 
             // 解析范围的结束表达式
             ParseResult end = parseEquality(parser);
-            expr = new Expressions.RangeExpression(expr, end, inclusive);
+            expr = new RangeExpression(expr, end, inclusive);
         }
         return expr;
     }
@@ -130,7 +147,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.EQUAL, TokenType.NOT_EQUAL)) {
             Token operator = parser.previous();
             ParseResult right = parseComparison(parser);
-            expr = new Expressions.BinaryExpression(expr, operator, right);
+            expr = new BinaryExpression(expr, operator, right);
         }
         return expr;
     }
@@ -146,7 +163,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
             Token operator = parser.previous();
             ParseResult right = parseTerm(parser);
-            expr = new Expressions.BinaryExpression(expr, operator, right);
+            expr = new BinaryExpression(expr, operator, right);
         }
         return expr;
     }
@@ -162,7 +179,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.PLUS, TokenType.MINUS)) {
             Token operator = parser.previous();
             ParseResult right = parseFactor(parser);
-            expr = new Expressions.BinaryExpression(expr, operator, right);
+            expr = new BinaryExpression(expr, operator, right);
         }
         return expr;
     }
@@ -178,7 +195,7 @@ public class ExpressionParser {
         while (parser.match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO)) {
             Token operator = parser.previous();
             ParseResult right = parseUnary(parser);
-            expr = new Expressions.BinaryExpression(expr, operator, right);
+            expr = new BinaryExpression(expr, operator, right);
         }
         return expr;
     }
@@ -193,21 +210,21 @@ public class ExpressionParser {
             // 逻辑非、负号
             case NOT:
             case MINUS:
-                return new Expressions.UnaryExpression(parser.consume(), parsePrimary(parser));
+                return new UnaryExpression(parser.consume(), parsePrimary(parser));
             // 等待
             case AWAIT: {
                 parser.consume(); // 消费 await
-                return new Expressions.AwaitExpression(parseUnary(parser));
+                return new AwaitExpression(parseUnary(parser));
             }
             // 引用
             case AMPERSAND: {
                 parser.consume(); // 消费 &
-                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getStringValue();
+                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
                 // 检查变量是否存在
                 if (!parser.isVariable(name)) {
                     throw new RuntimeException("Unknown variable '" + name + "'.");
                 } else {
-                    return new Expressions.ReferenceExpression(new Expressions.Identifier(name));
+                    return new ReferenceExpression(new Identifier(name));
                 }
             }
             // 函数调用
@@ -225,31 +242,31 @@ public class ExpressionParser {
         switch (parser.peek().getType()) {
             // 标识符
             case IDENTIFIER:
-                return new Expressions.Identifier(parser.consume().getStringValue());
+                return new Identifier(parser.consume().getLexeme());
             // 字符串
             case STRING:
-                return new Expressions.StringLiteral(parser.consume().getStringValue());
+                return new StringLiteral(parser.consume().getLexeme());
             // 整型
             case INTEGER:
-                return new Expressions.IntLiteral((int) parser.consume().getValue());
+                return new IntLiteral((int) parser.consume().getValue());
             // 长整型
             case LONG:
-                return new Expressions.LongLiteral((long) parser.consume().getValue());
+                return new LongLiteral((long) parser.consume().getValue());
             // 单精度
             case FLOAT:
-                return new Expressions.FloatLiteral((float) parser.consume().getValue());
+                return new FloatLiteral((float) parser.consume().getValue());
             // 双精度
             case DOUBLE:
-                return new Expressions.DoubleLiteral((double) parser.consume().getValue());
+                return new DoubleLiteral((double) parser.consume().getValue());
             // 真
             case TRUE: {
                 parser.consume();
-                return new Expressions.BooleanLiteral(true);
+                return new BooleanLiteral(true);
             }
             // 假
             case FALSE: {
                 parser.consume();
-                return new Expressions.BooleanLiteral(false);
+                return new BooleanLiteral(false);
             }
             // 列表和字典
             case LEFT_BRACKET: {
@@ -261,7 +278,7 @@ public class ExpressionParser {
                 parser.consume(); // 消费左括号
                 ParseResult expr = parse(parser);
                 parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
-                return new Expressions.GroupingExpression(expr);
+                return new GroupingExpression(expr);
             }
             // 表达式
             case IF:

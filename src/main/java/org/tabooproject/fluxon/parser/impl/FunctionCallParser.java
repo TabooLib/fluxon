@@ -4,8 +4,10 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolInfo;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
-import org.tabooproject.fluxon.parser.statements.Statements;
+import org.tabooproject.fluxon.parser.expressions.FunctionCall;
+import org.tabooproject.fluxon.parser.expressions.Identifier;
+import org.tabooproject.fluxon.parser.expressions.StringLiteral;
+import org.tabooproject.fluxon.parser.statements.Block;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +27,8 @@ public class FunctionCallParser {
             expr = finishCall(parser, expr);
         }
         // 解析无括号的函数调用
-        else if (expr instanceof Expressions.Identifier && !parser.isEndOfExpression() && !parser.isOperator()) {
-            String functionName = ((Expressions.Identifier) expr).getName();
+        else if (expr instanceof Identifier && !parser.isEndOfExpression() && !parser.isOperator()) {
+            String functionName = ((Identifier) expr).getName();
 
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
@@ -40,7 +42,7 @@ public class FunctionCallParser {
                 for (int i = 0; i < maxArgCount && !parser.isEndOfExpression() && !parser.isOperator(); i++) {
                     // 检查当前标记是否为标识符
                     if (parser.check(TokenType.IDENTIFIER)) {
-                        String identifier = parser.peek().getStringValue();
+                        String identifier = parser.peek().getLexeme();
 
                         // 检查标识符是否为已知函数或变量
                         if (parser.isFunction(identifier) || parser.isVariable(identifier)) {
@@ -48,7 +50,7 @@ public class FunctionCallParser {
                         } else {
                             // 未知标识符，转为字符串
                             parser.advance(); // 消费标识符
-                            arguments.add(new Expressions.StringLiteral(identifier));
+                            arguments.add(new StringLiteral(identifier));
                         }
                     } else {
                         // 非标识符，按表达式解析
@@ -63,17 +65,17 @@ public class FunctionCallParser {
 
                 // 检查解析到的参数数量是否有效
                 if (info.supportsParameterCount(arguments.size())) {
-                    expr = new Expressions.FunctionCall(expr, arguments);
+                    expr = new FunctionCall(expr, arguments);
                 } else {
                     // 参数数量不匹配，找到最接近的参数数量
                     List<Integer> paramCounts = info.getParameterCounts();
                     int closestCount = findClosestParameterCount(paramCounts, arguments.size());
                     List<ParseResult> block = new ArrayList<>();
                     // 使用足额的参数
-                    block.add(new Expressions.FunctionCall(expr, arguments.subList(0, closestCount)));
+                    block.add(new FunctionCall(expr, arguments.subList(0, closestCount)));
                     // 和剩下的参数打包成代码块，避免回滚二次解析
                     block.addAll(arguments.subList(closestCount, arguments.size()));
-                    expr = new Statements.Block("ipc", block);
+                    expr = new Block("ipc", block);
                 }
             }
         }
@@ -123,6 +125,6 @@ public class FunctionCallParser {
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return new Expressions.FunctionCall(callee, arguments);
+        return new FunctionCall(callee, arguments);
     }
 }

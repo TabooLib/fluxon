@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.Expressions;
+import org.tabooproject.fluxon.parser.expressions.IfExpression;
 
 public class IfParser {
 
@@ -41,6 +41,6 @@ public class IfParser {
                 elseBranch = ExpressionParser.parse(parser);
             }
         }
-        return new Expressions.IfExpression(condition, thenBranch, elseBranch);
+        return new IfExpression(condition, thenBranch, elseBranch);
     }
 }

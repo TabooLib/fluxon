@@ -5,9 +5,9 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definitions.Definitions.FunctionDefinition;
-import org.tabooproject.fluxon.parser.expressions.Expressions.*;
-import org.tabooproject.fluxon.parser.statements.Statements.ExpressionStatement;
-import org.tabooproject.fluxon.parser.statements.Statements.ReturnStatement;
+import org.tabooproject.fluxon.parser.expressions.*;
+import org.tabooproject.fluxon.parser.statements.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statements.ReturnStatement;
 
 import java.util.List;
 

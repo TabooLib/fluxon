@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.statements.Statements;
+import org.tabooproject.fluxon.parser.statements.Block;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +32,6 @@ public class BlockParser {
         // 退出当前作用域
         parser.exitScope();
         
-        return new Statements.Block(null, statements);
+        return new Block(null, statements);
     }
 }
