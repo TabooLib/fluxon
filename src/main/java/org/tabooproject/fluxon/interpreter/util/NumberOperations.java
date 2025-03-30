@@ -118,7 +118,7 @@ public class NumberOperations {
         // 检查除数是否为零
         double bValue = ((Number) b).doubleValue();
         if (bValue == 0) {
-            throw new RuntimeException("除数不能为零");
+            throw new RuntimeException("Divisor cannot be zero");
         }
         
         // 如果操作数中有浮点类型，返回浮点结果
@@ -162,7 +162,7 @@ public class NumberOperations {
         // 检查模数是否为零
         double bValue = ((Number) b).doubleValue();
         if (bValue == 0) {
-            throw new RuntimeException("模数不能为零");
+            throw new RuntimeException("Modulus cannot be zero");
         }
         
         // 按照类型优先级处理
@@ -188,7 +188,6 @@ public class NumberOperations {
         if (!(a instanceof Number) || !(b instanceof Number)) {
             throw new RuntimeException("Operands for comparison must be numbers: " + a + " and " + b);
         }
-        
         // 使用 Double.compare 进行统一比较，避免精度问题
         return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue());
     }

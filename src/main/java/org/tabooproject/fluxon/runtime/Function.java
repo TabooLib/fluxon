@@ -1,0 +1,39 @@
+package org.tabooproject.fluxon.runtime;
+
+import java.util.List;
+
+/**
+ * 函数接口
+ * 表示可以被调用的函数
+ */
+public interface Function {
+
+    /**
+     * 获取函数名称
+     * 
+     * @return 函数名称
+     */
+    String getName();
+
+    /**
+     * 获取函数参数数量
+     * 
+     * @return 参数数量
+     */
+    List<Integer> getParameterCounts();
+
+    /**
+     * 判断是否为异步函数
+     * 
+     * @return 如果是异步函数返回 true，否则返回 false
+     */
+    boolean isAsync();
+    
+    /**
+     * 执行函数
+     * 
+     * @param args 参数列表
+     * @return 返回值
+     */
+    Object call(Object[] args);
+} 

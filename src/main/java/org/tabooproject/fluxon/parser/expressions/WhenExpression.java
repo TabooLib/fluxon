@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.parser.expressions;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.ParseResult;
 
 import java.util.List;
@@ -16,6 +18,7 @@ public class WhenExpression implements Expression {
         this.branches = branches;
     }
 
+    @Nullable
     public ParseResult getSubject() {
         return subject;
     }
@@ -64,10 +67,12 @@ public class WhenExpression implements Expression {
             this.result = result;
         }
 
+        @Nullable
         public ParseResult getCondition() {
             return condition;
         }
 
+        @NotNull
         public ParseResult getResult() {
             return result;
         }

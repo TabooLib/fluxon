@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolInfo;
+import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.expressions.FunctionCall;
 import org.tabooproject.fluxon.parser.expressions.Identifier;
 import org.tabooproject.fluxon.parser.expressions.StringLiteral;
@@ -32,7 +32,7 @@ public class FunctionCallParser {
 
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
-            SymbolInfo info = parser.getFunctionInfo(functionName);
+            SymbolFunction info = parser.getFunctionInfo(functionName);
             if (info != null) {
                 // 获取函数的最大参数数量
                 int maxArgCount = parser.getMaxExpectedArgumentCount(functionName);

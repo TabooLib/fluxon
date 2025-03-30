@@ -1,6 +1,6 @@
 package org.tabooproject.fluxon.interpreter.visitors;
 
-import org.tabooproject.fluxon.interpreter.Environment;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.UserFunction;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.parser.definitions.Definition;
@@ -34,7 +34,6 @@ public class DefinitionEvaluator extends AbstractVisitor {
         if (definition instanceof Definitions.FunctionDefinition) {
             return evaluateFunctionDefinition((Definitions.FunctionDefinition) definition);
         }
-
         throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
     }
 
@@ -47,10 +46,8 @@ public class DefinitionEvaluator extends AbstractVisitor {
     private Object evaluateFunctionDefinition(Definitions.FunctionDefinition funcDef) {
         // 创建函数对象，捕获当前环境
         UserFunction function = new UserFunction(funcDef, environment, interpreter);
-
         // 在当前环境中定义函数
-        environment.define("func_" + funcDef.getName(), function);
-
+        environment.defineFunction(funcDef.getName(), function);
         return null;
     }
 

@@ -1,6 +1,6 @@
 package org.tabooproject.fluxon.interpreter.visitors;
 
-import org.tabooproject.fluxon.interpreter.Environment;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definitions.Definition;
@@ -73,7 +73,7 @@ public abstract class AbstractVisitor implements Visitor {
      * @param value 要判断的对象
      * @return 布尔值结果
      */
-    protected boolean isTruthy(Object value) {
+    protected boolean isTrue(Object value) {
         if (value == null) return false;
         if (value instanceof Boolean) return (Boolean) value;
         if (value instanceof Number) return ((Number) value).doubleValue() != 0;
@@ -91,6 +91,10 @@ public abstract class AbstractVisitor implements Visitor {
     protected boolean isEqual(Object a, Object b) {
         if (a == null && b == null) return true;
         if (a == null) return false;
-        return a.equals(b);
+        if (a instanceof Number && b instanceof Number) {
+            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) == 0;
+        } else {
+            return a.equals(b);
+        }
     }
 }

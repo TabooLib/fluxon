@@ -1,26 +1,26 @@
 package org.tabooproject.fluxon.parser;
 
+import org.tabooproject.fluxon.runtime.Function;
+
 import java.util.Collections;
 import java.util.List;
 
 /**
- * 符号信息类
+ * 函数声明
+ * 用于在编译阶段检测合法函数
  */
-public class SymbolInfo {
-    private final SymbolType type;
+public class SymbolFunction {
     private final String name;
     private final List<Integer> parameterCounts;
     private final int maxParameterCount;
 
-    public SymbolInfo(SymbolType type, String name, int parameterCount) {
-        this.type = type;
+    public SymbolFunction(String name, int parameterCount) {
         this.name = name;
         this.parameterCounts = Collections.singletonList(parameterCount);
         this.maxParameterCount = parameterCount;
     }
 
-    public SymbolInfo(SymbolType type, String name, List<Integer> parameterCounts) {
-        this.type = type;
+    public SymbolFunction(String name, List<Integer> parameterCounts) {
         this.name = name;
         this.parameterCounts = parameterCounts;
         this.maxParameterCount = parameterCounts.isEmpty() ? 0 : Collections.max(parameterCounts);
@@ -28,10 +28,6 @@ public class SymbolInfo {
 
     public String getName() {
         return name;
-    }
-
-    public SymbolType getType() {
-        return type;
     }
 
     /**
@@ -62,10 +58,13 @@ public class SymbolInfo {
         return parameterCounts.contains(count);
     }
 
+    public static SymbolFunction of(Function function) {
+        return new SymbolFunction(function.getName(), function.getParameterCounts());
+    }
+
     @Override
     public String toString() {
-        return "SymbolInfo{" +
-                "type=" + type +
+        return "SymbolFunction{" +
                 ", name='" + name + '\'' +
                 ", parameterCounts=" + parameterCounts +
                 ", maxParameterCount=" + maxParameterCount +

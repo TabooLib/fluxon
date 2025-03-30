@@ -1,18 +1,21 @@
 package org.tabooproject.fluxon;
 
-import org.tabooproject.fluxon.compiler.FluxonCompiler;
 import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.runtime.Function;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fluxon 语言的主入口类
@@ -21,44 +24,36 @@ import java.util.List;
 public class Fluxon {
     
     /**
-     * 编译 Fluxon 源代码
-     * 
-     * @param source Fluxon 源代码
-     * @return 编译后的字节码
-     */
-    public static byte[] compile(String source) {
-        FluxonCompiler compiler = new FluxonCompiler();
-        return compiler.compile(source);
-    }
-    
-    /**
-     * 编译 Fluxon 源文件
-     * 
-     * @param file Fluxon 源文件
-     * @return 编译后的字节码
-     * @throws IOException 如果文件读取失败
-     */
-    public static byte[] compileFile(File file) throws IOException {
-        String source = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-        return compile(source);
-    }
-    
-    /**
      * 解析 Fluxon 源代码
      * 
      * @param source Fluxon 源代码
      * @return 解析结果列表
      */
     public static List<ParseResult> parse(String source) {
+        return parse(source, new Environment());
+    }
+
+    /**
+     * 在特定环境中解析 Fluxon 源代码
+     *
+     * @param source Fluxon 源代码
+     * @return 解析结果列表
+     */
+    public static List<ParseResult> parse(String source, Environment env) {
         CompilationContext context = new CompilationContext(source);
-        
         // 词法分析
         Lexer lexer = new Lexer();
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
-        
         // 语法分析
         Parser parser = new Parser();
+        // 传入上下文符号
+        for (Map.Entry<String, Function> entry : env.getFunctions().entrySet()) {
+            parser.defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
+        }
+        for (String key : env.getValues().keySet()) {
+            parser.defineVariable(key);
+        }
         return parser.process(context);
     }
     

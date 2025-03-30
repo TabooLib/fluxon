@@ -56,6 +56,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
         // 布尔值特殊处理
         KEYWORDS.put("true", TokenType.TRUE);
         KEYWORDS.put("false", TokenType.FALSE);
+
+        // 空值
+        KEYWORDS.put("null", TokenType.NULL);
     }
 
     /**

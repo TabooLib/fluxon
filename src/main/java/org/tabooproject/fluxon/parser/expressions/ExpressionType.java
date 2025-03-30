@@ -16,6 +16,7 @@ public enum ExpressionType {
     DOUBLE_LITERAL,
     STRING_LITERAL,
     BOOLEAN_LITERAL,
+    NULL_LITERAL,
 
     // 高级字面量
     LIST_LITERAL,

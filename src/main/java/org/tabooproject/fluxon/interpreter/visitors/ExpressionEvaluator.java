@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.interpreter.visitors;
 
-import org.tabooproject.fluxon.interpreter.Environment;
-import org.tabooproject.fluxon.interpreter.Function;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.util.NumberOperations;
 import org.tabooproject.fluxon.lexer.Token;
@@ -62,6 +62,9 @@ public class ExpressionEvaluator extends AbstractVisitor {
             // 布尔值
             case BOOLEAN_LITERAL:
                 return ((BooleanLiteral) expression).getValue();
+            // 空值
+            case NULL_LITERAL:
+                return null;
 
             // 列表
             case LIST_LITERAL:
@@ -119,6 +122,9 @@ public class ExpressionEvaluator extends AbstractVisitor {
 
     /**
      * 评估列表
+     *
+     * @param expression 列表表达式
+     * @return 列表对象
      */
     private Object evaluateList(ListLiteral expression) {
         List<Object> elements = new ArrayList<>();
@@ -130,6 +136,9 @@ public class ExpressionEvaluator extends AbstractVisitor {
 
     /**
      * 评估字典
+     *
+     * @param expression 字典表达式
+     * @return 字典对象
      */
     private Object evaluateMap(MapLiteral expression) {
         Map<Object, Object> entries = new HashMap<>();
@@ -142,10 +151,66 @@ public class ExpressionEvaluator extends AbstractVisitor {
     }
 
     /**
-     * 评估范围
+     * 评估范围表达式
+     *
+     * @param expression 范围表达式
+     * @return 范围对象（通常是整数列表）
      */
     private Object evaluateRange(RangeExpression expression) {
-        return null;
+        // 获取开始值和结束值
+        Object start = interpreter.evaluate(expression.getStart());
+        Object end = interpreter.evaluate(expression.getEnd());
+
+        // 检查开始值和结束值是否为数字
+        if (!(start instanceof Number) || !(end instanceof Number)) {
+            throw new RuntimeException("Range bounds must be numbers");
+        }
+
+        // 转换为整数
+        int startInt = ((Number) start).intValue();
+        int endInt = ((Number) end).intValue();
+
+        // 检查范围是否为包含上界类型
+        boolean isInclusive = expression.isInclusive();
+        if (!isInclusive) {
+            endInt--;
+        }
+
+        // 创建范围结果列表
+        List<Integer> result = new ArrayList<>();
+        // 支持正向和反向范围
+        if (startInt <= endInt) {
+            // 正向范围
+            for (int i = startInt; i <= endInt; i++) {
+                result.add(i);
+            }
+        } else {
+            // 反向范围
+            for (int i = startInt; i >= endInt; i--) {
+                result.add(i);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 评估一元表达式
+     *
+     * @param expression 一元表达式
+     * @return 求值结果
+     */
+    private Object evaluateUnary(UnaryExpression expression) {
+        Object right = interpreter.evaluate(expression.getRight());
+
+        switch (expression.getOperator().getType()) {
+            case NOT:
+                return !isTrue(right);
+            case MINUS:
+                checkNumberOperand(expression.getOperator(), right);
+                return NumberOperations.negateNumber(right);
+            default:
+                throw new RuntimeException("Unknown unary operator: " + expression.getOperator().getType());
+        }
     }
 
     /**
@@ -208,34 +273,13 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     private Object evaluateLogical(LogicalExpression expression) {
         Object left = interpreter.evaluate(expression.getLeft());
-
+        // 逻辑或
         if (expression.getOperator().getType() == TokenType.OR) {
-            if (isTruthy(left)) return left;
+            if (isTrue(left)) return left;
         } else {
-            if (!isTruthy(left)) return left;
+            if (!isTrue(left)) return left;
         }
-
         return interpreter.evaluate(expression.getRight());
-    }
-
-    /**
-     * 评估一元表达式
-     *
-     * @param expression 一元表达式
-     * @return 求值结果
-     */
-    private Object evaluateUnary(UnaryExpression expression) {
-        Object right = interpreter.evaluate(expression.getRight());
-
-        switch (expression.getOperator().getType()) {
-            case NOT:
-                return !isTruthy(right);
-            case MINUS:
-                checkNumberOperand(expression.getOperator(), right);
-                return NumberOperations.negateNumber(right);
-            default:
-                throw new RuntimeException("Unknown unary operator: " + expression.getOperator().getType());
-        }
     }
 
     /**
@@ -248,7 +292,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
         Object value = interpreter.evaluate(expression.getValue());
 
         // 根据赋值操作符类型处理赋值
-        if (expression.getOperator().getType() == TokenType.EQUAL) {
+        if (expression.getOperator().getType() == TokenType.ASSIGN) {
             environment.assign(expression.getName(), value);
         } else {
             // 处理复合赋值
@@ -256,7 +300,6 @@ public class ExpressionEvaluator extends AbstractVisitor {
             if (!(current instanceof Number) || !(value instanceof Number)) {
                 throw new RuntimeException("Operands for compound assignment must be numbers.");
             }
-
             // 根据操作符类型进行不同的复合赋值操作
             switch (expression.getOperator().getType()) {
                 case PLUS_ASSIGN:
@@ -277,10 +320,8 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 default:
                     throw new RuntimeException("Unknown compound assignment operator: " + expression.getOperator().getType());
             }
-
             environment.assign(expression.getName(), value);
         }
-
         return value;
     }
 
@@ -295,20 +336,19 @@ public class ExpressionEvaluator extends AbstractVisitor {
         Object callee = interpreter.evaluate(expression.getCallee());
 
         // 评估参数列表
-        List<Object> arguments = new ArrayList<>();
-        for (ParseResult argument : expression.getArguments()) {
-            arguments.add(interpreter.evaluate(argument));
+        Object[] arguments = new Object[expression.getArguments().size()];
+        List<ParseResult> expressionArguments = expression.getArguments();
+        for (int i = 0; i < expressionArguments.size(); i++) {
+            ParseResult argument = expressionArguments.get(i);
+            arguments[i] = interpreter.evaluate(argument);
         }
 
-        // 确保被调用者是一个函数
-        if (!(callee instanceof Function)) {
-            throw new RuntimeException("Only functions can be called.");
+        // 如果被调用者是一个函数
+        if (callee instanceof Function) {
+            return ((Function) callee).call(arguments);
+        } else {
+            return environment.getFunction(callee.toString()).call(arguments);
         }
-
-        // 执行函数调用
-        Function function = (Function) callee;
-        // 调用函数
-        return function.call(arguments.toArray());
     }
 
     /**
@@ -328,7 +368,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 引用结果
      */
     private Object evaluateReference(ReferenceExpression expression) {
-        return null;
+        return environment.get(expression.getIdentifier().getValue());
     }
 
     /**
@@ -349,7 +389,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 评估结果
      */
     private Object evaluateIf(IfExpression expression) {
-        if (isTruthy(interpreter.evaluate(expression.getCondition()))) {
+        if (isTrue(interpreter.evaluate(expression.getCondition()))) {
             return interpreter.evaluate(expression.getThenBranch());
         } else if (expression.getElseBranch() != null) {
             return interpreter.evaluate(expression.getElseBranch());
@@ -360,7 +400,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
 
     /**
      * 评估 For 表达式
-     * 
+     *
      * @param expression for 表达式
      * @return 评估结果，通常是最后一次迭代的结果，或 null
      */
@@ -386,7 +426,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     private Object evaluateWhile(WhileExpression expression) {
         Object result = null;
-        while (isTruthy(interpreter.evaluate(expression.getCondition()))) {
+        while (isTrue(interpreter.evaluate(expression.getCondition()))) {
             result = interpreter.evaluate(expression.getBody());
         }
         return result;

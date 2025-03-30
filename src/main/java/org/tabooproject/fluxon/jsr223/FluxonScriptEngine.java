@@ -1,13 +1,11 @@
 package org.tabooproject.fluxon.jsr223;
 
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.interpreter.Environment;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.parser.ParseResult;
 
 import javax.script.*;
 import java.io.*;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,14 +48,10 @@ public class FluxonScriptEngine implements ScriptEngine {
         try {
             // 将上下文中的变量注入到 Fluxon 环境
             Interpreter interpreter = createInterpreterWithBindings(context);
-            
             // 解析并执行脚本
-            List<ParseResult> parseResults = Fluxon.parse(script);
-            Object result = interpreter.execute(parseResults);
-            
+            Object result = interpreter.execute(Fluxon.parse(script, interpreter.getEnvironment()));
             // 从 Fluxon 环境中提取变量回到上下文
             extractVariablesFromEnvironment(interpreter.getEnvironment(), context);
-            
             return result;
         } catch (Exception e) {
             throw new ScriptException(e);
@@ -139,7 +133,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
             for (String key : engineBindings.keySet()) {
-                env.define(key, engineBindings.get(key));
+                env.defineVariable(key, engineBindings.get(key));
             }
         }
         
@@ -149,7 +143,7 @@ public class FluxonScriptEngine implements ScriptEngine {
             for (String key : globalBindings.keySet()) {
                 // 只有当 ENGINE_SCOPE 中不存在该变量时才从 GLOBAL_SCOPE 中注入
                 if (engineBindings == null || !engineBindings.containsKey(key)) {
-                    env.define(key, globalBindings.get(key));
+                    env.defineVariable(key, globalBindings.get(key));
                 }
             }
         }

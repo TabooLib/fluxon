@@ -12,11 +12,10 @@ public class FluxonScriptEngineTest {
             // 获取脚本引擎管理器并尝试加载 Fluxon 引擎
             ScriptEngineManager manager = new ScriptEngineManager();
             ScriptEngine engine = manager.getEngineByName("fluxon");
-            
+
+            // 如果无法通过管理器获取，则尝试直接创建引擎实例
             if (engine == null) {
                 System.out.println("Failed to get Fluxon script engine, please check service provider configuration.");
-                
-                // 如果无法通过管理器获取，则尝试直接创建引擎实例
                 System.out.println("Trying to create engine directly...");
                 engine = new FluxonScriptEngine(new FluxonScriptEngineFactory());
             }

@@ -1,19 +1,17 @@
 package org.tabooproject.fluxon.parser.expressions;
 
-import org.tabooproject.fluxon.parser.ParseResult;
-
 /**
  * 引用表达式（&变量）
  */
 public class ReferenceExpression implements Expression {
-    private final ParseResult expression;
+    private final Identifier identifier;
 
-    public ReferenceExpression(ParseResult expression) {
-        this.expression = expression;
+    public ReferenceExpression(Identifier identifier) {
+        this.identifier = identifier;
     }
 
-    public ParseResult getExpression() {
-        return expression;
+    public Identifier getIdentifier() {
+        return identifier;
     }
 
     @Override
@@ -23,11 +21,11 @@ public class ReferenceExpression implements Expression {
 
     @Override
     public String toString() {
-        return "Reference(" + expression + ")";
+        return "Reference(" + identifier + ")";
     }
 
     @Override
     public String toPseudoCode() {
-        return "&" + expression.toPseudoCode();
+        return "&" + identifier.toPseudoCode();
     }
 }

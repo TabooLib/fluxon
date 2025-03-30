@@ -196,8 +196,8 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         ReferenceExpression refExpr = (ReferenceExpression) stmt.getExpression();
-        assertTrue(refExpr.getExpression() instanceof Identifier);
-        assertEquals("variable", ((Identifier) refExpr.getExpression()).getValue());
+        assertTrue(refExpr.getIdentifier() instanceof Identifier);
+        assertEquals("variable", ((Identifier) refExpr.getIdentifier()).getValue());
         
         // 引用表达式在二元操作中
         results = parseSource("&x + &y");

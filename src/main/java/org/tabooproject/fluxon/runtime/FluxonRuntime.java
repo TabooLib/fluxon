@@ -1,13 +1,8 @@
 package org.tabooproject.fluxon.runtime;
 
-import org.tabooproject.fluxon.interpreter.Function;
-import org.tabooproject.fluxon.parser.SymbolInfo;
-import org.tabooproject.fluxon.parser.SymbolType;
+import org.tabooproject.fluxon.parser.SymbolFunction;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 原生函数和符号注册中心
@@ -17,12 +12,12 @@ public class FluxonRuntime {
     
     // 单例实例
     private static final FluxonRuntime INSTANCE = new FluxonRuntime();
-    
-    // 注册的符号信息（解析阶段使用）
-    private final Map<String, SymbolInfo> symbolInfoMap = new HashMap<>();
-    
-    // 注册的函数实现（执行阶段使用）
-    private final Map<String, Function> functionMap = new HashMap<>();
+
+    // 系统函数
+    private final Map<String, Function> systemFunctions = new HashMap<>();
+
+    // 系统变量
+    private final Map<String, Object> systemVariables = new HashMap<>();
     
     /**
      * 获取单例实例
@@ -90,64 +85,62 @@ public class FluxonRuntime {
     }
     
     /**
-     * 注册原生函数（使用指定的符号信息）
-     * 
-     * @param name 函数名
-     * @param symbolInfo 符号信息（用于解析阶段）
-     * @param implementation 函数实现（用于执行阶段）
-     */
-    public void registerNativeFunction(String name, SymbolInfo symbolInfo, NativeFunction.NativeCallable implementation) {
-        symbolInfoMap.put(name, symbolInfo);
-        functionMap.put(name, new NativeFunction(implementation));
-    }
-    
-    /**
-     * 注册函数 - 简化版（接受单个参数数量）
+     * 注册函数
      * 
      * @param name 函数名
      * @param paramCount 参数数量
      * @param implementation 函数实现
      */
     public void registerFunction(String name, int paramCount, NativeFunction.NativeCallable implementation) {
-        registerNativeFunction(
-            name, 
-            new SymbolInfo(SymbolType.FUNCTION, name, paramCount), 
-            implementation
-        );
+        systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCount), implementation));
     }
     
     /**
-     * 注册函数 - 简化版（接受多个可能的参数数量）
+     * 注册函数
      * 
      * @param name 函数名
      * @param paramCounts 可能的参数数量列表
      * @param implementation 函数实现
      */
     public void registerFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable implementation) {
-        registerNativeFunction(
-            name, 
-            new SymbolInfo(SymbolType.FUNCTION, name, paramCounts), 
-            implementation
-        );
+        systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCounts), implementation));
     }
-    
+
     /**
-     * 获取所有符号信息（用于初始化解析器）
-     * 
-     * @return 符号信息映射表
+     * 注册变量
+     *
+     * @param name 变量名
+     * @param value 变量值
      */
-    public Map<String, SymbolInfo> getSymbolInfoMap() {
-        return new HashMap<>(symbolInfoMap);
+    public void registerVariable(String name, Object value) {
+        systemVariables.put(name, value);
     }
-    
+
+    /**
+     * 获取所有函数信息
+     */
+    public Map<String, Function> getSystemFunctions() {
+        return new HashMap<>(systemFunctions);
+    }
+
+    /**
+     * 获取所有变量信息
+     */
+    public Map<String, Object> getSystemVariables() {
+        return new HashMap<>(systemVariables);
+    }
+
     /**
      * 初始化解释器环境
      * 
      * @param environment 要初始化的环境
      */
-    public void initializeEnvironment(org.tabooproject.fluxon.interpreter.Environment environment) {
-        for (Map.Entry<String, Function> entry : functionMap.entrySet()) {
-            environment.define(entry.getKey(), entry.getValue());
+    public void initializeEnvironment(Environment environment) {
+        for (Map.Entry<String, Function> entry : systemFunctions.entrySet()) {
+            environment.defineFunction(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, Object> entry : systemVariables.entrySet()) {
+            environment.defineVariable(entry.getKey(), entry.getValue());
         }
     }
 } 

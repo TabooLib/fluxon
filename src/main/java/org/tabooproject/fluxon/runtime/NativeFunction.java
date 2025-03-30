@@ -1,24 +1,51 @@
 package org.tabooproject.fluxon.runtime;
 
-import org.tabooproject.fluxon.interpreter.Function;
+import org.tabooproject.fluxon.parser.SymbolFunction;
+
+import java.util.List;
 
 /**
  * 原生函数类
  * 表示由Java实现的内置函数
  */
 public class NativeFunction implements Function {
-    
+
+    private final SymbolFunction symbolInfo;
     private final NativeCallable callable;
     
-    public NativeFunction(NativeCallable callable) {
+    public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable) {
+        this.symbolInfo = symbolInfo;
         this.callable = callable;
     }
-    
+
+    @Override
+    public String getName() {
+        return symbolInfo.getName();
+    }
+
+    @Override
+    public List<Integer> getParameterCounts() {
+        return symbolInfo.getParameterCounts();
+    }
+
+    @Override
+    public boolean isAsync() {
+        return false;
+    }
+
     @Override
     public Object call(Object[] args) {
         return callable.call(args);
     }
-    
+
+    public SymbolFunction getSymbolInfo() {
+        return symbolInfo;
+    }
+
+    public NativeCallable getCallable() {
+        return callable;
+    }
+
     /**
      * 原生函数接口
      */

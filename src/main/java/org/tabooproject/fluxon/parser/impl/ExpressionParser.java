@@ -41,23 +41,24 @@ public class ExpressionParser {
      */
     public static ParseResult parseAssignment(Parser parser) {
         ParseResult expr = parseElvis(parser);
-        if (parser.match(
+        TokenType match = parser.match(
                 TokenType.ASSIGN,
                 TokenType.PLUS_ASSIGN,
                 TokenType.MINUS_ASSIGN,
                 TokenType.MULTIPLY_ASSIGN,
                 TokenType.DIVIDE_ASSIGN,
                 TokenType.MODULO_ASSIGN
-        )) {
+        );
+        if (match != null) {
             Token operator = parser.previous();
-            ParseResult value = parseAssignment(parser);
-
-            // 检查左侧是否为有效的赋值目标
+            // 赋值操作符只能对 Identifier 使用
             if (expr instanceof Identifier) {
                 String name = ((Identifier) expr).getValue();
-                // 将变量添加到当前作用域
-                parser.defineVariable(name);
-                return new Assignment(name, operator, value);
+                // 只有 ASSIGN 才会将变量添加到当前作用域
+                if (match == TokenType.ASSIGN) {
+                    parser.defineVariable(name);
+                }
+                return new Assignment(name, operator, parseAssignment(parser));
             }
             throw new ParseException("Invalid assignment target", operator, parser.getResults());
         }
@@ -72,12 +73,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseElvis(Parser parser) {
         ParseResult expr = parseLogicalOr(parser);
-
-        // 检查是否有Elvis操作符
         if (parser.match(TokenType.QUESTION_COLON)) {
-            // 解析默认值表达式
-            ParseResult alternative = parseElvis(parser);
-            expr = new ElvisExpression(expr, alternative);
+            expr = new ElvisExpression(expr, parseElvis(parser));
         }
         return expr;
     }
@@ -89,11 +86,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseLogicalOr(Parser parser) {
         ParseResult expr = parseLogicalAnd(parser);
-
         while (parser.match(TokenType.OR)) {
-            Token operator = parser.previous();
-            ParseResult right = parseLogicalAnd(parser);
-            expr = new LogicalExpression(expr, operator, right);
+            expr = new LogicalExpression(expr, parser.previous(), parseLogicalAnd(parser));
         }
         return expr;
     }
@@ -105,11 +99,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseLogicalAnd(Parser parser) {
         ParseResult expr = parseRange(parser);
-
         while (parser.match(TokenType.AND)) {
-            Token operator = parser.previous();
-            ParseResult right = parseEquality(parser);
-            expr = new LogicalExpression(expr, operator, right);
+            expr = new LogicalExpression(expr, parser.previous(), parseEquality(parser));
         }
         return expr;
     }
@@ -123,15 +114,9 @@ public class ExpressionParser {
      */
     public static ParseResult parseRange(Parser parser) {
         ParseResult expr = parseEquality(parser);
-
-        // 检查是否有范围操作符
-        if (parser.match(TokenType.RANGE, TokenType.RANGE_EXCLUSIVE)) {
-            Token operator = parser.previous();
-            boolean inclusive = operator.getType() == TokenType.RANGE;
-
-            // 解析范围的结束表达式
-            ParseResult end = parseEquality(parser);
-            expr = new RangeExpression(expr, end, inclusive);
+        TokenType match = parser.match(TokenType.RANGE, TokenType.RANGE_EXCLUSIVE);
+        if (match != null) {
+            expr = new RangeExpression(expr, parseEquality(parser), match == TokenType.RANGE);
         }
         return expr;
     }
@@ -143,11 +128,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseEquality(Parser parser) {
         ParseResult expr = parseComparison(parser);
-
-        while (parser.match(TokenType.EQUAL, TokenType.NOT_EQUAL)) {
-            Token operator = parser.previous();
-            ParseResult right = parseComparison(parser);
-            expr = new BinaryExpression(expr, operator, right);
+        while (parser.match(TokenType.EQUAL, TokenType.NOT_EQUAL) != null) {
+            expr = new BinaryExpression(expr, parser.previous(), parseComparison(parser));
         }
         return expr;
     }
@@ -159,11 +141,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseComparison(Parser parser) {
         ParseResult expr = parseTerm(parser);
-
-        while (parser.match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
-            Token operator = parser.previous();
-            ParseResult right = parseTerm(parser);
-            expr = new BinaryExpression(expr, operator, right);
+        while (parser.match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL) != null) {
+            expr = new BinaryExpression(expr, parser.previous(), parseTerm(parser));
         }
         return expr;
     }
@@ -175,11 +154,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseTerm(Parser parser) {
         ParseResult expr = parseFactor(parser);
-
-        while (parser.match(TokenType.PLUS, TokenType.MINUS)) {
-            Token operator = parser.previous();
-            ParseResult right = parseFactor(parser);
-            expr = new BinaryExpression(expr, operator, right);
+        while (parser.match(TokenType.PLUS, TokenType.MINUS) != null) {
+            expr = new BinaryExpression(expr, parser.previous(), parseFactor(parser));
         }
         return expr;
     }
@@ -191,11 +167,8 @@ public class ExpressionParser {
      */
     public static ParseResult parseFactor(Parser parser) {
         ParseResult expr = parseUnary(parser);
-
-        while (parser.match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO)) {
-            Token operator = parser.previous();
-            ParseResult right = parseUnary(parser);
-            expr = new BinaryExpression(expr, operator, right);
+        while (parser.match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO) != null) {
+            expr = new BinaryExpression(expr, parser.previous(), parseUnary(parser));
         }
         return expr;
     }
@@ -221,10 +194,10 @@ public class ExpressionParser {
                 parser.consume(); // 消费 &
                 String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
                 // 检查变量是否存在
-                if (!parser.isVariable(name)) {
-                    throw new RuntimeException("Unknown variable '" + name + "'.");
-                } else {
+                if (parser.isVariable(name)) {
                     return new ReferenceExpression(new Identifier(name));
+                } else {
+                    throw new RuntimeException("Unknown variable '" + name + "'.");
                 }
             }
             // 函数调用
@@ -269,6 +242,10 @@ public class ExpressionParser {
                 parser.consume();
                 return new BooleanLiteral(false);
             }
+            // 空
+            case NULL:
+                parser.consume();
+                return new NullLiteral();
 
             // 列表和字典
             case LEFT_BRACKET: {

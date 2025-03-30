@@ -1,7 +1,9 @@
 package org.tabooproject.fluxon.parser;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 作用域类
@@ -9,9 +11,9 @@ import java.util.Map;
  */
 public class SymbolScope {
     // 函数符号表
-    private final Map<String, SymbolInfo> functions = new HashMap<>();
+    private final Map<String, SymbolFunction> functions = new HashMap<>();
     // 变量符号表
-    private final Map<String, SymbolInfo> variables = new HashMap<>();
+    private final Set<String> variables = new HashSet<>();
     // 父作用域
     private final SymbolScope parent;
 
@@ -55,7 +57,7 @@ public class SymbolScope {
      * @param name 函数名
      * @param info 函数信息
      */
-    public void defineFunction(String name, SymbolInfo info) {
+    public void defineFunction(String name, SymbolFunction info) {
         functions.put(name, info);
     }
 
@@ -63,10 +65,9 @@ public class SymbolScope {
      * 在当前作用域中定义变量
      *
      * @param name 变量名
-     * @param info 变量信息
      */
-    public void defineVariable(String name, SymbolInfo info) {
-        variables.put(name, info);
+    public void defineVariable(String name) {
+        variables.add(name);
     }
 
     /**
@@ -75,18 +76,8 @@ public class SymbolScope {
      * @param name 函数名
      * @return 函数信息，如果不存在则返回null
      */
-    public SymbolInfo getFunctionLocal(String name) {
+    public SymbolFunction getFunctionLocal(String name) {
         return functions.get(name);
-    }
-
-    /**
-     * 获取变量信息（仅在当前作用域中查找）
-     *
-     * @param name 变量名
-     * @return 变量信息，如果不存在则返回null
-     */
-    public SymbolInfo getVariableLocal(String name) {
-        return variables.get(name);
     }
 
     /**
@@ -95,8 +86,8 @@ public class SymbolScope {
      * @param name 函数名
      * @return 函数信息，如果不存在则返回null
      */
-    public SymbolInfo getFunction(String name) {
-        SymbolInfo info = functions.get(name);
+    public SymbolFunction getFunction(String name) {
+        SymbolFunction info = functions.get(name);
         if (info != null) {
             return info;
         }
@@ -104,17 +95,16 @@ public class SymbolScope {
     }
 
     /**
-     * 获取变量信息（递归查找所有父作用域）
+     * 变量是否存在（递归查找所有父作用域）
      *
      * @param name 变量名
-     * @return 变量信息，如果不存在则返回null
+     * @return 是否存在
      */
-    public SymbolInfo getVariable(String name) {
-        SymbolInfo info = variables.get(name);
-        if (info != null) {
-            return info;
+    public boolean hasVariable(String name) {
+        if (variables.contains(name)) {
+            return true;
         }
-        return parent != null ? parent.getVariable(name) : null;
+        return parent != null && parent.hasVariable(name);
     }
 
     /**
@@ -122,7 +112,7 @@ public class SymbolScope {
      *
      * @return 函数符号表
      */
-    public Map<String, SymbolInfo> getFunctions() {
+    public Map<String, SymbolFunction> getFunctions() {
         return functions;
     }
 
@@ -131,7 +121,7 @@ public class SymbolScope {
      *
      * @return 变量符号表
      */
-    public Map<String, SymbolInfo> getVariables() {
+    public Set<String> getVariables() {
         return variables;
     }
 

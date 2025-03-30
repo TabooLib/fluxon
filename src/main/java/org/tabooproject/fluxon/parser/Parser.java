@@ -1,11 +1,13 @@
 package org.tabooproject.fluxon.parser;
 
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.impl.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.*;
 
@@ -47,31 +49,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public Parser() {
         // 初始化全局作用域
         scopeStack.push(new SymbolScope());
-        
-        // 使用注册中心初始化符号
-        Map<String, SymbolInfo> symbols = FluxonRuntime.getInstance().getSymbolInfoMap();
-        for (Map.Entry<String, SymbolInfo> entry : symbols.entrySet()) {
-            if (entry.getValue().getType() == SymbolType.FUNCTION) {
-                defineFunction(entry.getKey(), entry.getValue());
-            } else {
-                defineVariable(entry.getKey(), entry.getValue());
-            }
-        }
-    }
 
-    /**
-     * 创建带有初始符号的解析器
-     */
-    public Parser(Map<String, SymbolInfo> initialSymbols) {
-        this();
-        if (initialSymbols != null) {
-            for (Map.Entry<String, SymbolInfo> entry : initialSymbols.entrySet()) {
-                if (entry.getValue().getType() == SymbolType.FUNCTION) {
-                    defineFunction(entry.getKey(), entry.getValue());
-                } else {
-                    defineVariable(entry.getKey(), entry.getValue());
-                }
-            }
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        // 注册系统函数符号
+        for (Map.Entry<String, Function> entry : runtime.getSystemFunctions().entrySet()) {
+            defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
+        }
+        // 注册系统变量符号
+        for (String key : runtime.getSystemVariables().keySet()) {
+            defineVariable(key);
         }
     }
 
@@ -134,47 +120,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 检查标识符是否为已知函数
-     *
-     * @param name 标识符名称
-     * @return 是否为已知函数
-     */
-    public boolean isFunction(String name) {
-        return getCurrentScope().getFunction(name) != null;
-    }
-
-    /**
-     * 获取函数最大可能的参数数量
-     *
-     * @param name 函数名
-     * @return 最大可能的参数数量
-     */
-    public int getMaxExpectedArgumentCount(String name) {
-        SymbolInfo info = getCurrentScope().getFunction(name);
-        return info != null ? info.getMaxParameterCount() : 0;
-    }
-
-    /**
-     * 获取函数期望的参数数量
-     *
-     * @param name 函数名
-     * @return 期望的参数数量
-     */
-    public int getExpectedArgumentCount(String name) {
-        return getMaxExpectedArgumentCount(name);
-    }
-
-    /**
-     * 检查标识符是否为已知变量
-     *
-     * @param name 标识符名称
-     * @return 是否为已知变量
-     */
-    public boolean isVariable(String name) {
-        return getCurrentScope().getVariable(name) != null;
-    }
-
-    /**
      * 消费当前标记并前进
      */
     public void advance() {
@@ -204,14 +149,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param types 要检查的类型
      * @return 是否匹配
      */
-    public boolean match(TokenType... types) {
+    @Nullable
+    public TokenType match(TokenType... types) {
         for (TokenType type : types) {
             if (check(type)) {
                 advance();
-                return true;
+                return type;
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -342,7 +288,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @param info 函数信息
      */
-    public void defineFunction(String name, SymbolInfo info) {
+    public void defineFunction(String name, SymbolFunction info) {
         getCurrentScope().defineFunction(name, info);
     }
 
@@ -350,19 +296,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 在当前作用域中定义变量
      *
      * @param name 变量名
-     * @param info 变量信息
-     */
-    public void defineVariable(String name, SymbolInfo info) {
-        getCurrentScope().defineVariable(name, info);
-    }
-
-    /**
-     * 在当前作用域中定义变量（简化版）
-     *
-     * @param name 变量名
      */
     public void defineVariable(String name) {
-        defineVariable(name, new SymbolInfo(SymbolType.VARIABLE, name, 0));
+        getCurrentScope().defineVariable(name);
     }
 
     /**
@@ -371,18 +307,49 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @return 函数信息，如果不存在则返回 null
      */
-    public SymbolInfo getFunctionInfo(String name) {
+    public SymbolFunction getFunctionInfo(String name) {
         return getCurrentScope().getFunction(name);
     }
 
     /**
-     * 获取变量信息
+     * 检查标识符是否为已知函数
      *
-     * @param name 变量名
-     * @return 变量信息，如果不存在则返回 null
+     * @param name 标识符名称
+     * @return 是否为已知函数
      */
-    public SymbolInfo getVariableInfo(String name) {
-        return getCurrentScope().getVariable(name);
+    public boolean isFunction(String name) {
+        return getCurrentScope().getFunction(name) != null;
+    }
+
+    /**
+     * 获取函数最大可能的参数数量
+     *
+     * @param name 函数名
+     * @return 最大可能的参数数量
+     */
+    public int getMaxExpectedArgumentCount(String name) {
+        SymbolFunction info = getCurrentScope().getFunction(name);
+        return info != null ? info.getMaxParameterCount() : 0;
+    }
+
+    /**
+     * 获取函数期望的参数数量
+     *
+     * @param name 函数名
+     * @return 期望的参数数量
+     */
+    public int getExpectedArgumentCount(String name) {
+        return getMaxExpectedArgumentCount(name);
+    }
+
+    /**
+     * 检查标识符是否为已知变量
+     *
+     * @param name 标识符名称
+     * @return 是否为已知变量
+     */
+    public boolean isVariable(String name) {
+        return getCurrentScope().hasVariable(name);
     }
 
     /**

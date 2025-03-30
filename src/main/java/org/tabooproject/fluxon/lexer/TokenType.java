@@ -33,6 +33,7 @@ public enum TokenType {
     DOUBLE,        // 双精度浮点数字面量
     TRUE,          // 布尔字面量
     FALSE,         // 布尔字面量
+    NULL,          // 空值
 
     // 操作符
     PLUS("+"),             // 加法

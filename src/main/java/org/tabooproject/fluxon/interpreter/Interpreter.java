@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.visitors.StatementEvaluator;
 import org.tabooproject.fluxon.parser.definitions.Definition;
 import org.tabooproject.fluxon.parser.expressions.Expression;
 import org.tabooproject.fluxon.parser.statements.Statement;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
@@ -83,7 +84,6 @@ public class Interpreter {
 
         // 更新所有求值器的环境
         updateEvaluatorsEnvironment(env);
-
         try {
             return evaluate(result);
         } finally {

@@ -1,6 +1,11 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.tabooproject.fluxon.parser.definitions.Definitions;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
+
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -17,7 +22,22 @@ public class UserFunction implements Function {
         this.closure = closure;
         this.interpreter = interpreter;
     }
-    
+
+    @Override
+    public String getName() {
+        return definition.getName();
+    }
+
+    @Override
+    public List<Integer> getParameterCounts() {
+        return Collections.singletonList(definition.getParameters().size());
+    }
+
+    @Override
+    public boolean isAsync() {
+        return definition.isAsync();
+    }
+
     @Override
     public Object call(Object[] args) {
         // 创建新的环境，父环境为函数定义时的环境（闭包）
@@ -29,12 +49,12 @@ public class UserFunction implements Function {
         
         // 绑定实际传递的参数
         for (int i = 0; i < minParamCount; i++) {
-            functionEnv.define(parameters.get(i), args[i]);
+            functionEnv.defineVariable(parameters.get(i), args[i]);
         }
         
         // 未传递的参数赋值为null
         for (int i = minParamCount; i < parameters.size(); i++) {
-            functionEnv.define(parameters.get(i), null);
+            functionEnv.defineVariable(parameters.get(i), null);
         }
         
         try {
@@ -54,13 +74,4 @@ public class UserFunction implements Function {
     public Definitions.FunctionDefinition getDefinition() {
         return definition;
     }
-    
-    /**
-     * 检查函数是否为异步函数
-     * 
-     * @return 是否为异步函数
-     */
-    public boolean isAsync() {
-        return definition.isAsync();
-    }
-} 
+}
