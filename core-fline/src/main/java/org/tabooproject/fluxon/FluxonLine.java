@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.runtime;
+package org.tabooproject.fluxon;
 
 import org.jline.reader.*;
 import org.jline.reader.impl.DefaultParser;
@@ -7,7 +7,6 @@ import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import org.jline.utils.InfoCmp;
-import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.jsr223.FluxonScriptEngine;
 import org.tabooproject.fluxon.jsr223.FluxonScriptEngineFactory;
 import org.tabooproject.fluxon.parser.ParseResult;
