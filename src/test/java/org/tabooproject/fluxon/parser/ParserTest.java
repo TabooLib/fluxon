@@ -50,7 +50,7 @@ public class ParserTest {
         assertEquals(1, func.getParameters().size());
         assertEquals("n", func.getParameters().get(0));
         assertTrue(func.getBody() instanceof Identifier);
-        assertEquals("n", ((Identifier) func.getBody()).getName());
+        assertEquals("n", ((Identifier) func.getBody()).getValue());
     }
     
     /**
@@ -127,7 +127,7 @@ public class ParserTest {
         
         FunctionCall call = (FunctionCall) stmt.getExpression();
         assertTrue(call.getCallee() instanceof Identifier);
-        assertEquals("print", ((Identifier) call.getCallee()).getName());
+        assertEquals("print", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
         
         ParseResult arg = call.getArguments().get(0);
@@ -135,7 +135,7 @@ public class ParserTest {
         
         FunctionCall innerCall = (FunctionCall) arg;
         assertTrue(innerCall.getCallee() instanceof Identifier);
-        assertEquals("checkGrade", ((Identifier) innerCall.getCallee()).getName());
+        assertEquals("checkGrade", ((Identifier) innerCall.getCallee()).getValue());
         assertEquals(1, innerCall.getArguments().size());
         assertTrue(innerCall.getArguments().get(0) instanceof IntLiteral);
         assertEquals(85, ((IntLiteral) innerCall.getArguments().get(0)).getValue());
@@ -157,7 +157,7 @@ public class ParserTest {
         
         FunctionCall call = (FunctionCall) stmt.getExpression();
         assertTrue(call.getCallee() instanceof Identifier);
-        assertEquals("player", ((Identifier) call.getCallee()).getName());
+        assertEquals("player", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());

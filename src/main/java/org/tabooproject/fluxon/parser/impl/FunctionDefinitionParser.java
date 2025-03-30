@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.parser.definitions.Definitions;
 import org.tabooproject.fluxon.parser.expressions.Identifier;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class FunctionDefinitionParser {
@@ -78,7 +79,7 @@ public class FunctionDefinitionParser {
         
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser);
+            body = BlockParser.parse(parser, Collections.emptyList());
         } else {
             // 如果是标识符，直接解析为变量
             if (parser.check(TokenType.IDENTIFIER)) {

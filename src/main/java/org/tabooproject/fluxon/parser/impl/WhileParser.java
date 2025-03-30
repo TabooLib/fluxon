@@ -5,6 +5,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expressions.WhileExpression;
 
+import java.util.Collections;
+
 public class WhileParser {
 
     /**
@@ -21,7 +23,7 @@ public class WhileParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser);
+            body = BlockParser.parse(parser, Collections.emptyList());
         } else {
             body = ExpressionParser.parse(parser);
         }

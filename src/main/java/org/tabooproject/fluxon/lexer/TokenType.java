@@ -13,6 +13,7 @@ public enum TokenType {
     IF("if"),
     THEN("then"),
     ELSE("else"),
+    FOR("for"),
     WHEN("when"),
     IS("is"),
     IN("in"),

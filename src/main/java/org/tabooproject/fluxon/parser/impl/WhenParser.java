@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.parser.impl;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expressions.WhenBranch;
 import org.tabooproject.fluxon.parser.expressions.WhenExpression;
 
 import java.util.ArrayList;
@@ -35,7 +34,7 @@ public class WhenParser {
         }
 
         // 解析分支
-        List<WhenBranch> branches = new ArrayList<>();
+        List<WhenExpression.WhenBranch> branches = new ArrayList<>();
 
         while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
             // 解析非 else 分支条件
@@ -46,7 +45,7 @@ public class WhenParser {
             // 消费箭头操作符
             parser.consume(TokenType.ARROW, "Expected '->' after else");
             // 解析分支结果
-            branches.add(new WhenBranch(branchCondition, ExpressionParser.parse(parser)));
+            branches.add(new WhenExpression.WhenBranch(branchCondition, ExpressionParser.parse(parser)));
             // 可选的分支结束符
             parser.match(TokenType.SEMICOLON);
         }

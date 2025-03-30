@@ -54,7 +54,7 @@ public class ExpressionParser {
 
             // 检查左侧是否为有效的赋值目标
             if (expr instanceof Identifier) {
-                String name = ((Identifier) expr).getName();
+                String name = ((Identifier) expr).getValue();
                 // 将变量添加到当前作用域
                 parser.defineVariable(name);
                 return new Assignment(name, operator, value);
@@ -243,6 +243,7 @@ public class ExpressionParser {
             // 标识符
             case IDENTIFIER:
                 return new Identifier(parser.consume().getLexeme());
+
             // 字符串
             case STRING:
                 return new StringLiteral(parser.consume().getLexeme());
@@ -268,11 +269,23 @@ public class ExpressionParser {
                 parser.consume();
                 return new BooleanLiteral(false);
             }
+
             // 列表和字典
             case LEFT_BRACKET: {
                 parser.consume(); // 消费左括号
                 return ListParser.parse(parser);
             }
+
+            // 表达式
+            case IF:
+                return IfParser.parse(parser);
+            case FOR:
+                return ForParser.parse(parser);
+            case WHEN:
+                return WhenParser.parse(parser);
+            case WHILE:
+                return WhileParser.parse(parser);
+
             // 分组表达式
             case LEFT_PAREN: {
                 parser.consume(); // 消费左括号
@@ -280,13 +293,6 @@ public class ExpressionParser {
                 parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
                 return new GroupingExpression(expr);
             }
-            // 表达式
-            case IF:
-                return IfParser.parse(parser);
-            case WHEN:
-                return WhenParser.parse(parser);
-            case WHILE:
-                return WhileParser.parse(parser);
             // 文件结束
             case EOF:
                 throw new ParseException("Eof", parser.peek(), parser.getResults());

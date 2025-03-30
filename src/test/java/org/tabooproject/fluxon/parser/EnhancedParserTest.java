@@ -47,7 +47,7 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertEquals("print", ((Identifier) call.getCallee()).getName());
+        assertEquals("print", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
@@ -57,11 +57,11 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCall) stmt.getExpression();
-        assertEquals("print", ((Identifier) call.getCallee()).getName());
+        assertEquals("print", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof FunctionCall);
         FunctionCall nestedCall = (FunctionCall) call.getArguments().get(0);
-        assertEquals("checkGrade", ((Identifier) nestedCall.getCallee()).getName());
+        assertEquals("checkGrade", ((Identifier) nestedCall.getCallee()).getValue());
         assertEquals(1, nestedCall.getArguments().size());
         assertEquals(95, ((IntLiteral) nestedCall.getArguments().get(0)).getValue());
     }
@@ -76,7 +76,7 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertEquals("player", ((Identifier) call.getCallee()).getName());
+        assertEquals("player", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
@@ -89,7 +89,7 @@ public class EnhancedParserTest {
         call = (FunctionCall) stmt.getExpression();
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof Identifier);
-        assertEquals("checkGrade", ((Identifier) call.getArguments().get(0)).getName());
+        assertEquals("checkGrade", ((Identifier) call.getArguments().get(0)).getValue());
 
         // 多个未知标识符
         results = parseSource("player head body legs");
@@ -197,7 +197,7 @@ public class EnhancedParserTest {
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         ReferenceExpression refExpr = (ReferenceExpression) stmt.getExpression();
         assertTrue(refExpr.getExpression() instanceof Identifier);
-        assertEquals("variable", ((Identifier) refExpr.getExpression()).getName());
+        assertEquals("variable", ((Identifier) refExpr.getExpression()).getValue());
         
         // 引用表达式在二元操作中
         results = parseSource("&x + &y");

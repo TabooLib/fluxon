@@ -42,6 +42,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("if", TokenType.IF);
         KEYWORDS.put("then", TokenType.THEN);
         KEYWORDS.put("else", TokenType.ELSE);
+        KEYWORDS.put("for", TokenType.FOR);
         KEYWORDS.put("when", TokenType.WHEN);
         KEYWORDS.put("is", TokenType.IS);
         KEYWORDS.put("in", TokenType.IN);

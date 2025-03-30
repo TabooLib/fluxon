@@ -28,7 +28,7 @@ public class FunctionCallParser {
         }
         // 解析无括号的函数调用
         else if (expr instanceof Identifier && !parser.isEndOfExpression() && !parser.isOperator()) {
-            String functionName = ((Identifier) expr).getName();
+            String functionName = ((Identifier) expr).getValue();
 
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用

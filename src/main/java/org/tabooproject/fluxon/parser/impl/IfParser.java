@@ -5,6 +5,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expressions.IfExpression;
 
+import java.util.Collections;
+
 public class IfParser {
 
     /**
@@ -26,7 +28,7 @@ public class IfParser {
         ParseResult thenBranch;
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.LEFT_BRACE)) {
-            thenBranch = BlockParser.parse(parser);
+            thenBranch = BlockParser.parse(parser, Collections.emptyList());
         } else {
             thenBranch = ExpressionParser.parse(parser);
         }
@@ -36,7 +38,7 @@ public class IfParser {
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.ELSE)) {
             if (parser.match(TokenType.LEFT_BRACE)) {
-                elseBranch = BlockParser.parse(parser);
+                elseBranch = BlockParser.parse(parser, Collections.emptyList());
             } else {
                 elseBranch = ExpressionParser.parse(parser);
             }

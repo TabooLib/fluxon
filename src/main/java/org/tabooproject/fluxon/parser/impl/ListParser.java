@@ -4,7 +4,6 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expressions.ListLiteral;
-import org.tabooproject.fluxon.parser.expressions.MapEntry;
 import org.tabooproject.fluxon.parser.expressions.MapLiteral;
 
 import java.util.ArrayList;
@@ -59,7 +58,7 @@ public class ListParser {
      * @return 字典字面量解析结果
      */
     private static ParseResult parseMapLiteral(Parser parser) {
-        List<MapEntry> entries = new ArrayList<>();
+        List<MapLiteral.MapEntry> entries = new ArrayList<>();
         // 如果不是空字典
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
             do {
@@ -70,7 +69,7 @@ public class ListParser {
                 // 解析值
                 ParseResult value = ExpressionParser.parse(parser);
                 // 添加键值对
-                entries.add(new MapEntry(key, value));
+                entries.add(new MapLiteral.MapEntry(key, value));
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");

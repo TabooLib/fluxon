@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.interpreter.visitors;
 import org.tabooproject.fluxon.interpreter.Environment;
 import org.tabooproject.fluxon.interpreter.Function;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.UserFunction;
 import org.tabooproject.fluxon.interpreter.util.NumberOperations;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -13,7 +12,9 @@ import org.tabooproject.fluxon.parser.expressions.*;
 import org.tabooproject.fluxon.parser.statements.Statement;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 表达式求值器
@@ -40,38 +41,75 @@ public class ExpressionEvaluator extends AbstractVisitor {
     public Object visitExpression(Expression expression) {
         // 使用 switch 根据表达式类型进行分派
         switch (expression.getExpressionType()) {
-            case INT_LITERAL:
-                return ((IntLiteral) expression).getValue();
-            case LONG_LITERAL:
-                return ((LongLiteral) expression).getValue();
-            case FLOAT_LITERAL:
-                return ((FloatLiteral) expression).getValue();
-            case DOUBLE_LITERAL:
-                return ((DoubleLiteral) expression).getValue();
+            // 标识符
+            case IDENTIFIER:
+                return ((Identifier) expression).getValue();
+            // 字符串
             case STRING_LITERAL:
                 return ((StringLiteral) expression).getValue();
+            // 整型
+            case INT_LITERAL:
+                return ((IntLiteral) expression).getValue();
+            // 长整型
+            case LONG_LITERAL:
+                return ((LongLiteral) expression).getValue();
+            // 单精度
+            case FLOAT_LITERAL:
+                return ((FloatLiteral) expression).getValue();
+            // 双精度
+            case DOUBLE_LITERAL:
+                return ((DoubleLiteral) expression).getValue();
+            // 布尔值
             case BOOLEAN_LITERAL:
                 return ((BooleanLiteral) expression).getValue();
-            case IDENTIFIER:
-                return evaluateIdentifier((Identifier) expression);
-            case BINARY:
-                return evaluateBinary((BinaryExpression) expression);
-            case LOGICAL:
-                return evaluateLogical((LogicalExpression) expression);
-            case UNARY:
-                return evaluateUnary((UnaryExpression) expression);
-            case ASSIGNMENT:
-                return evaluateAssignment((Assignment) expression);
-            case FUNCTION_CALL:
-                return evaluateCall((FunctionCall) expression);
-            case AWAIT:
-                return evaluateAwait((AwaitExpression) expression);
-            case REFERENCE:
-                return evaluateReference((ReferenceExpression) expression);
+
+            // 列表
+            case LIST_LITERAL:
+                return evaluateList((ListLiteral) expression);
+            // 字典
+            case MAP_LITERAL:
+                return evaluateMap((MapLiteral) expression);
+            // 范围
+            case RANGE:
+                return evaluateRange((RangeExpression) expression);
+
+            // 表达式
             case IF:
                 return evaluateIf((IfExpression) expression);
+            case FOR:
+                return evaluateFor((ForExpression) expression);
+            case WHEN:
+                return evaluateWhen((WhenExpression) expression);
             case WHILE:
                 return evaluateWhile((WhileExpression) expression);
+
+            // 一元运算
+            case UNARY:
+                return evaluateUnary((UnaryExpression) expression);
+            // 二元运算
+            case BINARY:
+                return evaluateBinary((BinaryExpression) expression);
+            // 逻辑运算
+            case LOGICAL:
+                return evaluateLogical((LogicalExpression) expression);
+
+            // 赋值运算
+            case ASSIGNMENT:
+                return evaluateAssignment((Assignment) expression);
+            // 函数调用
+            case FUNCTION_CALL:
+                return evaluateCall((FunctionCall) expression);
+
+            // 等待
+            case AWAIT:
+                return evaluateAwait((AwaitExpression) expression);
+            // 引用
+            case REFERENCE:
+                return evaluateReference((ReferenceExpression) expression);
+            // Elvis
+            case ELVIS:
+                return evaluateElvis((ElvisExpression) expression);
+            // 分组
             case GROUPING:
                 return interpreter.evaluate(((GroupingExpression) expression).getExpression());
             default:
@@ -80,13 +118,34 @@ public class ExpressionEvaluator extends AbstractVisitor {
     }
 
     /**
-     * 评估标识符
-     *
-     * @param identifier 标识符
-     * @return 变量值
+     * 评估列表
      */
-    private Object evaluateIdentifier(Identifier identifier) {
-        return environment.get(identifier.getName());
+    private Object evaluateList(ListLiteral expression) {
+        List<Object> elements = new ArrayList<>();
+        for (ParseResult element : expression.getElements()) {
+            elements.add(interpreter.evaluate(element));
+        }
+        return elements;
+    }
+
+    /**
+     * 评估字典
+     */
+    private Object evaluateMap(MapLiteral expression) {
+        Map<Object, Object> entries = new HashMap<>();
+        for (MapLiteral.MapEntry entry : expression.getEntries()) {
+            Object key = interpreter.evaluate(entry.getKey());
+            Object value = interpreter.evaluate(entry.getValue());
+            entries.put(key, value);
+        }
+        return entries;
+    }
+
+    /**
+     * 评估范围
+     */
+    private Object evaluateRange(RangeExpression expression) {
+        return null;
     }
 
     /**
@@ -187,7 +246,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     private Object evaluateAssignment(Assignment expression) {
         Object value = interpreter.evaluate(expression.getValue());
-        
+
         // 根据赋值操作符类型处理赋值
         if (expression.getOperator().getType() == TokenType.EQUAL) {
             environment.assign(expression.getName(), value);
@@ -259,8 +318,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 评估结果
      */
     private Object evaluateAwait(AwaitExpression expression) {
-        // 直接评估表达式，未实现真正的异步处理
-        return interpreter.evaluate(expression.getExpression());
+        return null;
     }
 
     /**
@@ -270,8 +328,18 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 引用结果
      */
     private Object evaluateReference(ReferenceExpression expression) {
-        // 这里只返回原始值，不实现真正的引用语义
-        return interpreter.evaluate(expression.getExpression());
+        return null;
+    }
+
+    /**
+     * 评估 Elvis 表达式
+     */
+    private Object evaluateElvis(ElvisExpression expression) {
+        Object object = interpreter.evaluate(expression.getCondition());
+        if (object == null) {
+            return interpreter.evaluate(expression.getAlternative());
+        }
+        return object;
     }
 
     /**
@@ -288,6 +356,26 @@ public class ExpressionEvaluator extends AbstractVisitor {
         } else {
             return null;
         }
+    }
+
+    /**
+     * 评估 For 表达式
+     * 
+     * @param expression for 表达式
+     * @return 评估结果，通常是最后一次迭代的结果，或 null
+     */
+    private Object evaluateFor(ForExpression expression) {
+        return null;
+    }
+
+    /**
+     * 评估 when 表达式
+     *
+     * @param expression when 表达式
+     * @return 评估结果
+     */
+    private Object evaluateWhen(WhenExpression expression) {
+        return null;
     }
 
     /**

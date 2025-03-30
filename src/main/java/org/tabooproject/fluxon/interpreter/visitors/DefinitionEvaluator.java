@@ -49,7 +49,7 @@ public class DefinitionEvaluator extends AbstractVisitor {
         UserFunction function = new UserFunction(funcDef, environment, interpreter);
 
         // 在当前环境中定义函数
-        environment.define(funcDef.getName(), function);
+        environment.define("func_" + funcDef.getName(), function);
 
         return null;
     }
