@@ -23,6 +23,8 @@ public enum TokenType {
     TRY("try"),
     CATCH("catch"),
     WHILE("while"),
+    BREAK("break"),
+    CONTINUE("continue"),
 
     // 标识符和字面量
     IDENTIFIER,    // 标识符

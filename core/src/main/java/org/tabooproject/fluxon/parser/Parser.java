@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.impl.StatementParser;
+import org.tabooproject.fluxon.parser.type.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 

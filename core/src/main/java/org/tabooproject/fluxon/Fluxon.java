@@ -1,13 +1,13 @@
 package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
-import org.tabooproject.fluxon.parser.SymbolFunction;
-import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 
 import java.io.File;

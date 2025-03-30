@@ -1,10 +1,9 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.tabooproject.fluxon.parser.definitions.Definitions;
+import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
