@@ -82,14 +82,13 @@ public class EnhancedParserTest {
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
 
         // 混合已知函数和未知标识符
-        results = parseSource("player checkGrade");
-        System.out.println(results);
+        results = parseSource("player checkGrade 95");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCall) stmt.getExpression();
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof Identifier);
-        assertEquals("checkGrade", ((Identifier) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof FunctionCall);
+        assertEquals("checkGrade", ((Identifier) ((FunctionCall) call.getArguments().get(0)).getCallee()).getValue());
 
         // 多个未知标识符
         results = parseSource("player head body legs");
@@ -114,14 +113,14 @@ public class EnhancedParserTest {
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         IfExpression ifExpr = (IfExpression) stmt.getExpression();
         assertTrue(ifExpr.getCondition() instanceof IfExpression);
-        
+
         // 嵌套的when表达式
         results = parseSource("when when true { true -> 1 else -> 0 } { 1 -> \"one\" 0 -> \"zero\" else -> \"other\" }");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         WhenExpression whenExpr = (WhenExpression) stmt.getExpression();
         assertTrue(whenExpr.getSubject() instanceof WhenExpression);
-        
+
         // 复杂的二元表达式
         results = parseSource("1 + 2 * 3 - 4 / 5 % 6");
         assertEquals(1, results.size());
@@ -143,7 +142,7 @@ public class EnhancedParserTest {
         assertEquals(1, funcDef.getParameters().size());
         assertEquals("url", funcDef.getParameters().get(0));
         assertTrue(funcDef.getBody() instanceof AwaitExpression);
-        
+
         // 嵌套的await表达式
         results = parseSource("async def processData() = await processResult(await fetchData(\"api/data\"))");
         assertEquals(1, results.size());
@@ -166,7 +165,7 @@ public class EnhancedParserTest {
         WhenExpression whenExpr = (WhenExpression) stmt.getExpression();
         assertNull(whenExpr.getSubject());
         assertEquals(2, whenExpr.getBranches().size());
-        
+
         // 带条件的when表达式
         results = parseSource("when x { 1 -> \"one\" 2 -> \"two\" else -> \"other\" }");
         assertEquals(1, results.size());
@@ -174,7 +173,7 @@ public class EnhancedParserTest {
         whenExpr = (WhenExpression) stmt.getExpression();
         assertTrue(whenExpr.getSubject() instanceof Identifier);
         assertEquals(3, whenExpr.getBranches().size());
-        
+
         // 复杂条件的when分支
         results = parseSource("when { &x % 2 == 0 -> \"even\" &x < 0 -> \"negative\" else -> \"positive odd\" }");
         assertEquals(1, results.size());
@@ -198,7 +197,7 @@ public class EnhancedParserTest {
         ReferenceExpression refExpr = (ReferenceExpression) stmt.getExpression();
         assertTrue(refExpr.getIdentifier() instanceof Identifier);
         assertEquals("variable", ((Identifier) refExpr.getIdentifier()).getValue());
-        
+
         // 引用表达式在二元操作中
         results = parseSource("&x + &y");
         assertEquals(1, results.size());
@@ -206,7 +205,7 @@ public class EnhancedParserTest {
         BinaryExpression binExpr = (BinaryExpression) stmt.getExpression();
         assertTrue(binExpr.getLeft() instanceof ReferenceExpression);
         assertTrue(binExpr.getRight() instanceof ReferenceExpression);
-        
+
         // 引用表达式在函数调用中
         results = parseSource("print(&value)");
         assertEquals(1, results.size());
@@ -229,7 +228,7 @@ public class EnhancedParserTest {
         assertEquals("factorial", funcDef.getName());
         assertEquals(1, funcDef.getParameters().size());
         assertTrue(funcDef.getBody() instanceof IfExpression);
-        
+
         // 递归斐波那契函数
         results = parseSource(
                 "def fibonacci(n) = if &n <= 1 then &n else fibonacci(&n - 1) + fibonacci(&n - 2)");
@@ -248,13 +247,13 @@ public class EnhancedParserTest {
     public void testErrorHandlingAndEdgeCases() {
         // 缺少右括号
         assertThrows(ParseException.class, () -> parseSource("print(1, 2"));
-        
+
         // 无效的赋值目标
         assertThrows(ParseException.class, () -> parseSource("1 + 2 = 3"));
-        
+
         // 缺少箭头操作符
         assertThrows(ParseException.class, () -> parseSource("when { true 1 }"));
-        
+
         // 空的代码块
         List<ParseResult> results = parseSource("def emptyFunc() = {}");
         assertEquals(1, results.size());
