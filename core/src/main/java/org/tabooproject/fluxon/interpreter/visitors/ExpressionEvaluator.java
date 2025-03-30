@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.visitors;
 
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.util.NumberOperations;
+import org.tabooproject.fluxon.util.NumberOperations;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definitions.Definition;
@@ -207,7 +207,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 return !isTrue(right);
             case MINUS:
                 checkNumberOperand(right);
-                return NumberOperations.negateNumber(right);
+                return NumberOperations.negateNumber((Number) right);
             default:
                 throw new RuntimeException("Unknown unary operator: " + expression.getOperator().getType());
         }
@@ -226,16 +226,16 @@ public class ExpressionEvaluator extends AbstractVisitor {
         switch (expression.getOperator().getType()) {
             case MINUS:
                 checkNumberOperands(left, right);
-                return NumberOperations.subtractNumbers(left, right);
+                return NumberOperations.subtractNumbers((Number) left, (Number) right);
             case DIVIDE:
                 checkNumberOperands(left, right);
-                return NumberOperations.divideNumbers(left, right);
+                return NumberOperations.divideNumbers((Number) left, (Number) right);
             case MULTIPLY:
                 checkNumberOperands(left, right);
-                return NumberOperations.multiplyNumbers(left, right);
+                return NumberOperations.multiplyNumbers((Number) left, (Number) right);
             case PLUS:
                 if (left instanceof Number && right instanceof Number) {
-                    return NumberOperations.addNumbers(left, right);
+                    return NumberOperations.addNumbers((Number) left, (Number) right);
                 }
                 if (left instanceof String || right instanceof String) {
                     return String.valueOf(left) + right;
@@ -243,19 +243,19 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 throw new RuntimeException("Operands must be numbers or strings.");
             case MODULO:
                 checkNumberOperands(left, right);
-                return NumberOperations.moduloNumbers(left, right);
+                return NumberOperations.moduloNumbers((Number) left, (Number) right);
             case GREATER:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers(left, right) > 0;
+                return NumberOperations.compareNumbers((Number) left, (Number) right) > 0;
             case GREATER_EQUAL:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers(left, right) >= 0;
+                return NumberOperations.compareNumbers((Number) left, (Number) right) >= 0;
             case LESS:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers(left, right) < 0;
+                return NumberOperations.compareNumbers((Number) left, (Number) right) < 0;
             case LESS_EQUAL:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers(left, right) <= 0;
+                return NumberOperations.compareNumbers((Number) left, (Number) right) <= 0;
             case EQUAL:
                 return isEqual(left, right);
             case NOT_EQUAL:
@@ -303,19 +303,19 @@ public class ExpressionEvaluator extends AbstractVisitor {
             // 根据操作符类型进行不同的复合赋值操作
             switch (expression.getOperator().getType()) {
                 case PLUS_ASSIGN:
-                    value = NumberOperations.addNumbers(current, value);
+                    value = NumberOperations.addNumbers((Number) current, (Number) value);
                     break;
                 case MINUS_ASSIGN:
-                    value = NumberOperations.subtractNumbers(current, value);
+                    value = NumberOperations.subtractNumbers((Number) current, (Number) value);
                     break;
                 case MULTIPLY_ASSIGN:
-                    value = NumberOperations.multiplyNumbers(current, value);
+                    value = NumberOperations.multiplyNumbers((Number) current, (Number) value);
                     break;
                 case DIVIDE_ASSIGN:
-                    value = NumberOperations.divideNumbers(current, value);
+                    value = NumberOperations.divideNumbers((Number) current, (Number) value);
                     break;
                 case MODULO_ASSIGN:
-                    value = NumberOperations.moduloNumbers(current, value);
+                    value = NumberOperations.moduloNumbers((Number) current, (Number) value);
                     break;
                 default:
                     throw new RuntimeException("Unknown compound assignment operator: " + expression.getOperator().getType());
