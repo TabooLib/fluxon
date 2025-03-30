@@ -1,22 +1,20 @@
 package org.tabooproject.fluxon.interpreter.visitors;
 
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.util.NumberOperations;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definitions.Definition;
 import org.tabooproject.fluxon.parser.expressions.*;
 import org.tabooproject.fluxon.parser.statements.Statement;
-import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * 表达式求值器
@@ -345,11 +343,23 @@ public class ExpressionEvaluator extends AbstractVisitor {
             arguments[i] = interpreter.evaluate(argument);
         }
 
-        // 如果被调用者是一个函数
+        // 获取函数
+        Function function;
         if (callee instanceof Function) {
-            return ((Function) callee).call(arguments);
+            function = ((Function) callee);
         } else {
-            return environment.getFunction(callee.toString()).call(arguments);
+            function = environment.getFunction(callee.toString());
+        }
+        if (function.isAsync()) {
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    return function.call(arguments);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error while executing async function: " + e.getMessage(), e);
+                }
+            });
+        } else {
+            return function.call(arguments);
         }
     }
 
@@ -360,7 +370,26 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 评估结果
      */
     private Object evaluateAwait(AwaitExpression expression) {
-        return null;
+        // 评估 await 表达式中的值
+        Object value = interpreter.evaluate(expression.getExpression());
+        // 处理不同类型的异步结果
+        if (value instanceof CompletableFuture<?>) {
+            // 如果是 CompletableFuture，等待其完成并返回结果
+            try {
+                return ((CompletableFuture<?>) value).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+            }
+        } else if (value instanceof Future<?>) {
+            // 如果是普通的 Future，等待其完成并返回结果
+            try {
+                return ((Future<?>) value).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+            }
+        }
+        // 如果不是异步类型，直接返回值
+        return value;
     }
 
     /**
@@ -409,10 +438,10 @@ public class ExpressionEvaluator extends AbstractVisitor {
     private Object evaluateFor(ForExpression expression) {
         // 评估集合表达式
         Object collection = interpreter.evaluate(expression.getCollection());
-        
+
         // 创建迭代器，根据集合类型进行不同处理
         Iterator<?> iterator;
-        
+
         if (collection instanceof List) {
             iterator = ((List<?>) collection).iterator();
         } else if (collection instanceof Map) {
@@ -426,17 +455,17 @@ public class ExpressionEvaluator extends AbstractVisitor {
         } else {
             throw new RuntimeException("Cannot iterate over null");
         }
-        
+
         // 获取变量名列表
         List<String> variables = expression.getVariables();
-        
+
         // 记录最后一次迭代的结果
         Object result = null;
-        
+
         // 创建新环境进行迭代
         Environment previousEnv = environment;
         environment = new Environment(previousEnv);
-        
+
         try {
             // 迭代集合元素
             while (iterator.hasNext()) {
