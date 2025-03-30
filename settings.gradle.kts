@@ -1,4 +1,4 @@
 rootProject.name = "fluxon"
 include(":core")
-include(":core-fline")
+include(":core-console")
 include(":core-jsr223")

@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * FLine - 简单的交互式脚本编辑器
+ * 简单的交互式脚本控制台
  */
-public class FluxonLine {
+public class FluxonConsole {
     private static final String PROMPT = "\u001B[32mfluxon\u001B[0m> ";
     private static final String HISTORY_FILE = ".fluxon_history";
 
@@ -41,7 +41,7 @@ public class FluxonLine {
     /**
      * 构造函数，初始化终端和读取器
      */
-    public FluxonLine() throws IOException {
+    public FluxonConsole() throws IOException {
         // 构建终端
         terminal = TerminalBuilder.builder()
                 .system(true)
@@ -213,7 +213,7 @@ public class FluxonLine {
      * 显示帮助信息
      */
     private void showHelp() {
-        printInfo("FLine script editor commands:");
+        printInfo("Fluxon Console script editor commands:");
         printInfo("  :quit, :q    - Exit the script editor");
         printInfo("  :clear, :c   - Clear the current script content");
         printInfo("  :list, :l    - Display the current script content");
@@ -232,7 +232,7 @@ public class FluxonLine {
     private void printWelcome() {
         AttributedStringBuilder asb = new AttributedStringBuilder();
         asb.append("Welcome to ", AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
-                .append("Fluxon FLine", AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW))
+                .append("Fluxon Console", AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW))
                 .append(" script editor", AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN));
 
         terminal.writer().println(asb.toAnsi());
@@ -282,7 +282,7 @@ public class FluxonLine {
      */
     public static void main(String[] args) {
         try {
-            FluxonLine line = new FluxonLine();
+            FluxonConsole line = new FluxonConsole();
             line.run();
         } catch (IOException e) {
             System.err.println("Failed to start: " + e.getMessage());
