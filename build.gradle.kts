@@ -2,11 +2,12 @@ plugins {
     java
     id("application")
     id("me.champeau.jmh") version "0.7.2"
-    kotlin("jvm")
+    kotlin("jvm") version "2.1.10"
 }
 
-group = "org.tabooproject.fluxon"
-version = "1.0-SNAPSHOT"
+repositories {
+    mavenCentral()
+}
 
 subprojects {
     apply<JavaPlugin>()
@@ -34,7 +35,7 @@ subprojects {
 
         implementation("org.ow2.asm:asm:9.4")
         implementation("org.ow2.asm:asm-commons:9.4")
-        implementation(kotlin("stdlib-jdk8"))
+        implementation(kotlin("stdlib"))
     }
 
     tasks.test {
