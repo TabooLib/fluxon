@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.parser.definitions;
 
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.util.StringUtils;
 
 import java.util.List;
 

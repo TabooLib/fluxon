@@ -35,7 +35,7 @@ public class DefinitionEvaluator extends AbstractVisitor {
             return evaluateFunctionDefinition((Definitions.FunctionDefinition) definition);
         }
 
-        throw new RuntimeException("未知的定义类型: " + definition.getClass().getName());
+        throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
     }
 
     /**
@@ -59,11 +59,11 @@ public class DefinitionEvaluator extends AbstractVisitor {
      */
     @Override
     public Object visitExpression(Expression expression) {
-        throw new UnsupportedOperationException("定义求值器不支持评估表达式。");
+        throw new UnsupportedOperationException("Definition evaluator does not support evaluating expressions.");
     }
 
     @Override
     public Object visitStatement(Statement statement) {
-        throw new UnsupportedOperationException("定义求值器不支持评估语句。");
+        throw new UnsupportedOperationException("Definition evaluator does not support evaluating statements.");
     }
 } 

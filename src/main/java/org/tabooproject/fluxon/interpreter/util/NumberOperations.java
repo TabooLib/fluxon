@@ -14,7 +14,7 @@ public class NumberOperations {
      */
     public static Object addNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("加法操作数必须是数字: " + a + " + " + b);
+            throw new RuntimeException("Operands for addition must be numbers: " + a + " + " + b);
         }
         
         // 按照类型优先级判断，返回对应类型结果
@@ -44,7 +44,7 @@ public class NumberOperations {
      */
     public static Object subtractNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("减法操作数必须是数字: " + a + " - " + b);
+            throw new RuntimeException("Operands for subtraction must be numbers: " + a + " - " + b);
         }
         
         if (a instanceof Double || b instanceof Double) {
@@ -73,7 +73,7 @@ public class NumberOperations {
      */
     public static Object multiplyNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("乘法操作数必须是数字: " + a + " * " + b);
+            throw new RuntimeException("Operands for multiplication must be numbers: " + a + " * " + b);
         }
         
         if (a instanceof Double || b instanceof Double) {
@@ -112,7 +112,7 @@ public class NumberOperations {
      */
     public static Object divideNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("除法操作数必须是数字: " + a + " / " + b);
+            throw new RuntimeException("Operands for division must be numbers: " + a + " / " + b);
         }
         
         // 检查除数是否为零
@@ -156,7 +156,7 @@ public class NumberOperations {
      */
     public static Object moduloNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("模运算操作数必须是数字: " + a + " % " + b);
+            throw new RuntimeException("Operands for modulo operation must be numbers: " + a + " % " + b);
         }
         
         // 检查模数是否为零
@@ -186,7 +186,7 @@ public class NumberOperations {
      */
     public static int compareNumbers(Object a, Object b) {
         if (!(a instanceof Number) || !(b instanceof Number)) {
-            throw new RuntimeException("比较操作数必须是数字: " + a + " 和 " + b);
+            throw new RuntimeException("Operands for comparison must be numbers: " + a + " and " + b);
         }
         
         // 使用 Double.compare 进行统一比较，避免精度问题
@@ -201,7 +201,7 @@ public class NumberOperations {
      */
     public static Object negateNumber(Object value) {
         if (!(value instanceof Number)) {
-            throw new RuntimeException("不能对非数字类型应用取负操作: " + value);
+            throw new RuntimeException("Cannot apply negation to non-numeric type: " + value);
         }
         
         // 根据原始类型返回相应类型的结果

@@ -58,13 +58,13 @@ public class FluxonRuntime {
         registerFunction("checkGrade", 1, args -> {
             if (args.length > 0 && args[0] instanceof Number) {
                 int score = ((Number) args[0]).intValue();
-                if (score >= 90) return "优秀";
-                if (score >= 80) return "良好";
-                if (score >= 70) return "中等";
-                if (score >= 60) return "及格";
-                return "不及格";
+                if (score >= 90) return "Excellent";
+                if (score >= 80) return "Good"; 
+                if (score >= 70) return "Fair";
+                if (score >= 60) return "Pass";
+                return "Fail";
             }
-            throw new RuntimeException("checkGrade 函数需要一个数字参数");
+            throw new RuntimeException("checkGrade function requires a numeric argument");
         });
         
         // player 函数 - 支持多种参数数量
@@ -72,20 +72,20 @@ public class FluxonRuntime {
             if (args.length >= 1) {
                 String playerName = String.valueOf(args[0]);
                 if (args.length >= 3) {
-                    return "玩家 " + playerName + " 血量: " + args[1] + ", 等级: " + args[2];
+                    return "Player " + playerName + " HP: " + args[1] + ", Level: " + args[2];
                 }
-                return "玩家 " + playerName;
+                return "Player " + playerName;
             }
-            throw new RuntimeException("player 函数至少需要一个参数");
+            throw new RuntimeException("player function requires at least one argument");
         });
         
         // fetch 函数
         registerFunction("fetch", 1, args -> {
             if (args.length > 0) {
                 String url = String.valueOf(args[0]);
-                return "从 " + url + " 获取数据";
+                return "Fetching data from " + url;
             }
-            throw new RuntimeException("fetch 函数需要一个 URL 参数");
+            throw new RuntimeException("fetch function requires a URL parameter");
         });
     }
     

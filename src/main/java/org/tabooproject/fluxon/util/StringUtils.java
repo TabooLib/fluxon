@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.parser.util;
+package org.tabooproject.fluxon.util;
 
 /**
  * 伪代码生成工具类

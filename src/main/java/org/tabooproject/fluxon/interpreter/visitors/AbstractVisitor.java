@@ -63,7 +63,7 @@ public abstract class AbstractVisitor implements Visitor {
             case DEFINITION:
                 return visitDefinition((Definition) result);
             default:
-                throw new RuntimeException("未知的解析结果类型: " + result.getType());
+                throw new RuntimeException("Unknown parse result type: " + result.getType());
         }
     }
     

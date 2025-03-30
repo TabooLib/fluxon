@@ -75,7 +75,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
             case GROUPING:
                 return interpreter.evaluate(((GroupingExpression) expression).getExpression());
             default:
-                throw new RuntimeException("未知的表达式类型: " + expression.getClass().getName());
+                throw new RuntimeException("Unknown expression type: " + expression.getClass().getName());
         }
     }
 
@@ -116,7 +116,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 if (left instanceof String || right instanceof String) {
                     return String.valueOf(left) + right;
                 }
-                throw new RuntimeException("操作数必须是数字或字符串。");
+                throw new RuntimeException("Operands must be numbers or strings.");
             case MODULO:
                 checkNumberOperands(expression.getOperator(), left, right);
                 return NumberOperations.moduloNumbers(left, right);
@@ -137,7 +137,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
             case NOT_EQUAL:
                 return !isEqual(left, right);
             default:
-                throw new RuntimeException("未知的二元操作符: " + expression.getOperator().getType());
+                throw new RuntimeException("Unknown binary operator: " + expression.getOperator().getType());
         }
     }
 
@@ -175,7 +175,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 checkNumberOperand(expression.getOperator(), right);
                 return NumberOperations.negateNumber(right);
             default:
-                throw new RuntimeException("未知的一元操作符: " + expression.getOperator().getType());
+                throw new RuntimeException("Unknown unary operator: " + expression.getOperator().getType());
         }
     }
 
@@ -195,7 +195,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
             // 处理复合赋值
             Object current = environment.get(expression.getName());
             if (!(current instanceof Number) || !(value instanceof Number)) {
-                throw new RuntimeException("复合赋值操作数必须是数字。");
+                throw new RuntimeException("Operands for compound assignment must be numbers.");
             }
 
             // 根据操作符类型进行不同的复合赋值操作
@@ -216,7 +216,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
                     value = NumberOperations.moduloNumbers(current, value);
                     break;
                 default:
-                    throw new RuntimeException("未知的复合赋值操作符: " + expression.getOperator().getType());
+                    throw new RuntimeException("Unknown compound assignment operator: " + expression.getOperator().getType());
             }
 
             environment.assign(expression.getName(), value);
@@ -243,7 +243,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
 
         // 确保被调用者是一个函数
         if (!(callee instanceof Function)) {
-            throw new RuntimeException("只能调用函数。");
+            throw new RuntimeException("Only functions can be called.");
         }
 
         // 执行函数调用
@@ -312,7 +312,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     private void checkNumberOperand(Token operator, Object operand) {
         if (operand instanceof Number) return;
-        throw new RuntimeException("操作数必须是数字。");
+        throw new RuntimeException("Operands must be numbers.");
     }
 
     /**
@@ -324,7 +324,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     private void checkNumberOperands(Token operator, Object left, Object right) {
         if (left instanceof Number && right instanceof Number) return;
-        throw new RuntimeException("操作数必须是数字。");
+        throw new RuntimeException("Operands must be numbers.");
     }
 
     /**
@@ -332,11 +332,11 @@ public class ExpressionEvaluator extends AbstractVisitor {
      */
     @Override
     public Object visitStatement(Statement statement) {
-        throw new UnsupportedOperationException("表达式求值器不支持评估语句。");
+        throw new UnsupportedOperationException("Expression evaluator does not support evaluating statements.");
     }
 
     @Override
     public Object visitDefinition(Definition definition) {
-        throw new UnsupportedOperationException("表达式求值器不支持评估定义。");
+        throw new UnsupportedOperationException("Expression evaluator does not support evaluating definitions.");
     }
 } 

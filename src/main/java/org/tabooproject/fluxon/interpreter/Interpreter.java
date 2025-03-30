@@ -120,7 +120,7 @@ public class Interpreter {
             case DEFINITION:
                 return definitionEvaluator.visitDefinition((Definition) result);
             default:
-                throw new RuntimeException("未知的解析结果类型: " + result.getType());
+                throw new RuntimeException("Unknown parse result type: " + result.getType());
         }
     }
 

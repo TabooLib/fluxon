@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.util.PseudoCodeFormatter;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -111,13 +112,13 @@ public class PseudoCodeTest {
             }
             System.out.println("[PseudoCode]:");
             for (ParseResult result : results.get()) {
-                System.out.println(result.toPseudoCode());
+                System.out.println(PseudoCodeFormatter.format(result.toPseudoCode()));
             }
             System.out.println("----------------------------------");
         } catch (ParseException ex) {
             System.out.println("[PseudoCode]:");
             for (ParseResult result : ex.getResults()) {
-                System.out.println(result.toPseudoCode());
+                System.out.println(PseudoCodeFormatter.format(result.toPseudoCode()));
             }
             throw ex;
         }

@@ -42,7 +42,7 @@ public class StatementEvaluator extends AbstractVisitor {
             case RETURN:
                 return evaluateReturn((ReturnStatement) statement);
             default:
-                throw new RuntimeException("未知的语句类型: " + statement.getClass().getName());
+                throw new RuntimeException("Unknown statement type: " + statement.getClass().getName());
         }
     }
 
@@ -90,11 +90,11 @@ public class StatementEvaluator extends AbstractVisitor {
      */
     @Override
     public Object visitExpression(Expression expression) {
-        throw new UnsupportedOperationException("语句求值器不支持评估表达式。");
+        throw new UnsupportedOperationException("Statement evaluator does not support evaluating expressions.");
     }
 
     @Override
     public Object visitDefinition(Definition definition) {
-        throw new UnsupportedOperationException("语句求值器不支持评估定义。");
+        throw new UnsupportedOperationException("Statement evaluator does not support evaluating definitions.");
     }
 } 

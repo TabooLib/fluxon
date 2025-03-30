@@ -75,7 +75,7 @@ public class Environment {
             return parent.get(name);
         }
         
-        throw new RuntimeException("未定义的变量: " + name);
+        throw new RuntimeException("Undefined variable: " + name);
     }
     
     /**
@@ -96,7 +96,7 @@ public class Environment {
             return;
         }
         
-        throw new RuntimeException("未定义的变量: " + name);
+        throw new RuntimeException("Undefined variable: " + name);
     }
     
     /**
@@ -115,5 +115,14 @@ public class Environment {
         }
         
         return null;
+    }
+    
+    /**
+     * 获取当前环境中的所有变量
+     *
+     * @return 变量映射
+     */
+    public Map<String, Object> getValues() {
+        return new HashMap<>(values);
     }
 } 
