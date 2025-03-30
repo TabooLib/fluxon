@@ -7,6 +7,6 @@ public class InterpreterTest {
 
     @Test
     public void testDef() {
-        System.out.println(Fluxon.eval("def msg(t) = print(&t); msg hello"));
+        Fluxon.eval("def msg(t) = print &t; msg 嗯嗯啊啊");
     }
 }
