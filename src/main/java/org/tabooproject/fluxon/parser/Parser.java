@@ -56,9 +56,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
         }
         // 注册系统变量符号
-        for (String key : runtime.getSystemVariables().keySet()) {
-            defineVariable(key);
-        }
+        defineVariables(runtime.getSystemVariables().keySet());
     }
 
     /**
@@ -299,6 +297,17 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public void defineVariable(String name) {
         getCurrentScope().defineVariable(name);
+    }
+
+    /**
+     * 在当前作用域中定义多个变量
+     *
+     * @param names 变量名列表
+     */
+    public void defineVariables(Iterable<String> names) {
+        for (String name : names) {
+            defineVariable(name);
+        }
     }
 
     /**

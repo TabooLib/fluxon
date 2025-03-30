@@ -62,16 +62,12 @@ public class FunctionDefinitionParser {
             parser.defineFunction(functionName, new SymbolFunction(functionName, parameters.size()));
         }
 
-        // 进入函数作用域
+        // 进入函数作用域并声明内部变量
         parser.enterScope();
+        parser.defineVariables(parameters);
 
-        // 将参数添加到函数作用域
-        for (String param : parameters) {
-            parser.defineVariable(param);
-        }
-
-        // 解析等号
-        parser.consume(TokenType.ASSIGN, "Expected '=' after function declaration");
+        // 消费可选的等于号
+        parser.match(TokenType.ASSIGN);
 
         // 解析函数体
         ParseResult body;

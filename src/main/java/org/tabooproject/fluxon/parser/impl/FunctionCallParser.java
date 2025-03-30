@@ -106,7 +106,6 @@ public class FunctionCallParser {
                 closestCount = count;
             }
         }
-
         return closestCount;
     }
 

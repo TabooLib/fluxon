@@ -22,10 +22,10 @@ import java.util.Map;
  * 提供编译和执行 Fluxon 代码的 API
  */
 public class Fluxon {
-    
+
     /**
      * 解析 Fluxon 源代码
-     * 
+     *
      * @param source Fluxon 源代码
      * @return 解析结果列表
      */
@@ -51,15 +51,13 @@ public class Fluxon {
         for (Map.Entry<String, Function> entry : env.getFunctions().entrySet()) {
             parser.defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
         }
-        for (String key : env.getValues().keySet()) {
-            parser.defineVariable(key);
-        }
+        parser.defineVariables(env.getValues().keySet());
         return parser.process(context);
     }
-    
+
     /**
      * 解释执行 Fluxon 源代码
-     * 
+     *
      * @param source Fluxon 源代码
      * @return 执行结果
      */
@@ -69,10 +67,10 @@ public class Fluxon {
         Interpreter interpreter = new Interpreter();
         return interpreter.execute(parseResults);
     }
-    
+
     /**
      * 执行 Fluxon 源文件
-     * 
+     *
      * @param file Fluxon 源文件
      * @return 执行结果
      * @throws IOException 如果文件读取失败

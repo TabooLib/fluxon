@@ -52,10 +52,7 @@ public class ForParser {
         } else {
             // 对于单语句循环体，也需要在其作用域中定义循环变量
             parser.enterScope();
-            // 定义所有解构变量
-            for (String variableName : variables) {
-                parser.defineVariable(variableName);
-            }
+            parser.defineVariables(variables);
             body = ExpressionParser.parse(parser);
             parser.exitScope();
         }
