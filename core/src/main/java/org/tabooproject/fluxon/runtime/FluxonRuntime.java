@@ -9,7 +9,7 @@ import java.util.*;
  * 用于统一管理解析阶段和执行阶段的内置函数和符号
  */
 public class FluxonRuntime {
-    
+
     // 单例实例
     private static final FluxonRuntime INSTANCE = new FluxonRuntime();
 
@@ -18,23 +18,23 @@ public class FluxonRuntime {
 
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
-    
+
     /**
      * 获取单例实例
-     * 
+     *
      * @return 注册中心实例
      */
     public static FluxonRuntime getInstance() {
         return INSTANCE;
     }
-    
+
     /**
      * 私有构造函数，初始化内置函数
      */
     private FluxonRuntime() {
         registerDefaultFunctions();
     }
-    
+
     /**
      * 注册内置函数
      */
@@ -48,20 +48,30 @@ public class FluxonRuntime {
             }
             return null;
         });
-        
+        // sleep 函数
+        registerFunction("sleep", 1, args -> {
+            int seconds = ((Number) args[0]).intValue();
+            try {
+                Thread.sleep(seconds);
+            } catch (InterruptedException e) {
+                throw new RuntimeException("sleep function interrupted", e);
+            }
+            return null;
+        });
+
         // checkGrade 函数
         registerFunction("checkGrade", 1, args -> {
             if (args.length > 0 && args[0] instanceof Number) {
                 int score = ((Number) args[0]).intValue();
                 if (score >= 90) return "Excellent";
-                if (score >= 80) return "Good"; 
+                if (score >= 80) return "Good";
                 if (score >= 70) return "Fair";
                 if (score >= 60) return "Pass";
                 return "Fail";
             }
             throw new RuntimeException("checkGrade function requires a numeric argument");
         });
-        
+
         // player 函数 - 支持多种参数数量
         registerFunction("player", Arrays.asList(1, 3), args -> {
             if (args.length >= 1) {
@@ -73,7 +83,7 @@ public class FluxonRuntime {
             }
             throw new RuntimeException("player function requires at least one argument");
         });
-        
+
         // fetch 函数
         registerFunction("fetch", 1, args -> {
             if (args.length > 0) {
@@ -83,10 +93,10 @@ public class FluxonRuntime {
             throw new RuntimeException("fetch function requires a URL parameter");
         });
     }
-    
+
     /**
      * 注册函数
-     * 
+     *
      * @param name 函数名
      * @param paramCount 参数数量
      * @param implementation 函数实现
@@ -94,10 +104,10 @@ public class FluxonRuntime {
     public void registerFunction(String name, int paramCount, NativeFunction.NativeCallable implementation) {
         systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCount), implementation));
     }
-    
+
     /**
      * 注册函数
-     * 
+     *
      * @param name 函数名
      * @param paramCounts 可能的参数数量列表
      * @param implementation 函数实现
@@ -132,7 +142,7 @@ public class FluxonRuntime {
 
     /**
      * 初始化解释器环境
-     * 
+     *
      * @param environment 要初始化的环境
      */
     public void initializeEnvironment(Environment environment) {

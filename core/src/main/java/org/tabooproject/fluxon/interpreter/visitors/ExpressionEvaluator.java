@@ -354,7 +354,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
             return CompletableFuture.supplyAsync(() -> {
                 try {
                     return function.call(arguments);
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     throw new RuntimeException("Error while executing async function: " + e.getMessage(), e);
                 }
             });
