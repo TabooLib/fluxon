@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.impl;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
@@ -24,7 +25,6 @@ public class WhenParser {
         if (!parser.check(TokenType.LEFT_BRACE)) {
             condition = ExpressionParser.parse(parser);
         }
-
         // 消费左花括号，如果存在的话
         parser.match(TokenType.LEFT_BRACE);
 
@@ -35,8 +35,25 @@ public class WhenParser {
 
         // 解析分支
         List<WhenExpression.WhenBranch> branches = new ArrayList<>();
-
         while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
+            // 解析匹配方式
+            Token peek = parser.peek();
+            WhenExpression.MatchType matchType;
+            if (peek.getType() == TokenType.IN) {
+                parser.advance();
+                matchType = WhenExpression.MatchType.CONTAINS;
+            } else if (peek.getType() == TokenType.NOT) {
+                parser.advance();
+                if (parser.peek(1).getType() == TokenType.IN) {
+                    parser.advance();
+                    matchType = WhenExpression.MatchType.NOT_CONTAINS;
+                } else {
+                    throw new RuntimeException("Expected 'in' after 'not'");
+                }
+            } else {
+                matchType = WhenExpression.MatchType.EQUAL;
+            }
+
             // 解析非 else 分支条件
             ParseResult branchCondition = null;
             if (!parser.match(TokenType.ELSE)) {
@@ -45,7 +62,7 @@ public class WhenParser {
             // 消费箭头操作符
             parser.consume(TokenType.ARROW, "Expected '->' after else");
             // 解析分支结果
-            branches.add(new WhenExpression.WhenBranch(branchCondition, ExpressionParser.parse(parser)));
+            branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, ExpressionParser.parse(parser)));
             // 可选的分支结束符
             parser.match(TokenType.SEMICOLON);
         }

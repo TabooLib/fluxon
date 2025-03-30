@@ -40,13 +40,10 @@ public class WhenExpression implements Expression {
     @Override
     public String toPseudoCode() {
         StringBuilder sb = new StringBuilder();
-
         sb.append("when ");
-
         if (subject != null) {
             sb.append(subject.toPseudoCode());
         }
-
         sb.append("{");
         for (WhenBranch branch : branches) {
             sb.append(branch.toPseudoCode()).append(";");
@@ -56,15 +53,50 @@ public class WhenExpression implements Expression {
     }
 
     /**
+     * When 表达式分支匹配方式
+     */
+    public enum MatchType {
+
+        // 等值
+        EQUAL(""),
+
+        // 包含
+        CONTAINS("in "),
+
+        // 不包含
+        NOT_CONTAINS("!in "),
+        ;
+
+        final String pseudoCode;
+
+        MatchType(String pseudoCode) {
+            this.pseudoCode = pseudoCode;
+        }
+
+        @Override
+        public String toString() {
+            return super.toString();
+        }
+    }
+
+    /**
      * When 表达式分支
      */
     public static class WhenBranch {
+
+        private final MatchType matchType;
         private final ParseResult condition;
         private final ParseResult result;
 
-        public WhenBranch(ParseResult condition, ParseResult result) {
+        public WhenBranch(MatchType matchType, ParseResult condition, ParseResult result) {
+            this.matchType = matchType;
             this.condition = condition;
             this.result = result;
+        }
+
+        @NotNull
+        public MatchType getMatchType() {
+            return matchType;
         }
 
         @Nullable
@@ -84,7 +116,7 @@ public class WhenExpression implements Expression {
 
         public String toPseudoCode() {
             String condStr = condition != null ? condition.toPseudoCode() : "else";
-            return condStr + " -> " + result.toPseudoCode();
+            return matchType + condStr + " -> " + result.toPseudoCode();
         }
     }
 }
