@@ -4,15 +4,17 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.util.NumberOperations;
-import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definitions.Definition;
 import org.tabooproject.fluxon.parser.expressions.*;
 import org.tabooproject.fluxon.parser.statements.Statement;
+import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -206,7 +208,7 @@ public class ExpressionEvaluator extends AbstractVisitor {
             case NOT:
                 return !isTrue(right);
             case MINUS:
-                checkNumberOperand(expression.getOperator(), right);
+                checkNumberOperand(right);
                 return NumberOperations.negateNumber(right);
             default:
                 throw new RuntimeException("Unknown unary operator: " + expression.getOperator().getType());
@@ -225,13 +227,13 @@ public class ExpressionEvaluator extends AbstractVisitor {
 
         switch (expression.getOperator().getType()) {
             case MINUS:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.subtractNumbers(left, right);
             case DIVIDE:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.divideNumbers(left, right);
             case MULTIPLY:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.multiplyNumbers(left, right);
             case PLUS:
                 if (left instanceof Number && right instanceof Number) {
@@ -242,19 +244,19 @@ public class ExpressionEvaluator extends AbstractVisitor {
                 }
                 throw new RuntimeException("Operands must be numbers or strings.");
             case MODULO:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.moduloNumbers(left, right);
             case GREATER:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.compareNumbers(left, right) > 0;
             case GREATER_EQUAL:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.compareNumbers(left, right) >= 0;
             case LESS:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.compareNumbers(left, right) < 0;
             case LESS_EQUAL:
-                checkNumberOperands(expression.getOperator(), left, right);
+                checkNumberOperands(left, right);
                 return NumberOperations.compareNumbers(left, right) <= 0;
             case EQUAL:
                 return isEqual(left, right);
@@ -405,7 +407,49 @@ public class ExpressionEvaluator extends AbstractVisitor {
      * @return 评估结果，通常是最后一次迭代的结果，或 null
      */
     private Object evaluateFor(ForExpression expression) {
-        return null;
+        // 评估集合表达式
+        Object collection = interpreter.evaluate(expression.getCollection());
+        
+        // 创建迭代器，根据集合类型进行不同处理
+        Iterator<?> iterator;
+        
+        if (collection instanceof List) {
+            iterator = ((List<?>) collection).iterator();
+        } else if (collection instanceof Map) {
+            iterator = ((Map<?, ?>) collection).entrySet().iterator();
+        } else if (collection instanceof Iterable) {
+            iterator = ((Iterable<?>) collection).iterator();
+        } else if (collection instanceof Object[]) {
+            iterator = Arrays.asList((Object[]) collection).iterator();
+        } else if (collection != null) {
+            throw new RuntimeException("Cannot iterate over " + collection.getClass().getName());
+        } else {
+            throw new RuntimeException("Cannot iterate over null");
+        }
+        
+        // 获取变量名列表
+        List<String> variables = expression.getVariables();
+        
+        // 记录最后一次迭代的结果
+        Object result = null;
+        
+        // 创建新环境进行迭代
+        Environment previousEnv = environment;
+        environment = new Environment(previousEnv);
+        
+        try {
+            // 迭代集合元素
+            while (iterator.hasNext()) {
+                // 使用解构器注册表执行解构
+                DestructuringRegistry.getInstance().destructure(environment, variables, iterator.next());
+                // 执行循环体
+                result = interpreter.evaluate(expression.getBody());
+            }
+        } finally {
+            // 恢复环境
+            environment = previousEnv;
+        }
+        return result;
     }
 
     /**
@@ -494,10 +538,9 @@ public class ExpressionEvaluator extends AbstractVisitor {
     /**
      * 检查操作数是否为数字
      *
-     * @param operator 操作符
-     * @param operand  操作数
+     * @param operand 操作数
      */
-    private void checkNumberOperand(Token operator, Object operand) {
+    private void checkNumberOperand(Object operand) {
         if (operand instanceof Number) return;
         throw new RuntimeException("Operands must be numbers.");
     }
@@ -505,11 +548,10 @@ public class ExpressionEvaluator extends AbstractVisitor {
     /**
      * 检查操作数是否都是数字
      *
-     * @param operator 操作符
-     * @param left     左操作数
-     * @param right    右操作数
+     * @param left  左操作数
+     * @param right 右操作数
      */
-    private void checkNumberOperands(Token operator, Object left, Object right) {
+    private void checkNumberOperands(Object left, Object right) {
         if (left instanceof Number && right instanceof Number) return;
         throw new RuntimeException("Operands must be numbers.");
     }
