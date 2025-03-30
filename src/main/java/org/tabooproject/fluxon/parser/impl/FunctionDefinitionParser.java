@@ -62,10 +62,6 @@ public class FunctionDefinitionParser {
             parser.defineFunction(functionName, new SymbolFunction(functionName, parameters.size()));
         }
 
-        // 进入函数作用域并声明内部变量
-        parser.enterScope();
-        parser.defineVariables(parameters);
-
         // 消费可选的等于号
         parser.match(TokenType.ASSIGN);
 
@@ -73,28 +69,16 @@ public class FunctionDefinitionParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, Collections.emptyList());
+            body = BlockParser.parse(parser, parameters);
         } else {
-            // 如果是标识符，直接解析为变量
-            if (parser.check(TokenType.IDENTIFIER)) {
-                Token identToken = parser.consume(TokenType.IDENTIFIER, "Expected identifier");
-                body = new Identifier(identToken.getLexeme());
-            }
-            // When 结构
-            else if (parser.check(TokenType.WHEN)) {
-                body = WhenParser.parse(parser);
-            }
-            // If 结构
-            else if (parser.check(TokenType.IF)) {
-                body = IfParser.parse(parser);
-            }
-            // 其他
-            else {
-                body = ExpressionParser.parse(parser);
-            }
+            // 进入函数作用域并声明内部变量
+            parser.enterScope();
+            parser.defineVariables(parameters);
+            body = ExpressionParser.parse(parser);
+            parser.exitScope();
         }
-        // 退出函数作用域
-        parser.exitScope();
+        // 可选的分号
+        parser.match(TokenType.SEMICOLON);
         return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync);
     }
 }

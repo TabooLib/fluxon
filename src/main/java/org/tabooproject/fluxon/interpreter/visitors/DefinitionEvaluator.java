@@ -43,12 +43,12 @@ public class DefinitionEvaluator extends AbstractVisitor {
      * @param funcDef 函数定义对象
      * @return null
      */
-    private Object evaluateFunctionDefinition(Definitions.FunctionDefinition funcDef) {
+    private UserFunction evaluateFunctionDefinition(Definitions.FunctionDefinition funcDef) {
         // 创建函数对象，捕获当前环境
         UserFunction function = new UserFunction(funcDef, environment, interpreter);
         // 在当前环境中定义函数
         environment.defineFunction(funcDef.getName(), function);
-        return null;
+        return function;
     }
 
     /**

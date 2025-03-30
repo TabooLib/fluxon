@@ -31,12 +31,12 @@ public class FluxonScriptEngineTest {
             System.out.println("\nTesting variable bindings:");
             engine.put("x", 10);
             engine.put("y", 20);
-            result = engine.eval("x + y");
+            result = engine.eval("&x + &y");
             System.out.println("x + y = " + result);
             
             // 测试在脚本中定义变量并在 Java 中读取
             System.out.println("\nTesting script-defined variables:");
-            engine.eval("z = x * y");
+            engine.eval("z = &x * &y");
             System.out.println("z = " + engine.get("z"));
             
             // 测试函数定义和递归调用
@@ -58,11 +58,11 @@ public class FluxonScriptEngineTest {
             Bindings bindings = new FluxonBindings();
             bindings.put("a", 30);
             bindings.put("b", 40);
-            result = engine.eval("a * b", bindings);
+            result = engine.eval("&a * &b", bindings);
             System.out.println("a * b = " + result);
             
             // 测试从脚本向绑定对象传递变量
-            engine.eval("c = a + b", bindings);
+            engine.eval("c = &a + &b", bindings);
             System.out.println("c = " + bindings.get("c"));
             
         } catch (Exception e) {

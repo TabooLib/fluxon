@@ -125,6 +125,19 @@ public class SymbolScope {
         return variables;
     }
 
+    /**
+     * 获取所有变量（递归查找所有父作用域）
+     *
+     * @return 所有变量
+     */
+    public Set<String> getAllVariables() {
+        Set<String> allVariables = new HashSet<>(variables);
+        if (parent != null) {
+            allVariables.addAll(parent.getAllVariables());
+        }
+        return allVariables;
+    }
+
     @Override
     public String toString() {
         return "SymbolScope{" +

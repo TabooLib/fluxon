@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.jsr223;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.runtime.Function;
 
 import javax.script.*;
 import java.io.*;
@@ -128,26 +129,28 @@ public class FluxonScriptEngine implements ScriptEngine {
     private Interpreter createInterpreterWithBindings(ScriptContext context) {
         Interpreter interpreter = new Interpreter();
         Environment env = interpreter.getEnvironment();
-        
         // 注入 ENGINE_SCOPE 变量
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
-            for (String key : engineBindings.keySet()) {
-                env.defineVariable(key, engineBindings.get(key));
-            }
-        }
-        
-        // 注入 GLOBAL_SCOPE 变量
-        Bindings globalBindings = context.getBindings(ScriptContext.GLOBAL_SCOPE);
-        if (globalBindings != null) {
-            for (String key : globalBindings.keySet()) {
-                // 只有当 ENGINE_SCOPE 中不存在该变量时才从 GLOBAL_SCOPE 中注入
-                if (engineBindings == null || !engineBindings.containsKey(key)) {
-                    env.defineVariable(key, globalBindings.get(key));
+            for (Map.Entry<String, Object> entry : engineBindings.entrySet()) {
+                if (entry.getValue() instanceof Function) {
+                    env.defineFunction(entry.getKey(), (Function) entry.getValue());
+                } else {
+                    env.defineVariable(entry.getKey(), entry.getValue());
                 }
             }
         }
-        
+        // 注入 GLOBAL_SCOPE 变量
+        Bindings globalBindings = context.getBindings(ScriptContext.GLOBAL_SCOPE);
+        if (globalBindings != null) {
+            for (Map.Entry<String, Object> entry : globalBindings.entrySet()) {
+                if (entry.getValue() instanceof Function) {
+                    env.defineFunction(entry.getKey(), (Function) entry.getValue());
+                } else {
+                    env.defineVariable(entry.getKey(), entry.getValue());
+                }
+            }
+        }
         return interpreter;
     }
     
@@ -158,13 +161,11 @@ public class FluxonScriptEngine implements ScriptEngine {
      * @param context 脚本上下文
      */
     private void extractVariablesFromEnvironment(Environment env, ScriptContext context) {
-        // 获取环境中的所有变量
-        Map<String, Object> values = env.getValues();
-        Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
-        
         // 更新 ENGINE_SCOPE 中的变量
+        Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
-            engineBindings.putAll(values);
+            engineBindings.putAll(env.getValues());
+            engineBindings.putAll(env.getFunctions());
         }
     }
     

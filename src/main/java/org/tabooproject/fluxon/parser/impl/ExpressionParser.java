@@ -197,7 +197,7 @@ public class ExpressionParser {
                 if (parser.isVariable(name)) {
                     return new ReferenceExpression(new Identifier(name));
                 } else {
-                    throw new RuntimeException("Unknown variable '" + name + "'.");
+                    throw new RuntimeException("Unknown variable '" + name + "', scope: " + parser.getCurrentScope().getAllVariables());
                 }
             }
             // 函数调用
