@@ -23,7 +23,7 @@ public class WhileParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, Collections.emptyList());
+            body = BlockParser.parse(parser, Collections.emptyList(), true, true);
         } else {
             body = ExpressionParser.parse(parser);
         }

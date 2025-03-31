@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.tabooproject.fluxon.interpreter.BreakException;
+import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -16,7 +18,12 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
     public Object evaluate(Interpreter interpreter, WhileExpression result) {
         Object last = null;
         while (isTrue(interpreter.evaluate(result.getCondition()))) {
-            last = interpreter.evaluate(result.getBody());
+            try {
+                last = interpreter.evaluate(result.getBody());
+            } catch (ContinueException ignored) {
+            } catch (BreakException ignored) {
+                break;
+            }
         }
         return last;
     }

@@ -67,10 +67,10 @@ public class FunctionDefinitionParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, parameters);
+            body = BlockParser.parse(parser, parameters, false, false);
         } else {
             // 进入函数作用域并声明内部变量
-            parser.enterScope();
+            parser.enterScope(false, false);
             parser.defineVariables(parameters);
             body = ExpressionParser.parse(parser);
             parser.exitScope();

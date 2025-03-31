@@ -2,9 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator;
 
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
-import org.tabooproject.fluxon.interpreter.evaluator.stmt.BlockEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.stmt.ExprStmtEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.stmt.ReturnEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.stmt.*;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -72,6 +70,8 @@ public class EvaluatorRegistry {
         registerStatement(new BlockEvaluator());
         registerStatement(new ExprStmtEvaluator());
         registerStatement(new ReturnEvaluator());
+        registerStatement(new BreakEvaluator());
+        registerStatement(new ContinueEvaluator());
     }
 
     /**

@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.tabooproject.fluxon.interpreter.BreakException;
+import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -54,7 +56,12 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 // 使用解构器注册表执行解构
                 DestructuringRegistry.getInstance().destructure(environment, variables, iterator.next());
                 // 执行循环体
-                last = interpreter.evaluate(result.getBody());
+                try {
+                    last = interpreter.evaluate(result.getBody());
+                } catch (ContinueException ignored) {
+                } catch (BreakException ignored) {
+                    break;
+                }
             }
         } finally {
             interpreter.exitScope();

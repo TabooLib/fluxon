@@ -17,6 +17,11 @@ public class SymbolScope {
     // 父作用域
     private final SymbolScope parent;
 
+    // 是否可以应用 break 语句
+    private boolean breakable = true;
+    // 是否可以应用 continue 语句
+    private boolean continuable = true;
+
     /**
      * 创建顶层作用域（全局作用域）
      */
@@ -52,6 +57,48 @@ public class SymbolScope {
     }
 
     /**
+     * 设置是否可以应用 break 语句
+     *
+     * @param breakable 是否可以应用 break 语句
+     */
+    public void setBreakable(boolean breakable) {
+        this.breakable = breakable;
+    }
+
+    /**
+     * 设置是否可以应用 continue 语句
+     *
+     * @param continuable 是否可以应用 continue 语句
+     */
+    public void setContinuable(boolean continuable) {
+        this.continuable = continuable;
+    }
+
+    /**
+     * 判断是否可以应用 break 语句（进行递归检查）
+     *
+     * @return 是否可以应用 break 语句
+     */
+    public boolean isBreakable() {
+        if (breakable) {
+            return true;
+        }
+        return parent != null && parent.isBreakable();
+    }
+
+    /**
+     * 判断是否可以应用 continue 语句（进行递归检查）
+     *
+     * @return 是否可以应用 continue 语句
+     */
+    public boolean isContinuable() {
+        if (continuable) {
+            return true;
+        }
+        return parent != null && parent.isContinuable();
+    }
+
+    /**
      * 在当前作用域中定义函数
      *
      * @param name 函数名
@@ -68,16 +115,6 @@ public class SymbolScope {
      */
     public void defineVariable(String name) {
         variables.add(name);
-    }
-
-    /**
-     * 获取函数信息（仅在当前作用域中查找）
-     *
-     * @param name 函数名
-     * @return 函数信息，如果不存在则返回null
-     */
-    public SymbolFunction getFunctionLocal(String name) {
-        return functions.get(name);
     }
 
     /**

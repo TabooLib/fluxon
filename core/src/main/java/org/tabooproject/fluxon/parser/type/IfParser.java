@@ -28,7 +28,7 @@ public class IfParser {
         ParseResult thenBranch;
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.LEFT_BRACE)) {
-            thenBranch = BlockParser.parse(parser, Collections.emptyList());
+            thenBranch = BlockParser.parse(parser, Collections.emptyList(), false, false);
         } else {
             thenBranch = ExpressionParser.parse(parser);
         }
@@ -38,7 +38,7 @@ public class IfParser {
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.ELSE)) {
             if (parser.match(TokenType.LEFT_BRACE)) {
-                elseBranch = BlockParser.parse(parser, Collections.emptyList());
+                elseBranch = BlockParser.parse(parser, Collections.emptyList(), false, false);
             } else {
                 elseBranch = ExpressionParser.parse(parser);
             }

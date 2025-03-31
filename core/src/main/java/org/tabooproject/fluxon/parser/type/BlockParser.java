@@ -17,9 +17,9 @@ public class BlockParser {
      * @param innerVars 内部变量
      * @return 代码块解析结果
      */
-    public static ParseResult parse(Parser parser, List<String> innerVars) {
+    public static ParseResult parse(Parser parser, List<String> innerVars, boolean breakable, boolean continuable) {
         // 进入新的作用域并定义内部变量
-        parser.enterScope();
+        parser.enterScope(breakable, continuable);
         parser.defineVariables(innerVars);
 
         // 解析 Statement

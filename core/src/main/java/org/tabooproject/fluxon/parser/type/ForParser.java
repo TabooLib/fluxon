@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SymbolScope;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 
 import java.util.ArrayList;
@@ -48,10 +49,10 @@ public class ForParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, variables);
+            body = BlockParser.parse(parser, variables, true, true);
         } else {
             // 对于单语句循环体，也需要在其作用域中定义循环变量
-            parser.enterScope();
+            parser.enterScope(true, true);
             parser.defineVariables(variables);
             body = ExpressionParser.parse(parser);
             parser.exitScope();

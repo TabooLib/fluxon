@@ -57,7 +57,7 @@ public class FluxonRuntime {
             try {
                 Thread.sleep(seconds);
             } catch (InterruptedException e) {
-                throw new RuntimeException("sleep function interrupted", e);
+                throw new RuntimeException("Sleep function interrupted", e);
             }
             return null;
         });

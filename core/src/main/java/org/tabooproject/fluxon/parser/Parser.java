@@ -170,19 +170,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 检查当前标记是否为指定类型之一
-     */
-    public boolean check(TokenType... types) {
-        if (isAtEnd()) return false;
-        for (TokenType type : types) {
-            if (currentToken.is(type)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * 检查是否已到达标记序列末尾
      *
      * @return 是否到达末尾
@@ -263,8 +250,10 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     /**
      * 进入新作用域
      */
-    public void enterScope() {
+    public void enterScope(boolean breakable, boolean continuable) {
         SymbolScope newScope = new SymbolScope(getCurrentScope());
+        newScope.setBreakable(breakable);
+        newScope.setContinuable(continuable);
         scopeStack.push(newScope);
     }
 
@@ -339,16 +328,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public int getMaxExpectedArgumentCount(String name) {
         SymbolFunction info = getCurrentScope().getFunction(name);
         return info != null ? info.getMaxParameterCount() : 0;
-    }
-
-    /**
-     * 获取函数期望的参数数量
-     *
-     * @param name 函数名
-     * @return 期望的参数数量
-     */
-    public int getExpectedArgumentCount(String name) {
-        return getMaxExpectedArgumentCount(name);
     }
 
     /**
