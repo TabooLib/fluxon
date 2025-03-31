@@ -1,0 +1,543 @@
+05:03:38: Executing ':core:org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.main()'…
+
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:compileKotlin NO-SOURCE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :core:compileTestKotlin NO-SOURCE
+> Task :core:compileTestJava UP-TO-DATE
+> Task :core:processTestResources NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :core:org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.main()
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonBooleanLogic
+
+# Run progress: 0.00% complete, ETA 00:03:12
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 1.303 us/op
+# Warmup Iteration   2: 0.916 us/op
+# Warmup Iteration   3: 0.938 us/op
+Iteration   1: 0.921 us/op
+Iteration   2: 0.910 us/op
+Iteration   3: 0.914 us/op
+Iteration   4: 0.929 us/op
+Iteration   5: 0.916 us/op
+
+# Run progress: 4.17% complete, ETA 00:03:10
+# Fork: 1 of 1
+# Warmup Iteration   1: 1.199 us/op
+# Warmup Iteration   2: 0.855 us/op
+# Warmup Iteration   3: 0.848 us/op
+Iteration   1: 0.842 us/op
+Iteration   2: 0.840 us/op
+Iteration   3: 0.839 us/op
+Iteration   4: 0.843 us/op
+Iteration   5: 0.840 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonBooleanLogic":
+  0.841 ±(99.9%) 0.006 us/op [Average]
+  (min, avg, max) = (0.839, 0.841, 0.843), stdev = 0.002
+  CI (99.9%): [0.835, 0.847] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonComplexArithmetic
+
+# Run progress: 8.33% complete, ETA 00:03:02
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 1.776 us/op
+# Warmup Iteration   2: 1.351 us/op
+# Warmup Iteration   3: 1.360 us/op
+Iteration   1: 1.345 us/op
+Iteration   2: 1.342 us/op
+Iteration   3: 1.363 us/op
+Iteration   4: 1.379 us/op
+Iteration   5: 1.370 us/op
+
+# Run progress: 12.50% complete, ETA 00:02:54
+# Fork: 1 of 1
+# Warmup Iteration   1: 1.821 us/op
+# Warmup Iteration   2: 1.362 us/op
+# Warmup Iteration   3: 1.369 us/op
+Iteration   1: 1.353 us/op
+Iteration   2: 1.352 us/op
+Iteration   3: 1.353 us/op
+Iteration   4: 1.351 us/op
+Iteration   5: 1.354 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonComplexArithmetic":
+  1.353 ±(99.9%) 0.006 us/op [Average]
+  (min, avg, max) = (1.351, 1.353, 1.354), stdev = 0.002
+  CI (99.9%): [1.347, 1.358] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonConditional
+
+# Run progress: 16.67% complete, ETA 00:02:45
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 1.670 us/op
+# Warmup Iteration   2: 1.219 us/op
+# Warmup Iteration   3: 1.229 us/op
+Iteration   1: 1.400 us/op
+Iteration   2: 1.250 us/op
+Iteration   3: 1.259 us/op
+Iteration   4: 1.218 us/op
+Iteration   5: 1.218 us/op
+
+# Run progress: 20.83% complete, ETA 00:02:37
+# Fork: 1 of 1
+# Warmup Iteration   1: 1.710 us/op
+# Warmup Iteration   2: 1.240 us/op
+# Warmup Iteration   3: 1.240 us/op
+Iteration   1: 1.243 us/op
+Iteration   2: 1.238 us/op
+Iteration   3: 1.239 us/op
+Iteration   4: 1.238 us/op
+Iteration   5: 1.238 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonConditional":
+  1.239 ±(99.9%) 0.009 us/op [Average]
+  (min, avg, max) = (1.238, 1.239, 1.243), stdev = 0.002
+  CI (99.9%): [1.230, 1.248] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonMixed
+
+# Run progress: 25.00% complete, ETA 00:02:29
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 4.327 us/op
+# Warmup Iteration   2: 3.091 us/op
+# Warmup Iteration   3: 3.076 us/op
+Iteration   1: 3.059 us/op
+Iteration   2: 3.048 us/op
+Iteration   3: 3.059 us/op
+Iteration   4: 3.093 us/op
+Iteration   5: 3.107 us/op
+
+# Run progress: 29.17% complete, ETA 00:02:20
+# Fork: 1 of 1
+# Warmup Iteration   1: 4.315 us/op
+# Warmup Iteration   2: 3.072 us/op
+# Warmup Iteration   3: 3.063 us/op
+Iteration   1: 3.041 us/op
+Iteration   2: 3.037 us/op
+Iteration   3: 3.039 us/op
+Iteration   4: 3.033 us/op
+Iteration   5: 3.050 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonMixed":
+  3.040 ±(99.9%) 0.025 us/op [Average]
+  (min, avg, max) = (3.033, 3.040, 3.050), stdev = 0.006
+  CI (99.9%): [3.015, 3.065] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonSimpleArithmetic
+
+# Run progress: 33.33% complete, ETA 00:02:12
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 1.195 us/op
+# Warmup Iteration   2: 0.923 us/op
+# Warmup Iteration   3: 0.919 us/op
+Iteration   1: 0.918 us/op
+Iteration   2: 0.918 us/op
+Iteration   3: 0.916 us/op
+Iteration   4: 0.916 us/op
+Iteration   5: 0.915 us/op
+
+# Run progress: 37.50% complete, ETA 00:02:04
+# Fork: 1 of 1
+# Warmup Iteration   1: 1.200 us/op
+# Warmup Iteration   2: 0.914 us/op
+# Warmup Iteration   3: 0.919 us/op
+Iteration   1: 0.918 us/op
+Iteration   2: 0.917 us/op
+Iteration   3: 0.918 us/op
+Iteration   4: 0.916 us/op
+Iteration   5: 0.916 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonSimpleArithmetic":
+  0.917 ±(99.9%) 0.003 us/op [Average]
+  (min, avg, max) = (0.916, 0.917, 0.918), stdev = 0.001
+  CI (99.9%): [0.914, 0.919] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonVariableCalculation
+
+# Run progress: 41.67% complete, ETA 00:01:55
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 1.306 us/op
+# Warmup Iteration   2: 1.008 us/op
+# Warmup Iteration   3: 1.008 us/op
+Iteration   1: 1.022 us/op
+Iteration   2: 1.016 us/op
+Iteration   3: 1.007 us/op
+Iteration   4: 1.008 us/op
+Iteration   5: 1.010 us/op
+
+# Run progress: 45.83% complete, ETA 00:01:47
+# Fork: 1 of 1
+# Warmup Iteration   1: 1.312 us/op
+# Warmup Iteration   2: 1.008 us/op
+# Warmup Iteration   3: 1.008 us/op
+Iteration   1: 1.006 us/op
+Iteration   2: 1.006 us/op
+Iteration   3: 1.008 us/op
+Iteration   4: 1.008 us/op
+Iteration   5: 1.005 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.fluxonVariableCalculation":
+  1.007 ±(99.9%) 0.006 us/op [Average]
+  (min, avg, max) = (1.005, 1.007, 1.008), stdev = 0.002
+  CI (99.9%): [1.001, 1.012] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlBooleanLogic
+
+# Run progress: 50.00% complete, ETA 00:01:39
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 13.860 us/op
+# Warmup Iteration   2: 9.791 us/op
+# Warmup Iteration   3: 9.765 us/op
+Iteration   1: 10.135 us/op
+Iteration   2: 10.253 us/op
+Iteration   3: 10.283 us/op
+Iteration   4: 10.296 us/op
+Iteration   5: 10.261 us/op
+
+# Run progress: 54.17% complete, ETA 00:01:30
+# Fork: 1 of 1
+# Warmup Iteration   1: 13.480 us/op
+# Warmup Iteration   2: 9.691 us/op
+# Warmup Iteration   3: 9.671 us/op
+Iteration   1: 10.105 us/op
+Iteration   2: 10.140 us/op
+Iteration   3: 10.244 us/op
+Iteration   4: 10.149 us/op
+Iteration   5: 10.194 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlBooleanLogic":
+  10.166 ±(99.9%) 0.206 us/op [Average]
+  (min, avg, max) = (10.105, 10.166, 10.244), stdev = 0.054
+  CI (99.9%): [9.960, 10.373] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlComplexArithmetic
+
+# Run progress: 58.33% complete, ETA 00:01:22
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 20.126 us/op
+# Warmup Iteration   2: 11.649 us/op
+# Warmup Iteration   3: 11.336 us/op
+Iteration   1: 11.208 us/op
+Iteration   2: 12.621 us/op
+Iteration   3: 12.645 us/op
+Iteration   4: 12.618 us/op
+Iteration   5: 12.665 us/op
+
+# Run progress: 62.50% complete, ETA 00:01:14
+# Fork: 1 of 1
+# Warmup Iteration   1: 19.709 us/op
+# Warmup Iteration   2: 11.777 us/op
+# Warmup Iteration   3: 11.312 us/op
+Iteration   1: 11.328 us/op
+Iteration   2: 12.779 us/op
+Iteration   3: 12.799 us/op
+Iteration   4: 12.792 us/op
+Iteration   5: 12.736 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlComplexArithmetic":
+  12.487 ±(99.9%) 2.495 us/op [Average]
+  (min, avg, max) = (11.328, 12.487, 12.799), stdev = 0.648
+  CI (99.9%): [9.992, 14.982] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlConditional
+
+# Run progress: 66.67% complete, ETA 00:01:06
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 24.460 us/op
+# Warmup Iteration   2: 14.640 us/op
+# Warmup Iteration   3: 14.200 us/op
+Iteration   1: 14.140 us/op
+Iteration   2: 15.327 us/op
+Iteration   3: 15.713 us/op
+Iteration   4: 15.734 us/op
+Iteration   5: 15.737 us/op
+
+# Run progress: 70.83% complete, ETA 00:00:57
+# Fork: 1 of 1
+# Warmup Iteration   1: 23.988 us/op
+# Warmup Iteration   2: 14.491 us/op
+# Warmup Iteration   3: 14.156 us/op
+Iteration   1: 14.084 us/op
+Iteration   2: 15.579 us/op
+Iteration   3: 15.962 us/op
+Iteration   4: 16.162 us/op
+Iteration   5: 16.086 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlConditional":
+  15.575 ±(99.9%) 3.323 us/op [Average]
+  (min, avg, max) = (14.084, 15.575, 16.162), stdev = 0.863
+  CI (99.9%): [12.252, 18.898] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlMixed
+
+# Run progress: 75.00% complete, ETA 00:00:49
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 62.188 us/op
+# Warmup Iteration   2: 36.693 us/op
+# Warmup Iteration   3: 35.091 us/op
+Iteration   1: 35.257 us/op
+Iteration   2: 39.223 us/op
+Iteration   3: 38.816 us/op
+Iteration   4: 38.888 us/op
+Iteration   5: 38.950 us/op
+
+# Run progress: 79.17% complete, ETA 00:00:41
+# Fork: 1 of 1
+# Warmup Iteration   1: 58.812 us/op
+# Warmup Iteration   2: 35.425 us/op
+# Warmup Iteration   3: 34.234 us/op
+Iteration   1: 34.787 us/op
+Iteration   2: 37.331 us/op
+Iteration   3: 37.440 us/op
+Iteration   4: 37.241 us/op
+Iteration   5: 37.578 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlMixed":
+  36.876 ±(99.9%) 4.522 us/op [Average]
+  (min, avg, max) = (34.787, 36.876, 37.578), stdev = 1.174
+  CI (99.9%): [32.353, 41.398] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlSimpleArithmetic
+
+# Run progress: 83.33% complete, ETA 00:00:33
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 15.415 us/op
+# Warmup Iteration   2: 10.749 us/op
+# Warmup Iteration   3: 10.539 us/op
+Iteration   1: 10.848 us/op
+Iteration   2: 11.189 us/op
+Iteration   3: 11.187 us/op
+Iteration   4: 11.131 us/op
+Iteration   5: 11.164 us/op
+
+# Run progress: 87.50% complete, ETA 00:00:24
+# Fork: 1 of 1
+# Warmup Iteration   1: 14.929 us/op
+# Warmup Iteration   2: 10.597 us/op
+# Warmup Iteration   3: 10.487 us/op
+Iteration   1: 10.817 us/op
+Iteration   2: 11.007 us/op
+Iteration   3: 10.937 us/op
+Iteration   4: 10.932 us/op
+Iteration   5: 10.943 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlSimpleArithmetic":
+  10.927 ±(99.9%) 0.264 us/op [Average]
+  (min, avg, max) = (10.817, 10.927, 11.007), stdev = 0.069
+  CI (99.9%): [10.663, 11.191] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.3, OpenJDK 64-Bit Server VM, 21.0.3+9-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java
+# VM options: -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 1 s each
+# Measurement: 5 iterations, 1 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlVariableCalculation
+
+# Run progress: 91.67% complete, ETA 00:00:16
+# Warmup Fork: 1 of 1
+# Warmup Iteration   1: 16.033 us/op
+# Warmup Iteration   2: 11.415 us/op
+# Warmup Iteration   3: 11.342 us/op
+Iteration   1: 11.687 us/op
+Iteration   2: 11.908 us/op
+Iteration   3: 11.902 us/op
+Iteration   4: 11.891 us/op
+Iteration   5: 11.913 us/op
+
+# Run progress: 95.83% complete, ETA 00:00:08
+# Fork: 1 of 1
+# Warmup Iteration   1: 15.639 us/op
+# Warmup Iteration   2: 11.364 us/op
+# Warmup Iteration   3: 11.262 us/op
+Iteration   1: 11.610 us/op
+Iteration   2: 11.971 us/op
+Iteration   3: 11.964 us/op
+Iteration   4: 12.050 us/op
+Iteration   5: 12.009 us/op
+
+
+Result "org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.jexlVariableCalculation":
+  11.921 ±(99.9%) 0.682 us/op [Average]
+  (min, avg, max) = (11.610, 11.921, 12.050), stdev = 0.177
+  CI (99.9%): [11.239, 12.603] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:03:18
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                            Mode  Cnt   Score   Error  Units
+SimpleFluxonJexlBenchmark.fluxonBooleanLogic         avgt    5   0.841 ± 0.006  us/op
+SimpleFluxonJexlBenchmark.fluxonComplexArithmetic    avgt    5   1.353 ± 0.006  us/op
+SimpleFluxonJexlBenchmark.fluxonConditional          avgt    5   1.239 ± 0.009  us/op
+SimpleFluxonJexlBenchmark.fluxonMixed                avgt    5   3.040 ± 0.025  us/op
+SimpleFluxonJexlBenchmark.fluxonSimpleArithmetic     avgt    5   0.917 ± 0.003  us/op
+SimpleFluxonJexlBenchmark.fluxonVariableCalculation  avgt    5   1.007 ± 0.006  us/op
+SimpleFluxonJexlBenchmark.jexlBooleanLogic           avgt    5  10.166 ± 0.206  us/op
+SimpleFluxonJexlBenchmark.jexlComplexArithmetic      avgt    5  12.487 ± 2.495  us/op
+SimpleFluxonJexlBenchmark.jexlConditional            avgt    5  15.575 ± 3.323  us/op
+SimpleFluxonJexlBenchmark.jexlMixed                  avgt    5  36.876 ± 4.522  us/op
+SimpleFluxonJexlBenchmark.jexlSimpleArithmetic       avgt    5  10.927 ± 0.264  us/op
+SimpleFluxonJexlBenchmark.jexlVariableCalculation    avgt    5  11.921 ± 0.682  us/op
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.10/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 3m 18s
+4 actionable tasks: 1 executed, 3 up-to-date
+05:06:56: Execution finished ':core:org.tabooproject.fluxon.interpreter.SimpleFluxonJexlBenchmark.main()'.
