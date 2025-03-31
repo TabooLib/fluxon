@@ -69,6 +69,17 @@ public class Fluxon {
     }
 
     /**
+     * 解释执行 Fluxon 源代码
+     * 使用特定环境执行
+     */
+    public static Object eval(String source, Environment env) {
+        // 使用解释器直接执行
+        List<ParseResult> parseResults = parse(source, env);
+        Interpreter interpreter = new Interpreter(env);
+        return interpreter.execute(parseResults);
+    }
+
+    /**
      * 执行 Fluxon 源文件
      *
      * @param file Fluxon 源文件

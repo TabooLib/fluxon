@@ -183,7 +183,7 @@ public class ExpressionParser {
             // 逻辑非、负号
             case NOT:
             case MINUS:
-                return new UnaryExpression(parser.consume(), parsePrimary(parser));
+                return new UnaryExpression(parser.consume(), parseUnary(parser));
             // 等待
             case AWAIT: {
                 parser.consume(); // 消费 await
@@ -273,7 +273,6 @@ public class ExpressionParser {
             // 文件结束
             case EOF:
                 throw new ParseException("Eof", parser.peek(), parser.getResults());
-                // 未知符号
             default:
                 throw new ParseException("Expected expression", parser.peek(), parser.getResults());
         }

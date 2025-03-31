@@ -36,6 +36,9 @@ subprojects {
         implementation("org.ow2.asm:asm:9.4")
         implementation("org.ow2.asm:asm-commons:9.4")
         implementation(kotlin("stdlib"))
+
+        // JEXL 表达式引擎 - 用于性能对比测试
+        testImplementation("org.apache.commons:commons-jexl3:3.3")
     }
 
     tasks.test {

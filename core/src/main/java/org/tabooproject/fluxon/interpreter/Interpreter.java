@@ -23,20 +23,17 @@ public class Interpreter {
     private final ExpressionVisitor expressionVisitor;
     private final StatementVisitor statementVisitor;
 
-    /**
-     * 创建解释器
-     */
     public Interpreter() {
-        // 初始化全局环境
-        this.environment = new Environment();
+        this(new Environment());
+    }
 
-        // 使用注册中心初始化环境
-        FluxonRuntime.getInstance().initializeEnvironment(environment);
-
-        // 初始化求值器
+    public Interpreter(Environment environment) {
+        this.environment = environment;
         this.definitionVisitor = new DefinitionVisitor(this, environment);
         this.expressionVisitor = new ExpressionVisitor(this, environment);
         this.statementVisitor = new StatementVisitor(this, environment);
+        // 使用注册中心初始化环境
+        FluxonRuntime.getInstance().initializeEnvironment(environment);
     }
 
     /**
