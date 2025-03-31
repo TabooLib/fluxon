@@ -14,6 +14,13 @@ import java.util.Map;
  */
 public class Lexer implements CompilationPhase<List<Token>> {
 
+    // 关键字映射表
+    public static final Map<String, TokenType> KEYWORDS;
+    // 单字符映射表
+    public static final Map<Character, TokenType> SINGLE_CHAR_TOKENS;
+    // 双字符映射表
+    public static final Map<String, TokenType> DOUBLE_CHAR_TOKENS;
+
     private char[] sourceChars;
     private int sourceLength;
     private int position = 0;
@@ -23,21 +30,10 @@ public class Lexer implements CompilationPhase<List<Token>> {
     private char curr;        // 当前字符缓存
     private char next;        // 下一个字符缓存
 
-    // 关键字映射表
-    private static final Map<String, TokenType> KEYWORDS;
-
-    // 单字符映射表
-    private static final Map<Character, TokenType> SINGLE_CHAR_TOKENS;
-
-    // 预定义一些常用的字符串值，减少字符串创建
-    private static final String EMPTY_STRING = "";
-    private static final String AND_STRING = "&&";
-    private static final String OR_STRING = "||";
-    private static final String ARROW_STRING = "->";
-
     static {
-        KEYWORDS = new HashMap<>(32); // 预分配容量
+        // region
         // 初始化关键字映射
+        KEYWORDS = new HashMap<>(32);
         KEYWORDS.put("def", TokenType.DEF);
         KEYWORDS.put("fun", TokenType.FUN);
         KEYWORDS.put("val", TokenType.VAL);
@@ -62,7 +58,8 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("null", TokenType.NULL);
 
         // 初始化单字符映射
-        SINGLE_CHAR_TOKENS = new HashMap<>(32); // 预分配容量
+        SINGLE_CHAR_TOKENS = new HashMap<>(32);
+        SINGLE_CHAR_TOKENS.put('&', TokenType.AMPERSAND);
         SINGLE_CHAR_TOKENS.put('+', TokenType.PLUS);
         SINGLE_CHAR_TOKENS.put('-', TokenType.MINUS);
         SINGLE_CHAR_TOKENS.put('*', TokenType.MULTIPLY);
@@ -84,6 +81,21 @@ public class Lexer implements CompilationPhase<List<Token>> {
         SINGLE_CHAR_TOKENS.put(']', TokenType.RIGHT_BRACKET);
         SINGLE_CHAR_TOKENS.put('?', TokenType.QUESTION);
         SINGLE_CHAR_TOKENS.put('|', TokenType.UNKNOWN);
+
+        // 初始化双字符映射
+        DOUBLE_CHAR_TOKENS = new HashMap<>(32);
+        DOUBLE_CHAR_TOKENS.put("==", TokenType.EQUAL);
+        DOUBLE_CHAR_TOKENS.put("!=", TokenType.NOT_EQUAL);
+        DOUBLE_CHAR_TOKENS.put(">=", TokenType.GREATER_EQUAL);
+        DOUBLE_CHAR_TOKENS.put("<=", TokenType.LESS_EQUAL);
+        DOUBLE_CHAR_TOKENS.put("+=", TokenType.PLUS_ASSIGN);
+        DOUBLE_CHAR_TOKENS.put("-=", TokenType.MINUS_ASSIGN);
+        DOUBLE_CHAR_TOKENS.put("*=", TokenType.MULTIPLY_ASSIGN);
+        DOUBLE_CHAR_TOKENS.put("/=", TokenType.DIVIDE_ASSIGN);
+        DOUBLE_CHAR_TOKENS.put("%=", TokenType.MODULO_ASSIGN);
+        DOUBLE_CHAR_TOKENS.put("?:", TokenType.QUESTION_COLON);
+        DOUBLE_CHAR_TOKENS.put("..", TokenType.RANGE);
+        // endregion
     }
 
     /**
@@ -108,11 +120,8 @@ public class Lexer implements CompilationPhase<List<Token>> {
         return tokenize();
     }
 
-    /**
-     * 将源代码转换为词法单元序列
-     *
-     * @return 词法单元列表
-     */
+    // 词法分析主逻辑
+    // 将源代码转换为词法单元序列
     private List<Token> tokenize() {
         // 预分配合适大小的列表，避免频繁扩容
         List<Token> tokens = new ArrayList<>(Math.max(512, sourceLength / 8));
@@ -132,9 +141,8 @@ public class Lexer implements CompilationPhase<List<Token>> {
         }
 
         while (position < sourceLength) {
-            // 使用缓存的字符，避免调用peek()
-            char c = this.curr;
-
+            // 使用缓存的字符，避免调用 peek()
+            char c = curr;
             // 使用内联的方式处理常见情况，减少方法调用开销
             if (c <= ' ') { // 快速空白字符检查
                 consumeWhitespace();
@@ -146,21 +154,21 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 int startColumn = column;
                 advance(); // 消费第一个 &
                 advance(); // 消费第二个 &
-                tokens.add(new Token(TokenType.AND, AND_STRING, startLine, startColumn));
+                tokens.add(new Token(TokenType.AND, "&&", startLine, startColumn));
             } else if (c == '|' && next == '|') {
                 // 处理 || 操作符
                 int startLine = line;
                 int startColumn = column;
                 advance(); // 消费第一个 |
                 advance(); // 消费第二个 |
-                tokens.add(new Token(TokenType.OR, OR_STRING, startLine, startColumn));
+                tokens.add(new Token(TokenType.OR, "||", startLine, startColumn));
             } else if (c == '-' && next == '>') {
                 // 处理 -> 操作符
                 int startLine = line;
                 int startColumn = column;
                 advance(); // 消费 -
                 advance(); // 消费 >
-                tokens.add(new Token(TokenType.ARROW, ARROW_STRING, startLine, startColumn));
+                tokens.add(new Token(TokenType.ARROW, "->", startLine, startColumn));
             } else if (c == '/' && next == '/') {
                 // 行注释 - 快速消费
                 consumeLineComment();
@@ -170,31 +178,24 @@ public class Lexer implements CompilationPhase<List<Token>> {
             } else if (c == '"' || c == '\'') {
                 tokens.add(consumeString());
             }
-            // 数字检查使用优化的范围检查而不是Character.isDigit()
+            // 数字检查使用优化的范围检查而不是 Character.isDigit()
             else if (c >= '0' && c <= '9') {
                 tokens.add(consumeNumber());
             }
             // 标识符检查，扩展为支持中文字符
             else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || Character.isIdeographic(c) || isChineseChar(c)) {
                 tokens.add(consumeIdentifier());
-            }
-            // 处理单个 & 字符 
-            else if (c == '&') {
-                tokens.add(new Token(TokenType.AMPERSAND, "&", line, column));
-                advance();
             } else {
                 tokens.add(consumeOperator());
             }
         }
 
         // 添加 EOF 标记
-        tokens.add(new Token(TokenType.EOF, EMPTY_STRING, line, column));
+        tokens.add(new Token(TokenType.EOF, "", line, column));
         return tokens;
     }
 
-    /**
-     * 消费空白字符
-     */
+    // 消费空白字符
     private void consumeWhitespace() {
         // 直接使用 currentChar 而不是调用 peek()
         while (position < sourceLength && curr <= ' ') {
@@ -207,9 +208,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         }
     }
 
-    /**
-     * 消费行注释
-     */
+    // 消费行注释
     private void consumeLineComment() {
         // 跳过 //
         advance();
@@ -219,9 +218,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         } while (position < sourceLength && curr != '\n');
     }
 
-    /**
-     * 消费块注释
-     */
+    // 消费块注释
     private void consumeBlockComment() {
         // 跳过 /*
         advance(); // 跳过 /
@@ -241,22 +238,58 @@ public class Lexer implements CompilationPhase<List<Token>> {
         }
     }
 
-    /**
-     * 检查是否标识符的值是关键字
-     *
-     * @param identifier 标识符文本
-     * @return 对应的 TokenType
-     */
-    private TokenType getIdentifierType(String identifier) {
-        return KEYWORDS.getOrDefault(identifier, TokenType.IDENTIFIER);
+    // 消费标识符
+    private Token consumeIdentifier() {
+        // region
+        int startLine = line;
+        int startColumn = column;
+        // 记录起始位置
+        int start = position;
+        // 消费第一个字符（已经在外部验证过是有效的标识符开始字符）
+        // 接下来的字符可以是字母、数字、下划线或中文字符
+        do {
+            advance();
+        } while (position < sourceLength && (isAlphabetChar(curr) || isNumberChar(curr) || isChineseChar(curr) || curr == '_' || curr == '-'));
+        // 提取标识符
+        String identifier = new String(sourceChars, start, position - start);
+        return new Token(getIdentifierType(identifier), identifier, startLine, startColumn);
+        // endregion
     }
 
-    /**
-     * 消费字符串字面量
-     *
-     * @return 字符串词法单元
-     */
+    // 消费操作符
+    private Token consumeOperator() {
+        // region
+        int startLine = line;
+        int startColumn = column;
+        char first = curr;
+        char second = next;
+
+        // 检查双字符
+        if (second != '\0') {
+            String pair = String.valueOf(first) + second;
+            TokenType tokenType = DOUBLE_CHAR_TOKENS.get(pair);
+            if (tokenType != null) {
+                advance();
+                advance();
+                // 处理 ..< 三字符操作符
+                if (tokenType == TokenType.RANGE && curr == '<') {
+                    advance();
+                    return new Token(TokenType.RANGE_EXCLUSIVE, "..<", startLine, startColumn);
+                }
+                return new Token(tokenType, pair, startLine, startColumn);
+            }
+        }
+
+        // 检查单字符
+        TokenType tokenType = SINGLE_CHAR_TOKENS.getOrDefault(first, TokenType.UNKNOWN);
+        advance();
+        return new Token(tokenType, String.valueOf(first), startLine, startColumn);
+        // endregion
+    }
+
+    // 消费字符串
     private Token consumeString() {
+        // region
         int startLine = line;
         int startColumn = column;
 
@@ -311,14 +344,12 @@ public class Lexer implements CompilationPhase<List<Token>> {
         }
         // 从缓冲区创建字符串
         return new Token(TokenType.STRING, sb.toString(), startLine, startColumn);
+        // endregion
     }
 
-    /**
-     * 消费数字字面量
-     *
-     * @return 数字词法单元
-     */
+    // 消费数字
     private Token consumeNumber() {
+        // region
         int startLine = line;
         int startColumn = column;
         int start = position;
@@ -400,130 +431,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 return new Token(TokenType.INTEGER, parseInteger(start, position), startLine, startColumn);
             }
         }
-    }
-
-    /**
-     * 判断是否为中文字符
-     *
-     * @param c 要检查的字符
-     * @return 是否为中文字符
-     */
-    private boolean isChineseChar(char c) {
-        return c >= '一' && c <= '龥';
-    }
-
-    /**
-     * 判断是否为字母字符
-     *
-     * @param c 要检查的字符
-     * @return 是否为字母字符
-     */
-    private boolean isAlphabetChar(char c) {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-    }
-
-    /**
-     * 判断是否为数字字符
-     *
-     * @param c 要检查的字符
-     * @return 是否为数字字符
-     */
-    private boolean isNumberChar(char c) {
-        return c >= '0' && c <= '9';
-    }
-
-    /**
-     * 消费标识符
-     *
-     * @return 标识符词法单元
-     */
-    private Token consumeIdentifier() {
-        int startLine = line;
-        int startColumn = column;
-        // 记录起始位置
-        int start = position;
-        // 消费第一个字符（已经在外部验证过是有效的标识符开始字符）
-        // 接下来的字符可以是字母、数字、下划线或中文字符
-        do {
-            advance();
-        } while (position < sourceLength && (isAlphabetChar(curr) || isNumberChar(curr) || isChineseChar(curr) || curr == '_' || curr == '-'));
-        // 提取标识符
-        String identifier = new String(sourceChars, start, position - start);
-        return new Token(getIdentifierType(identifier), identifier, startLine, startColumn);
-    }
-
-    /**
-     * 消费操作符
-     *
-     * @return 操作符词法单元
-     */
-    private Token consumeOperator() {
-        int startLine = line;
-        int startColumn = column;
-        char first = curr;
-
-        // 快速处理双字符操作符
-        char second = next;
-        if (second != '\0') {
-            if (first == '=' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.EQUAL, "==", startLine, startColumn);
-            } else if (first == '!' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.NOT_EQUAL, "!=", startLine, startColumn);
-            } else if (first == '>' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.GREATER_EQUAL, ">=", startLine, startColumn);
-            } else if (first == '<' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.LESS_EQUAL, "<=", startLine, startColumn);
-            } else if (first == '+' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.PLUS_ASSIGN, "+=", startLine, startColumn);
-            } else if (first == '-' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.MINUS_ASSIGN, "-=", startLine, startColumn);
-            } else if (first == '*' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.MULTIPLY_ASSIGN, "*=", startLine, startColumn);
-            } else if (first == '/' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.DIVIDE_ASSIGN, "/=", startLine, startColumn);
-            } else if (first == '%' && second == '=') {
-                advance();
-                advance();
-                return new Token(TokenType.MODULO_ASSIGN, "/=", startLine, startColumn);
-            } else if (first == '.' && second == '.') {
-                advance();
-                advance();
-                // 检查 ..< 操作符
-                if (position < sourceLength && curr == '<') {
-                    advance();
-                    return new Token(TokenType.RANGE_EXCLUSIVE, "..<", startLine, startColumn);
-                }
-                return new Token(TokenType.RANGE, "..", startLine, startColumn);
-            } else if (first == '?' && second == '.') {
-                advance();
-                advance();
-                return new Token(TokenType.QUESTION_DOT, "?.", startLine, startColumn);
-            } else if (first == '?' && second == ':') {
-                advance();
-                advance();
-                return new Token(TokenType.QUESTION_COLON, "?:", startLine, startColumn);
-            }
-        }
-        // 消费当前字符
-        advance();
-        TokenType tokenType = SINGLE_CHAR_TOKENS.getOrDefault(first, TokenType.UNKNOWN);
-        return new Token(tokenType, String.valueOf(first), startLine, startColumn);
+        // endregion
     }
 
     // 辅助方法 - 读取下一个字符
@@ -535,19 +443,43 @@ public class Lexer implements CompilationPhase<List<Token>> {
         next = position + 1 < sourceLength ? sourceChars[position + 1] : '\0';
     }
 
+    // 辅助方法 - 判断是否为中文字符
+    private boolean isChineseChar(char c) {
+        return c >= '一' && c <= '龥';
+    }
+
+    // 辅助方法 - 判断是否为字母字符
+    private boolean isAlphabetChar(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    // 辅助方法 - 判断是否为数字字符
+    private boolean isNumberChar(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    // 辅助方法 - 从缓冲区中提取整数
     private int parseInteger(int start, int end) {
         return Integer.parseInt(new String(sourceChars, start, end - start));
     }
 
+    // 辅助方法 - 从缓冲区中提取长整数
     private long parseLong(int start, int end) {
         return Long.parseLong(new String(sourceChars, start, end - start));
     }
 
+    // 辅助方法 - 从缓冲区中提取单精度浮点数
     private float parseFloat(int start, int end) {
         return Float.parseFloat(new String(sourceChars, start, end - start));
     }
 
+    // 辅助方法 - 从缓冲区中提取双精度浮点数
     private double parseDouble(int start, int end) {
         return Double.parseDouble(new String(sourceChars, start, end - start));
+    }
+
+    // 辅助方法 - 根据标识符获取类型
+    private TokenType getIdentifierType(String identifier) {
+        return KEYWORDS.getOrDefault(identifier, TokenType.IDENTIFIER);
     }
 }

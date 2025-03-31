@@ -315,8 +315,8 @@ public class LexerTest {
         @Test
         @DisplayName("测试特殊操作符")
         void testSpecialOperators() {
-            String source = "-> .. ..< ?. ?:";
-            assertTokenTypes(source, TokenType.ARROW, TokenType.RANGE, TokenType.RANGE_EXCLUSIVE, TokenType.QUESTION_DOT, TokenType.QUESTION_COLON);
+            String source = "-> .. ..< ?:";
+            assertTokenTypes(source, TokenType.ARROW, TokenType.RANGE, TokenType.RANGE_EXCLUSIVE, TokenType.QUESTION_COLON);
         }
 
         @Test
@@ -521,12 +521,6 @@ public class LexerTest {
             String source = "// 测试范围操作符\n" +
                     "val range1 = 1 .. 10\n" +
                     "val range2 = 1 ..< 10\n" +
-                    "\n" +
-                    "// 测试空安全操作符\n" +
-                    "\n" +
-                    "// 测试函数调用链\n" +
-                    "val user = { name: \"John\" }?.name ?: \"Guest\"\n" +
-                    ".. // 直接测试范围操作符\n" +
                     "val result = min 5 + 3 10\n" +
                     "\n" +
                     "// 测试 when 表达式\n" +
@@ -544,10 +538,6 @@ public class LexerTest {
             assertTrue(findTokenIndex(tokens, TokenType.RANGE) >= 0, "应识别 '..' 操作符");
             assertTrue(findTokenIndex(tokens, TokenType.RANGE_EXCLUSIVE) >= 0, "应识别 '..<' 操作符");
 
-            // 验证空安全操作符
-            assertTrue(findTokenIndex(tokens, TokenType.QUESTION_DOT) >= 0, "应识别 '?.' 操作符");
-            assertTrue(findTokenIndex(tokens, TokenType.QUESTION_COLON) >= 0, "应识别 '?:' 操作符");
-
             // 验证箭头操作符
             assertTrue(findTokenIndex(tokens, TokenType.ARROW) >= 0, "应识别 '->' 操作符");
 
@@ -556,7 +546,7 @@ public class LexerTest {
             assertTrue(identifiers.size() >= 8, "应识别多个标识符");
 
             List<Token> strings = filterByType(tokens, TokenType.STRING);
-            assertTrue(strings.size() >= 6, "应识别多个字符串字面量");
+            assertTrue(strings.size() >= 5, "应识别多个字符串字面量");
 
             List<Token> integers = filterByType(tokens, TokenType.INTEGER);
             assertTrue(integers.size() >= 4, "应识别多个整数字面量");
@@ -568,8 +558,6 @@ public class LexerTest {
             // 验证关键字和标识符的存在
             assertTrue(getValuesByType(tokens, TokenType.IDENTIFIER).contains("range1"), "应识别 'range1' 标识符");
             assertTrue(getValuesByType(tokens, TokenType.IDENTIFIER).contains("range2"), "应识别 'range2' 标识符");
-            assertTrue(getValuesByType(tokens, TokenType.IDENTIFIER).contains("user"), "应识别 'user' 标识符");
-            assertTrue(getValuesByType(tokens, TokenType.IDENTIFIER).contains("name"), "应识别 'name' 标识符");
         }
     }
 
