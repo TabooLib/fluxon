@@ -63,4 +63,6 @@ public class Type {
     public String toString() {
         return signature;
     }
+
+    public static final Type OBJECT = new Type(Object.class);
 }

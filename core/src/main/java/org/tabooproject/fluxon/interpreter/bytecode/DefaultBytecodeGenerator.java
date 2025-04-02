@@ -7,6 +7,8 @@ import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
 
@@ -14,8 +16,6 @@ import java.util.*;
  * 默认字节码生成器实现
  */
 public class DefaultBytecodeGenerator implements BytecodeGenerator {
-
-    private final EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
 
     // 存储字段信息
     private final Map<String, FieldInfo> fields = new LinkedHashMap<>();
@@ -26,6 +26,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public void generateExpressionBytecode(Expression expr, MethodVisitor mv) {
+        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         ExpressionEvaluator<Expression> evaluator = registry.getExpression(expr.getExpressionType());
         if (evaluator != null) {
             evaluator.generateBytecode(expr, mv);
@@ -64,12 +65,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
 
         // 生成类，继承 RuntimeScriptBase
-        cw.visit(Opcodes.V1_8,
-                Opcodes.ACC_PUBLIC,
-                className,
-                null,
-                superClassName,
-                null);
+        cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, className, null, superClassName, null);
 
         // 生成字段
         for (Map.Entry<String, FieldInfo> entry : fields.entrySet()) {
@@ -80,29 +76,25 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                     null);
         }
 
-        // 生成返回值字段
+        // 是否有返回值
         if (returnExpression != null) {
-            String resultType = getResultDescriptor(returnExpression);
-            cw.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
-                    "$$result",
-                    resultType,
-                    null,
-                    null);
-            // 生成getter方法
-            generateResultGetter(cw, className, resultType);
+            // 生成字段
+            cw.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "$$result", Type.OBJECT.getSignature(), null, null);
+            // 生成 getter 方法
+            generateResultGetter(cw, className, Type.OBJECT.getSignature());
         }
 
         // 生成构造函数
-        generateConstructor(cw, className);
+        generateConstructor(cw, className, superClassName);
 
         cw.visitEnd();
         return cw.toByteArray();
     }
 
-    private void generateConstructor(ClassWriter cw, String className) {
+    private void generateConstructor(ClassWriter cw, String className, String superClassName) {
         MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC,
                 "<init>",
-                "(Lorg/tabooproject/fluxon/runtime/Environment;)V",
+                "(" + Environment.TYPE + ")V",
                 null,
                 null);
         mv.visitCode();
@@ -110,11 +102,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 调用父类构造函数
         mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
         mv.visitVarInsn(Opcodes.ALOAD, 1);  // environment参数
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL,
-                "org/tabooproject/fluxon/runtime/RuntimeScriptBase",
-                "<init>",
-                "(Lorg/tabooproject/fluxon/runtime/Environment;)V",
-                false);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, superClassName, "<init>", "(" + Environment.TYPE + ")V", false);
 
         for (Map.Entry<String, FieldInfo> entry : fields.entrySet()) {
             if (entry.getValue().initializer != null) {
@@ -135,14 +123,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         if (returnExpression != null) {
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
             generateExpressionBytecode(returnExpression, mv);
-            mv.visitFieldInsn(Opcodes.PUTFIELD,
-                    className,
-                    "$$result",
-                    getResultDescriptor(returnExpression));
+            mv.visitFieldInsn(Opcodes.PUTFIELD, className, "$$result", Type.OBJECT.getSignature());
         }
 
         mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(3, 2);  // 栈大小3，局部变量2(this和environment)
+        mv.visitMaxs(3, 2);
         mv.visitEnd();
     }
 
@@ -153,60 +138,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 null,
                 null);
         mv.visitCode();
-
-        mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
+        mv.visitVarInsn(Opcodes.ALOAD, 0); // this
         mv.visitFieldInsn(Opcodes.GETFIELD,
                 className,
                 "$$result",
                 resultType);
-
-        // 根据类型选择返回指令
-        switch (resultType) {
-            case "I":
-                mv.visitInsn(Opcodes.IRETURN);
-                break;
-            case "J":
-                mv.visitInsn(Opcodes.LRETURN);
-                break;
-            case "F":
-                mv.visitInsn(Opcodes.FRETURN);
-                break;
-            case "D":
-                mv.visitInsn(Opcodes.DRETURN);
-                break;
-            default:
-                mv.visitInsn(Opcodes.ARETURN);
-                break;
-        }
-
+        mv.visitInsn(Opcodes.ARETURN);
         mv.visitMaxs(2, 1);
         mv.visitEnd();
-    }
-
-    private String getResultDescriptor(Expression expr) {
-//        ExpressionType type = expr.getExpressionType();
-//        switch (type) {
-//            case INT_LITERAL:
-//                return "I";
-//            case LONG_LITERAL:
-//                return "J";
-//            case FLOAT_LITERAL:
-//                return "F";
-//            case DOUBLE_LITERAL:
-//                return "D";
-//            case STRING_LITERAL:
-//                return "Ljava/lang/String;";
-//            case BOOLEAN_LITERAL:
-//                return "Z";
-//            case BINARY:
-//                // 根据操作数类型推断
-//                BinaryExpression binary = (BinaryExpression) expr;
-//                if (binary.getLeft() instanceof Expression) {
-//                    return getResultDescriptor((Expression) binary.getRight());
-//                }
-//                break;
-//        }
-        return "Ljava/lang/Object;";
     }
 
     private static class FieldInfo {

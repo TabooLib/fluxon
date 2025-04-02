@@ -12,6 +12,9 @@ import java.util.Map;
  */
 public class Environment {
 
+    // 类型
+    public static final Type TYPE = new Type(Environment.class);
+
     // 函数储存
     private final Map<String, Function> functions = new HashMap<>();
     // 变量存储

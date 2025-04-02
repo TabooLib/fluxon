@@ -1,7 +1,11 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
+import org.tabooproject.fluxon.runtime.Type;
+
 // @formatter:off
 public final class Operations {
+
+    public static final Type TYPE = new Type(Operations.class);
 
     /**
      * 检查操作数是否为数字
@@ -76,6 +80,11 @@ public final class Operations {
         }
     }
 
+    public static Object subtract(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return subtractNumbers((Number) a, (Number) b);
+    }
+
     public static Number subtractNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
@@ -89,6 +98,11 @@ public final class Operations {
         }
     }
 
+    public static Object multiply(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return multiplyNumbers((Number) a, (Number) b);
+    }
+
     public static Number multiplyNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
@@ -100,6 +114,11 @@ public final class Operations {
         } catch (ArithmeticException e) {
             return handleOverflow(a, b, '*');
         }
+    }
+
+    public static Object divide(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return divideNumbers((Number) a, (Number) b);
     }
 
     public static Number divideNumbers(Number a, Number b) {
@@ -117,6 +136,11 @@ public final class Operations {
         return (double)la / divisor;
     }
 
+    public static Object modulo(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return moduloNumbers((Number) a, (Number) b);
+    }
+
     public static Number moduloNumbers(Number a, Number b) {
         double divisor = b.doubleValue();
         if (divisor == 0) throw new ArithmeticException("Modulo by zero");
@@ -126,6 +150,11 @@ public final class Operations {
             case LONG:   return a.longValue() % b.longValue();
             default:     return a.intValue() % b.intValue();
         }
+    }
+
+    public static int compare(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return compareNumbers((Number) a, (Number) b);
     }
 
     public static int compareNumbers(Number a, Number b) {

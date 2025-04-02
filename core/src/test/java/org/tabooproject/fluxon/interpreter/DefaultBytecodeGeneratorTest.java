@@ -19,24 +19,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DefaultBytecodeGeneratorTest {
 
-    @Test
-    public void testSimpleMathOperation() throws Exception {
+    public static void main(String[] args) throws Exception {
         // 创建字节码生成器
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
 
         // 添加字符串 Field
-//        generator.addField("text", "Ljava/lang/String;", new BinaryExpression(
-//                new StringLiteral("Hello"),
-//                new Token(TokenType.PLUS, "+", 1, 1),
-//                new IntLiteral(999)
-//        ));
-
-        // 创建表达式: 1 + 2
-//        BinaryExpression expr = new BinaryExpression(
-//                new IntLiteral(1),
-//                new Token(TokenType.PLUS, "+", 1, 1),
-//                new IntLiteral(2)
-//        );
+        generator.addField("bool1", "Z", new BinaryExpression(
+                new IntLiteral(1),
+                new Token(TokenType.GREATER),
+                new IntLiteral(1)
+        ));
 
         generator.setReturnExpression(
                 new BinaryExpression(
