@@ -78,7 +78,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 } else {
                     leftEval.generateBytecode(expr.getLeft(), mv);
                     rightEval.generateBytecode(expr.getRight(), mv);
-                    mv.visitInsn(IADD);
+                    mv.visitInsn(DADD);
                 }
                 break;
             case MINUS:

@@ -1,5 +1,8 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -13,6 +16,7 @@ public interface Function {
      * 
      * @return 函数名称
      */
+    @NotNull
     String getName();
 
     /**
@@ -20,6 +24,7 @@ public interface Function {
      * 
      * @return 参数数量
      */
+    @NotNull
     List<Integer> getParameterCounts();
 
     /**
@@ -35,5 +40,6 @@ public interface Function {
      * @param args 参数列表
      * @return 返回值
      */
+    @Nullable
     Object call(Object[] args);
-} 
+}

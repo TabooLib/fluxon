@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.LogicalExpression;
 
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
 

@@ -9,6 +9,25 @@ public class Token {
     private final Object value;
     private final int line;
     private final int column;
+
+    /**
+     * 创建词法单元
+     *
+     * @param type 词法单元类型
+     */
+    public Token(TokenType type) {
+        this(type, type.getText());
+    }
+
+    /**
+     * 创建词法单元
+     *
+     * @param type 词法单元类型
+     * @param value 词法单元值
+     */
+    public Token(TokenType type, Object value) {
+        this(type, value, -1, -1);
+    }
     
     /**
      * 创建词法单元

@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
-import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -51,23 +50,18 @@ public abstract class AbstractVisitor implements Visitor {
         return environment;
     }
     
-    /**
-     * 访问任何解析结果
-     *
-     * @param result 解析结果
-     * @return 评估结果
-     */
     @Override
-    public Object visit(ParseResult result) {
-        switch (result.getType()) {
-            case EXPRESSION:
-                return visitExpression((Expression) result);
-            case STATEMENT:
-                return visitStatement((Statement) result);
-            case DEFINITION:
-                return visitDefinition((Definition) result);
-            default:
-                throw new RuntimeException("Unknown parse result type: " + result.getType());
-        }
+    public Object visitExpression(Expression expression) {
+        throw new UnsupportedOperationException("Not support.");
+    }
+
+    @Override
+    public Object visitStatement(Statement statement) {
+        throw new UnsupportedOperationException("Not support.");
+    }
+
+    @Override
+    public Object visitDefinition(Definition definition) {
+        throw new UnsupportedOperationException("Not support.");
     }
 }

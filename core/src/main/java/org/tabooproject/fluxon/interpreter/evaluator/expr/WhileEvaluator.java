@@ -7,7 +7,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.WhileExpression;
 
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 

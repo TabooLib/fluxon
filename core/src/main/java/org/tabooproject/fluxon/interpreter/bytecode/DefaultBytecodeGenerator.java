@@ -5,9 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
-import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
-import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.statement.Statement;
 
 import java.util.*;
@@ -186,29 +184,30 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     private String getResultDescriptor(Expression expr) {
-        ExpressionType type = expr.getExpressionType();
-        switch (type) {
-            case INT_LITERAL:
-                return "I";
-            case LONG_LITERAL:
-                return "J";
-            case FLOAT_LITERAL:
-                return "F";
-            case DOUBLE_LITERAL:
-                return "D";
-            case STRING_LITERAL:
-                return "Ljava/lang/String;";
-            case BOOLEAN_LITERAL:
-                return "Z";
-            case BINARY:
-                // 根据操作数类型推断
-                BinaryExpression binary = (BinaryExpression) expr;
-                if (binary.getLeft() instanceof Expression) {
-                    return getResultDescriptor((Expression) binary.getRight());
-                }
-                break;
-        }
-        return "Ljava/lang/Object;";
+//        ExpressionType type = expr.getExpressionType();
+//        switch (type) {
+//            case INT_LITERAL:
+//                return "I";
+//            case LONG_LITERAL:
+//                return "J";
+//            case FLOAT_LITERAL:
+//                return "F";
+//            case DOUBLE_LITERAL:
+//                return "D";
+//            case STRING_LITERAL:
+//                return "Ljava/lang/String;";
+//            case BOOLEAN_LITERAL:
+//                return "Z";
+//            case BINARY:
+//                // 根据操作数类型推断
+//                BinaryExpression binary = (BinaryExpression) expr;
+//                if (binary.getLeft() instanceof Expression) {
+//                    return getResultDescriptor((Expression) binary.getRight());
+//                }
+//                break;
+//        }
+//        return "Ljava/lang/Object;";
+        return "D";
     }
 
     private static class FieldInfo {

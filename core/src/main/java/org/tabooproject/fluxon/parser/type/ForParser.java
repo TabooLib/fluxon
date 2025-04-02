@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolScope;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 
 import java.util.ArrayList;

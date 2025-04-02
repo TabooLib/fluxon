@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -13,33 +12,16 @@ public interface Visitor {
 
     /**
      * 访问表达式节点
-     *
-     * @param expression 表达式对象
-     * @return 评估结果
      */
     Object visitExpression(Expression expression);
 
     /**
      * 访问语句节点
-     *
-     * @param statement 语句对象
-     * @return 评估结果
      */
     Object visitStatement(Statement statement);
 
     /**
      * 访问定义节点
-     *
-     * @param definition 定义对象
-     * @return 评估结果
      */
     Object visitDefinition(Definition definition);
-
-    /**
-     * 访问解析结果
-     *
-     * @param result 解析结果
-     * @return 评估结果
-     */
-    Object visit(ParseResult result);
-} 
+}

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
@@ -15,18 +16,20 @@ public class UserFunction implements Function {
     private final Definitions.FunctionDefinition definition;
     private final Environment closure;
     private final Interpreter interpreter;
-    
+
     public UserFunction(Definitions.FunctionDefinition definition, Environment closure, Interpreter interpreter) {
         this.definition = definition;
         this.closure = closure;
         this.interpreter = interpreter;
     }
 
+    @NotNull
     @Override
     public String getName() {
         return definition.getName();
     }
 
+    @NotNull
     @Override
     public List<Integer> getParameterCounts() {
         return Collections.singletonList(definition.getParameters().size());
@@ -64,7 +67,7 @@ public class UserFunction implements Function {
             return returnValue.getValue();
         }
     }
-    
+
     /**
      * 获取函数定义
      * 

@@ -1,8 +1,8 @@
 package org.tabooproject.fluxon.interpreter.evaluator;
 
+import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.objectweb.asm.MethodVisitor;
 
 public interface Evaluator<T extends ParseResult> {
 

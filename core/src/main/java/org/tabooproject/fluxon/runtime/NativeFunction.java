@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 
 import java.util.List;
@@ -12,17 +13,19 @@ public class NativeFunction implements Function {
 
     private final SymbolFunction symbolInfo;
     private final NativeCallable callable;
-    
+
     public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable) {
         this.symbolInfo = symbolInfo;
         this.callable = callable;
     }
 
+    @NotNull
     @Override
     public String getName() {
         return symbolInfo.getName();
     }
 
+    @NotNull
     @Override
     public List<Integer> getParameterCounts() {
         return symbolInfo.getParameterCounts();
