@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.parser.expression;
 
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+
 /**
  * 引用表达式（&变量）
  */

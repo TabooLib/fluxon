@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 public class Type {
 
+    public static final Type VOID = new Type(void.class);
     public static final Type OBJECT = new Type(Object.class);
     public static final Type STRING = new Type(String.class);
     public static final Type INT = new Type(Integer.class);

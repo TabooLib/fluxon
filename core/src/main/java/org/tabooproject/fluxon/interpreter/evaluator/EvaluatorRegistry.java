@@ -65,6 +65,7 @@ public class EvaluatorRegistry {
         registerExpression(new WhenEvaluator());
         registerExpression(new WhileEvaluator());
         // 注册字面量求值器
+        registerExpression(new IdentifierEvaluator());
         registerExpression(new IntLiteralEvaluator());
         registerExpression(new NullLiteralEvaluator());
         registerExpression(new StringLiteralEvaluator());

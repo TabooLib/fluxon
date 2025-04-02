@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.expression.FunctionCall;
-import org.tabooproject.fluxon.parser.expression.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
 

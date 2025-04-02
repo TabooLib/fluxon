@@ -1,4 +1,7 @@
-package org.tabooproject.fluxon.parser.expression;
+package org.tabooproject.fluxon.parser.expression.literal;
+
+import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.ExpressionType;
 
 /**
  * 标识符
