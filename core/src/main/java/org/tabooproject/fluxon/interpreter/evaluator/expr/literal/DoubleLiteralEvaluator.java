@@ -10,8 +10,6 @@ import org.tabooproject.fluxon.runtime.Type;
 
 public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
 
-    public static final Type TYPE = new Type(Double.class);
-
     @Override
     public ExpressionType getType() {
         return ExpressionType.DOUBLE_LITERAL;
@@ -23,8 +21,9 @@ public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
     }
 
     @Override
-    public void generateBytecode(DoubleLiteral result, MethodVisitor mv) {
+    public Type generateBytecode(DoubleLiteral result, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "valueOf", "(D)" + TYPE, false);
+        mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
+        return Type.DOUBLE;
     }
 }

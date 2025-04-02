@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.runtime.Type;
 
 /**
  * 字节码生成器接口
@@ -12,26 +13,12 @@ public interface BytecodeGenerator {
     /**
      * 为表达式生成字节码
      */
-    void generateExpressionBytecode(Expression expr, MethodVisitor mv);
+    Type generateExpressionBytecode(Expression expr, MethodVisitor mv);
     
     /**
      * 为语句生成字节码
      */  
     void generateStatementBytecode(Statement stmt, MethodVisitor mv);
-    
-    /**
-     * 添加一个字段
-     * @param name 字段名
-     * @param type 字段类型描述符
-     * @param initializer 初始化表达式
-     */
-    void addField(String name, String type, Expression initializer);
-    
-    /**
-     * 设置脚本的返回值表达式
-     * @param expr 返回值表达式
-     */
-    void setReturnExpression(Expression expr);
     
     /**
      * 添加脚本主体代码

@@ -10,8 +10,6 @@ import org.tabooproject.fluxon.runtime.Type;
 
 public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
 
-    public static final Type TYPE = new Type(Long.class);
-
     @Override
     public ExpressionType getType() {
         return ExpressionType.LONG_LITERAL;
@@ -23,8 +21,9 @@ public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
     }
 
     @Override
-    public void generateBytecode(LongLiteral result, MethodVisitor mv) {
+    public Type generateBytecode(LongLiteral result, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "valueOf", "(J)" + TYPE, false);
+        mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
+        return Type.LONG;
     }
 }

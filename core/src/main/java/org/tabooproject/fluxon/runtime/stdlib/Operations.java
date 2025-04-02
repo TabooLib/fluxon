@@ -59,6 +59,15 @@ public final class Operations {
         }
     }
 
+    /**
+     * 对两个操作数进行加法运算
+     * 如果两个操作数都是数字类型，则进行数字加法
+     * 否则将两个操作数转换为字符串后进行拼接
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 运算结果
+     */
     public static Object add(Object a, Object b) {
         if (a instanceof Number && b instanceof Number) {
             return addNumbers((Number) a, (Number) b);
@@ -67,6 +76,15 @@ public final class Operations {
         }
     }
 
+    /**
+     * 对两个数字进行加法运算
+     * 根据操作数类型自动选择合适的数值类型进行计算
+     * 当发生溢出时会进行溢出处理
+     *
+     * @param a 第一个数字
+     * @param b 第二个数字
+     * @return 加法运算结果
+     */
     public static Number addNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
@@ -80,11 +98,28 @@ public final class Operations {
         }
     }
 
+    /**
+     * 对两个操作数进行减法运算
+     *
+     * @param a 被减数
+     * @param b 减数
+     * @return 减法运算结果
+     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     */
     public static Object subtract(Object a, Object b) {
         checkNumberOperands(a, b);
         return subtractNumbers((Number) a, (Number) b);
     }
 
+    /**
+     * 对两个数字进行减法运算
+     * 根据操作数类型自动选择合适的数值类型进行计算
+     * 当发生溢出时会进行溢出处理
+     *
+     * @param a 被减数
+     * @param b 减数
+     * @return 减法运算结果
+     */
     public static Number subtractNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
@@ -98,11 +133,28 @@ public final class Operations {
         }
     }
 
+    /**
+     * 对两个操作数进行乘法运算
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 乘法运算结果
+     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     */
     public static Object multiply(Object a, Object b) {
         checkNumberOperands(a, b);
         return multiplyNumbers((Number) a, (Number) b);
     }
 
+    /**
+     * 对两个数字进行乘法运算
+     * 根据操作数类型自动选择合适的数值类型进行计算
+     * 当发生溢出时会进行溢出处理
+     *
+     * @param a 第一个数字
+     * @param b 第二个数字
+     * @return 乘法运算结果
+     */
     public static Number multiplyNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
@@ -116,6 +168,15 @@ public final class Operations {
         }
     }
 
+    /**
+     * 对两个操作数进行除法运算
+     *
+     * @param a 被除数
+     * @param b 除数
+     * @return 除法运算结果
+     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws ArithmeticException 当除数为 0 时抛出异常
+     */
     public static Object divide(Object a, Object b) {
         checkNumberOperands(a, b);
         return divideNumbers((Number) a, (Number) b);
@@ -136,6 +197,15 @@ public final class Operations {
         return (double)la / divisor;
     }
 
+    /**
+     * 对两个操作数进行取模运算
+     *
+     * @param a 被除数
+     * @param b 除数
+     * @return 取模运算结果
+     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws ArithmeticException 当除数为 0 时抛出异常
+     */
     public static Object modulo(Object a, Object b) {
         checkNumberOperands(a, b);
         return moduloNumbers((Number) a, (Number) b);
@@ -152,6 +222,58 @@ public final class Operations {
         }
     }
 
+    /**
+     * 比较两个数字是否满足大于关系
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 如果 a > b 返回 true，否则返回 false
+     */
+    public static boolean isGreater(Object a, Object b) {
+        return compare(a, b) > 0;
+    }
+
+    /**
+     * 比较两个数字是否满足大于等于关系
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 如果 a >= b 返回 true，否则返回 false
+     */
+    public static boolean isGreaterEqual(Object a, Object b) {
+        return compare(a, b) >= 0;
+    }
+
+    /**
+     * 比较两个数字是否满足小于关系
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 如果 a < b 返回 true，否则返回 false
+     */
+    public static boolean isLess(Object a, Object b) {
+        return compare(a, b) < 0;
+    }
+
+    /**
+     * 比较两个数字是否满足小于等于关系
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 如果 a <= b 返回 true，否则返回 false
+     */
+    public static boolean isLessEqual(Object a, Object b) {
+        return compare(a, b) <= 0;
+    }
+
+    /**
+     * 比较两个数字的大小
+     *
+     * @param a 第一个操作数
+     * @param b 第二个操作数
+     * @return 如果 a > b 返回正数，a < b 返回负数，a = b 返回 0
+     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     */
     public static int compare(Object a, Object b) {
         checkNumberOperands(a, b);
         return compareNumbers((Number) a, (Number) b);
@@ -174,6 +296,14 @@ public final class Operations {
         return Long.compare(a.longValue(), b.longValue());
     }
 
+    /**
+     * 对数字进行取反操作
+     * 根据操作数类型自动选择合适的数值类型进行计算
+     * 当发生溢出时会进行溢出处理
+     *
+     * @param n 要取反的数字
+     * @return 取反后的结果
+     */
     public static Number negateNumber(Number n) {
         try {
             switch (getType(n)) {

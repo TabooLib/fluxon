@@ -11,6 +11,11 @@ public abstract class RuntimeScriptBase {
         this.environment = environment;
     }
 
+    // 设置运行时变量
+    protected void setVariable(String name, Object value) {
+        environment.defineVariable(name, value);
+    }
+
     // 获取运行时变量
     protected Object getVariable(String name) {
         return environment.get(name);

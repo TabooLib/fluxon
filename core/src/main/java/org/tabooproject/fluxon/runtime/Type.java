@@ -2,6 +2,19 @@ package org.tabooproject.fluxon.runtime;
 
 public class Type {
 
+    public static final Type OBJECT = new Type(Object.class);
+    public static final Type STRING = new Type(String.class);
+    public static final Type INT = new Type(Integer.class);
+    public static final Type LONG = new Type(Long.class);
+    public static final Type FLOAT = new Type(Float.class);
+    public static final Type DOUBLE = new Type(Double.class);
+    public static final Type BOOLEAN = new Type(Boolean.class);
+    public static final Type I = new Type(int.class);
+    public static final Type J = new Type(long.class);
+    public static final Type F = new Type(float.class);
+    public static final Type D = new Type(double.class);
+    public static final Type Z = new Type(boolean.class);
+
     // 类对象
     private final Class<?> source;
     // 纬度
@@ -9,7 +22,7 @@ public class Type {
     // 类路径
     private final String path;
     // 类签名
-    private final String signature;
+    private final String descriptor;
 
     public Type(Class<?> source) {
         this(source, 0);
@@ -25,7 +38,7 @@ public class Type {
         for (int i = 0; i < dimension; i++) {
             descriptor.insert(0, "[");
         }
-        this.signature = descriptor.toString();
+        this.descriptor = descriptor.toString();
     }
 
     /**
@@ -55,14 +68,12 @@ public class Type {
         return path;
     }
 
-    public String getSignature() {
-        return signature;
+    public String getDescriptor() {
+        return descriptor;
     }
 
     @Override
     public String toString() {
-        return signature;
+        return descriptor;
     }
-
-    public static final Type OBJECT = new Type(Object.class);
 }

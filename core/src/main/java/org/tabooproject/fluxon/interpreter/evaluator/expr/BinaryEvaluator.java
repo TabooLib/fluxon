@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
-import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -9,7 +8,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
@@ -32,10 +31,10 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             case DIVIDE:        return divide(left, right);
             case MULTIPLY:      return multiply(left, right);
             case MODULO:        return modulo(left, right);
-            case GREATER:       return compare(left, right) > 0;
-            case GREATER_EQUAL: return compare(left, right) >= 0;
-            case LESS:          return compare(left, right) < 0;
-            case LESS_EQUAL:    return compare(left, right) <= 0;
+            case GREATER:       return isGreater(left, right);
+            case GREATER_EQUAL: return isGreaterEqual(left, right);
+            case LESS:          return isLess(left, right);
+            case LESS_EQUAL:    return isLessEqual(left, right);
             case EQUAL:         return isEqual(left, right);
             case NOT_EQUAL:     return !isEqual(left, right);
             default:            throw new RuntimeException("Unknown binary operator: " + result.getOperator().getType());
@@ -44,7 +43,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     }
 
     @Override
-    public void generateBytecode(BinaryExpression expr, MethodVisitor mv) {
+    public Type generateBytecode(BinaryExpression expr, MethodVisitor mv) {
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         Evaluator<ParseResult> leftEval = registry.getEvaluator(expr.getLeft());
         Evaluator<ParseResult> rightEval = registry.getEvaluator(expr.getRight());
@@ -54,37 +53,37 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         switch (expr.getOperator().getType()) {
             case PLUS:
                 generateOperator(expr, leftEval, rightEval, "add", SIGNATURE_O2O, mv, false);
-                break;
+                return Type.OBJECT;
             case MINUS:
                 generateOperator(expr, leftEval, rightEval, "subtract", SIGNATURE_O2O, mv, false);
-                break;
+                return Type.OBJECT;
             case MULTIPLY:
                 generateOperator(expr, leftEval, rightEval, "multiply", SIGNATURE_O2O, mv, false);
-                break;
+                return Type.OBJECT;
             case DIVIDE:
                 generateOperator(expr, leftEval, rightEval, "divide", SIGNATURE_O2O, mv, false);
-                break;
+                return Type.OBJECT;
             case MODULO:
                 generateOperator(expr, leftEval, rightEval, "modulo", SIGNATURE_O2O, mv, false);
-                break;
+                return Type.OBJECT;
             case GREATER:
-                generateComparisonOperator(expr, leftEval, rightEval, mv, IF_ICMPGT);
-                break;
+                generateOperator(expr, leftEval, rightEval, "isGreater", SIGNATURE_O2Z, mv, false);
+                return Type.Z;
             case GREATER_EQUAL:
-                generateComparisonOperator(expr, leftEval, rightEval, mv, IF_ICMPGE);
-                break;
+                generateOperator(expr, leftEval, rightEval, "isGreaterEqual", SIGNATURE_O2Z, mv, false);
+                return Type.Z;
             case LESS:
-                generateComparisonOperator(expr, leftEval, rightEval, mv, IF_ICMPLT);
-                break;
+                generateOperator(expr, leftEval, rightEval, "isLess", SIGNATURE_O2Z, mv, false);
+                return Type.Z;
             case LESS_EQUAL:
-                generateComparisonOperator(expr, leftEval, rightEval, mv, IF_ICMPLE);
-                break;
+                generateOperator(expr, leftEval, rightEval, "isLessEqual", SIGNATURE_O2Z, mv, false);
+                return Type.Z;
             case EQUAL:
                 generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, mv, false);
-                break;
+                return Type.Z;
             case NOT_EQUAL:
                 generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, mv, true);
-                break;
+                return Type.Z;
             default:
                 throw new RuntimeException("Unknown binary operator: " + expr.getOperator().getType());
         }
@@ -103,8 +102,8 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             boolean xor
     ) {
         // 生成左右操作数的字节码
-        leftEval.generateBytecode(expr.getLeft(), mv);
-        rightEval.generateBytecode(expr.getRight(), mv);
+        boxing(leftEval.generateBytecode(expr.getLeft(), mv), mv);
+        boxing(rightEval.generateBytecode(expr.getRight(), mv), mv);
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, signature, false);
         // 是否取反结果
@@ -115,33 +114,28 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     }
 
     /**
-     * 生成 Operations 比较方法字节码
+     * 将操作数装箱
      */
-    private void generateComparisonOperator(
-            BinaryExpression expr,
-            Evaluator<ParseResult> leftEval,
-            Evaluator<ParseResult> rightEval,
-            MethodVisitor mv,
-            int opcode
-    ) {
-        // 生成左右操作数的字节码
-        leftEval.generateBytecode(expr.getLeft(), mv);
-        rightEval.generateBytecode(expr.getRight(), mv);
-        // 调用 Operations.compare 方法进行比较
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "compare", SIGNATURE_O2I, false);
-        // 根据比较结果和操作符类型生成条件跳转指令
-        Label trueLabel = new Label();
-        Label endLabel = new Label();
-        mv.visitInsn(ICONST_0);              // 加载常量 0 用于比较
-        mv.visitJumpInsn(opcode, trueLabel); // 如果比较结果与 0 的关系满足条件，跳转到 trueLabel
-        mv.visitInsn(ICONST_0);              // false
-        mv.visitJumpInsn(GOTO, endLabel);
-        mv.visitLabel(trueLabel);
-        mv.visitInsn(ICONST_1);              // true
-        mv.visitLabel(endLabel);
+    private void boxing(Type type, MethodVisitor mv) {
+        switch (type.getDescriptor()) {
+            case "Z":
+                mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
+                break;
+            case "I":
+                mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
+                break;
+            case "J":
+                mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
+                break;
+            case "F":
+                mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
+                break;
+            case "D":
+                mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
+                break;
+        }
     }
 
     private static final String SIGNATURE_O2O = "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;";
-    private static final String SIGNATURE_O2I = "(Ljava/lang/Object;Ljava/lang/Object;)I";
     private static final String SIGNATURE_O2Z = "(Ljava/lang/Object;Ljava/lang/Object;)Z";
 }

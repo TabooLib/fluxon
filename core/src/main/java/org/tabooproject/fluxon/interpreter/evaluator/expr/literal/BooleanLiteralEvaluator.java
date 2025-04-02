@@ -10,8 +10,6 @@ import org.tabooproject.fluxon.runtime.Type;
 
 public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral> {
 
-    public static final Type TYPE = new Type(Boolean.class);
-
     @Override
     public ExpressionType getType() {
         return ExpressionType.BOOLEAN_LITERAL;
@@ -23,8 +21,9 @@ public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral>
     }
 
     @Override
-    public void generateBytecode(BooleanLiteral result, MethodVisitor mv) {
+    public Type generateBytecode(BooleanLiteral result, MethodVisitor mv) {
         mv.visitInsn(result.getValue() ? ICONST_1 : ICONST_0);
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "valueOf", "(Z)" + TYPE, false);
+        mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
+        return Type.BOOLEAN;
     }
 }

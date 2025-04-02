@@ -1,21 +1,15 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.interpreter.bytecode;
 
-import org.junit.jupiter.api.Test;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
-import org.tabooproject.fluxon.parser.expression.literal.DoubleLiteral;
+import org.tabooproject.fluxon.parser.expression.literal.BooleanLiteral;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DefaultBytecodeGeneratorTest {
 
@@ -24,19 +18,15 @@ public class DefaultBytecodeGeneratorTest {
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
 
         // 添加字符串 Field
-        generator.addField("bool1", "Z", new BinaryExpression(
-                new IntLiteral(1),
-                new Token(TokenType.GREATER),
-                new IntLiteral(1)
-        ));
-
-        generator.setReturnExpression(
+        generator.addScriptBody(new ExpressionStatement(new BinaryExpression(
                 new BinaryExpression(
-                        new IntLiteral(1),
-                        new Token(TokenType.PLUS),
-                        new IntLiteral(2)
-                )
-        );
+                        new IntLiteral(2),
+                        new Token(TokenType.GREATER),
+                        new IntLiteral(1)
+                ),
+                new Token(TokenType.EQUAL),
+                new BooleanLiteral(true)
+        )));
 
         // 生成字节码
         byte[] bytecode = generator.generateClassBytecode("CompiledScript");

@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
+import org.tabooproject.fluxon.runtime.Type;
 
 public class StringLiteralEvaluator extends ExpressionEvaluator<StringLiteral> {
 
@@ -19,7 +20,8 @@ public class StringLiteralEvaluator extends ExpressionEvaluator<StringLiteral> {
     }
 
     @Override
-    public void generateBytecode(StringLiteral result, MethodVisitor mv) {
+    public Type generateBytecode(StringLiteral result, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
+        return Type.STRING;
     }
 }
