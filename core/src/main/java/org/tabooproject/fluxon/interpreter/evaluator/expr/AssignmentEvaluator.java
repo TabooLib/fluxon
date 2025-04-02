@@ -14,6 +14,9 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
@@ -56,7 +59,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             }
             environment.assign(result.getName(), value);
         }
-        return value;
+        // Assignment 操作没有返回值
+        return null;
     }
 
     @Override
@@ -67,13 +71,15 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             throw new RuntimeException("No evaluator found for value");
         }
         // 根据赋值操作符类型处理赋值
-        if (result.getOperator().getType() == TokenType.ASSIGN) {
+        TokenType type = result.getOperator().getType();
+        if (type == TokenType.ASSIGN) {
             // 写入变量
             mv.visitVarInsn(Opcodes.ALOAD, 0);                                   // this
             mv.visitLdcInsn(result.getName());                                   // 变量名
             boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);  // 变量值
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
         } else {
+            // 压入变量名 -> 用于后续的写回操作
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
             mv.visitLdcInsn(result.getName());  // 变量名
 
@@ -81,37 +87,31 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
             mv.visitLdcInsn(result.getName());  // 变量名
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariable", GET_VARIABLE, false);
-            // 压入操作值
+            // 执行操作
             boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);
 
-            // 根据操作符类型进行不同的复合赋值操作
-            switch (result.getOperator().getType()) {
-                case PLUS_ASSIGN:
-                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "add", OPT, false);
-                    break;
-                case MINUS_ASSIGN:
-                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "subtract", OPT, false);
-                    break;
-                case MULTIPLY_ASSIGN:
-                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "multiply", OPT, false);
-                    break;
-                case DIVIDE_ASSIGN:
-                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "divide", OPT, false);
-                    break;
-                case MODULO_ASSIGN:
-                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "modulo", OPT, false);
-                    break;
-                default:
-                    throw new RuntimeException("Unknown compound assignment operator: " + result.getOperator().getType());
+            // 执行操作并写回变量
+            String name = OPERATORS.get(type);
+            if (name == null) {
+                throw new RuntimeException("Unknown compound assignment operator: " + type);
             }
-
-            // 写回变量
+            mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), name, "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, false);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
         }
+        // Assignment 操作没有返回值
         return Type.VOID;
     }
 
     private static final String SET_VARIABLE = "(" + Type.STRING + Type.OBJECT + ")V";
     private static final String GET_VARIABLE = "(" + Type.STRING + ")" + Type.OBJECT;
-    private static final String OPT = "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT;
+
+    private static final Map<TokenType, String> OPERATORS = new HashMap<>();
+
+    static {
+        OPERATORS.put(TokenType.PLUS_ASSIGN, "add");
+        OPERATORS.put(TokenType.MINUS_ASSIGN, "subtract");
+        OPERATORS.put(TokenType.MULTIPLY_ASSIGN, "multiply");
+        OPERATORS.put(TokenType.DIVIDE_ASSIGN, "divide");
+        OPERATORS.put(TokenType.MODULO_ASSIGN, "modulo");
+    }
 }

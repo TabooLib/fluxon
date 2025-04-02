@@ -126,21 +126,5 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             this.type = type;
             this.xor = xor;
         }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getDescriptor() {
-            return descriptor;
-        }
-
-        public Type getType() {
-            return type;
-        }
-
-        public boolean isXor() {
-            return xor;
-        }
     }
 }
