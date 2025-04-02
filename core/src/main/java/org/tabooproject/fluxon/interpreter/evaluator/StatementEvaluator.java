@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator;
 
+import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 
@@ -9,4 +10,8 @@ public abstract class StatementEvaluator<T extends Statement> implements Evaluat
      * 语句类型
      */
     abstract public StatementType getType();
+
+    @Override
+    public void generateBytecode(T result, MethodVisitor mv) {
+    }
 }

@@ -21,8 +21,8 @@ public enum ExpressionType {
     BOOLEAN_LITERAL,
 
     // 高级字面量
-    LIST_LITERAL,
-    MAP_LITERAL,
+    MAP,
+    LIST,
     RANGE,
 
     // 表达式

@@ -5,12 +5,12 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import java.util.List;
 
 /**
- * 列表字面量
+ * 列表表达式
  */
-public class ListLiteral implements Expression {
+public class ListExpression implements Expression {
     private final List<ParseResult> elements;
 
-    public ListLiteral(List<ParseResult> elements) {
+    public ListExpression(List<ParseResult> elements) {
         this.elements = elements;
     }
 
@@ -20,7 +20,7 @@ public class ListLiteral implements Expression {
 
     @Override
     public ExpressionType getExpressionType() {
-        return ExpressionType.LIST_LITERAL;
+        return ExpressionType.LIST;
     }
 
     @Override

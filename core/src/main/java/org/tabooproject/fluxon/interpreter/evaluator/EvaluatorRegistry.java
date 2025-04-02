@@ -2,7 +2,9 @@ package org.tabooproject.fluxon.interpreter.evaluator;
 
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.interpreter.evaluator.stmt.*;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -13,11 +15,12 @@ import java.util.EnumMap;
 /**
  * 求值器注册表
  */
+@SuppressWarnings("unchecked")
 public class EvaluatorRegistry {
-    
+
     // 单例实例
     private static final EvaluatorRegistry INSTANCE = new EvaluatorRegistry();
-    
+
     // 表达式求值器列表
     private final EnumMap<ExpressionType, ExpressionEvaluator<Expression>> expressions = new EnumMap<>(ExpressionType.class);
     // 语句求值器列表
@@ -61,6 +64,14 @@ public class EvaluatorRegistry {
         registerExpression(new UnaryEvaluator());
         registerExpression(new WhenEvaluator());
         registerExpression(new WhileEvaluator());
+        // 注册字面量求值器
+        registerExpression(new IntLiteralEvaluator());
+        registerExpression(new NullLiteralEvaluator());
+        registerExpression(new StringLiteralEvaluator());
+        registerExpression(new LongLiteralEvaluator());
+        registerExpression(new FloatLiteralEvaluator());
+        registerExpression(new DoubleLiteralEvaluator());
+        registerExpression(new BooleanLiteralEvaluator());
     }
 
     /**
@@ -77,7 +88,6 @@ public class EvaluatorRegistry {
     /**
      * 注册自定义表达式求值器
      */
-    @SuppressWarnings("unchecked")
     public void registerExpression(ExpressionEvaluator<?> expression) {
         expressions.put(expression.getType(), (ExpressionEvaluator<Expression>) expression);
     }
@@ -85,7 +95,6 @@ public class EvaluatorRegistry {
     /**
      * 注册自定义语句求值器
      */
-    @SuppressWarnings("unchecked")
     public void registerStatement(StatementEvaluator<?> statement) {
         statements.put(statement.getType(), (StatementEvaluator<Statement>) statement);
     }
@@ -104,5 +113,18 @@ public class EvaluatorRegistry {
     @Nullable
     public StatementEvaluator<Statement> getStatement(StatementType type) {
         return statements.get(type);
+    }
+
+    /**
+     * 根据 [ParseResult] 获取求值器
+     */
+    @Nullable
+    public <T extends ParseResult> Evaluator<T> getEvaluator(ParseResult result) {
+        if (result instanceof Expression) {
+            return (Evaluator<T>) getExpression(((Expression) result).getExpressionType());
+        } else if (result instanceof Statement) {
+            return (Evaluator<T>) getStatement(((Statement) result).getStatementType());
+        }
+        return null;
     }
 }

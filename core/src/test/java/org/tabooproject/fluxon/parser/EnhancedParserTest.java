@@ -6,6 +6,8 @@ import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definition.Definitions.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.*;
+import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 
 import java.util.List;

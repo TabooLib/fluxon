@@ -30,40 +30,11 @@ public class ExpressionVisitor extends AbstractVisitor {
      */
     @Override
     public Object visitExpression(Expression expression) {
-        // 直接处理字面量
-        switch (expression.getExpressionType()) {
-            // 空值
-            case NULL:
-                return null;
-            // 标识符
-            case IDENTIFIER:
-                return ((Identifier) expression).getValue();
-            // 字符串
-            case STRING_LITERAL:
-                return ((StringLiteral) expression).getValue();
-            // 整型
-            case INT_LITERAL:
-                return ((IntLiteral) expression).getValue();
-            // 长整型
-            case LONG_LITERAL:
-                return ((LongLiteral) expression).getValue();
-            // 单精度
-            case FLOAT_LITERAL:
-                return ((FloatLiteral) expression).getValue();
-            // 双精度
-            case DOUBLE_LITERAL:
-                return ((DoubleLiteral) expression).getValue();
-            // 布尔值
-            case BOOLEAN_LITERAL:
-                return ((BooleanLiteral) expression).getValue();
-            // 其他表达式
-            default:
-                ExpressionEvaluator<Expression> evaluator = registry.getExpression(expression.getExpressionType());
-                if (evaluator != null) {
-                    return evaluator.evaluate(interpreter, expression);
-                }
-                throw new RuntimeException("Unknown expression type: " + expression.getClass().getName());
+        ExpressionEvaluator<Expression> evaluator = registry.getExpression(expression.getExpressionType());
+        if (evaluator != null) {
+            return evaluator.evaluate(interpreter, expression);
         }
+        throw new RuntimeException("Unknown expression type: " + expression.getClass().getName());
     }
 
     /**

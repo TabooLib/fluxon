@@ -7,10 +7,10 @@ import java.util.List;
 /**
  * 字典字面量
  */
-public class MapLiteral implements Expression {
+public class MapExpression implements Expression {
     private final List<MapEntry> entries;
 
-    public MapLiteral(List<MapEntry> entries) {
+    public MapExpression(List<MapEntry> entries) {
         this.entries = entries;
     }
 
@@ -20,7 +20,7 @@ public class MapLiteral implements Expression {
 
     @Override
     public ExpressionType getExpressionType() {
-        return ExpressionType.MAP_LITERAL;
+        return ExpressionType.MAP;
     }
 
     @Override

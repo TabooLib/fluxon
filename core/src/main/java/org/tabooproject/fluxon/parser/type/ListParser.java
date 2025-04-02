@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.expression.ListLiteral;
-import org.tabooproject.fluxon.parser.expression.MapLiteral;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
+import org.tabooproject.fluxon.parser.expression.MapExpression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +17,7 @@ public class ListParser {
     public static ParseResult parse(Parser parser) {
         // 空列表
         if (parser.match(TokenType.RIGHT_BRACKET)) {
-            return new ListLiteral(new ArrayList<>());
+            return new ListExpression(new ArrayList<>());
         }
         // 检查是否是字典字面量
         boolean isDictionary = false;
@@ -47,7 +47,7 @@ public class ListParser {
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
-        return new ListLiteral(elements);
+        return new ListExpression(elements);
     }
 
     /**
@@ -56,7 +56,7 @@ public class ListParser {
      * @return 字典字面量解析结果
      */
     private static ParseResult parseMapLiteral(Parser parser) {
-        List<MapLiteral.MapEntry> entries = new ArrayList<>();
+        List<MapExpression.MapEntry> entries = new ArrayList<>();
         // 如果不是空字典
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
             do {
@@ -67,10 +67,10 @@ public class ListParser {
                 // 解析值
                 ParseResult value = ExpressionParser.parse(parser);
                 // 添加键值对
-                entries.add(new MapLiteral.MapEntry(key, value));
+                entries.add(new MapExpression.MapEntry(key, value));
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
-        return new MapLiteral(entries);
+        return new MapExpression(entries);
     }
 }

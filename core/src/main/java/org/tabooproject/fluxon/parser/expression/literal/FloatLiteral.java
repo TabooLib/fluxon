@@ -1,4 +1,6 @@
-package org.tabooproject.fluxon.parser.expression;
+package org.tabooproject.fluxon.parser.expression.literal;
+
+import org.tabooproject.fluxon.parser.expression.ExpressionType;
 
 /**
  * 浮点数字面量

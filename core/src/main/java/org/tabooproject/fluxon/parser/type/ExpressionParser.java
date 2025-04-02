@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expression.*;
+import org.tabooproject.fluxon.parser.expression.literal.*;
 
 public class ExpressionParser {
 
