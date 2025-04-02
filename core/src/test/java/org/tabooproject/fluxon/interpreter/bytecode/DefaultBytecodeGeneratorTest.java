@@ -21,7 +21,7 @@ public class DefaultBytecodeGeneratorTest {
                 "num2 = 20;" +
                 "cond1 = &num1 > &num2;" +
                 "cond2 = if &num1 == 10 then &num1 else &num2;" +
-                "cond3 = if &num1 == 10 then 1 else if &num1 == 20 then 2 else 3;")
+                "if &num1 == 10 then 1 else if &num1 == 20 then 2 else 3;")
         ) {
             if (result instanceof ExpressionStatement) {
                 generator.addScriptBody((Statement) result);
@@ -42,6 +42,8 @@ public class DefaultBytecodeGeneratorTest {
         Class<?> scriptClass = loader.defineClass("CompiledScript", bytecode);
 
         Environment env = new Environment();
-        scriptClass.getDeclaredConstructor(Environment.class).newInstance(env);
+        Object instance = scriptClass.newInstance();
+        Object result = scriptClass.getMethod("eval", Environment.class).invoke(instance, env);
+        System.out.println(result);
     }
 }

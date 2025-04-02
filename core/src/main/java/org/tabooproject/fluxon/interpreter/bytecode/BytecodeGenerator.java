@@ -18,7 +18,7 @@ public interface BytecodeGenerator {
     /**
      * 为语句生成字节码
      */  
-    void generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv);
+    Type generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv);
     
     /**
      * 添加脚本主体代码

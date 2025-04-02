@@ -96,8 +96,8 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
         // 结束标签
         mv.visitLabel(endLabel);
+        // 将分支结果加载到栈顶
         mv.visitVarInsn(ALOAD, storeId);
-        // 返回分支中较宽的类型
-        return Type.VOID;
+        return Type.OBJECT;
     }
 }

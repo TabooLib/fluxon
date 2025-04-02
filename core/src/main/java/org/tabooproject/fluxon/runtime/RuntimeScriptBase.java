@@ -5,13 +5,12 @@ package org.tabooproject.fluxon.runtime;
  */
 public abstract class RuntimeScriptBase {
 
-    public static final Type TYPE = new Type(RuntimeScriptBase.class);
-    
-    protected final Environment environment;
-    
-    public RuntimeScriptBase(Environment environment) {
-        this.environment = environment;
-    }
+    protected Environment environment;
+
+    /**
+     * 执行函数
+     */
+    abstract public Object eval(Environment env);
 
     // 设置运行时变量
     protected void setVariable(String name, Object value) {

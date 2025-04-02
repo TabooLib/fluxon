@@ -108,7 +108,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             // 写回变量
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
         }
-        return super.generateBytecode(result, ctx, mv);
+        return Type.VOID;
     }
 
     private static final String SET_VARIABLE = "(" + Type.STRING + Type.OBJECT + ")V";

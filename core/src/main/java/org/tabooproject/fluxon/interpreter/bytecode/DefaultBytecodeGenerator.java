@@ -33,11 +33,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     @Override
-    public void generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv) {
+    public Type generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv) {
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         StatementEvaluator<Statement> evaluator = registry.getStatement(stmt.getStatementType());
         if (evaluator != null) {
-            evaluator.generateBytecode(stmt, ctx, mv);
+            return evaluator.generateBytecode(stmt, ctx, mv);
         } else {
             throw new RuntimeException("No evaluator found for statement type: " + stmt.getStatementType());
         }
@@ -59,31 +59,44 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         // 生成类，继承 RuntimeScriptBase
         cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, className, null, superClassName, null);
-        // 生成构造函数
-        generateConstructor(cw, ctx, superClassName);
+
+        // 生成空的构造函数
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, superClassName, "<init>", "()V", false);
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
+        // 生成 eval 函数
+        generateEvalMethod(cw, ctx);
+
+        // 生成结束
         cw.visitEnd();
         return cw.toByteArray();
     }
 
-    private void generateConstructor(ClassWriter cw, CodeContext ctx, String superClassName) {
-        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC,
-                "<init>",
-                "(" + Environment.TYPE + ")V",
-                null,
-                null);
+    private void generateEvalMethod(ClassWriter cw, CodeContext ctx) {
+        // 继承 Object eval(Environment env) 函数
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "eval", "(" + Environment.TYPE + ")" + Type.OBJECT, null, null);
         mv.visitCode();
 
-        // 调用父类构造函数
-        mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
-        mv.visitVarInsn(Opcodes.ALOAD, 1);  // environment参数
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, superClassName, "<init>", "(" + Environment.TYPE + ")V", false);
+        // 设置 environment 参数
+        mv.visitVarInsn(Opcodes.ALOAD, 0);  // 加载 this
+        mv.visitVarInsn(Opcodes.ALOAD, 1);  // 加载 environment 参数
+        mv.visitFieldInsn(Opcodes.PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
 
         // 生成脚本主体代码
+        Type last = null;
         for (Statement stmt : statements) {
-            generateStatementBytecode(stmt, ctx, mv);
+            last = generateStatementBytecode(stmt, ctx, mv);
         }
-
-        mv.visitInsn(Opcodes.RETURN);
+        // 如果最后一个表达式是 void 类型，则压入 null
+        if (last == Type.VOID) {
+            mv.visitInsn(Opcodes.ACONST_NULL);
+        }
+        mv.visitInsn(Opcodes.ARETURN);
         mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
         mv.visitEnd();
     }
