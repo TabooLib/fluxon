@@ -206,8 +206,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 //                }
 //                break;
 //        }
-//        return "Ljava/lang/Object;";
-        return "D";
+        return "Ljava/lang/Object;";
     }
 
     private static class FieldInfo {

@@ -1,13 +1,15 @@
 package org.tabooproject.fluxon.runtime;
 
-import org.jetbrains.annotations.Nullable;
-
 public class Type {
 
     // 类对象
     private final Class<?> source;
     // 纬度
     private final int dimension;
+    // 类路径
+    private final String path;
+    // 类签名
+    private final String signature;
 
     public Type(Class<?> source) {
         this(source, 0);
@@ -16,6 +18,14 @@ public class Type {
     public Type(Class<?> source, int dimension) {
         this.source = source;
         this.dimension = dimension;
+        // 获取类路径
+        this.path = source.getName().replace('.', '/');
+        // 获取类签名
+        StringBuilder descriptor = new StringBuilder(org.objectweb.asm.Type.getDescriptor(source));
+        for (int i = 0; i < dimension; i++) {
+            descriptor.insert(0, "[");
+        }
+        this.signature = descriptor.toString();
     }
 
     /**
@@ -33,26 +43,24 @@ public class Type {
         return source.isPrimitive();
     }
 
-    /**
-     * 获取字节码签名
-     */
-    public String getSignature() {
-        if (source == null) {
-            return "Ljava/lang/Object;";
-        }
-        StringBuilder descriptor = new StringBuilder(org.objectweb.asm.Type.getDescriptor(source));
-        for (int i = 0; i < dimension; i++) {
-            descriptor.insert(0, "[");
-        }
-        return descriptor.toString();
-    }
-
-    @Nullable
     public Class<?> getSource() {
         return source;
     }
 
     public int getDimension() {
         return dimension;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public String getSignature() {
+        return signature;
+    }
+
+    @Override
+    public String toString() {
+        return signature;
     }
 }
