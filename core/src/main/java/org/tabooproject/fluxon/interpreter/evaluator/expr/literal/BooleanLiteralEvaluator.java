@@ -21,7 +21,6 @@ public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral>
 
     @Override
     public void generateBytecode(BooleanLiteral result, MethodVisitor mv) {
-        // 压入boolean值(使用int 1或0表示)
         mv.visitInsn(result.getValue() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
     }
 }

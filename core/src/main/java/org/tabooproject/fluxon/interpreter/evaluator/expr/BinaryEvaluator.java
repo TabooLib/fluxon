@@ -7,12 +7,12 @@ import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.expression.*;
-import org.tabooproject.fluxon.parser.expression.literal.NullLiteral;
+import org.tabooproject.fluxon.parser.expression.BinaryExpression;
+import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
-import org.tabooproject.fluxon.util.NumberOperations;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
 
@@ -27,38 +27,32 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         Object right = interpreter.evaluate(result.getRight());
 
         switch (result.getOperator().getType()) {
+            case PLUS:
+                return add(left, right);
             case MINUS:
                 checkNumberOperands(left, right);
-                return NumberOperations.subtractNumbers((Number) left, (Number) right);
+                return subtractNumbers((Number) left, (Number) right);
             case DIVIDE:
                 checkNumberOperands(left, right);
-                return NumberOperations.divideNumbers((Number) left, (Number) right);
+                return divideNumbers((Number) left, (Number) right);
             case MULTIPLY:
                 checkNumberOperands(left, right);
-                return NumberOperations.multiplyNumbers((Number) left, (Number) right);
-            case PLUS:
-                if (left instanceof Number && right instanceof Number) {
-                    return NumberOperations.addNumbers((Number) left, (Number) right);
-                }
-                if (left instanceof String || right instanceof String) {
-                    return String.valueOf(left) + right;
-                }
-                throw new RuntimeException("Operands must be numbers or strings.");
+                return multiplyNumbers((Number) left, (Number) right);
             case MODULO:
                 checkNumberOperands(left, right);
-                return NumberOperations.moduloNumbers((Number) left, (Number) right);
+                return moduloNumbers((Number) left, (Number) right);
             case GREATER:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers((Number) left, (Number) right) > 0;
+                return compareNumbers((Number) left, (Number) right) > 0;
             case GREATER_EQUAL:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers((Number) left, (Number) right) >= 0;
+                return compareNumbers((Number) left, (Number) right) >= 0;
             case LESS:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers((Number) left, (Number) right) < 0;
+                return compareNumbers((Number) left, (Number) right) < 0;
             case LESS_EQUAL:
                 checkNumberOperands(left, right);
-                return NumberOperations.compareNumbers((Number) left, (Number) right) <= 0;
+                return compareNumbers((Number) left, (Number) right) <= 0;
             case EQUAL:
                 return isEqual(left, right);
             case NOT_EQUAL:
@@ -70,11 +64,10 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
 
     @Override
     public void generateBytecode(BinaryExpression expr, MethodVisitor mv) {
-        // 生成左右操作数的字节码
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> leftEvaluator = registry.getEvaluator(expr.getLeft());
-        Evaluator<ParseResult> rightEvaluator = registry.getEvaluator(expr.getRight());
-        if (leftEvaluator == null || rightEvaluator == null) {
+        Evaluator<ParseResult> leftEval = registry.getEvaluator(expr.getLeft());
+        Evaluator<ParseResult> rightEval = registry.getEvaluator(expr.getRight());
+        if (leftEval == null || rightEval == null) {
             throw new RuntimeException("No evaluator found for operands");
         }
 
@@ -83,56 +76,48 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 if (isStringConcatenation(expr)) {
                     generateStringConcatenation(expr, mv);
                 } else {
-                    leftEvaluator.generateBytecode(expr.getLeft(), mv);
-                    rightEvaluator.generateBytecode(expr.getRight(), mv);
+                    leftEval.generateBytecode(expr.getLeft(), mv);
+                    rightEval.generateBytecode(expr.getRight(), mv);
                     mv.visitInsn(IADD);
                 }
                 break;
             case MINUS:
-                leftEvaluator.generateBytecode(expr.getLeft(), mv);
-                rightEvaluator.generateBytecode(expr.getRight(), mv);
+                leftEval.generateBytecode(expr.getLeft(), mv);
+                rightEval.generateBytecode(expr.getRight(), mv);
                 mv.visitInsn(ISUB);
                 break;
             case MULTIPLY:
-                leftEvaluator.generateBytecode(expr.getLeft(), mv);
-                rightEvaluator.generateBytecode(expr.getRight(), mv);
+                leftEval.generateBytecode(expr.getLeft(), mv);
+                rightEval.generateBytecode(expr.getRight(), mv);
                 mv.visitInsn(IMUL);
                 break;
             case DIVIDE:
-                leftEvaluator.generateBytecode(expr.getLeft(), mv);
-                rightEvaluator.generateBytecode(expr.getRight(), mv);
+                leftEval.generateBytecode(expr.getLeft(), mv);
+                rightEval.generateBytecode(expr.getRight(), mv);
                 mv.visitInsn(IDIV);
                 break;
             case MODULO:
-                leftEvaluator.generateBytecode(expr.getLeft(), mv);
-                rightEvaluator.generateBytecode(expr.getRight(), mv);
+                leftEval.generateBytecode(expr.getLeft(), mv);
+                rightEval.generateBytecode(expr.getRight(), mv);
                 mv.visitInsn(IREM);
                 break;
-            case EQUAL:
-                if (isNullComparison(expr)) {
-                    generateNullComparison(expr, leftEvaluator, rightEvaluator, mv, true);
-                } else {
-                    generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPEQ);
-                }
-                break;
-            case NOT_EQUAL:
-                if (isNullComparison(expr)) {
-                    generateNullComparison(expr, leftEvaluator, rightEvaluator, mv, false);
-                } else {
-                    generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPNE);
-                }
-                break;
             case GREATER:
-                generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPGT);
+                generateComparisonBytecode(expr, leftEval, rightEval, mv, IF_ICMPGT);
                 break;
             case GREATER_EQUAL:
-                generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPGE);
+                generateComparisonBytecode(expr, leftEval, rightEval, mv, IF_ICMPGE);
                 break;
             case LESS:
-                generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPLT);
+                generateComparisonBytecode(expr, leftEval, rightEval, mv, IF_ICMPLT);
                 break;
             case LESS_EQUAL:
-                generateComparisonBytecode(expr, leftEvaluator, rightEvaluator, mv, IF_ICMPLE);
+                generateComparisonBytecode(expr, leftEval, rightEval, mv, IF_ICMPLE);
+                break;
+            case EQUAL:
+                generateEqualityComparison(expr, leftEval, rightEval, mv, true);
+                break;
+            case NOT_EQUAL:
+                generateEqualityComparison(expr, leftEval, rightEval, mv, false);
                 break;
             default:
                 throw new RuntimeException("Unknown binary operator: " + expr.getOperator().getType());
@@ -140,13 +125,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     }
 
     private boolean isStringConcatenation(BinaryExpression expr) {
-        return expr.getLeft() instanceof StringLiteral ||
-                expr.getRight() instanceof StringLiteral;
-    }
-
-    private boolean isNullComparison(BinaryExpression expr) {
-        return expr.getLeft() instanceof NullLiteral ||
-                expr.getRight() instanceof NullLiteral;
+        return expr.getLeft() instanceof StringLiteral || expr.getRight() instanceof StringLiteral;
     }
 
     private void generateStringConcatenation(BinaryExpression expr, MethodVisitor mv) {
@@ -155,6 +134,9 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         ParseResult right = expr.getRight();
         Evaluator<ParseResult> leftEval = registry.getEvaluator(left);
         Evaluator<ParseResult> rightEval = registry.getEvaluator(right);
+        if (leftEval == null || rightEval == null) {
+            throw new RuntimeException("No evaluator found for operands");
+        }
 
         mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
         mv.visitInsn(DUP);
@@ -214,7 +196,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         mv.visitLabel(endLabel);
     }
 
-    private void generateNullComparison(
+    private void generateEqualityComparison(
             BinaryExpression expr,
             Evaluator<ParseResult> leftEval,
             Evaluator<ParseResult> rightEval,
@@ -223,18 +205,26 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         Label trueLabel = new Label();
         Label endLabel = new Label();
 
+        // 生成左右操作数的字节码
         leftEval.generateBytecode(expr.getLeft(), mv);
         rightEval.generateBytecode(expr.getRight(), mv);
 
-        // 比较两个引用是否相等
-        mv.visitJumpInsn(isEqual ? IF_ACMPEQ : IF_ACMPNE, trueLabel);
+        // 调用 Operations.isEqual 方法
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                "org/tabooproject/fluxon/runtime/stdlib/Operations",
+                "isEqual",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Z",
+                false
+        );
 
-        mv.visitInsn(ICONST_0);
-        mv.visitJumpInsn(GOTO, endLabel);
+        // 如果是不等于操作符,需要取反结果
+        if (!isEqual) {
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IXOR);
+        }
 
         mv.visitLabel(trueLabel);
-        mv.visitInsn(ICONST_1);
-
         mv.visitLabel(endLabel);
     }
 }

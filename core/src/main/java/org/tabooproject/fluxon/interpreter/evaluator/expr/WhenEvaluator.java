@@ -8,6 +8,8 @@ import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import java.util.List;
 import java.util.Map;
 
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+
 public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
 
     @Override

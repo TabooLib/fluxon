@@ -1,15 +1,75 @@
-package org.tabooproject.fluxon.util;
+package org.tabooproject.fluxon.runtime.stdlib;
 
 // @formatter:off
-public final class NumberOperations {
+public final class Operations {
+
+    /**
+     * 检查操作数是否为数字
+     *
+     * @param operand 操作数
+     */
+    public static void checkNumberOperand(Object operand) {
+        if (operand instanceof Number) return;
+        throw new RuntimeException("Operands must be numbers.");
+    }
+
+    /**
+     * 检查操作数是否都是数字
+     *
+     * @param left  左操作数
+     * @param right 右操作数
+     */
+    public static void checkNumberOperands(Object left, Object right) {
+        if (left instanceof Number && right instanceof Number) return;
+        throw new RuntimeException("Operands must be numbers.");
+    }
+
+    /**
+     * 评估布尔值，判断对象是否为真
+     *
+     * @param value 要判断的对象
+     * @return 布尔值结果
+     */
+    public static boolean isTrue(Object value) {
+        if (value == null) return false;
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).doubleValue() != 0;
+        if (value instanceof String) return !((String) value).isEmpty();
+        return true;
+    }
+
+    /**
+     * 判断两个对象是否相等
+     *
+     * @param a 第一个对象
+     * @param b 第二个对象
+     * @return 是否相等
+     */
+    public static boolean isEqual(Object a, Object b) {
+        if (a == null && b == null) return true;
+        if (a == null) return false;
+        if (a instanceof Number && b instanceof Number) {
+            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) == 0;
+        } else {
+            return a.equals(b);
+        }
+    }
+
+    public static Object add(Object a, Object b) {
+        if (a instanceof Number && b instanceof Number) {
+            return addNumbers((Number) a, (Number) b);
+        } else {
+            return String.valueOf(a) + b;
+        }
+    }
 
     public static Number addNumbers(Number a, Number b) {
         try {
             switch (getCommonType(a, b)) {
                 case DOUBLE: return a.doubleValue() + b.doubleValue();
                 case FLOAT:  return a.floatValue() + b.floatValue();
-                case LONG:    return Math.addExact(a.longValue(), b.longValue());
-                default:      return Math.addExact(a.intValue(), b.intValue());
+                case LONG:   return Math.addExact(a.longValue(), b.longValue());
+                default:     return Math.addExact(a.intValue(), b.intValue());
             }
         } catch (ArithmeticException e) {
             return handleOverflow(a, b, '+');

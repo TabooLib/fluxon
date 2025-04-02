@@ -6,7 +6,8 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.expression.Assignment;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.util.NumberOperations;
+
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
 
@@ -31,19 +32,19 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             // 根据操作符类型进行不同的复合赋值操作
             switch (result.getOperator().getType()) {
                 case PLUS_ASSIGN:
-                    value = NumberOperations.addNumbers((Number) current, (Number) value);
+                    value = addNumbers((Number) current, (Number) value);
                     break;
                 case MINUS_ASSIGN:
-                    value = NumberOperations.subtractNumbers((Number) current, (Number) value);
+                    value = subtractNumbers((Number) current, (Number) value);
                     break;
                 case MULTIPLY_ASSIGN:
-                    value = NumberOperations.multiplyNumbers((Number) current, (Number) value);
+                    value = multiplyNumbers((Number) current, (Number) value);
                     break;
                 case DIVIDE_ASSIGN:
-                    value = NumberOperations.divideNumbers((Number) current, (Number) value);
+                    value = divideNumbers((Number) current, (Number) value);
                     break;
                 case MODULO_ASSIGN:
-                    value = NumberOperations.moduloNumbers((Number) current, (Number) value);
+                    value = moduloNumbers((Number) current, (Number) value);
                     break;
                 default:
                     throw new RuntimeException("Unknown compound assignment operator: " + result.getOperator().getType());

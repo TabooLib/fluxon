@@ -20,7 +20,6 @@ public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
 
     @Override
     public void generateBytecode(LongLiteral result, MethodVisitor mv) {
-        // 压入long值
         mv.visitLdcInsn(result.getValue());
     }
 }

@@ -21,7 +21,6 @@ public class NullLiteralEvaluator extends ExpressionEvaluator<NullLiteral> {
 
     @Override
     public void generateBytecode(NullLiteral result, MethodVisitor mv) {
-        // 压入null值
         mv.visitInsn(Opcodes.ACONST_NULL);
     }
 }

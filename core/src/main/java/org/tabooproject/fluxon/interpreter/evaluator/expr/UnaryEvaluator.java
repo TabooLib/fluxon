@@ -4,7 +4,8 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.UnaryExpression;
-import org.tabooproject.fluxon.util.NumberOperations;
+
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
 
@@ -21,7 +22,7 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
                 return !isTrue(right);
             case MINUS:
                 checkNumberOperand(right);
-                return NumberOperations.negateNumber((Number) right);
+                return negateNumber((Number) right);
             default:
                 throw new RuntimeException("Unknown unary operator: " + result.getOperator().getType());
         }

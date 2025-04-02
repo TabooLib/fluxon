@@ -8,6 +8,8 @@ import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.checkNumberOperands;
+
 public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
 
     @Override

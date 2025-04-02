@@ -20,7 +20,6 @@ public class StringLiteralEvaluator extends ExpressionEvaluator<StringLiteral> {
 
     @Override
     public void generateBytecode(StringLiteral result, MethodVisitor mv) {
-        // 压入字符串常量
         mv.visitLdcInsn(result.getValue());
     }
 }

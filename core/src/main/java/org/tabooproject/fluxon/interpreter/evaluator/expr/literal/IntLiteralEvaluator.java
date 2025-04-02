@@ -20,7 +20,6 @@ public class IntLiteralEvaluator extends ExpressionEvaluator<IntLiteral> {
 
     @Override
     public void generateBytecode(IntLiteral result, MethodVisitor mv) {
-        // 将整数值压入操作数栈
         mv.visitLdcInsn(result.getValue());
     }
 }

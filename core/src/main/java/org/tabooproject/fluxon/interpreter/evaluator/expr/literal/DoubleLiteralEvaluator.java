@@ -20,7 +20,6 @@ public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
 
     @Override
     public void generateBytecode(DoubleLiteral result, MethodVisitor mv) {
-        // 压入double值
         mv.visitLdcInsn(result.getValue());
     }
 }

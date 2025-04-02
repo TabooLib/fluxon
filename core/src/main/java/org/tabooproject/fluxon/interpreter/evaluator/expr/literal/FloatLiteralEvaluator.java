@@ -20,7 +20,6 @@ public class FloatLiteralEvaluator extends ExpressionEvaluator<FloatLiteral> {
 
     @Override
     public void generateBytecode(FloatLiteral result, MethodVisitor mv) {
-        // 压入float值
         mv.visitLdcInsn(result.getValue());
     }
 }
