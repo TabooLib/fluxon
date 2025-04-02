@@ -6,10 +6,14 @@ import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Type;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
@@ -51,43 +55,14 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (leftEval == null || rightEval == null) {
             throw new RuntimeException("No evaluator found for operands");
         }
-        switch (expr.getOperator().getType()) {
-            case PLUS:
-                generateOperator(expr, leftEval, rightEval, "add", SIGNATURE_O2O, ctx, mv, false);
-                return Type.OBJECT;
-            case MINUS:
-                generateOperator(expr, leftEval, rightEval, "subtract", SIGNATURE_O2O, ctx, mv, false);
-                return Type.OBJECT;
-            case MULTIPLY:
-                generateOperator(expr, leftEval, rightEval, "multiply", SIGNATURE_O2O, ctx, mv, false);
-                return Type.OBJECT;
-            case DIVIDE:
-                generateOperator(expr, leftEval, rightEval, "divide", SIGNATURE_O2O, ctx, mv, false);
-                return Type.OBJECT;
-            case MODULO:
-                generateOperator(expr, leftEval, rightEval, "modulo", SIGNATURE_O2O, ctx, mv, false);
-                return Type.OBJECT;
-            case GREATER:
-                generateOperator(expr, leftEval, rightEval, "isGreater", SIGNATURE_O2Z, ctx, mv, false);
-                return Type.Z;
-            case GREATER_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isGreaterEqual", SIGNATURE_O2Z, ctx, mv, false);
-                return Type.Z;
-            case LESS:
-                generateOperator(expr, leftEval, rightEval, "isLess", SIGNATURE_O2Z, ctx, mv, false);
-                return Type.Z;
-            case LESS_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isLessEqual", SIGNATURE_O2Z, ctx, mv, false);
-                return Type.Z;
-            case EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, ctx, mv, false);
-                return Type.Z;
-            case NOT_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, ctx, mv, true);
-                return Type.Z;
-            default:
-                throw new RuntimeException("Unknown binary operator: " + expr.getOperator().getType());
+        // 获取 Operations 方法
+        BinaryOperator operator = OPERATORS.get(expr.getOperator().getType());
+        if (operator == null) {
+            throw new RuntimeException("No operator found for binary expression");
         }
+        // 生成字节码
+        generateOperator(expr, leftEval, rightEval, operator.name, operator.descriptor, ctx, mv, operator.xor);
+        return operator.type;
     }
 
     /**
@@ -98,7 +73,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             Evaluator<ParseResult> leftEval,
             Evaluator<ParseResult> rightEval,
             String method,
-            String signature,
+            String descriptor,
             CodeContext ctx,
             MethodVisitor mv,
             boolean xor
@@ -107,7 +82,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         boxing(leftEval.generateBytecode(expr.getLeft(), ctx, mv), mv);
         boxing(rightEval.generateBytecode(expr.getRight(), ctx, mv), mv);
         // 调用 Operations 方法
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, signature, false);
+        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, descriptor, false);
         // 是否取反结果
         if (xor) {
             mv.visitInsn(ICONST_1);
@@ -115,6 +90,57 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         }
     }
 
-    private static final String SIGNATURE_O2O = "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;";
-    private static final String SIGNATURE_O2Z = "(Ljava/lang/Object;Ljava/lang/Object;)Z";
+
+    private static final Map<TokenType, BinaryOperator> OPERATORS = new HashMap<>();
+
+    static {
+        // 算术运算符
+        OPERATORS.put(TokenType.PLUS, new BinaryOperator("add", Type.OBJECT));
+        OPERATORS.put(TokenType.MINUS, new BinaryOperator("subtract", Type.OBJECT));
+        OPERATORS.put(TokenType.MULTIPLY, new BinaryOperator("multiply", Type.OBJECT));
+        OPERATORS.put(TokenType.DIVIDE, new BinaryOperator("divide", Type.OBJECT));
+        OPERATORS.put(TokenType.MODULO, new BinaryOperator("modulo", Type.OBJECT));
+        // 比较运算符
+        OPERATORS.put(TokenType.GREATER, new BinaryOperator("isGreater", Type.Z));
+        OPERATORS.put(TokenType.GREATER_EQUAL, new BinaryOperator("isGreaterEqual", Type.Z));
+        OPERATORS.put(TokenType.LESS, new BinaryOperator("isLess", Type.Z));
+        OPERATORS.put(TokenType.LESS_EQUAL, new BinaryOperator("isLessEqual", Type.Z));
+        OPERATORS.put(TokenType.EQUAL, new BinaryOperator("isEqual", Type.Z));
+        OPERATORS.put(TokenType.NOT_EQUAL, new BinaryOperator("isEqual", Type.Z, true));
+    }
+
+    private static class BinaryOperator {
+
+        private final String name;
+        private final String descriptor;
+        private final boolean xor;
+        private final Type type;
+
+        public BinaryOperator(String name, Type type) {
+            this(name, type, false);
+        }
+
+        public BinaryOperator(String name, Type type, boolean xor) {
+            this.name = name;
+            this.descriptor = "(" + Type.OBJECT + Type.OBJECT + ")" + type;
+            this.type = type;
+            this.xor = xor;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDescriptor() {
+            return descriptor;
+        }
+
+        public Type getType() {
+            return type;
+        }
+
+        public boolean isXor() {
+            return xor;
+        }
+    }
 }

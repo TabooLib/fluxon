@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
 
-public abstract class StatementEvaluator<T extends Statement> implements Evaluator<T> {
+public abstract class StatementEvaluator<T extends Statement> extends Evaluator<T> {
 
     /**
      * 语句类型
