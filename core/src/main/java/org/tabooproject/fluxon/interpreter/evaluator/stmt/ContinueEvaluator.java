@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.statement.ContinueStatement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
@@ -23,7 +24,7 @@ public class ContinueEvaluator extends StatementEvaluator<ContinueStatement> {
     }
 
     @Override
-    public Type generateBytecode(ContinueStatement result, MethodVisitor mv) {
+    public Type generateBytecode(ContinueStatement result, CodeContext ctx, MethodVisitor mv) {
         mv.visitInsn(ATHROW);
         return Type.VOID;
     }

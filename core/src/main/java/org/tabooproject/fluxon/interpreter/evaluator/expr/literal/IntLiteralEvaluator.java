@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr.literal;
 import org.objectweb.asm.MethodVisitor;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
@@ -21,7 +22,7 @@ public class IntLiteralEvaluator extends ExpressionEvaluator<IntLiteral> {
     }
 
     @Override
-    public Type generateBytecode(IntLiteral result, MethodVisitor mv) {
+    public Type generateBytecode(IntLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
         mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
         return Type.INT;

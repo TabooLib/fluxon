@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
@@ -32,7 +33,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
     }
 
     @Override
-    public Type generateBytecode(Block result, MethodVisitor mv) {
+    public Type generateBytecode(Block result, CodeContext ctx, MethodVisitor mv) {
         Type last = Type.VOID;
         for (ParseResult statement : result.getStatements()) {
             EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
@@ -40,7 +41,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
             if (eval == null) {
                 throw new RuntimeException("No evaluator found for expression");
             }
-            last = eval.generateBytecode(statement, mv);
+            last = eval.generateBytecode(statement, ctx, mv);
         }
         return last;
     }

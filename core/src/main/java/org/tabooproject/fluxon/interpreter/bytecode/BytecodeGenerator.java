@@ -13,12 +13,12 @@ public interface BytecodeGenerator {
     /**
      * 为表达式生成字节码
      */
-    Type generateExpressionBytecode(Expression expr, MethodVisitor mv);
+    Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv);
     
     /**
      * 为语句生成字节码
      */  
-    void generateStatementBytecode(Statement stmt, MethodVisitor mv);
+    void generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv);
     
     /**
      * 添加脚本主体代码

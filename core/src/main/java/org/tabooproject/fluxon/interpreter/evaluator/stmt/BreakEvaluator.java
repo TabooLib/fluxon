@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.statement.BreakStatement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
@@ -23,7 +24,7 @@ public class BreakEvaluator extends StatementEvaluator<BreakStatement> {
     }
 
     @Override
-    public Type generateBytecode(BreakStatement result, MethodVisitor mv) {
+    public Type generateBytecode(BreakStatement result, CodeContext ctx, MethodVisitor mv) {
         // 生成字节码
         mv.visitInsn(ATHROW);
         return Type.VOID;

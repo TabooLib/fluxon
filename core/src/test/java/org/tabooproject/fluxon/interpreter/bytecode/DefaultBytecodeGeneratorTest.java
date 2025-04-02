@@ -1,11 +1,9 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
-import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.expression.BinaryExpression;
-import org.tabooproject.fluxon.parser.expression.literal.BooleanLiteral;
-import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.io.File;
@@ -18,15 +16,11 @@ public class DefaultBytecodeGeneratorTest {
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
 
         // 添加字符串 Field
-        generator.addScriptBody(new ExpressionStatement(new BinaryExpression(
-                new BinaryExpression(
-                        new IntLiteral(2),
-                        new Token(TokenType.GREATER),
-                        new IntLiteral(1)
-                ),
-                new Token(TokenType.EQUAL),
-                new BooleanLiteral(true)
-        )));
+        for (ParseResult result : Fluxon.parse("a = 10; b = 20; c = &a > &b; d = -&a")) {
+            if (result instanceof ExpressionStatement) {
+                generator.addScriptBody((Statement) result);
+            }
+        }
 
         // 生成字节码
         byte[] bytecode = generator.generateClassBytecode("CompiledScript");

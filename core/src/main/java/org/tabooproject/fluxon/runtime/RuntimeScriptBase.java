@@ -4,6 +4,8 @@ package org.tabooproject.fluxon.runtime;
  * 运行时脚本的基类
  */
 public abstract class RuntimeScriptBase {
+
+    public static final Type TYPE = new Type(RuntimeScriptBase.class);
     
     protected final Environment environment;
     

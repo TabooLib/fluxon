@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -43,7 +44,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     }
 
     @Override
-    public Type generateBytecode(BinaryExpression expr, MethodVisitor mv) {
+    public Type generateBytecode(BinaryExpression expr, CodeContext ctx, MethodVisitor mv) {
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         Evaluator<ParseResult> leftEval = registry.getEvaluator(expr.getLeft());
         Evaluator<ParseResult> rightEval = registry.getEvaluator(expr.getRight());
@@ -52,37 +53,37 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         }
         switch (expr.getOperator().getType()) {
             case PLUS:
-                generateOperator(expr, leftEval, rightEval, "add", SIGNATURE_O2O, mv, false);
+                generateOperator(expr, leftEval, rightEval, "add", SIGNATURE_O2O, ctx, mv, false);
                 return Type.OBJECT;
             case MINUS:
-                generateOperator(expr, leftEval, rightEval, "subtract", SIGNATURE_O2O, mv, false);
+                generateOperator(expr, leftEval, rightEval, "subtract", SIGNATURE_O2O, ctx, mv, false);
                 return Type.OBJECT;
             case MULTIPLY:
-                generateOperator(expr, leftEval, rightEval, "multiply", SIGNATURE_O2O, mv, false);
+                generateOperator(expr, leftEval, rightEval, "multiply", SIGNATURE_O2O, ctx, mv, false);
                 return Type.OBJECT;
             case DIVIDE:
-                generateOperator(expr, leftEval, rightEval, "divide", SIGNATURE_O2O, mv, false);
+                generateOperator(expr, leftEval, rightEval, "divide", SIGNATURE_O2O, ctx, mv, false);
                 return Type.OBJECT;
             case MODULO:
-                generateOperator(expr, leftEval, rightEval, "modulo", SIGNATURE_O2O, mv, false);
+                generateOperator(expr, leftEval, rightEval, "modulo", SIGNATURE_O2O, ctx, mv, false);
                 return Type.OBJECT;
             case GREATER:
-                generateOperator(expr, leftEval, rightEval, "isGreater", SIGNATURE_O2Z, mv, false);
+                generateOperator(expr, leftEval, rightEval, "isGreater", SIGNATURE_O2Z, ctx, mv, false);
                 return Type.Z;
             case GREATER_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isGreaterEqual", SIGNATURE_O2Z, mv, false);
+                generateOperator(expr, leftEval, rightEval, "isGreaterEqual", SIGNATURE_O2Z, ctx, mv, false);
                 return Type.Z;
             case LESS:
-                generateOperator(expr, leftEval, rightEval, "isLess", SIGNATURE_O2Z, mv, false);
+                generateOperator(expr, leftEval, rightEval, "isLess", SIGNATURE_O2Z, ctx, mv, false);
                 return Type.Z;
             case LESS_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isLessEqual", SIGNATURE_O2Z, mv, false);
+                generateOperator(expr, leftEval, rightEval, "isLessEqual", SIGNATURE_O2Z, ctx, mv, false);
                 return Type.Z;
             case EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, mv, false);
+                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, ctx, mv, false);
                 return Type.Z;
             case NOT_EQUAL:
-                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, mv, true);
+                generateOperator(expr, leftEval, rightEval, "isEqual", SIGNATURE_O2Z, ctx, mv, true);
                 return Type.Z;
             default:
                 throw new RuntimeException("Unknown binary operator: " + expr.getOperator().getType());
@@ -98,41 +99,19 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             Evaluator<ParseResult> rightEval,
             String method,
             String signature,
+            CodeContext ctx,
             MethodVisitor mv,
             boolean xor
     ) {
         // 生成左右操作数的字节码
-        boxing(leftEval.generateBytecode(expr.getLeft(), mv), mv);
-        boxing(rightEval.generateBytecode(expr.getRight(), mv), mv);
+        boxing(leftEval.generateBytecode(expr.getLeft(), ctx, mv), mv);
+        boxing(rightEval.generateBytecode(expr.getRight(), ctx, mv), mv);
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, signature, false);
         // 是否取反结果
         if (xor) {
             mv.visitInsn(ICONST_1);
             mv.visitInsn(IXOR);
-        }
-    }
-
-    /**
-     * 将操作数装箱
-     */
-    private void boxing(Type type, MethodVisitor mv) {
-        switch (type.getDescriptor()) {
-            case "Z":
-                mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
-                break;
-            case "I":
-                mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
-                break;
-            case "J":
-                mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
-                break;
-            case "F":
-                mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
-                break;
-            case "D":
-                mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
-                break;
         }
     }
 

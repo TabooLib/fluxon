@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
@@ -28,7 +29,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
     }
 
     @Override
-    public Type generateBytecode(ReturnStatement result, MethodVisitor mv) {
+    public Type generateBytecode(ReturnStatement result, CodeContext ctx, MethodVisitor mv) {
         // 生成字节码
         mv.visitInsn(ATHROW);
         return Type.VOID;
