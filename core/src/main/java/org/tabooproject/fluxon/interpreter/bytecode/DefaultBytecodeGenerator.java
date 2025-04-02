@@ -56,7 +56,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public byte[] generateClassBytecode(String className, String superClassName) {
         CodeContext ctx = new CodeContext(className, superClassName);
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         // 生成类，继承 RuntimeScriptBase
         cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, className, null, superClassName, null);
         // 生成构造函数
@@ -84,7 +84,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         }
 
         mv.visitInsn(Opcodes.RETURN);
-        mv.visitMaxs(3, 2);
+        mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
         mv.visitEnd();
     }
 }

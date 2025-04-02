@@ -69,9 +69,9 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
         // 根据赋值操作符类型处理赋值
         if (result.getOperator().getType() == TokenType.ASSIGN) {
             // 写入变量
-            mv.visitVarInsn(Opcodes.ALOAD, 0);                               // this
-            mv.visitLdcInsn(result.getName());                               // 变量名
-            boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);   // 变量值
+            mv.visitVarInsn(Opcodes.ALOAD, 0);                                   // this
+            mv.visitLdcInsn(result.getName());                                   // 变量名
+            boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);  // 变量值
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
         } else {
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this

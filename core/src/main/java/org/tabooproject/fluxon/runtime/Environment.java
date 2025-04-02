@@ -17,8 +17,10 @@ public class Environment {
 
     // 函数储存
     private final Map<String, Function> functions = new HashMap<>();
-    // 变量存储
+    // 标准变量存储（支持上下文传递）
     private final Map<String, Object> values = new HashMap<>();
+    // 临时变量储存
+    private final Map<String, Object> tempValues = new HashMap<>();
 
     // 父环境，用于实现作用域链
     private final Environment parent;
@@ -68,16 +70,6 @@ public class Environment {
     }
 
     /**
-     * 在当前环境中定义变量
-     *
-     * @param name  变量名
-     * @param value 变量值
-     */
-    public void defineVariable(String name, Object value) {
-        values.put(name, value);
-    }
-
-    /**
      * 获取函数（递归查找所有父环境）
      *
      * @param name 函数名
@@ -96,7 +88,19 @@ public class Environment {
     }
 
     /**
-     * 获取变量值（递归查找所有父环境）
+     * 在当前环境中定义变量
+     * 仅在特殊情况下使用，例如在函数中定义的变量
+     *
+     * @param name  变量名
+     * @param value 变量值
+     */
+    public void defineVariable(String name, Object value) {
+        values.put(name, value);
+    }
+
+    /**
+     * 获取变量值
+     * 如果不存在则会从父环境中查找
      *
      * @param name 变量名
      * @return 变量值
@@ -114,21 +118,19 @@ public class Environment {
     }
 
     /**
-     * 更新变量值（递归查找所有父环境）
+     * 更新变量值
+     * 优先从环境中查找，如果不存在则在当前环境中创建
      *
      * @param name  变量名
      * @param value 新的变量值
      */
     public void assign(String name, Object value) {
-        if (values.containsKey(name)) {
+        Environment environment = getEnvironment(name);
+        if (environment != null) {
+            environment.values.put(name, value);
+        } else {
             values.put(name, value);
-            return;
         }
-        if (parent != null) {
-            parent.assign(name, value);
-            return;
-        }
-        defineVariable(name, value);
     }
 
     /**
