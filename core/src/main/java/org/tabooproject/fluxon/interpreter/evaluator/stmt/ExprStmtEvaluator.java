@@ -30,6 +30,6 @@ public class ExprStmtEvaluator extends StatementEvaluator<ExpressionStatement> {
         if (eval == null) {
             throw new RuntimeException("No evaluator found for expression");
         }
-        return boxing(eval.generateBytecode(result.getExpression(), ctx, mv), mv);
+        return eval.generateBytecode(result.getExpression(), ctx, mv);
     }
 }

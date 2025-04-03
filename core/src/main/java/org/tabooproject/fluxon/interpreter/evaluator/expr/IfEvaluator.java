@@ -72,14 +72,14 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         Label endLabel = new Label();
 
         // 生成条件表达式的字节码
-        boxing(conditionEval.generateBytecode(result.getCondition(), ctx, mv), mv);
+        conditionEval.generateBytecode(result.getCondition(), ctx, mv);
         // 调用 Operations.isTrue 判断条件
         mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
         // 如果条件为假，跳转到 else 分支
         mv.visitJumpInsn(IFEQ, elseLabel);
 
         // then 分支代码
-        boxing(thenEval.generateBytecode(result.getThenBranch(), ctx, mv), mv);
+        thenEval.generateBytecode(result.getThenBranch(), ctx, mv);
         mv.visitVarInsn(ASTORE, storeId);
         mv.visitJumpInsn(GOTO, endLabel);
 
@@ -87,7 +87,7 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         mv.visitLabel(elseLabel);
         // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
-            boxing(elseEval.generateBytecode(result.getElseBranch(), ctx, mv), mv);
+            elseEval.generateBytecode(result.getElseBranch(), ctx, mv);
             mv.visitVarInsn(ASTORE, storeId);
         } else {
             mv.visitInsn(ACONST_NULL);

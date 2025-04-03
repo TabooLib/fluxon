@@ -24,7 +24,6 @@ public class IntLiteralEvaluator extends ExpressionEvaluator<IntLiteral> {
     @Override
     public Type generateBytecode(IntLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
-        return Type.INT;
+        return boxing(Type.I, mv);
     }
 }

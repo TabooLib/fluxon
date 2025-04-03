@@ -24,7 +24,6 @@ public class FloatLiteralEvaluator extends ExpressionEvaluator<FloatLiteral> {
     @Override
     public Type generateBytecode(FloatLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
-        return Type.FLOAT;
+        return boxing(Type.F, mv);
     }
 }

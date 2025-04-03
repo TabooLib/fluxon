@@ -1,12 +1,20 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.LogicalExpression;
+import org.tabooproject.fluxon.runtime.Type;
 
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
+import static org.objectweb.asm.Opcodes.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
 
@@ -20,10 +28,59 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
         Object left = interpreter.evaluate(result.getLeft());
         // 逻辑或
         if (result.getOperator().getType() == TokenType.OR) {
-            if (isTrue(left)) return left;
+            return isTrue(left) || isTrue(interpreter.evaluate(result.getRight()));
         } else {
-            if (!isTrue(left)) return left;
+            return isTrue(left) && isTrue(interpreter.evaluate(result.getRight()));
         }
-        return interpreter.evaluate(result.getRight());
+    }
+
+    @Override
+    public Type generateBytecode(LogicalExpression result, CodeContext ctx, MethodVisitor mv) {
+        // 获取左右表达式的求值器
+        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
+        Evaluator<ParseResult> leftEval = registry.getEvaluator(result.getLeft());
+        Evaluator<ParseResult> rightEval = registry.getEvaluator(result.getRight());
+        if (leftEval == null || rightEval == null) {
+            throw new RuntimeException("No evaluator found for operands");
+        }
+        // 判断左侧表达式
+        leftEval.generateBytecode(result.getLeft(), ctx, mv);
+        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+
+        // 创建跳转标签
+        Label endLabel = new Label();
+        Label trueLabel = new Label();
+        Label falseLabel = new Label();
+
+        // 逻辑与
+        if (result.getOperator().getType() == TokenType.OR) {
+            // 如果左边结果为 != 0 则跳转到 trueLabel 直接返回 1
+            mv.visitJumpInsn(IFNE, trueLabel);
+            // 判断右侧表达式
+            rightEval.generateBytecode(result.getRight(), ctx, mv);
+            mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+            // 如果右边结果为 == 0 则跳转到 falseLabel 直接返回 0
+            mv.visitJumpInsn(IFEQ, falseLabel);
+            // 对 1 定义标签
+            mv.visitLabel(trueLabel);
+        } else {
+            // 如果左边结果 == 0 则跳转到 falseLabel 直接返回 0
+            mv.visitJumpInsn(IFEQ, falseLabel);
+            // 判断右侧表达式
+            rightEval.generateBytecode(result.getRight(), ctx, mv);
+            mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+            // 如果右边结果 == 0 则跳转到 falseLabel 直接返回 0
+            mv.visitJumpInsn(IFEQ, falseLabel);
+        }
+
+        // 成功
+        mv.visitInsn(ICONST_1);
+        mv.visitJumpInsn(GOTO, endLabel);
+        // 失败
+        mv.visitLabel(falseLabel);
+        mv.visitInsn(ICONST_0);
+        // 结束标签
+        mv.visitLabel(endLabel);
+        return boxing(Type.Z, mv);
     }
 }

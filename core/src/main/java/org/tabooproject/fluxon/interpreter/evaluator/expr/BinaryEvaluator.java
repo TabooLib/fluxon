@@ -62,7 +62,8 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         }
         // 生成字节码
         generateOperator(expr, leftEval, rightEval, operator.name, operator.descriptor, ctx, mv, operator.xor);
-        return operator.type;
+        // 将结果装箱
+        return boxing(operator.type, mv);
     }
 
     /**
@@ -79,8 +80,8 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             boolean xor
     ) {
         // 生成左右操作数的字节码
-        boxing(leftEval.generateBytecode(expr.getLeft(), ctx, mv), mv);
-        boxing(rightEval.generateBytecode(expr.getRight(), ctx, mv), mv);
+        leftEval.generateBytecode(expr.getLeft(), ctx, mv);
+        rightEval.generateBytecode(expr.getRight(), ctx, mv);
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, descriptor, false);
         // 是否取反结果
@@ -89,7 +90,6 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             mv.visitInsn(IXOR);
         }
     }
-
 
     private static final Map<TokenType, BinaryOperator> OPERATORS = new HashMap<>();
 

@@ -43,7 +43,7 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
         int index = 0;
         for (ParseResult element : result.getElements()) {
             // 复制数组引用
-            mv.visitInsn(Opcodes.DUP);
+            mv.visitInsn(DUP);
             // 压入数组索引
             mv.visitLdcInsn(index++);
             // 生成元素的字节码
@@ -51,9 +51,9 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             if (eval == null) {
                 throw new RuntimeException("No evaluator found for element");
             }
-            boxing(eval.generateBytecode(element, ctx, mv), mv);
+            eval.generateBytecode(element, ctx, mv);
             // 存储到数组
-            mv.visitInsn(Opcodes.AASTORE);
+            mv.visitInsn(AASTORE);
         }
         // 调用 Arrays.asList
         mv.visitMethodInsn(INVOKESTATIC, "java/util/Arrays", "asList", "([" + Type.OBJECT + ")Ljava/util/List;", false);

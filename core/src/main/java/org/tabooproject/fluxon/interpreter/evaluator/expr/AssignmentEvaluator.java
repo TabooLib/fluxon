@@ -74,9 +74,9 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
         TokenType type = result.getOperator().getType();
         if (type == TokenType.ASSIGN) {
             // 写入变量
-            mv.visitVarInsn(Opcodes.ALOAD, 0);                                   // this
-            mv.visitLdcInsn(result.getName());                                   // 变量名
-            boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);  // 变量值
+            mv.visitVarInsn(Opcodes.ALOAD, 0);                       // this
+            mv.visitLdcInsn(result.getName());                       // 变量名
+            valueEval.generateBytecode(result.getValue(), ctx, mv);  // 变量值
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
         } else {
             // 压入变量名 -> 用于后续的写回操作
@@ -87,7 +87,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitInsn(Opcodes.DUP2);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariable", GET_VARIABLE, false);
             // 执行操作
-            boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);
+            valueEval.generateBytecode(result.getValue(), ctx, mv);
 
             // 执行操作并写回变量
             String name = OPERATORS.get(type);

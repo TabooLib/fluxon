@@ -24,7 +24,6 @@ public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
     @Override
     public Type generateBytecode(DoubleLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
-        return Type.DOUBLE;
+        return boxing(Type.D, mv);
     }
 }

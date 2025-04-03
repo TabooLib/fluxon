@@ -24,7 +24,6 @@ public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
     @Override
     public Type generateBytecode(LongLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
-        return Type.LONG;
+        return boxing(Type.J, mv);
     }
 }

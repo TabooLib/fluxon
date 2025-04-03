@@ -24,7 +24,6 @@ public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral>
     @Override
     public Type generateBytecode(BooleanLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitInsn(result.getValue() ? ICONST_1 : ICONST_0);
-        mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
-        return Type.BOOLEAN;
+        return boxing(Type.Z, mv);
     }
 }
