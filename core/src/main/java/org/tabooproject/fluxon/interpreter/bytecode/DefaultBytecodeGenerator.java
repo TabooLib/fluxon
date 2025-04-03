@@ -6,6 +6,7 @@ import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
+import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -46,6 +47,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public void addScriptBody(Statement... statements) {
         Collections.addAll(this.statements, statements);
+    }
+
+    @Override
+    public void addScriptDefinition(Definition... definitions) {
     }
 
     @Override

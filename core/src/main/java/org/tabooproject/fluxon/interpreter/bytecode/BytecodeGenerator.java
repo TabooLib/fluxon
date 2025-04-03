@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
@@ -25,7 +26,12 @@ public interface BytecodeGenerator {
      * @param statements 语句列表
      */
     void addScriptBody(Statement... statements);
-    
+
+    /**
+     * 添加脚本定义代码
+     */
+    void addScriptDefinition(Definition... definitions);
+
     /**
      * 生成完整的类字节码
      */

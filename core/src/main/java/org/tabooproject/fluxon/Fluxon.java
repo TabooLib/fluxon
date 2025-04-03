@@ -2,11 +2,15 @@ package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
+import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 
@@ -89,5 +93,27 @@ public class Fluxon {
     public static Object evalFile(File file) throws IOException {
         String source = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
         return eval(source);
+    }
+
+    /**
+     * 将 Fluxon 源代码编译为字节码
+     *
+     * @param source Fluxon 源代码
+     * @param className 类名
+     * @return 字节码
+     */
+    public static byte[] compile(String source, String className) {
+        // 创建字节码生成器
+        BytecodeGenerator generator = new DefaultBytecodeGenerator();
+        // 解析源代码
+        for (ParseResult result : parse(source)) {
+            if (result instanceof Statement) {
+                generator.addScriptBody((Statement) result);
+            } else if (result instanceof Definition) {
+                generator.addScriptDefinition((Definition) result);
+            }
+        }
+        // 生成字节码
+        return generator.generateClassBytecode(className);
     }
 }

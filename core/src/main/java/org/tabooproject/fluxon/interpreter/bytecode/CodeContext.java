@@ -27,10 +27,14 @@ public class CodeContext {
     public int allocateLocalVar(Type type) {
         String descriptor = type.getDescriptor();
         // 根据类型增加索引
-        if ("J".equals(descriptor) || "D".equals(descriptor)) {
-            localVarIndex += 2;
-        } else {
-            localVarIndex += 1;
+        switch (descriptor) {
+            case "J":
+            case "D":
+                localVarIndex += 2;
+                break;
+            default:
+                localVarIndex += 1;
+                break;
         }
         return localVarIndex;
     }
