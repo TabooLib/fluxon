@@ -13,3 +13,4 @@ comparison = if &num1 > &num2 then {
     equal
 }
 elvis = &comparison ?: 0
+grouping = 100 * (200 + 300)
