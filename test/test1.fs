@@ -12,5 +12,6 @@ comparison = if &num1 > &num2 then {
 } else {
     equal
 }
+list = [&num1, &num2, 100, 200]
 elvis = &comparison ?: 0
 grouping = 100 * (200 + 300)
