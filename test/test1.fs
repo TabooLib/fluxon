@@ -12,3 +12,4 @@ comparison = if &num1 > &num2 then {
 } else {
     equal
 }
+elvis = &comparison ?: 0

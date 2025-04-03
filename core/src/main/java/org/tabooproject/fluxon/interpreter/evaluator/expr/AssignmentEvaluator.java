@@ -83,9 +83,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
             mv.visitLdcInsn(result.getName());  // 变量名
 
-            // 再次压入变量用于进行操作
-            mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
-            mv.visitLdcInsn(result.getName());  // 变量名
+            // 复制栈顶的两个值用于进行操作
+            mv.visitInsn(Opcodes.DUP2);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariable", GET_VARIABLE, false);
             // 执行操作
             boxing(valueEval.generateBytecode(result.getValue(), ctx, mv), mv);
