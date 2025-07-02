@@ -14,6 +14,8 @@ import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
 
+import static org.objectweb.asm.Opcodes.POP;
+
 /**
  * 默认字节码生成器实现
  */
@@ -92,8 +94,12 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 生成脚本主体代码
         Type last = null;
-        for (Statement stmt : statements) {
-            last = generateStatementBytecode(stmt, ctx, mv);
+        for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
+            last = generateStatementBytecode(statements.get(i), ctx, mv);
+            // 如果不是最后一条语句，并且有返回值，则丢弃它
+            if (i < statementsSize - 1 && last != Type.VOID) {
+                mv.visitInsn(POP);
+            }
         }
         // 如果最后一个表达式是 void 类型，则压入 null
         if (last == Type.VOID) {
