@@ -22,7 +22,7 @@ logical1 = true && false
 logical2 = true || false
 
 sum = 0
-for i in [1, 2, 3, 4] then {
+for i in 1..10 then {
     sum = &sum + &i
 }
 &sum

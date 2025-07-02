@@ -404,5 +404,44 @@ public final class Operations {
     public static void destructureAndSetVars(RuntimeScriptBase scriptBase, String[] variables, Object element) {
         DestructuringRegistry.getInstance().destructure(scriptBase.getEnvironment(), Arrays.asList(variables), element);
     }
+
+    /**
+     * 创建数字范围列表
+     * 
+     * @param start 开始值
+     * @param end 结束值
+     * @param isInclusive 是否包含结束值
+     * @return 范围列表
+     * @throws RuntimeException 如果操作数不是数字类型
+     */
+    public static List<Integer> createRange(Object start, Object end, boolean isInclusive) {
+        // 检查开始值和结束值是否为数字
+        checkNumberOperands(start, end);
+
+        // 转换为整数
+        int startInt = ((Number) start).intValue();
+        int endInt = ((Number) end).intValue();
+
+        // 检查范围是否为包含上界类型
+        if (!isInclusive) {
+            endInt--;
+        }
+
+        // 创建范围结果列表
+        List<Integer> rangeList = new java.util.ArrayList<>();
+        // 支持正向和反向范围
+        if (startInt <= endInt) {
+            // 正向范围
+            for (int i = startInt; i <= endInt; i++) {
+                rangeList.add(i);
+            }
+        } else {
+            // 反向范围
+            for (int i = startInt; i >= endInt; i--) {
+                rangeList.add(i);
+            }
+        }
+        return rangeList;
+    }
 }
 // @formatter:on

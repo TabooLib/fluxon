@@ -1,14 +1,20 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
+import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.checkNumberOperands;
+import static org.objectweb.asm.Opcodes.*;
 
 public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
 
@@ -22,34 +28,29 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         // 获取开始值和结束值
         Object start = interpreter.evaluate(result.getStart());
         Object end = interpreter.evaluate(result.getEnd());
+        // 使用 Operations 类创建范围，保持与字节码生成的一致性
+        return Operations.createRange(start, end, result.isInclusive());
+    }
 
-        // 检查开始值和结束值是否为数字
-        checkNumberOperands(start, end);
-
-        // 转换为整数
-        int startInt = ((Number) start).intValue();
-        int endInt = ((Number) end).intValue();
-
-        // 检查范围是否为包含上界类型
-        boolean isInclusive = result.isInclusive();
-        if (!isInclusive) {
-            endInt--;
+    @Override
+    public Type generateBytecode(RangeExpression result, CodeContext ctx, MethodVisitor mv) {
+        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
+        // 生成 start 表达式的字节码
+        Evaluator<ParseResult> startEval = registry.getEvaluator(result.getStart());
+        if (startEval == null) {
+            throw new RuntimeException("No evaluator found for start expression");
         }
-
-        // 创建范围结果列表
-        List<Integer> rangeList = new ArrayList<>();
-        // 支持正向和反向范围
-        if (startInt <= endInt) {
-            // 正向范围
-            for (int i = startInt; i <= endInt; i++) {
-                rangeList.add(i);
-            }
-        } else {
-            // 反向范围
-            for (int i = startInt; i >= endInt; i--) {
-                rangeList.add(i);
-            }
+        startEval.generateBytecode(result.getStart(), ctx, mv);
+        // 生成 end 表达式的字节码
+        Evaluator<ParseResult> endEval = registry.getEvaluator(result.getEnd());
+        if (endEval == null) {
+            throw new RuntimeException("No evaluator found for end expression");
         }
-        return rangeList;
+        endEval.generateBytecode(result.getEnd(), ctx, mv);
+        // 压入 isInclusive 参数
+        mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
+        // 调用 Operations.createRange 方法
+        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)Ljava/util/List;", false);
+        return Type.OBJECT;
     }
 }
