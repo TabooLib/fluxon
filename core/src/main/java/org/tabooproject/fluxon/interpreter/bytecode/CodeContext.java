@@ -5,11 +5,15 @@ import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CodeContext {
 
@@ -20,6 +24,9 @@ public class CodeContext {
     private final String className;
     private final String superClassName;
 
+    // 用户定义
+    private final List<Definition> definitions = new ArrayList<>();
+
     // 局部变量表
     private int localVarIndex = 0;
 
@@ -28,12 +35,31 @@ public class CodeContext {
         this.superClassName = superClassName;
     }
 
+    @SuppressWarnings("CopyConstructorMissesField")
+    public CodeContext(CodeContext parent) {
+        this.className = parent.className;
+        this.superClassName = parent.superClassName;
+        this.definitions.addAll(parent.definitions);
+    }
+
+    public void addDefinition(Definition definition) {
+        definitions.add(definition);
+    }
+
+    public void addDefinitions(List<Definition> definitions) {
+        this.definitions.addAll(definitions);
+    }
+
     public String getClassName() {
         return className;
     }
 
     public String getSuperClassName() {
         return superClassName;
+    }
+
+    public List<Definition> getDefinitions() {
+        return definitions;
     }
 
     public int allocateLocalVar(Type type) {

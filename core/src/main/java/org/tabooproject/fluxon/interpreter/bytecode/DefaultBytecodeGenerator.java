@@ -58,15 +58,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     @Override
-    public byte[] generateClassBytecode(String className) {
+    public List<byte[]> generateClassBytecode(String className) {
         return generateClassBytecode(className, "org/tabooproject/fluxon/runtime/RuntimeScriptBase");
     }
 
     @Override
-    public byte[] generateClassBytecode(String className, String superClassName) {
+    public List<byte[]> generateClassBytecode(String className, String superClassName) {
         CodeContext ctx = new CodeContext(className, superClassName);
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ctx.addDefinitions(definitions);
         // 生成类，继承 RuntimeScriptBase
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         cw.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, className, null, superClassName, null);
 
         // 生成空的构造函数
@@ -87,7 +88,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 生成结束
         cw.visitEnd();
-        return cw.toByteArray();
+        return Collections.singletonList(cw.toByteArray());
     }
 
     private void generateEvalMethod(ClassWriter cw, CodeContext ctx) {
@@ -137,7 +138,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitCode();
 
         // 创建新的代码上下文用于函数生成
-        CodeContext funcCtx = new CodeContext(ctx.getClassName(), ctx.getSuperClassName());
+        CodeContext funcCtx = new CodeContext(ctx);
 
         // 生成函数体字节码
         Type returnType;

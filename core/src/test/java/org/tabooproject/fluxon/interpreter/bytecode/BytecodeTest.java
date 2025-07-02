@@ -21,6 +21,7 @@ public class BytecodeTest {
                 if (f.getName().endsWith(".fs")) {
                     // 编译文件
                     try {
+                        run(f);
                         compile(f);
                     } catch (Throwable ex) {
                         ex.printStackTrace();
@@ -30,7 +31,17 @@ public class BytecodeTest {
         }
     }
 
+    public static void run(File file) throws Exception {
+        System.out.println("---------------------------------");
+        System.out.println("Running: " + file);
+        List<String> strings = Files.readAllLines(file.toPath());
+        Object result = Fluxon.eval(String.join("\n", strings));
+        System.out.println("Result: " + result);
+    }
+
     public static void compile(File file) throws Exception {
+        System.out.println("---------------------------------");
+        System.out.println("Compiling: " + file);
         List<String> strings = Files.readAllLines(file.toPath());
         String className = file.getName().replace(".fs", "");
         CompileResult result = Fluxon.compile(String.join("\n", strings), className);
@@ -38,15 +49,20 @@ public class BytecodeTest {
         // 输出脚本便于调试
         File compiled = new File(file.getParentFile(), className + ".class");
         compiled.createNewFile();
-        Files.write(compiled.toPath(), result.getBytecode());
+        Files.write(compiled.toPath(), result.getMainClass());
+        int i = 0;
+        for (byte[] innerClass : result.getInnerClasses()) {
+            String innerClassName = className + "$" + i++;
+            compiled = new File(file.getParentFile(), innerClassName + ".class");
+            compiled.createNewFile();
+            Files.write(compiled.toPath(), innerClass);
+        }
 
         // 加载并执行
-        FluxonClassLoader loader = new FluxonClassLoader();
-        Class<?> scriptClass = loader.defineClass(className, result.getBytecode());
+        Class<?> scriptClass = result.defineClass(new FluxonClassLoader());
         RuntimeScriptBase base = (RuntimeScriptBase) scriptClass.newInstance();
-        System.out.println(file + " Result:");
 
         // 使用注册中心初始化环境
-        System.out.println(base.eval(result.newEnvironment()));
+        System.out.println("Result: " + base.eval(result.newEnvironment()));
     }
 }

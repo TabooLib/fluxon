@@ -115,7 +115,7 @@ public class Fluxon {
             }
         }
         // 生成字节码
-        byte[] bytecode = generator.generateClassBytecode(className);
+        List<byte[]> bytecode = generator.generateClassBytecode(className);
         return new CompileResult(source, className, generator, bytecode);
     }
 }

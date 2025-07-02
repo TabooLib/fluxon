@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 用户自定义的函数
+ * 解释执行环境中的函数定义
  */
 public class UserFunction implements Function {
     
@@ -44,21 +45,17 @@ public class UserFunction implements Function {
     public Object call(Object[] args) {
         // 创建新的环境，父环境为函数定义时的环境（闭包）
         Environment functionEnv = new Environment(closure);
-        
         // 绑定参数
         List<String> parameters = definition.getParameters();
         int minParamCount = Math.min(parameters.size(), args.length);
-        
         // 绑定实际传递的参数
         for (int i = 0; i < minParamCount; i++) {
             functionEnv.defineVariable(parameters.get(i), args[i]);
         }
-        
-        // 未传递的参数赋值为null
+        // 未传递的参数赋值为 null
         for (int i = minParamCount; i < parameters.size(); i++) {
             functionEnv.defineVariable(parameters.get(i), null);
         }
-        
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
@@ -70,7 +67,6 @@ public class UserFunction implements Function {
 
     /**
      * 获取函数定义
-     * 
      * @return 函数定义
      */
     public Definitions.FunctionDefinition getDefinition() {

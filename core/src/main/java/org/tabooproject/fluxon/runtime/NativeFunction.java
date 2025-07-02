@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 原生函数类
- * 表示由Java实现的内置函数
+ * 表示由 Java 实现的内置函数
  */
 public class NativeFunction implements Function {
 
