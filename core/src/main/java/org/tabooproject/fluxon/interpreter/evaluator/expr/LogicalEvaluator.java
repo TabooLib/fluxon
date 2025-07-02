@@ -34,6 +34,7 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
         }
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     public Type generateBytecode(LogicalExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取左右表达式的求值器
@@ -44,8 +45,7 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
             throw new RuntimeException("No evaluator found for operands");
         }
         // 判断左侧表达式
-        leftEval.generateBytecode(result.getLeft(), ctx, mv);
-        mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+        generateCondition(ctx, mv, result.getLeft(), leftEval, null);
 
         // 创建跳转标签
         Label endLabel = new Label();
@@ -57,20 +57,14 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
             // 如果左边结果为 != 0 则跳转到 trueLabel 直接返回 1
             mv.visitJumpInsn(IFNE, trueLabel);
             // 判断右侧表达式
-            rightEval.generateBytecode(result.getRight(), ctx, mv);
-            mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
-            // 如果右边结果为 == 0 则跳转到 falseLabel 直接返回 0
-            mv.visitJumpInsn(IFEQ, falseLabel);
+            generateCondition(ctx, mv, result.getRight(), rightEval, falseLabel);
             // 对 1 定义标签
             mv.visitLabel(trueLabel);
         } else {
             // 如果左边结果 == 0 则跳转到 falseLabel 直接返回 0
             mv.visitJumpInsn(IFEQ, falseLabel);
             // 判断右侧表达式
-            rightEval.generateBytecode(result.getRight(), ctx, mv);
-            mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
-            // 如果右边结果 == 0 则跳转到 falseLabel 直接返回 0
-            mv.visitJumpInsn(IFEQ, falseLabel);
+            generateCondition(ctx, mv, result.getRight(), rightEval, falseLabel);
         }
 
         // 成功

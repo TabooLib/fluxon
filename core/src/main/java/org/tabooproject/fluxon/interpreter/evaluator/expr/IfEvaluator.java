@@ -70,13 +70,8 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         // 创建标签用于跳转
         Label elseLabel = new Label();
         Label endLabel = new Label();
-
-        // 生成条件表达式的字节码
-        conditionEval.generateBytecode(result.getCondition(), ctx, mv);
-        // 调用 Operations.isTrue 判断条件
-        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
-        // 如果条件为假，跳转到 else 分支
-        mv.visitJumpInsn(IFEQ, elseLabel);
+        // 评估条件表达式
+        generateCondition(ctx, mv, result.getCondition(), conditionEval, elseLabel);
 
         // then 分支代码
         thenEval.generateBytecode(result.getThenBranch(), ctx, mv);

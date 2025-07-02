@@ -77,7 +77,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitVarInsn(Opcodes.ALOAD, 0);                       // this
             mv.visitLdcInsn(result.getName());                       // 变量名
             valueEval.generateBytecode(result.getValue(), ctx, mv);  // 变量值
-            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         } else {
             // 压入变量名 -> 用于后续的写回操作
             mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
@@ -85,7 +85,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
 
             // 复制栈顶的两个值用于进行操作
             mv.visitInsn(Opcodes.DUP2);
-            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariable", GET_VARIABLE, false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", GET, false);
             // 执行操作
             valueEval.generateBytecode(result.getValue(), ctx, mv);
 
@@ -95,14 +95,14 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
                 throw new RuntimeException("Unknown compound assignment operator: " + type);
             }
             mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), name, "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, false);
-            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "setVariable", SET_VARIABLE, false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         }
         // Assignment 操作没有返回值
         return Type.VOID;
     }
 
-    private static final String SET_VARIABLE = "(" + Type.STRING + Type.OBJECT + ")V";
-    private static final String GET_VARIABLE = "(" + Type.STRING + ")" + Type.OBJECT;
+    private static final String ASSIGN = "(" + Type.STRING + Type.OBJECT + ")V";
+    private static final String GET = "(" + Type.STRING + ")" + Type.OBJECT;
 
     private static final Map<TokenType, String> OPERATORS = new HashMap<>();
 

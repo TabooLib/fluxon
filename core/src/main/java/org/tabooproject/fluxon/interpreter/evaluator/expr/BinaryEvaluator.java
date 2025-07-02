@@ -47,6 +47,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         // @formatter:on
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     public Type generateBytecode(BinaryExpression expr, CodeContext ctx, MethodVisitor mv) {
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();

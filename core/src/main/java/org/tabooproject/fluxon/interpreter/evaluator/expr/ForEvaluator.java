@@ -82,7 +82,6 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             |
             V
             whileEnd:
-            返回 null
      */
     @Override
     public Type generateBytecode(ForExpression result, CodeContext ctx, MethodVisitor mv) {

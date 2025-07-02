@@ -29,7 +29,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
         mv.visitVarInsn(Opcodes.ALOAD, 0);                   // this
         mv.visitLdcInsn(result.getIdentifier().getValue());  // 变量名
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariable", "(" + Type.STRING + ")" + Type.OBJECT, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", "(" + Type.STRING + ")" + Type.OBJECT, false);
         return Type.OBJECT;
     }
 }

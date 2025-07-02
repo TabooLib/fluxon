@@ -43,11 +43,15 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
             throw new RuntimeException("No evaluator found for operand");
         }
         // 压入操作数
-        rightEval.generateBytecode(result.getRight(), ctx, mv);
+        Type rightType = rightEval.generateBytecode(result.getRight(), ctx, mv);
         // 判断操作数类型
         switch (result.getOperator().getType()) {
             case NOT:
-                mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+                if (rightType == Type.BOOLEAN) {
+                    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                } else if (rightType != Type.Z) {
+                    mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+                }
                 mv.visitInsn(ICONST_1);
                 mv.visitInsn(IXOR);
                 return boxing(Type.Z, mv);

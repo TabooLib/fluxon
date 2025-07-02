@@ -19,6 +19,8 @@ public class WhileParser {
         parser.consume(TokenType.WHILE, "Expected 'while' before while expression");
         // 解析条件表达式
         ParseResult condition = ExpressionParser.parse(parser);
+        // 尝试消费 THEN 标记，如果存在
+        parser.match(TokenType.THEN);
         // 解析循环体
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
