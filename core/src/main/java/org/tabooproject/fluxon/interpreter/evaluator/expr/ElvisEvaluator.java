@@ -32,9 +32,8 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
     @Override
     public Type generateBytecode(ElvisExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取条件表达式和替代表达式的求值器
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> conditionEval = registry.getEvaluator(result.getCondition());
-        Evaluator<ParseResult> alternativeEval = registry.getEvaluator(result.getAlternative());
+        Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
+        Evaluator<ParseResult> alternativeEval = ctx.getEvaluator(result.getAlternative());
         if (conditionEval == null || alternativeEval == null) {
             throw new RuntimeException("No evaluator found for operands");
         }

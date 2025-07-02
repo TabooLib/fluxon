@@ -26,8 +26,7 @@ public class GroupingEvaluator extends ExpressionEvaluator<GroupingExpression> {
     @Override
     public Type generateBytecode(GroupingExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取内部表达式的求值器
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> eval = registry.getEvaluator(result.getExpression());
+        Evaluator<ParseResult> eval = ctx.getEvaluator(result.getExpression());
         if (eval == null) {
             throw new RuntimeException("No evaluator found for expression");
         }

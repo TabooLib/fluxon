@@ -5,6 +5,8 @@ package org.tabooproject.fluxon.runtime;
  */
 public abstract class RuntimeScriptBase {
 
+    public static final Type TYPE = new Type(RuntimeScriptBase.class);
+
     protected Environment environment;
 
     /**

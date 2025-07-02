@@ -8,8 +8,8 @@ import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import java.util.List;
 import java.util.Map;
 
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isEqual;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.isEqual;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.isTrue;
 
 public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
 

@@ -13,10 +13,9 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.isTrue;
 
 public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 
@@ -57,12 +56,11 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
     @Override
     public Type generateBytecode(WhileExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取评估器注册表
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> conditionEval = registry.getEvaluator(result.getCondition());
+        Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
             throw new RuntimeException("No evaluator found for condition expression");
         }
-        Evaluator<ParseResult> bodyEval = registry.getEvaluator(result.getBody());
+        Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
             throw new RuntimeException("No evaluator found for body expression");
         }

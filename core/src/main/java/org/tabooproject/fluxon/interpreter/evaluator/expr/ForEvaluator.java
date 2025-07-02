@@ -16,6 +16,7 @@ import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Math;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import java.util.Iterator;
@@ -86,12 +87,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     @Override
     public Type generateBytecode(ForExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取评估器注册表
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> collectionEval = registry.getEvaluator(result.getCollection());
+        Evaluator<ParseResult> collectionEval = ctx.getEvaluator(result.getCollection());
         if (collectionEval == null) {
             throw new RuntimeException("No evaluator found for collection expression");
         }
-        Evaluator<ParseResult> bodyEval = registry.getEvaluator(result.getBody());
+        Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
             throw new RuntimeException("No evaluator found for body expression");
         }
@@ -106,13 +106,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 评估集合表达式并创建迭代器
         collectionEval.generateBytecode(result.getCollection(), ctx, mv);
-        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")Ljava/util/Iterator;", false);
+        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
         // 创建变量名数组（在循环外部）
         List<String> variables = result.getVariables();
         mv.visitLdcInsn(variables.size());
-        mv.visitTypeInsn(ANEWARRAY, "java/lang/String");
+        mv.visitTypeInsn(ANEWARRAY, Type.STRING.getPath());
         for (int i = 0; i < variables.size(); i++) {
             mv.visitInsn(DUP);
             mv.visitLdcInsn(i);
@@ -126,7 +126,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 检查条件：iterator.hasNext()
         mv.visitVarInsn(ALOAD, iteratorVar);
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z", true);
+        mv.visitMethodInsn(INVOKEINTERFACE, ITERATOR.getPath(), "hasNext", "()Z", true);
         mv.visitJumpInsn(IFEQ, whileEnd); // 如果没有更多元素，跳转到结束
 
         // 执行解构操作：准备参数
@@ -135,14 +135,14 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         
         // 获取下一个元素
         mv.visitVarInsn(ALOAD, iteratorVar);
-        mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()" + Type.OBJECT, true);
+        mv.visitMethodInsn(INVOKEINTERFACE, ITERATOR.getPath(), "next", "()" + Type.OBJECT, true);
         
         // 调用解构方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Operations.TYPE.getPath(),
                 "destructureAndSetVars",
-                "(L" + RuntimeScriptBase.class.getName().replace('.', '/') + ";[Ljava/lang/String;" + Type.OBJECT + ")V", false);
+                "(" + RuntimeScriptBase.TYPE + STRING_ARRAY + Type.OBJECT + ")V", false);
 
         // 执行循环体
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
@@ -156,4 +156,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitLabel(whileEnd);
         return Type.VOID;
     }
+
+    private static final Type ITERATOR = new Type(Iterator.class);
+    private static final Type STRING_ARRAY = new Type(String.class, 1);
 }

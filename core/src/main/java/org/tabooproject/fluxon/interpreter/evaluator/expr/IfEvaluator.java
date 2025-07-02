@@ -8,13 +8,12 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.parser.ParseResult;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
 
 public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
@@ -53,20 +52,18 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
     @Override
     public Type generateBytecode(IfExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取评估器注册表
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> conditionEval = registry.getEvaluator(result.getCondition());
+        Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
             throw new RuntimeException("No evaluator found for expression");
         }
-        Evaluator<ParseResult> thenEval = registry.getEvaluator(result.getThenBranch());
+        Evaluator<ParseResult> thenEval = ctx.getEvaluator(result.getThenBranch());
         if (thenEval == null) {
             throw new RuntimeException("No evaluator found for expression");
         }
-        Evaluator<ParseResult> elseEval = result.getElseBranch() != null ? registry.getEvaluator(result.getElseBranch()) : null;
+        Evaluator<ParseResult> elseEval = result.getElseBranch() != null ? ctx.getEvaluator(result.getElseBranch()) : null;
 
         // 创建局部变量用于存储分支结果
         int storeId = ctx.allocateLocalVar(Type.OBJECT);
-
         // 创建标签用于跳转
         Label elseLabel = new Label();
         Label endLabel = new Label();

@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
 
 public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
 
@@ -65,8 +65,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
 
     @Override
     public Type generateBytecode(Assignment result, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> valueEval = registry.getEvaluator(result.getValue());
+        Evaluator<ParseResult> valueEval = ctx.getEvaluator(result.getValue());
         if (valueEval == null) {
             throw new RuntimeException("No evaluator found for value");
         }

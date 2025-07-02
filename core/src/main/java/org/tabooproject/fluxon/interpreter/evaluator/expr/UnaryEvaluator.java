@@ -12,7 +12,7 @@ import org.tabooproject.fluxon.parser.expression.UnaryExpression;
 import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
 
 public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
 
@@ -37,8 +37,7 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
 
     @Override
     public Type generateBytecode(UnaryExpression result, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> rightEval = registry.getEvaluator(result.getRight());
+        Evaluator<ParseResult> rightEval = ctx.getEvaluator(result.getRight());
         if (rightEval == null) {
             throw new RuntimeException("No evaluator found for operand");
         }
@@ -48,7 +47,7 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
         switch (result.getOperator().getType()) {
             case NOT:
                 if (rightType == Type.BOOLEAN) {
-                    mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Type.BOOLEAN.getPath(), "booleanValue", "()Z", false);
                 } else if (rightType != Type.Z) {
                     mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
                 }

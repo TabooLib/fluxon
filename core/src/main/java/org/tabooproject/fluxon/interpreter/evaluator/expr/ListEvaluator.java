@@ -35,7 +35,6 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     @Override
     public Type generateBytecode(ListExpression result, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         // 创建 Object[] 数组
         mv.visitLdcInsn(result.getElements().size());
         mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
@@ -47,7 +46,7 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             // 压入数组索引
             mv.visitLdcInsn(index++);
             // 生成元素的字节码
-            Evaluator<ParseResult> eval = registry.getEvaluator(element);
+            Evaluator<ParseResult> eval = ctx.getEvaluator(element);
             if (eval == null) {
                 throw new RuntimeException("No evaluator found for element");
             }

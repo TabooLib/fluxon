@@ -33,4 +33,5 @@ while &i < 10 then {
     sum = &sum + &i
     i = &i + 1
 }
-&sum
+
+print "Sum: " + &sum

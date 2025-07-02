@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
 
 public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
 
@@ -50,9 +50,8 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     @SuppressWarnings("DuplicatedCode")
     @Override
     public Type generateBytecode(BinaryExpression expr, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> leftEval = registry.getEvaluator(expr.getLeft());
-        Evaluator<ParseResult> rightEval = registry.getEvaluator(expr.getRight());
+        Evaluator<ParseResult> leftEval = ctx.getEvaluator(expr.getLeft());
+        Evaluator<ParseResult> rightEval = ctx.getEvaluator(expr.getRight());
         if (leftEval == null || rightEval == null) {
             throw new RuntimeException("No evaluator found for operands");
         }

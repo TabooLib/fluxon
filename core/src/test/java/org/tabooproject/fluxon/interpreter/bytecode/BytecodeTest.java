@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 
 import java.io.File;
@@ -43,6 +44,10 @@ public class BytecodeTest {
         Class<?> scriptClass = loader.defineClass(className, bytes);
         RuntimeScriptBase base = (RuntimeScriptBase) scriptClass.newInstance();
         System.out.println(file + " Result:");
-        System.out.println(base.eval(new Environment()));
+
+        // 使用注册中心初始化环境
+        Environment environment = new Environment();
+        FluxonRuntime.getInstance().initializeEnvironment(environment);
+        System.out.println(base.eval(environment));
     }
 }

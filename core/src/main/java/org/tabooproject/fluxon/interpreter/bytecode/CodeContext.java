@@ -1,8 +1,14 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.Type;
 
 public class CodeContext {
+
+    // 获取评估器注册表
+    private final EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
 
     // 类名和父类名
     private final String className;
@@ -41,5 +47,9 @@ public class CodeContext {
 
     public int getLocalVarIndex() {
         return localVarIndex;
+    }
+
+    public Evaluator<ParseResult> getEvaluator(ParseResult result) {
+        return registry.getEvaluator(result);
     }
 }

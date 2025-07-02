@@ -10,9 +10,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Math;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
-
-import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -34,15 +33,14 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
 
     @Override
     public Type generateBytecode(RangeExpression result, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         // 生成 start 表达式的字节码
-        Evaluator<ParseResult> startEval = registry.getEvaluator(result.getStart());
+        Evaluator<ParseResult> startEval = ctx.getEvaluator(result.getStart());
         if (startEval == null) {
             throw new RuntimeException("No evaluator found for start expression");
         }
         startEval.generateBytecode(result.getStart(), ctx, mv);
         // 生成 end 表达式的字节码
-        Evaluator<ParseResult> endEval = registry.getEvaluator(result.getEnd());
+        Evaluator<ParseResult> endEval = ctx.getEvaluator(result.getEnd());
         if (endEval == null) {
             throw new RuntimeException("No evaluator found for end expression");
         }

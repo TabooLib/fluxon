@@ -14,7 +14,7 @@ import org.tabooproject.fluxon.parser.expression.LogicalExpression;
 import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
 
 public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
 
@@ -38,9 +38,8 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
     @Override
     public Type generateBytecode(LogicalExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取左右表达式的求值器
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> leftEval = registry.getEvaluator(result.getLeft());
-        Evaluator<ParseResult> rightEval = registry.getEvaluator(result.getRight());
+        Evaluator<ParseResult> leftEval = ctx.getEvaluator(result.getLeft());
+        Evaluator<ParseResult> rightEval = ctx.getEvaluator(result.getRight());
         if (leftEval == null || rightEval == null) {
             throw new RuntimeException("No evaluator found for operands");
         }
