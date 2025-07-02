@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -94,8 +95,8 @@ public final class Operations {
      * 执行函数调用
      *
      * @param environment 脚本运行环境
-     * @param callee     被调用的对象
-     * @param arguments  参数数组
+     * @param callee      被调用的对象
+     * @param arguments   参数数组
      * @return 函数调用结果
      */
     public static Object callFunction(Environment environment, Object callee, Object[] arguments) {
@@ -177,5 +178,55 @@ public final class Operations {
             }
         }
         return functionEnv;
+    }
+
+    /**
+     * 执行 When 分支匹配判断
+     *
+     * @param subject   主题对象（可能为 null）
+     * @param condition 条件对象
+     * @param matchType 匹配类型
+     * @return 是否匹配成功
+     */
+    public static boolean matchWhenBranch(Object subject, Object condition, WhenExpression.MatchType matchType) {
+        switch (matchType) {
+            case EQUAL:
+                // 如果有主题，判断主题和条件是否相等
+                if (subject != null) {
+                    return Math.isEqual(subject, condition);
+                } else {
+                    // 没有主题时，直接判断条件是否为真
+                    return Math.isTrue(condition);
+                }
+            case CONTAINS:
+                return checkContains(subject, condition, false);
+            case NOT_CONTAINS:
+                return checkContains(subject, condition, true);
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * 检查包含关系
+     *
+     * @param subject   主题对象
+     * @param condition 条件对象
+     * @param negate    是否取反（用于 NOT_CONTAINS）
+     * @return 包含关系判断结果
+     */
+    private static boolean checkContains(Object subject, Object condition, boolean negate) {
+        if (subject == null || condition == null) {
+            return negate; // null 情况下，CONTAINS 返回 false，NOT_CONTAINS 返回 true
+        }
+        boolean contains = false;
+        if (condition instanceof List) {
+            contains = ((List<?>) condition).contains(subject);
+        } else if (condition instanceof Map) {
+            contains = ((Map<?, ?>) condition).containsKey(subject);
+        } else if (condition instanceof String && subject instanceof String) {
+            contains = ((String) condition).contains((String) subject);
+        }
+        return negate != contains;
     }
 }

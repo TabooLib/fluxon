@@ -35,4 +35,8 @@ while &i < 10 then {
     i += 1
 }
 
+when &sum {
+    in 0..10 -> print "Sum is between 0 and 10"
+    in 10..100 -> print "Sum is between 10 and 100"
+}
 print "Sum: " + &sum
