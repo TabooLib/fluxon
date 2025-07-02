@@ -146,4 +146,36 @@ public final class Operations {
         // 如果不是异步类型，直接返回值
         return value;
     }
+
+    /**
+     * 为函数调用绑定参数到新环境中
+     * 参考 UserFunction 的参数绑定逻辑
+     *
+     * @param parentEnv  父环境
+     * @param parameters 参数名列表
+     * @param args       参数值数组
+     * @return 绑定了参数的新环境
+     */
+    public static Environment bindFunctionParameters(Environment parentEnv, String[] parameters, Object[] args) {
+        // 创建新的环境，父环境为传入的环境
+        Environment functionEnv = new Environment(parentEnv);
+        // 绑定参数
+        if (parameters != null && args != null) {
+            int minParamCount = java.lang.Math.min(parameters.length, args.length);
+            // 绑定实际传递的参数
+            for (int i = 0; i < minParamCount; i++) {
+                functionEnv.defineVariable(parameters[i], args[i]);
+            }
+            // 未传递的参数赋值为 null
+            for (int i = minParamCount; i < parameters.length; i++) {
+                functionEnv.defineVariable(parameters[i], null);
+            }
+        } else if (parameters != null) {
+            // 如果没有参数值，所有参数都设为 null
+            for (String parameter : parameters) {
+                functionEnv.defineVariable(parameter, null);
+            }
+        }
+        return functionEnv;
+    }
 }

@@ -31,11 +31,19 @@ public class CompileResult {
     }
 
     public Class<?> defineClass(FluxonClassLoader loader) {
+        // 定义主类
         Class<?> scriptClass = loader.defineClass(className, getMainClass());
+        // 定义用户函数类
         int i = 0;
-        for (byte[] innerClass : getInnerClasses()) {
-            String innerClassName = className + "$" + i++;
-            loader.defineClass(innerClassName, innerClass);
+        for (Definition definition : generator.getDefinitions()) {
+            if (definition instanceof Definitions.FunctionDefinition) {
+                Definitions.FunctionDefinition funcDef = (Definitions.FunctionDefinition) definition;
+                String functionClassName = className + funcDef.getName();
+                if (i < innerClasses.size()) {
+                    loader.defineClass(functionClassName, innerClasses.get(i));
+                    i++;
+                }
+            }
         }
         return scriptClass;
     }
@@ -43,11 +51,6 @@ public class CompileResult {
     public Environment newEnvironment() {
         Environment env = new Environment();
         FluxonRuntime.getInstance().initializeEnvironment(env);
-        for (Definition definition : generator.getDefinitions()) {
-            if (definition instanceof Definitions.FunctionDefinition) {
-                Definitions.FunctionDefinition functionDefinition = (Definitions.FunctionDefinition) definition;
-            }
-        }
         return env;
     }
 

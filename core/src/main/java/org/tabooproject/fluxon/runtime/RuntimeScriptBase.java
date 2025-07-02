@@ -12,7 +12,9 @@ public abstract class RuntimeScriptBase {
     /**
      * 执行函数
      */
-    abstract public Object eval(Environment env);
+    public Object eval(Environment env) {
+        return null;
+    }
 
     // 设置运行时变量
     public void assign(String name, Object value) {

@@ -5,6 +5,8 @@ import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.Definitions;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -50,12 +52,20 @@ public class BytecodeTest {
         File compiled = new File(file.getParentFile(), className + ".class");
         compiled.createNewFile();
         Files.write(compiled.toPath(), result.getMainClass());
+        
+        // 输出用户函数类
         int i = 0;
-        for (byte[] innerClass : result.getInnerClasses()) {
-            String innerClassName = className + "$" + i++;
-            compiled = new File(file.getParentFile(), innerClassName + ".class");
-            compiled.createNewFile();
-            Files.write(compiled.toPath(), innerClass);
+        for (Definition definition : result.getGenerator().getDefinitions()) {
+            if (definition instanceof Definitions.FunctionDefinition) {
+                Definitions.FunctionDefinition funcDef = (Definitions.FunctionDefinition) definition;
+                String functionClassName = className + funcDef.getName();
+                if (i < result.getInnerClasses().size()) {
+                    compiled = new File(file.getParentFile(), functionClassName + ".class");
+                    compiled.createNewFile();
+                    Files.write(compiled.toPath(), result.getInnerClasses().get(i));
+                    i++;
+                }
+            }
         }
 
         // 加载并执行

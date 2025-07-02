@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import java.util.Collections;
 import java.util.List;
@@ -43,19 +44,9 @@ public class UserFunction implements Function {
 
     @Override
     public Object call(Object[] args) {
-        // 创建新的环境，父环境为函数定义时的环境（闭包）
-        Environment functionEnv = new Environment(closure);
-        // 绑定参数
-        List<String> parameters = definition.getParameters();
-        int minParamCount = Math.min(parameters.size(), args.length);
-        // 绑定实际传递的参数
-        for (int i = 0; i < minParamCount; i++) {
-            functionEnv.defineVariable(parameters.get(i), args[i]);
-        }
-        // 未传递的参数赋值为 null
-        for (int i = minParamCount; i < parameters.size(); i++) {
-            functionEnv.defineVariable(parameters.get(i), null);
-        }
+        // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
+        String[] parameters = definition.getParameters().toArray(new String[0]);
+        Environment functionEnv = Operations.bindFunctionParameters(closure, parameters, args);
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);

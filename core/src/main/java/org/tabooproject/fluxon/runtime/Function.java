@@ -11,6 +11,9 @@ import java.util.List;
  */
 public interface Function {
 
+    // 类型常量
+    Type TYPE = new Type(Function.class);
+
     /**
      * 获取函数名称
      * 

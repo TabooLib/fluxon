@@ -51,7 +51,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
         }
         // 获取环境
         mv.visitVarInsn(ALOAD, 0); // this (RuntimeScriptBase)
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getEnvironment", "()" + Environment.TYPE, false);
+        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
         // 评估被调用者
         calleeEval.generateBytecode(result.getCallee(), ctx, mv);
 
