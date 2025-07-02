@@ -1,6 +1,13 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
+import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 // @formatter:off
 public final class Operations {
@@ -362,6 +369,40 @@ public final class Operations {
             }
         }
         return result;
+    }
+
+    /**
+     * 为集合对象创建迭代器
+     * 
+     * @param collection 集合对象
+     * @return 迭代器对象
+     * @throws RuntimeException 如果对象不可迭代
+     */
+    public static Iterator<?> createIterator(Object collection) {
+        if (collection instanceof List) {
+            return ((List<?>) collection).iterator();
+        } else if (collection instanceof Map) {
+            return ((Map<?, ?>) collection).entrySet().iterator();
+        } else if (collection instanceof Iterable) {
+            return ((Iterable<?>) collection).iterator();
+        } else if (collection instanceof Object[]) {
+            return Arrays.asList((Object[]) collection).iterator();
+        } else if (collection != null) {
+            throw new RuntimeException("Cannot iterate over " + collection.getClass().getName());
+        } else {
+            throw new RuntimeException("Cannot iterate over null");
+        }
+    }
+
+    /**
+     * 执行解构操作并设置环境变量
+     * 
+     * @param scriptBase 运行时脚本基础类
+     * @param variables 变量名列表（序列化为字符串数组）
+     * @param element 要解构的元素
+     */
+    public static void destructureAndSetVars(RuntimeScriptBase scriptBase, String[] variables, Object element) {
+        DestructuringRegistry.getInstance().destructure(scriptBase.getEnvironment(), Arrays.asList(variables), element);
     }
 }
 // @formatter:on

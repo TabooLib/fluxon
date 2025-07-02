@@ -19,3 +19,9 @@ grouping = 100 * (200 + 300)
 
 logical1 = true && false
 logical2 = true || false
+
+sum = 0
+for i in [1, 2, 3, 4] then {
+    sum = &sum + &i
+}
+&sum
