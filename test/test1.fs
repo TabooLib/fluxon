@@ -14,6 +14,7 @@ comparison = if &num1 > &num2 then {
 }
 
 list = [&num1, &num2, 100, 200]
+map = ["key1": 100, "key2": 200]
 elvis = &comparison ?: 0
 grouping = 100 * (200 + 300)
 
