@@ -24,8 +24,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        ExpressionEvaluator<Expression> evaluator = registry.getExpression(expr.getExpressionType());
+        ExpressionEvaluator<Expression> evaluator = ctx.getExpression(expr.getExpressionType());
         if (evaluator != null) {
             return evaluator.generateBytecode(expr, ctx, mv);
         } else {
@@ -35,8 +34,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public Type generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        StatementEvaluator<Statement> evaluator = registry.getStatement(stmt.getStatementType());
+        StatementEvaluator<Statement> evaluator = ctx.getStatement(stmt.getStatementType());
         if (evaluator != null) {
             return evaluator.generateBytecode(stmt, ctx, mv);
         } else {

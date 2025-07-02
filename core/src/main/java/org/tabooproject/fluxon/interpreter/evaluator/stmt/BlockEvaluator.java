@@ -11,6 +11,10 @@ import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.List;
+
+import static org.objectweb.asm.Opcodes.POP;
+
 public class BlockEvaluator extends StatementEvaluator<Block> {
 
     @Override
@@ -35,13 +39,18 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
     @Override
     public Type generateBytecode(Block result, CodeContext ctx, MethodVisitor mv) {
         Type last = Type.VOID;
-        for (ParseResult statement : result.getStatements()) {
-            EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-            Evaluator<ParseResult> eval = registry.getEvaluator(statement);
+        List<ParseResult> statements = result.getStatements();
+        for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
+            ParseResult statement = statements.get(i);
+            Evaluator<ParseResult> eval = ctx.getEvaluator(statement);
             if (eval == null) {
                 throw new RuntimeException("No evaluator found for expression");
             }
             last = eval.generateBytecode(statement, ctx, mv);
+            // 如果不是最后一条语句，并且有返回值，则丢弃它
+            if (i < statementsSize - 1 && last != Type.VOID) {
+                mv.visitInsn(POP);
+            }
         }
         return last;
     }

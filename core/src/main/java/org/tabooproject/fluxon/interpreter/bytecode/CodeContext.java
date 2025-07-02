@@ -2,7 +2,13 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
+import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.ExpressionType;
+import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
 
 public class CodeContext {
@@ -51,5 +57,13 @@ public class CodeContext {
 
     public Evaluator<ParseResult> getEvaluator(ParseResult result) {
         return registry.getEvaluator(result);
+    }
+
+    public StatementEvaluator<Statement> getStatement(StatementType result) {
+        return registry.getStatement(result);
+    }
+
+    public ExpressionEvaluator<Expression> getExpression(ExpressionType result) {
+        return registry.getExpression(result);
     }
 }

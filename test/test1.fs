@@ -25,13 +25,14 @@ logical2 = true || false
 
 sum = 0
 for i in 1..10 then {
-    sum = &sum + &i
+    sum += &i
+    print &sum
 }
 
 i = 0
 while &i < 10 then {
-    sum = &sum + &i
-    i = &i + 1
+    sum += &i
+    i += 1
 }
 
 print "Sum: " + &sum

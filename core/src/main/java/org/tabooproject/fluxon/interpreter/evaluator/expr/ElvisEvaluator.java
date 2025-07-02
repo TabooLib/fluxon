@@ -8,10 +8,10 @@ import org.tabooproject.fluxon.parser.expression.ElvisExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Type;
 import org.objectweb.asm.Label;
-import org.objectweb.asm.Opcodes;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
+
+import static org.objectweb.asm.Opcodes.*;
 
 public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
 
@@ -44,11 +44,11 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         Type conditionType = conditionEval.generateBytecode(result.getCondition(), ctx, mv);
 
         // 检查条件表达式结果是否为 null
-        mv.visitInsn(Opcodes.DUP);                      // 复制栈顶值用于后续使用
-        mv.visitJumpInsn(Opcodes.IFNONNULL, endLabel);  // 如果不为 null，跳转到结束
+        mv.visitInsn(DUP);                      // 复制栈顶值用于后续使用
+        mv.visitJumpInsn(IFNONNULL, endLabel);  // 如果不为 null，跳转到结束
 
         // 如果为 null，弹出栈顶值并执行替代表达式
-        mv.visitInsn(Opcodes.POP);
+        mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
         
         // 结束标签
