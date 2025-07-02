@@ -75,7 +75,9 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             // 写入变量
             mv.visitVarInsn(Opcodes.ALOAD, 0);                       // this
             mv.visitLdcInsn(result.getName());                       // 变量名
-            valueEval.generateBytecode(result.getValue(), ctx, mv);  // 变量值
+            if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for assignment value");
+            }
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         } else {
             // 压入变量名 -> 用于后续的写回操作
@@ -86,7 +88,9 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitInsn(Opcodes.DUP2);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", GET, false);
             // 执行操作
-            valueEval.generateBytecode(result.getValue(), ctx, mv);
+            if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for assignment value");
+            }
 
             // 执行操作并写回变量
             String name = OPERATORS.get(type);

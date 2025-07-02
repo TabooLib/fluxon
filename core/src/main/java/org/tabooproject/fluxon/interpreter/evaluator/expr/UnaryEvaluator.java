@@ -43,6 +43,9 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
         }
         // 压入操作数
         Type rightType = rightEval.generateBytecode(result.getRight(), ctx, mv);
+        if (rightType == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for unary expression operand");
+        }
         // 判断操作数类型
         switch (result.getOperator().getType()) {
             case NOT:

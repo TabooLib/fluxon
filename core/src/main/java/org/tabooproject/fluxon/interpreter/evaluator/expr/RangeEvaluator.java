@@ -38,13 +38,17 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         if (startEval == null) {
             throw new RuntimeException("No evaluator found for start expression");
         }
-        startEval.generateBytecode(result.getStart(), ctx, mv);
+        if (startEval.generateBytecode(result.getStart(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for range start");
+        }
         // 生成 end 表达式的字节码
         Evaluator<ParseResult> endEval = ctx.getEvaluator(result.getEnd());
         if (endEval == null) {
             throw new RuntimeException("No evaluator found for end expression");
         }
-        endEval.generateBytecode(result.getEnd(), ctx, mv);
+        if (endEval.generateBytecode(result.getEnd(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for range end");
+        }
         // 压入 isInclusive 参数
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
         // 调用 Operations.createRange 方法

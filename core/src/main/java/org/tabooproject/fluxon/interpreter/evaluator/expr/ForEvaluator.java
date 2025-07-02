@@ -105,7 +105,9 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Label whileEnd = new Label();
 
         // 评估集合表达式并创建迭代器
-        collectionEval.generateBytecode(result.getCollection(), ctx, mv);
+        if (collectionEval.generateBytecode(result.getCollection(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for for loop collection");
+        }
         mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
@@ -145,9 +147,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 "(" + RuntimeScriptBase.TYPE + STRING_ARRAY + Type.OBJECT + ")V", false);
 
         // 执行循环体
-        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
         // 如果循环体有返回值，则丢弃它
-        if (bodyType != Type.VOID) {
+        if (bodyEval.generateBytecode(result.getBody(), ctx, mv) != Type.VOID) {
             mv.visitInsn(POP);
         }
         // 跳回循环开始

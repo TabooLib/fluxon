@@ -30,6 +30,10 @@ public class GroupingEvaluator extends ExpressionEvaluator<GroupingExpression> {
         if (eval == null) {
             throw new RuntimeException("No evaluator found for expression");
         }
-        return eval.generateBytecode(result.getExpression(), ctx, mv);
+        Type type = eval.generateBytecode(result.getExpression(), ctx, mv);
+        if (type == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed in grouping expression");
+        }
+        return type;
     }
 }

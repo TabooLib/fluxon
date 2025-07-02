@@ -42,6 +42,9 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         Label endLabel = new Label();
         // 生成条件表达式的字节码
         Type conditionType = conditionEval.generateBytecode(result.getCondition(), ctx, mv);
+        if (conditionType == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for elvis condition");
+        }
 
         // 检查条件表达式结果是否为 null
         mv.visitInsn(DUP);                      // 复制栈顶值用于后续使用
@@ -50,6 +53,9 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         // 如果为 null，弹出栈顶值并执行替代表达式
         mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
+        if (alternativeType == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for elvis alternative");
+        }
         
         // 结束标签
         mv.visitLabel(endLabel);

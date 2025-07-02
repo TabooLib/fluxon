@@ -80,8 +80,12 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             boolean xor
     ) {
         // 生成左右操作数的字节码
-        leftEval.generateBytecode(expr.getLeft(), ctx, mv);
-        rightEval.generateBytecode(expr.getRight(), ctx, mv);
+        if (leftEval.generateBytecode(expr.getLeft(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for binary expression left operand");
+        }
+        if (rightEval.generateBytecode(expr.getRight(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for binary expression right operand");
+        }
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, descriptor, false);
         // 是否取反结果

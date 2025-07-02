@@ -49,13 +49,17 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
             if (keyEval == null) {
                 throw new RuntimeException("No evaluator found for key");
             }
-            keyEval.generateBytecode(entry.getKey(), ctx, mv);
+            if (keyEval.generateBytecode(entry.getKey(), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for map key");
+            }
             // 生成 value 的字节码
             Evaluator<ParseResult> valueEval = ctx.getEvaluator(entry.getValue());
             if (valueEval == null) {
                 throw new RuntimeException("No evaluator found for value");
             }
-            valueEval.generateBytecode(entry.getValue(), ctx, mv);
+            if (valueEval.generateBytecode(entry.getValue(), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for map value");
+            }
             // 调用 put 方法
             mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);
             // 丢弃 put 方法的返回值

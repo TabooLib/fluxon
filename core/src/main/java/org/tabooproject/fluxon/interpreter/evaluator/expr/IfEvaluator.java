@@ -71,7 +71,9 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         generateCondition(ctx, mv, result.getCondition(), conditionEval, elseLabel);
 
         // then 分支代码
-        thenEval.generateBytecode(result.getThenBranch(), ctx, mv);
+        if (thenEval.generateBytecode(result.getThenBranch(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for if then branch");
+        }
         mv.visitVarInsn(ASTORE, storeId);
         mv.visitJumpInsn(GOTO, endLabel);
 
@@ -79,7 +81,9 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         mv.visitLabel(elseLabel);
         // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
-            elseEval.generateBytecode(result.getElseBranch(), ctx, mv);
+            if (elseEval.generateBytecode(result.getElseBranch(), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for if else branch");
+            }
             mv.visitVarInsn(ASTORE, storeId);
         } else {
             mv.visitInsn(ACONST_NULL);

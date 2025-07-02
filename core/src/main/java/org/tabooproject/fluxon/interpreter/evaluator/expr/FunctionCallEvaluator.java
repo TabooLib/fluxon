@@ -69,7 +69,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
             if (argEval == null) {
                 throw new RuntimeException("No evaluator found for argument expression");
             }
-            argEval.generateBytecode(arguments.get(i), ctx, mv);
+            if (argEval.generateBytecode(arguments.get(i), ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for function arguments");
+            }
             mv.visitInsn(AASTORE); // 存储到数组
         }
 

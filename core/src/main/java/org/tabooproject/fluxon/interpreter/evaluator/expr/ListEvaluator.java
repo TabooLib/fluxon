@@ -50,7 +50,9 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             if (eval == null) {
                 throw new RuntimeException("No evaluator found for element");
             }
-            eval.generateBytecode(element, ctx, mv);
+            if (eval.generateBytecode(element, ctx, mv) == Type.VOID) {
+                throw new RuntimeException("Void type is not allowed for list element");
+            }
             // 存储到数组
             mv.visitInsn(AASTORE);
         }
