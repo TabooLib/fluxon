@@ -1,13 +1,17 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AwaitExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
+import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import static org.objectweb.asm.Opcodes.*;
 
 public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
 
@@ -18,25 +22,23 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, AwaitExpression result) {
-        // 评估 await 表达式中的值
-        Object value = interpreter.evaluate(result.getExpression());
-        // 处理不同类型的异步结果
-        if (value instanceof CompletableFuture<?>) {
-            // 如果是 CompletableFuture，等待其完成并返回结果
-            try {
-                return ((CompletableFuture<?>) value).get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
-            }
-        } else if (value instanceof Future<?>) {
-            // 如果是普通的 Future，等待其完成并返回结果
-            try {
-                return ((Future<?>) value).get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
-            }
+        // 使用 Operations.awaitValue 处理异步值
+        return Operations.awaitValue(interpreter.evaluate(result.getExpression()));
+    }
+
+    @Override
+    public Type generateBytecode(AwaitExpression result, CodeContext ctx, MethodVisitor mv) {
+        // 获取内部表达式的求值器
+        Evaluator<ParseResult> eval = ctx.getEvaluator(result.getExpression());
+        if (eval == null) {
+            throw new RuntimeException("No evaluator found for await expression");
         }
-        // 如果不是异步类型，直接返回值
-        return value;
+        // 生成内部表达式的字节码
+        if (eval.generateBytecode(result.getExpression(), ctx, mv) == Type.VOID) {
+            throw new RuntimeException("Void type is not allowed for await expression");
+        }
+        // 调用 Operations.awaitValue 方法
+        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
+        return Type.OBJECT;
     }
 }

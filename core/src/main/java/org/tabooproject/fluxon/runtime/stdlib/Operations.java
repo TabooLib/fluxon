@@ -11,6 +11,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public final class Operations {
 
@@ -116,5 +118,32 @@ public final class Operations {
         } else {
             return function.call(arguments);
         }
+    }
+
+    /**
+     * 等待异步值完成并返回结果
+     *
+     * @param value 要等待的值（可能是 CompletableFuture、Future 或普通值）
+     * @return 异步操作的结果，如果不是异步类型则直接返回值
+     * @throws RuntimeException 如果等待过程中发生错误
+     */
+    public static Object awaitValue(Object value) {
+        if (value instanceof CompletableFuture<?>) {
+            // 如果是 CompletableFuture，等待其完成并返回结果
+            try {
+                return ((CompletableFuture<?>) value).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+            }
+        } else if (value instanceof Future<?>) {
+            // 如果是普通的 Future，等待其完成并返回结果
+            try {
+                return ((Future<?>) value).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+            }
+        }
+        // 如果不是异步类型，直接返回值
+        return value;
     }
 }
