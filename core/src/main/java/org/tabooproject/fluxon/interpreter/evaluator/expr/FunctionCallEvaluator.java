@@ -4,17 +4,14 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCall;
 
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Math;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.List;
 
@@ -39,7 +36,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
             arguments[i] = interpreter.evaluate(argument);
         }
         // 使用 Operations.callFunction 执行函数调用
-        return Operations.callFunction(interpreter.getEnvironment(), callee, arguments);
+        return Intrinsics.callFunction(interpreter.getEnvironment(), callee, arguments);
     }
 
     @Override
@@ -78,7 +75,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
         // 调用 Operations.callFunction 方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
-                Operations.TYPE.getPath(),
+                Intrinsics.TYPE.getPath(),
                 "callFunction",
                 "(" + Environment.TYPE + Type.OBJECT + OBJECT_ARRAY + ")" + Type.OBJECT,
                 false

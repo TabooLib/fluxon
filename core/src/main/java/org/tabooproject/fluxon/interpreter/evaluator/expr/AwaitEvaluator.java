@@ -9,7 +9,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AwaitExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -23,7 +23,7 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
     @Override
     public Object evaluate(Interpreter interpreter, AwaitExpression result) {
         // 使用 Operations.awaitValue 处理异步值
-        return Operations.awaitValue(interpreter.evaluate(result.getExpression()));
+        return Intrinsics.awaitValue(interpreter.evaluate(result.getExpression()));
     }
 
     @Override
@@ -38,7 +38,7 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
             throw new RuntimeException("Void type is not allowed for await expression");
         }
         // 调用 Operations.awaitValue 方法
-        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
         return Type.OBJECT;
     }
 }

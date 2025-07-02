@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +46,7 @@ public class UserFunction implements Function {
     public Object call(Object[] args) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
         String[] parameters = definition.getParameters().toArray(new String[0]);
-        Environment functionEnv = Operations.bindFunctionParameters(closure, parameters, args);
+        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, args);
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);

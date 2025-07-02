@@ -8,7 +8,6 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -16,8 +15,7 @@ import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Math;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Iterator;
 import java.util.List;
@@ -36,7 +34,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 评估集合表达式
         Object collection = interpreter.evaluate(result.getCollection());
         // 使用 Operations 类创建迭代器
-        Iterator<?> iterator = Operations.createIterator(collection);
+        Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
         List<String> variables = result.getVariables();
         // 创建新环境进行迭代
@@ -108,7 +106,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         if (collectionEval.generateBytecode(result.getCollection(), ctx, mv) == Type.VOID) {
             throw new RuntimeException("Void type is not allowed for for loop collection");
         }
-        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
         // 创建变量名数组（在循环外部）
@@ -142,7 +140,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 调用解构方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
-                Operations.TYPE.getPath(),
+                Intrinsics.TYPE.getPath(),
                 "destructureAndSetVars",
                 "(" + RuntimeScriptBase.TYPE + STRING_ARRAY + Type.OBJECT + ")V", false);
 

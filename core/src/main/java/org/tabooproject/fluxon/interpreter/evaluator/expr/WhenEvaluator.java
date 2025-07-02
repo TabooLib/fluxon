@@ -10,7 +10,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.List;
 
@@ -40,7 +40,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             // 评估分支条件
             Object condition = interpreter.evaluate(branch.getCondition());
             // 执行分支匹配
-            if (Operations.matchWhenBranch(subject, condition, branch.getMatchType())) {
+            if (Intrinsics.matchWhenBranch(subject, condition, branch.getMatchType())) {
                 return interpreter.evaluate(branch.getResult());
             }
         }
@@ -101,7 +101,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             );
             // 调用 matchWhenBranch
             mv.visitMethodInsn(INVOKESTATIC,
-                    Operations.TYPE.getPath(),
+                    Intrinsics.TYPE.getPath(),
                     "matchWhenBranch",
                     "(" + OBJECT + OBJECT + MATCH_TYPE + ")Z",
                     false

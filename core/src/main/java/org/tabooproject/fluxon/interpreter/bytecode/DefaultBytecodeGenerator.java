@@ -12,7 +12,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.*;
 
@@ -250,7 +250,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 调用 Operations.bindFunctionParameters
         mv.visitMethodInsn(
                 INVOKESTATIC,
-                Operations.TYPE.getPath(),
+                Intrinsics.TYPE.getPath(),
                 "bindFunctionParameters",
                 "(" + Environment.TYPE + "[" + STRING + "[" + OBJECT + ")" + Environment.TYPE,
                 false

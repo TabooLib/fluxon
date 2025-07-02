@@ -4,14 +4,12 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Math;
-import org.tabooproject.fluxon.runtime.stdlib.Operations;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -28,7 +26,7 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         Object start = interpreter.evaluate(result.getStart());
         Object end = interpreter.evaluate(result.getEnd());
         // 使用 Operations 类创建范围，保持与字节码生成的一致性
-        return Operations.createRange(start, end, result.isInclusive());
+        return Intrinsics.createRange(start, end, result.isInclusive());
     }
 
     @Override
@@ -52,7 +50,7 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         // 压入 isInclusive 参数
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
         // 调用 Operations.createRange 方法
-        mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)Ljava/util/List;", false);
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)Ljava/util/List;", false);
         return Type.OBJECT;
     }
 }

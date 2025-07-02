@@ -9,11 +9,10 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.parser.ParseResult;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 

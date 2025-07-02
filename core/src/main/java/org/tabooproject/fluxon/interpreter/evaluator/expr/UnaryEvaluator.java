@@ -4,7 +4,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -12,7 +11,7 @@ import org.tabooproject.fluxon.parser.expression.UnaryExpression;
 import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Math.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
 

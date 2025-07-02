@@ -9,7 +9,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Math;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -43,7 +43,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         }
         // 如果条件结果不是 boolean 类型，才调用 Operations.isTrue 判断条件
         else if (conditionType != Type.Z) {
-            mv.visitMethodInsn(INVOKESTATIC, Math.TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
+            mv.visitMethodInsn(INVOKESTATIC, Operations.TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
         }
         if (endLabel != null) {
             // 如果条件为假，跳转到结束
