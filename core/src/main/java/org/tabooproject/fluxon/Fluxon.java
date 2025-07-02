@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
@@ -100,9 +101,9 @@ public class Fluxon {
      *
      * @param source Fluxon 源代码
      * @param className 类名
-     * @return 字节码
+     * @return 编译结果
      */
-    public static byte[] compile(String source, String className) {
+    public static CompileResult compile(String source, String className) {
         // 创建字节码生成器
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
         // 解析源代码
@@ -114,6 +115,7 @@ public class Fluxon {
             }
         }
         // 生成字节码
-        return generator.generateClassBytecode(className);
+        byte[] bytecode = generator.generateClassBytecode(className);
+        return new CompileResult(source, className, generator, bytecode);
     }
 }

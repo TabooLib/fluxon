@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -23,6 +24,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     // 存储脚本主体语句
     private final List<Statement> statements = new ArrayList<>();
+    // 存储用户函数定义
+    private final List<Definition> definitions = new ArrayList<>();
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
@@ -51,6 +54,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public void addScriptDefinition(Definition... definitions) {
+        Collections.addAll(this.definitions, definitions);
     }
 
     @Override
@@ -76,6 +80,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 生成 eval 函数
         generateEvalMethod(cw, ctx);
+        // 生成用户定义的函数
+        for (Definition definition : definitions) {
+            generateUserFunction(definition, cw, ctx);
+        }
 
         // 生成结束
         cw.visitEnd();
@@ -102,11 +110,59 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             }
         }
         // 如果最后一个表达式是 void 类型，则压入 null
-        if (last == Type.VOID) {
+        if (last == null || last == Type.VOID) {
             mv.visitInsn(Opcodes.ACONST_NULL);
         }
         mv.visitInsn(Opcodes.ARETURN);
         mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
         mv.visitEnd();
+    }
+
+    /**
+     * 生成用户定义的函数字节码
+     *
+     * @param definition 函数定义
+     * @param cw         类写入器
+     * @param ctx        代码上下文
+     */
+    private void generateUserFunction(Definition definition, ClassWriter cw, CodeContext ctx) {
+        if (!(definition instanceof Definitions.FunctionDefinition)) {
+            throw new RuntimeException("Unsupported definition type: " + definition.getClass().getName());
+        }
+        // 构建方法签名：public Object functionName(Object[] args)
+        Definitions.FunctionDefinition funcDef = (Definitions.FunctionDefinition) definition;
+        String methodName = funcDef.getName();
+        String methodDescriptor = "([" + Type.OBJECT + ")" + Type.OBJECT;
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, methodName, methodDescriptor, null, null);
+        mv.visitCode();
+
+        // 创建新的代码上下文用于函数生成
+        CodeContext funcCtx = new CodeContext(ctx.getClassName(), ctx.getSuperClassName());
+
+        // 生成函数体字节码
+        Type returnType;
+        if (funcDef.getBody() instanceof Statement) {
+            returnType = generateStatementBytecode((Statement) funcDef.getBody(), funcCtx, mv);
+        } else {
+            returnType = generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
+        }
+
+        // 如果函数体返回 void，则返回 null
+        if (returnType == Type.VOID) {
+            mv.visitInsn(Opcodes.ACONST_NULL);
+        }
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 1);
+        mv.visitEnd();
+    }
+
+    @Override
+    public List<Statement> getStatements() {
+        return statements;
+    }
+
+    @Override
+    public List<Definition> getDefinitions() {
+        return definitions;
     }
 }

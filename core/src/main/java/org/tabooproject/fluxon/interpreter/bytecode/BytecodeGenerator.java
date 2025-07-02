@@ -6,6 +6,8 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.List;
+
 /**
  * 字节码生成器接口
  */
@@ -42,4 +44,14 @@ public interface BytecodeGenerator {
      * @param superClassName 父类名称
      */
     byte[] generateClassBytecode(String className, String superClassName);
+
+    /**
+     * 获取已生成的语句列表
+     */
+    List<Statement> getStatements();
+
+    /**
+     * 获取已生成的定义列表
+     */
+    List<Definition> getDefinitions();
 }
