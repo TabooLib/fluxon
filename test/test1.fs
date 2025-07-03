@@ -25,8 +25,16 @@ logical2 = true || false
 
 sum = 0
 for i in 1..10 then {
+    print &i
+    if &i % 2 == 0 then {
+        print "continue"
+        continue
+    }
+    if &i == 5 then {
+        print "break"
+        break
+    }
     sum += &i
-    print &sum
 }
 
 i = 0

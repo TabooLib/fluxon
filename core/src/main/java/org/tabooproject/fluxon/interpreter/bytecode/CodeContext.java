@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
+import org.objectweb.asm.Label;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -14,6 +15,7 @@ import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class CodeContext {
 
@@ -29,6 +31,30 @@ public class CodeContext {
 
     // 局部变量表
     private int localVarIndex = 0;
+
+    // 循环标签栈管理
+    private final Stack<LoopContext> loopStack = new Stack<>();
+
+    /**
+     * 循环上下文，包含 break 和 continue 的跳转标签
+     */
+    public static class LoopContext {
+        private final Label breakLabel;
+        private final Label continueLabel;
+
+        public LoopContext(Label breakLabel, Label continueLabel) {
+            this.breakLabel = breakLabel;
+            this.continueLabel = continueLabel;
+        }
+
+        public Label getBreakLabel() {
+            return breakLabel;
+        }
+
+        public Label getContinueLabel() {
+            return continueLabel;
+        }
+    }
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -91,5 +117,47 @@ public class CodeContext {
 
     public ExpressionEvaluator<Expression> getExpression(ExpressionType result) {
         return registry.getExpression(result);
+    }
+
+    /**
+     * 进入循环上下文
+     * @param breakLabel break 跳转标签
+     * @param continueLabel continue 跳转标签
+     */
+    public void enterLoop(Label breakLabel, Label continueLabel) {
+        loopStack.push(new LoopContext(breakLabel, continueLabel));
+    }
+
+    /**
+     * 退出循环上下文
+     */
+    public void exitLoop() {
+        if (!loopStack.isEmpty()) {
+            loopStack.pop();
+        }
+    }
+
+    /**
+     * 获取当前循环的 break 标签
+     * @return break 标签，如果不在循环中则返回 null
+     */
+    public Label getCurrentBreakLabel() {
+        return loopStack.isEmpty() ? null : loopStack.peek().getBreakLabel();
+    }
+
+    /**
+     * 获取当前循环的 continue 标签
+     * @return continue 标签，如果不在循环中则返回 null
+     */
+    public Label getCurrentContinueLabel() {
+        return loopStack.isEmpty() ? null : loopStack.peek().getContinueLabel();
+    }
+
+    /**
+     * 判断当前是否在循环中
+     * @return 是否在循环中
+     */
+    public boolean isInLoop() {
+        return !loopStack.isEmpty();
     }
 }

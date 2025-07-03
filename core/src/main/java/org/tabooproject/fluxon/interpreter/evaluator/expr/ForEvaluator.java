@@ -65,6 +65,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             |
             创建变量名数组（在循环外部）
             |
+            注册循环上下文（break -> whileEnd, continue -> whileStart）
+            |
             V
             whileStart:
             检查 iterator.hasNext()
@@ -75,12 +77,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             |
             调用 Operations.destructureAndSetVars 设置变量
             |
-            执行循环体（丢弃返回值）
+            执行循环体（break/continue 直接跳转）
             |
             跳回 whileStart
             |
             V
             whileEnd:
+            退出循环上下文
      */
     @Override
     public Type generateBytecode(ForExpression result, CodeContext ctx, MethodVisitor mv) {
@@ -120,7 +123,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             mv.visitInsn(AASTORE);
         }
         mv.visitVarInsn(ASTORE, variablesArrayVar);
-
+        // 注册循环上下文：break 跳到 whileEnd，continue 跳到 whileStart
+        ctx.enterLoop(whileEnd, whileStart);
         // while 循环开始标签
         mv.visitLabel(whileStart);
 
@@ -145,7 +149,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 "(" + RuntimeScriptBase.TYPE + STRING_ARRAY + Type.OBJECT + ")V", false);
 
         // 执行循环体
-        // 如果循环体有返回值，则丢弃它
+        // break 和 continue 语句会直接生成跳转指令
         if (bodyEval.generateBytecode(result.getBody(), ctx, mv) != Type.VOID) {
             mv.visitInsn(POP);
         }
@@ -153,6 +157,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitJumpInsn(GOTO, whileStart);
         // while 循环结束标签
         mv.visitLabel(whileEnd);
+        // 退出循环上下文
+        ctx.exitLoop();
         return Type.VOID;
     }
 

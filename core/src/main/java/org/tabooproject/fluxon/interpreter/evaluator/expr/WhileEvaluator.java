@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
@@ -38,19 +39,23 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
     }
 
     /*
+            注册循环上下文（break -> whileEnd, continue -> whileStart）
+            |
+            V
             whileStart:
             评估条件表达式
             |
-            调用 Operations.isTrue 判断条件
+            调用 Intrinsics.isTrue 判断条件
             |
             +--> 如果为假，跳到 whileEnd
             |
-            执行循环体（丢弃返回值）
+            执行循环体（break/continue 直接跳转）
             |
             跳回 whileStart
             |
             V
             whileEnd:
+            退出循环上下文
      */
     @Override
     public Type generateBytecode(WhileExpression result, CodeContext ctx, MethodVisitor mv) {
@@ -67,12 +72,15 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         // 创建标签用于跳转
         Label whileStart = new Label();
         Label whileEnd = new Label();
+        // 注册循环上下文：break 跳到 whileEnd，continue 跳到 whileStart
+        ctx.enterLoop(whileEnd, whileStart);
         // while 循环开始标签
         mv.visitLabel(whileStart);
         // 评估条件表达式
         generateCondition(ctx, mv, result.getCondition(), conditionEval, whileEnd);
 
         // 执行循环体
+        // break 和 continue 语句会直接生成跳转指令
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
         // 如果循环体有返回值，则丢弃它
         if (bodyType != Type.VOID) {
@@ -82,6 +90,8 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         mv.visitJumpInsn(GOTO, whileStart);
         // while 循环结束标签
         mv.visitLabel(whileEnd);
+        // 退出循环上下文
+        ctx.exitLoop();
         return Type.VOID;
     }
 }
