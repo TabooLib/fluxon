@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.error.OperationException;
 
 // @formatter:off
 public final class Operations {

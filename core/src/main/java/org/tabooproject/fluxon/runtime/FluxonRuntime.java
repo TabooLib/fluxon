@@ -1,8 +1,10 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.runtime.function.FunctionSystem;
+import org.tabooproject.fluxon.runtime.function.FunctionMath;
+import org.tabooproject.fluxon.runtime.function.FunctionType;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,69 +34,12 @@ public class FluxonRuntime {
     }
 
     /**
-     * 私有构造函数，初始化内置函数
+     * 私有构造函数，初始化系统函数
      */
     private FluxonRuntime() {
-        registerDefaultFunctions();
-    }
-
-    /**
-     * 注册内置函数
-     */
-    private void registerDefaultFunctions() {
-        // print 函数
-        registerFunction("print", 1, args -> {
-            if (args.length > 0) {
-                System.out.println(args[0]);
-            } else {
-                System.out.println();
-            }
-            return null;
-        });
-        // sleep 函数
-        registerFunction("sleep", 1, args -> {
-            int seconds = ((Number) args[0]).intValue();
-            try {
-                Thread.sleep(seconds);
-            } catch (InterruptedException e) {
-                throw new RuntimeException("Sleep function interrupted", e);
-            }
-            return null;
-        });
-
-        // checkGrade 函数
-        registerFunction("checkGrade", 1, args -> {
-            if (args.length > 0 && args[0] instanceof Number) {
-                int score = ((Number) args[0]).intValue();
-                if (score >= 90) return "Excellent";
-                if (score >= 80) return "Good";
-                if (score >= 70) return "Fair";
-                if (score >= 60) return "Pass";
-                return "Fail";
-            }
-            throw new RuntimeException("checkGrade function requires a numeric argument");
-        });
-
-        // player 函数 - 支持多种参数数量
-        registerFunction("player", Arrays.asList(1, 3), args -> {
-            if (args.length >= 1) {
-                String playerName = String.valueOf(args[0]);
-                if (args.length >= 3) {
-                    return "Player " + playerName + " HP: " + args[1] + ", Level: " + args[2];
-                }
-                return "Player " + playerName;
-            }
-            throw new RuntimeException("player function requires at least one argument");
-        });
-
-        // fetch 函数
-        registerFunction("fetch", 1, args -> {
-            if (args.length > 0) {
-                String url = String.valueOf(args[0]);
-                return "Fetching data from " + url;
-            }
-            throw new RuntimeException("fetch function requires a URL parameter");
-        });
+        FunctionMath.init();
+        FunctionSystem.init();
+        FunctionType.init();
     }
 
     /**
@@ -117,6 +62,28 @@ public class FluxonRuntime {
      */
     public void registerFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable implementation) {
         systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCounts), implementation));
+    }
+
+    /**
+     * 注册异步函数
+     *
+     * @param name 函数名
+     * @param paramCount 参数数量
+     * @param implementation 函数实现
+     */
+    public void registerAsyncFunction(String name, int paramCount, NativeFunction.NativeCallable implementation) {
+        systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCount), implementation, true));
+    }
+
+    /**
+     * 注册异步函数
+     *
+     * @param name 函数名
+     * @param paramCounts 可能的参数数量列表
+     * @param implementation 函数实现
+     */
+    public void registerAsyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable implementation) {
+        systemFunctions.put(name, new NativeFunction(new SymbolFunction(name, paramCounts), implementation, true));
     }
 
     /**

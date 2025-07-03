@@ -13,10 +13,16 @@ public class NativeFunction implements Function {
 
     private final SymbolFunction symbolInfo;
     private final NativeCallable callable;
+    private final boolean isAsync;
 
     public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable) {
+        this(symbolInfo, callable, false);
+    }
+
+    public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable, boolean isAsync) {
         this.symbolInfo = symbolInfo;
         this.callable = callable;
+        this.isAsync = isAsync;
     }
 
     @NotNull
@@ -33,7 +39,7 @@ public class NativeFunction implements Function {
 
     @Override
     public boolean isAsync() {
-        return false;
+        return isAsync;
     }
 
     @Override

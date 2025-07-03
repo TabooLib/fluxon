@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.runtime.stdlib.error;
+package org.tabooproject.fluxon.runtime.stdlib;
 
 public class OperationException extends RuntimeException {
 

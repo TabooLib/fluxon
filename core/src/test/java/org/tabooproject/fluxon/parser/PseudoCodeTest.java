@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.parser;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
@@ -13,6 +15,11 @@ import java.util.concurrent.atomic.AtomicReference;
  * 伪代码生成测试
  */
 public class PseudoCodeTest {
+
+    @BeforeAll
+    public static void beforeAll() {
+        FluxonRuntimeTest.registerTestFunctions();
+    }
 
     @Test
     public void testDef() {

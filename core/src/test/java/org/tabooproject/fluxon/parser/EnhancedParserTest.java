@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.parser;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
@@ -19,6 +21,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * 增强版解析器测试，覆盖更多边缘情况和复杂场景
  */
 public class EnhancedParserTest {
+
+    @BeforeAll
+    public static void beforeAll() {
+        FluxonRuntimeTest.registerTestFunctions();
+    }
 
     /**
      * 解析源代码

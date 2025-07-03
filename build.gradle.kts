@@ -33,6 +33,8 @@ subprojects {
         testImplementation("org.openjdk.jmh:jmh-core:1.37")
         testAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 
+        // Google Common
+        implementation("com.google.guava:guava:31.0.1-jre")
         implementation("org.ow2.asm:asm:9.4")
         implementation("org.ow2.asm:asm-commons:9.4")
         implementation(kotlin("stdlib"))

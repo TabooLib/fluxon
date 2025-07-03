@@ -8,6 +8,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.util.HashMap;
@@ -34,6 +35,7 @@ public class SimpleFluxonJexlBenchmark {
     
     @Setup
     public void setup() {
+        FluxonRuntimeTest.registerTestFunctions();
         // 初始化JEXL引擎
         jexlEngine = new JexlBuilder().cache(0).create();
         
