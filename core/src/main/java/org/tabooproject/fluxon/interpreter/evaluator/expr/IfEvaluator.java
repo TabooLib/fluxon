@@ -71,7 +71,8 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
         // then 分支代码
         if (thenEval.generateBytecode(result.getThenBranch(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for if then branch");
+            // 压入空对象
+            mv.visitInsn(ACONST_NULL);
         }
         mv.visitVarInsn(ASTORE, storeId);
         mv.visitJumpInsn(GOTO, endLabel);
