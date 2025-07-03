@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.error.OperationException;
 
 // @formatter:off
 public final class Operations {
@@ -14,7 +15,7 @@ public final class Operations {
      */
     public static void checkNumberOperand(Object operand) {
         if (operand instanceof Number) return;
-        throw new RuntimeException("Operands must be numbers.");
+        throw new OperationException("Operands must be numbers.");
     }
 
     /**
@@ -25,7 +26,7 @@ public final class Operations {
      */
     public static void checkNumberOperands(Object left, Object right) {
         if (left instanceof Number && right instanceof Number) return;
-        throw new RuntimeException("Operands must be numbers.");
+        throw new OperationException("Operands must be numbers.");
     }
 
     /**
@@ -104,7 +105,7 @@ public final class Operations {
      * @param a 被减数
      * @param b 减数
      * @return 减法运算结果
-     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字类型时抛出异常
      */
     public static Object subtract(Object a, Object b) {
         checkNumberOperands(a, b);
@@ -139,7 +140,7 @@ public final class Operations {
      * @param a 第一个操作数
      * @param b 第二个操作数
      * @return 乘法运算结果
-     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字类型时抛出异常
      */
     public static Object multiply(Object a, Object b) {
         checkNumberOperands(a, b);
@@ -174,7 +175,7 @@ public final class Operations {
      * @param a 被除数
      * @param b 除数
      * @return 除法运算结果
-     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字类型时抛出异常
      * @throws ArithmeticException 当除数为 0 时抛出异常
      */
     public static Object divide(Object a, Object b) {
@@ -203,7 +204,7 @@ public final class Operations {
      * @param a 被除数
      * @param b 除数
      * @return 取模运算结果
-     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字类型时抛出异常
      * @throws ArithmeticException 当除数为 0 时抛出异常
      */
     public static Object modulo(Object a, Object b) {
@@ -272,7 +273,7 @@ public final class Operations {
      * @param a 第一个操作数
      * @param b 第二个操作数
      * @return 如果 a > b 返回正数，a < b 返回负数，a = b 返回 0
-     * @throws RuntimeException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字类型时抛出异常
      */
     public static int compare(Object a, Object b) {
         checkNumberOperands(a, b);

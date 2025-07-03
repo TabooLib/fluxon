@@ -4,15 +4,17 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.parser.ParseResult;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
@@ -53,11 +55,11 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         // 获取评估器注册表
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new RuntimeException("No evaluator found for expression");
+            throw new EvaluatorNotFoundException("No evaluator found for expression");
         }
         Evaluator<ParseResult> thenEval = ctx.getEvaluator(result.getThenBranch());
         if (thenEval == null) {
-            throw new RuntimeException("No evaluator found for expression");
+            throw new EvaluatorNotFoundException("No evaluator found for expression");
         }
         Evaluator<ParseResult> elseEval = result.getElseBranch() != null ? ctx.getEvaluator(result.getElseBranch()) : null;
 
@@ -82,7 +84,7 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
             if (elseEval.generateBytecode(result.getElseBranch(), ctx, mv) == Type.VOID) {
-                throw new RuntimeException("Void type is not allowed for if else branch");
+                throw new VoidValueException("Void type is not allowed for if else branch");
             }
             mv.visitVarInsn(ASTORE, storeId);
         } else {

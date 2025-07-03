@@ -3,12 +3,13 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCall;
-
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -44,7 +45,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
         // 获取被调用者的评估器
         Evaluator<ParseResult> calleeEval = ctx.getEvaluator(result.getCallee());
         if (calleeEval == null) {
-            throw new RuntimeException("No evaluator found for callee expression");
+            throw new EvaluatorNotFoundException("No evaluator found for callee expression");
         }
         // 获取环境
         mv.visitVarInsn(ALOAD, 0); // this (RuntimeScriptBase)
@@ -64,10 +65,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
             // 评估参数表达式
             Evaluator<ParseResult> argEval = ctx.getEvaluator(arguments.get(i));
             if (argEval == null) {
-                throw new RuntimeException("No evaluator found for argument expression");
+                throw new EvaluatorNotFoundException("No evaluator found for argument expression");
             }
             if (argEval.generateBytecode(arguments.get(i), ctx, mv) == Type.VOID) {
-                throw new RuntimeException("Void type is not allowed for function arguments");
+                throw new VoidValueException("Void type is not allowed for function arguments");
             }
             mv.visitInsn(AASTORE); // 存储到数组
         }

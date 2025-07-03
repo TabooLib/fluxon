@@ -10,7 +10,7 @@ import org.tabooproject.fluxon.parser.statement.ContinueStatement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.GOTO;
 
 public class ContinueEvaluator extends StatementEvaluator<ContinueStatement> {
 

@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -38,12 +40,12 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
     public Type generateBytecode(UnaryExpression result, CodeContext ctx, MethodVisitor mv) {
         Evaluator<ParseResult> rightEval = ctx.getEvaluator(result.getRight());
         if (rightEval == null) {
-            throw new RuntimeException("No evaluator found for operand");
+            throw new EvaluatorNotFoundException("No evaluator found for operand");
         }
         // 压入操作数
         Type rightType = rightEval.generateBytecode(result.getRight(), ctx, mv);
         if (rightType == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for unary expression operand");
+            throw new VoidValueException("Void type is not allowed for unary expression operand");
         }
         // 判断操作数类型
         switch (result.getOperator().getType()) {

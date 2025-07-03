@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.error.IntrinsicException;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -24,7 +25,7 @@ public final class Intrinsics {
      *
      * @param collection 集合对象
      * @return 迭代器对象
-     * @throws RuntimeException 如果对象不可迭代
+     * @throws IntrinsicException 如果对象不可迭代
      */
     public static Iterator<?> createIterator(Object collection) {
         if (collection instanceof List) {
@@ -36,9 +37,9 @@ public final class Intrinsics {
         } else if (collection instanceof Object[]) {
             return Arrays.asList((Object[]) collection).iterator();
         } else if (collection != null) {
-            throw new RuntimeException("Cannot iterate over " + collection.getClass().getName());
+            throw new IntrinsicException("Cannot iterate over " + collection.getClass().getName());
         } else {
-            throw new RuntimeException("Cannot iterate over null");
+            throw new IntrinsicException("Cannot iterate over null");
         }
     }
 
@@ -60,7 +61,7 @@ public final class Intrinsics {
      * @param end         结束值
      * @param isInclusive 是否包含结束值
      * @return 范围列表
-     * @throws RuntimeException 如果操作数不是数字类型
+     * @throws IntrinsicException 如果操作数不是数字类型
      */
     public static List<Integer> createRange(Object start, Object end, boolean isInclusive) {
         // 检查开始值和结束值是否为数字
@@ -113,7 +114,7 @@ public final class Intrinsics {
                 try {
                     return function.call(arguments);
                 } catch (Throwable e) {
-                    throw new RuntimeException("Error while executing async function: " + e.getMessage(), e);
+                    throw new IntrinsicException("Error while executing async function: " + e.getMessage(), e);
                 }
             });
         } else {
@@ -126,7 +127,7 @@ public final class Intrinsics {
      *
      * @param value 要等待的值（可能是 CompletableFuture、Future 或普通值）
      * @return 异步操作的结果，如果不是异步类型则直接返回值
-     * @throws RuntimeException 如果等待过程中发生错误
+     * @throws IntrinsicException 如果等待过程中发生错误
      */
     public static Object awaitValue(Object value) {
         if (value instanceof CompletableFuture<?>) {
@@ -134,14 +135,14 @@ public final class Intrinsics {
             try {
                 return ((CompletableFuture<?>) value).get();
             } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+                throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
             }
         } else if (value instanceof Future<?>) {
             // 如果是普通的 Future，等待其完成并返回结果
             try {
                 return ((Future<?>) value).get();
             } catch (InterruptedException | ExecutionException e) {
-                throw new RuntimeException("Error while awaiting future: " + e.getMessage(), e);
+                throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
             }
         }
         // 如果不是异步类型，直接返回值

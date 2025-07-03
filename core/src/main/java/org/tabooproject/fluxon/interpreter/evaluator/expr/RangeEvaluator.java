@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -34,18 +36,18 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         // 生成 start 表达式的字节码
         Evaluator<ParseResult> startEval = ctx.getEvaluator(result.getStart());
         if (startEval == null) {
-            throw new RuntimeException("No evaluator found for start expression");
+            throw new EvaluatorNotFoundException("No evaluator found for start expression");
         }
         if (startEval.generateBytecode(result.getStart(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for range start");
+            throw new VoidValueException("Void type is not allowed for range start");
         }
         // 生成 end 表达式的字节码
         Evaluator<ParseResult> endEval = ctx.getEvaluator(result.getEnd());
         if (endEval == null) {
-            throw new RuntimeException("No evaluator found for end expression");
+            throw new EvaluatorNotFoundException("No evaluator found for end expression");
         }
         if (endEval.generateBytecode(result.getEnd(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for range end");
+            throw new VoidValueException("Void type is not allowed for range end");
         }
         // 压入 isInclusive 参数
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);

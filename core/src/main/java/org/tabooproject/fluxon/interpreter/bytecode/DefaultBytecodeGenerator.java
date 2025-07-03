@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -14,7 +15,9 @@ import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.Type.*;
@@ -35,7 +38,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         if (evaluator != null) {
             return evaluator.generateBytecode(expr, ctx, mv);
         } else {
-            throw new RuntimeException("No evaluator found for expression type: " + expr.getExpressionType());
+            throw new EvaluatorNotFoundException("No evaluator found for expression type: " + expr.getExpressionType());
         }
     }
 
@@ -45,7 +48,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         if (evaluator != null) {
             return evaluator.generateBytecode(stmt, ctx, mv);
         } else {
-            throw new RuntimeException("No evaluator found for statement type: " + stmt.getStatementType());
+            throw new EvaluatorNotFoundException("No evaluator found for statement type: " + stmt.getStatementType());
         }
     }
 

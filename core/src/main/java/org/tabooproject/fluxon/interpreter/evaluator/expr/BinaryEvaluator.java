@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -52,7 +54,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         Evaluator<ParseResult> leftEval = ctx.getEvaluator(expr.getLeft());
         Evaluator<ParseResult> rightEval = ctx.getEvaluator(expr.getRight());
         if (leftEval == null || rightEval == null) {
-            throw new RuntimeException("No evaluator found for operands");
+            throw new EvaluatorNotFoundException("No evaluator found for operands");
         }
         // 获取 Operations 方法
         BinaryOperator operator = OPERATORS.get(expr.getOperator().getType());
@@ -80,10 +82,10 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     ) {
         // 生成左右操作数的字节码
         if (leftEval.generateBytecode(expr.getLeft(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for binary expression left operand");
+            throw new VoidValueException("Void type is not allowed for binary expression left operand");
         }
         if (rightEval.generateBytecode(expr.getRight(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for binary expression right operand");
+            throw new VoidValueException("Void type is not allowed for binary expression right operand");
         }
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, descriptor, false);

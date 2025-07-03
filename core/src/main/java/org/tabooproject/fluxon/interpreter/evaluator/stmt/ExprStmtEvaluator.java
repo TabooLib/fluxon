@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
@@ -28,7 +29,7 @@ public class ExprStmtEvaluator extends StatementEvaluator<ExpressionStatement> {
         EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
         Evaluator<ParseResult> eval = registry.getEvaluator(result.getExpression());
         if (eval == null) {
-            throw new RuntimeException("No evaluator found for expression");
+            throw new EvaluatorNotFoundException("No evaluator found for expression");
         }
         return eval.generateBytecode(result.getExpression(), ctx, mv);
     }

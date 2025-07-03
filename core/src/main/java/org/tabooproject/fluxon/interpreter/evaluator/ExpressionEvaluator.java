@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -35,7 +36,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         // 评估条件表达式
         Type conditionType = conditionEval.generateBytecode(condition, ctx, mv);
         if (conditionType == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for condition expression");
+            throw new VoidValueException("Void type is not allowed for condition expression");
         }
         // 如果是装箱的 Boolean 类型，直接拆箱
         if (conditionType == Type.BOOLEAN) {

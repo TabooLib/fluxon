@@ -7,6 +7,8 @@ import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -90,11 +92,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取评估器注册表
         Evaluator<ParseResult> collectionEval = ctx.getEvaluator(result.getCollection());
         if (collectionEval == null) {
-            throw new RuntimeException("No evaluator found for collection expression");
+            throw new EvaluatorNotFoundException("No evaluator found for collection expression");
         }
         Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
-            throw new RuntimeException("No evaluator found for body expression");
+            throw new EvaluatorNotFoundException("No evaluator found for body expression");
         }
 
         // 分配局部变量存储迭代器和变量名数组
@@ -107,7 +109,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 评估集合表达式并创建迭代器
         if (collectionEval.generateBytecode(result.getCollection(), ctx, mv) == Type.VOID) {
-            throw new RuntimeException("Void type is not allowed for for loop collection");
+            throw new VoidValueException("Void type is not allowed for for loop collection");
         }
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);

@@ -1,11 +1,11 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -48,10 +48,10 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             // 生成元素的字节码
             Evaluator<ParseResult> eval = ctx.getEvaluator(element);
             if (eval == null) {
-                throw new RuntimeException("No evaluator found for element");
+                throw new EvaluatorNotFoundException("No evaluator found for element");
             }
             if (eval.generateBytecode(element, ctx, mv) == Type.VOID) {
-                throw new RuntimeException("Void type is not allowed for list element");
+                throw new VoidValueException("Void type is not allowed for list element");
             }
             // 存储到数组
             mv.visitInsn(AASTORE);

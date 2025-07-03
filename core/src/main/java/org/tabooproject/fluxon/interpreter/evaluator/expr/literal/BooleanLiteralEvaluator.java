@@ -1,13 +1,15 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr.literal;
 
 import org.objectweb.asm.MethodVisitor;
-import static org.objectweb.asm.Opcodes.*;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.literal.BooleanLiteral;
 import org.tabooproject.fluxon.runtime.Type;
+
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
 
 public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral> {
 

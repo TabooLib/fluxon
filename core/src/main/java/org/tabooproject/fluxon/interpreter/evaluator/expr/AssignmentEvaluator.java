@@ -4,6 +4,8 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -16,7 +18,8 @@ import org.tabooproject.fluxon.runtime.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
@@ -66,7 +69,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
     public Type generateBytecode(Assignment result, CodeContext ctx, MethodVisitor mv) {
         Evaluator<ParseResult> valueEval = ctx.getEvaluator(result.getValue());
         if (valueEval == null) {
-            throw new RuntimeException("No evaluator found for value");
+            throw new EvaluatorNotFoundException("No evaluator found for value");
         }
         // 根据赋值操作符类型处理赋值
         TokenType type = result.getOperator().getType();
@@ -75,7 +78,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitVarInsn(Opcodes.ALOAD, 0);                       // this
             mv.visitLdcInsn(result.getName());                       // 变量名
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
-                throw new RuntimeException("Void type is not allowed for assignment value");
+                throw new VoidValueException("Void type is not allowed for assignment value");
             }
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         } else {
@@ -88,7 +91,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", GET, false);
             // 执行操作
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
-                throw new RuntimeException("Void type is not allowed for assignment value");
+                throw new VoidValueException("Void type is not allowed for assignment value");
             }
 
             // 执行操作并写回变量

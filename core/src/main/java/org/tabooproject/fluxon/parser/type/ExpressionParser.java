@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
@@ -198,7 +199,7 @@ public class ExpressionParser {
                 if (parser.isVariable(name)) {
                     return new ReferenceExpression(new Identifier(name));
                 } else {
-                    throw new RuntimeException("Unknown variable '" + name + "', scope: " + parser.getCurrentScope().getAllVariables());
+                    throw new VariableNotFoundException(name + ", scope: " + parser.getCurrentScope().getAllVariables());
                 }
             }
             // 函数调用

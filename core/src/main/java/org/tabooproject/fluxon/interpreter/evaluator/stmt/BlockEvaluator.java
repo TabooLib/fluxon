@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.statement.Block;
@@ -44,7 +44,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
             ParseResult statement = statements.get(i);
             Evaluator<ParseResult> eval = ctx.getEvaluator(statement);
             if (eval == null) {
-                throw new RuntimeException("No evaluator found for expression");
+                throw new EvaluatorNotFoundException("No evaluator found for expression");
             }
             last = eval.generateBytecode(statement, ctx, mv);
             // 如果不是最后一条语句，并且有返回值，则丢弃它

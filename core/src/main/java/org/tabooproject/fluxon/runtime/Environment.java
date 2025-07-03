@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +21,6 @@ public class Environment {
     private final Map<String, Function> functions = new HashMap<>();
     // 标准变量存储（支持上下文传递）
     private final Map<String, Object> values = new HashMap<>();
-    // 临时变量储存
-    private final Map<String, Object> tempValues = new HashMap<>();
 
     // 父环境，用于实现作用域链
     private final Environment parent;
@@ -84,7 +84,7 @@ public class Environment {
         if (parent != null) {
             return parent.getFunction(name);
         }
-        throw new RuntimeException("Undefined function: " + name);
+        throw new FunctionNotFoundException(name);
     }
 
     /**
@@ -114,7 +114,7 @@ public class Environment {
         if (parent != null) {
             return parent.get(name);
         }
-        throw new RuntimeException("Undefined variable: " + name);
+        throw new VariableNotFoundException(name);
     }
 
     /**
