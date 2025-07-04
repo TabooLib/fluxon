@@ -9,6 +9,8 @@ import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
  */
 public class ContextEnvironment extends Environment {
 
+    public static final Type TYPE = new Type(ContextEnvironment.class);
+
     private final Object target;
 
     /**
@@ -49,8 +51,8 @@ public class ContextEnvironment extends Environment {
             case "toString":
                 return target.toString();
             default:
-                // 如果不是已知属性，返回属性名作为字符串
-                return propertyName;
+                // 如果不是已知属性，抛出异常
+                throw new VariableNotFoundException("Unknown property: " + propertyName);
         }
     }
 } 
