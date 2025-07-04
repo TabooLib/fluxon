@@ -1,10 +1,11 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.tabooproject.fluxon.parser.SymbolFunction;
-import org.tabooproject.fluxon.runtime.function.FunctionSystem;
 import org.tabooproject.fluxon.runtime.function.FunctionMath;
+import org.tabooproject.fluxon.runtime.function.FunctionSystem;
 import org.tabooproject.fluxon.runtime.function.FunctionTime;
 import org.tabooproject.fluxon.runtime.function.FunctionType;
+import org.tabooproject.fluxon.runtime.function.extension.ExtensionObject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -21,9 +22,10 @@ public class FluxonRuntime {
 
     // 系统函数
     private final Map<String, Function> systemFunctions = new HashMap<>();
-
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
+    // 扩展函数
+    private final Map<Class<?>, Map<String, Function>> extensionFunctions = new HashMap<>();
 
     /**
      * 获取单例实例
@@ -42,6 +44,7 @@ public class FluxonRuntime {
         FunctionSystem.init(this);
         FunctionTime.init(this);
         FunctionType.init(this);
+        ExtensionObject.init(this);
     }
 
     /**
@@ -99,6 +102,22 @@ public class FluxonRuntime {
     }
 
     /**
+     * 注册扩展函数
+     */
+    public void registerExtensionFunction(Class<?> extensionClass, String name, int paramCount, NativeFunction.NativeCallable implementation) {
+        extensionFunctions.computeIfAbsent(extensionClass, k -> new HashMap<>())
+                .put(name, new NativeFunction(new SymbolFunction(name, paramCount), implementation));
+    }
+
+    /**
+     * 注册扩展函数
+     */
+    public void registerExtensionFunction(Class<?> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable implementation) {
+        extensionFunctions.computeIfAbsent(extensionClass, k -> new HashMap<>())
+                .put(name, new NativeFunction(new SymbolFunction(name, paramCounts), implementation));
+    }
+
+    /**
      * 获取所有函数信息
      */
     public Map<String, Function> getSystemFunctions() {
@@ -113,6 +132,20 @@ public class FluxonRuntime {
     }
 
     /**
+     * 获取所有扩展函数信息
+     */
+    public Map<Class<?>, Map<String, Function>> getExtensionFunctions() {
+        return new HashMap<>(extensionFunctions);
+    }
+
+    /**
+     * 初始化解释器环境
+     */
+    public Environment newEnvironment() {
+        return new Environment(systemFunctions, systemVariables, extensionFunctions);
+    }
+
+    /**
      * 初始化解释器环境
      *
      * @param environment 要初始化的环境
@@ -123,6 +156,9 @@ public class FluxonRuntime {
         }
         for (Map.Entry<String, Object> entry : systemVariables.entrySet()) {
             environment.defineVariable(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<Class<?>, Map<String, Function>> entry : extensionFunctions.entrySet()) {
+            environment.defineExtensionFunction(entry.getKey(), entry.getValue());
         }
     }
 } 

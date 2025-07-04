@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.List;
  * 原生函数类
  * 表示由 Java 实现的内置函数
  */
-public class NativeFunction implements Function {
+public class NativeFunction implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
     private final NativeCallable callable;
@@ -43,11 +44,12 @@ public class NativeFunction implements Function {
     }
 
     @Override
-    public Object call(Object[] args) {
-        return callable.call(args);
+    public Object call(@Nullable Object target, Object[] args) {
+        return callable.call(target, args);
     }
 
-    public SymbolFunction getSymbolInfo() {
+    @Override
+    public SymbolFunction getInfo() {
         return symbolInfo;
     }
 
@@ -55,17 +57,27 @@ public class NativeFunction implements Function {
         return callable;
     }
 
+    @Override
+    public String toString() {
+        return "NativeFunction{" +
+                "symbolInfo=" + symbolInfo +
+                ", isAsync=" + isAsync +
+                '}';
+    }
+
     /**
      * 原生函数接口
      */
     @FunctionalInterface
     public interface NativeCallable {
+
         /**
          * 调用原生函数
          *
+         * @param target 调用目标
          * @param args 参数列表
          * @return 返回值
          */
-        Object call(Object[] args);
+        Object call(@Nullable Object target, Object[] args);
     }
 } 

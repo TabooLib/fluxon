@@ -4,8 +4,6 @@ import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.Definitions;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
 
@@ -46,12 +44,6 @@ public class CompileResult {
             }
         }
         return scriptClass;
-    }
-
-    public Environment newEnvironment() {
-        Environment env = new Environment();
-        FluxonRuntime.getInstance().initializeEnvironment(env);
-        return env;
     }
 
     public String getSource() {

@@ -9,18 +9,16 @@ import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Fluxon 语言的主入口类
@@ -35,7 +33,7 @@ public class Fluxon {
      * @return 解析结果列表
      */
     public static List<ParseResult> parse(String source) {
-        return parse(source, new Environment());
+        return parse(source, FluxonRuntime.getInstance().newEnvironment());
     }
 
     /**
@@ -53,10 +51,9 @@ public class Fluxon {
         // 语法分析
         Parser parser = new Parser();
         // 传入上下文符号
-        for (Map.Entry<String, Function> entry : env.getFunctions().entrySet()) {
-            parser.defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
-        }
-        parser.defineVariables(env.getValues().keySet());
+        parser.defineFunction(env.getFunctions());
+        parser.defineVariables(env.getVariables());
+        parser.defineExtensionFunction(env.getExtensionFunctions());
         return parser.process(context);
     }
 
@@ -99,7 +96,7 @@ public class Fluxon {
     /**
      * 将 Fluxon 源代码编译为字节码
      *
-     * @param source Fluxon 源代码
+     * @param source    Fluxon 源代码
      * @param className 类名
      * @return 编译结果
      */

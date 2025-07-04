@@ -27,8 +27,8 @@ public abstract class RuntimeScriptBase {
     }
 
     // 调用运行时函数
-    public Object callFunction(String name, Object[] args) {
-        return environment.getFunction(name).call(args);
+    public Object callFunction(String name, Object target, Object[] args) {
+        return environment.getFunction(name).call(target, args);
     }
 
     // 获取运行时环境

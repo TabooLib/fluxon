@@ -1,11 +1,9 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
-import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -92,6 +90,25 @@ public final class Intrinsics {
     }
 
     /**
+     * 查找目标对象
+     * 
+     * @param environment 环境
+     * @return 目标对象
+     */
+    public static Object findTarget(Environment environment) {
+        // 向上递归查找目标对象
+        Environment current = environment;
+        while (current != null) {
+            if (current instanceof ContextEnvironment) {
+                return ((ContextEnvironment) current).getTarget();
+            }
+            // 获取父环境继续查找
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    /**
      * 执行函数调用
      *
      * @param environment 脚本运行环境
@@ -100,24 +117,36 @@ public final class Intrinsics {
      * @return 函数调用结果
      */
     public static Object callFunction(Environment environment, Object callee, Object[] arguments) {
+        // 获取调用目标
+        Object target = findTarget(environment);
         // 获取函数
         Function function;
         if (callee instanceof Function) {
             function = ((Function) callee);
         } else {
-            function = environment.getFunction(callee.toString());
+            // 优先尝试从扩展函数中获取函数
+            if (target != null) {
+                try {
+                    function = environment.getExtensionFunction(target.getClass(), callee.toString());
+                } catch (FunctionNotFoundException e) {
+                    function = environment.getFunction(callee.toString());
+                }
+            }
+            else {
+                function = environment.getFunction(callee.toString());
+            }
         }
-
         if (function.isAsync()) {
+            Function finalFunction = function;
             return CompletableFuture.supplyAsync(() -> {
                 try {
-                    return function.call(arguments);
+                    return finalFunction.call(target, arguments);
                 } catch (Throwable e) {
                     throw new IntrinsicException("Error while executing async function: " + e.getMessage(), e);
                 }
             });
         } else {
-            return function.call(arguments);
+            return function.call(target, arguments);
         }
     }
 

@@ -39,10 +39,11 @@ public interface Function {
     
     /**
      * 执行函数
-     * 
+     *
+     * @param target 调用对象
      * @param args 参数列表
      * @return 返回值
      */
     @Nullable
-    Object call(Object[] args);
+    Object call(@Nullable Object target, Object[] args);
 }

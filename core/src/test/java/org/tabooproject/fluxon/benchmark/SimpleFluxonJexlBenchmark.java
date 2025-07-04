@@ -10,6 +10,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +58,7 @@ public class SimpleFluxonJexlBenchmark {
         jexlContext = new MapContext(variables);
         
         // 创建Fluxon环境
-        fluxonEnv = new Environment();
+        fluxonEnv = FluxonRuntime.getInstance().newEnvironment();
         for (Map.Entry<String, Object> entry : variables.entrySet()) {
             fluxonEnv.defineVariable(entry.getKey(), entry.getValue());
         }

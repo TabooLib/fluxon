@@ -6,7 +6,6 @@ import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.type.StatementParser;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.*;
@@ -49,14 +48,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public Parser() {
         // 初始化全局作用域
         scopeStack.push(new SymbolScope());
-
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
-        // 注册系统函数符号
-        for (Map.Entry<String, Function> entry : runtime.getSystemFunctions().entrySet()) {
-            defineFunction(entry.getKey(), SymbolFunction.of(entry.getValue()));
-        }
-        // 注册系统变量符号
-        defineVariables(runtime.getSystemVariables().keySet());
     }
 
     /**
@@ -280,6 +271,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 在当前作用域中定义扩展函数
+     */
+    public void defineExtensionFunction(SymbolFunction info) {
+        getCurrentScope().defineExtensionFunction(info);
+    }
+
+    /**
      * 在当前作用域中定义变量
      *
      * @param name 变量名
@@ -300,6 +298,33 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 在当前作用域中定义多个函数
+     *
+     * @param functions 函数映射
+     */
+    public void defineFunction(Map<String, Function> functions) {
+        getCurrentScope().defineFunctions(functions);
+    }
+
+    /**
+     * 在当前作用域中定义多个变量
+     *
+     * @param variables 变量映射
+     */
+    public void defineVariables(Map<String, Object> variables) {
+        getCurrentScope().defineVariables(variables);
+    }
+
+    /**
+     * 在当前作用域中定义多个扩展函数
+     *
+     * @param extensionFunctions 扩展函数映射
+     */
+    public void defineExtensionFunction(Map<Class<?>, Map<String, Function>> extensionFunctions) {
+        getCurrentScope().defineExtensionFunctions(extensionFunctions);
+    }
+
+    /**
      * 获取函数信息
      *
      * @param name 函数名
@@ -307,6 +332,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public SymbolFunction getFunctionInfo(String name) {
         return getCurrentScope().getFunction(name);
+    }
+    /**
+     * 获取扩展函数信息
+     *
+     * @param name 函数名
+     * @return 扩展函数信息集合
+     */
+    public Set<SymbolFunction> getExtensionFunctions(String name) {
+        return getCurrentScope().getExtensionFunctions(name);
     }
 
     /**
@@ -320,14 +354,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 获取函数最大可能的参数数量
+     * 检查标识符是否为已知扩展函数
      *
-     * @param name 函数名
-     * @return 最大可能的参数数量
+     * @param name 标识符名称
+     * @return 是否为已知扩展函数
      */
-    public int getMaxExpectedArgumentCount(String name) {
-        SymbolFunction info = getCurrentScope().getFunction(name);
-        return info != null ? info.getMaxParameterCount() : 0;
+    public boolean isExtensionFunction(String name) {
+        return getCurrentScope().getExtensionFunctions(name) != null;
     }
 
     /**

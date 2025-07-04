@@ -24,7 +24,10 @@ public class Interpreter {
     private final StatementVisitor statementVisitor;
 
     public Interpreter() {
-        this(new Environment());
+        this.environment = FluxonRuntime.getInstance().newEnvironment();
+        this.definitionVisitor = new DefinitionVisitor(this, environment);
+        this.expressionVisitor = new ExpressionVisitor(this, environment);
+        this.statementVisitor = new StatementVisitor(this, environment);
     }
 
     public Interpreter(Environment environment) {
@@ -105,9 +108,14 @@ public class Interpreter {
     }
 
     /**
+     * 设置当前环境
+     */
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
+    }
+
+    /**
      * 获取当前环境
-     *
-     * @return 当前环境
      */
     public Environment getEnvironment() {
         return environment;

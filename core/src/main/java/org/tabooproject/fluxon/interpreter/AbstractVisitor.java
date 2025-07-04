@@ -18,9 +18,6 @@ public abstract class AbstractVisitor implements Visitor {
     // 解释器实例，用于回调其他方法
     protected final Interpreter interpreter;
     
-    // 当前环境，可能会随着作用域的进入和退出而改变
-    protected Environment environment;
-
     /**
      * 构造函数
      *
@@ -29,7 +26,6 @@ public abstract class AbstractVisitor implements Visitor {
      */
     public AbstractVisitor(Interpreter interpreter, Environment environment) {
         this.interpreter = interpreter;
-        this.environment = environment;
     }
     
     /**
@@ -38,16 +34,7 @@ public abstract class AbstractVisitor implements Visitor {
      * @param environment 新环境
      */
     public void setEnvironment(Environment environment) {
-        this.environment = environment;
-    }
-    
-    /**
-     * 获取当前环境
-     *
-     * @return 当前环境
-     */
-    public Environment getEnvironment() {
-        return environment;
+        this.interpreter.setEnvironment(environment);
     }
     
     @Override

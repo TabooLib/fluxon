@@ -164,7 +164,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         // 更新 ENGINE_SCOPE 中的变量
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
-            engineBindings.putAll(env.getValues());
+            engineBindings.putAll(env.getVariables());
             engineBindings.putAll(env.getFunctions());
         }
     }

@@ -10,7 +10,9 @@ import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FunctionCallParser {
 
@@ -33,9 +35,11 @@ public class FunctionCallParser {
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
             SymbolFunction info = parser.getFunctionInfo(functionName);
-            if (info != null) {
+            Set<SymbolFunction> exInfo = parser.getExtensionFunctions(functionName);
+
+            if (info != null || !exInfo.isEmpty()) {
                 // 获取函数的最大参数数量
-                int maxArgCount = parser.getMaxExpectedArgumentCount(functionName);
+                int maxArgCount = getMaxExpectedArgumentCount(info, exInfo);
                 List<ParseResult> arguments = new ArrayList<>();
 
                 // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
@@ -45,7 +49,7 @@ public class FunctionCallParser {
                         String identifier = parser.peek().getLexeme();
 
                         // 检查标识符是否为已知函数或变量
-                        if (parser.isFunction(identifier) || parser.isVariable(identifier)) {
+                        if (parser.isFunction(identifier) || parser.isExtensionFunction(identifier) || parser.isVariable(identifier)) {
                             arguments.add(ExpressionParser.parse(parser));
                         } else {
                             // 未知标识符，转为字符串
@@ -64,11 +68,11 @@ public class FunctionCallParser {
                 }
 
                 // 检查解析到的参数数量是否有效
-                if (info.supportsParameterCount(arguments.size())) {
+                if (supportsParameterCount(info, exInfo, arguments.size())) {
                     expr = new FunctionCall(expr, arguments);
                 } else {
                     // 参数数量不匹配，找到最接近的参数数量
-                    List<Integer> paramCounts = info.getParameterCounts();
+                    Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
                     int closestCount = findClosestParameterCount(paramCounts, arguments.size());
                     List<ParseResult> block = new ArrayList<>();
                     // 使用足额的参数
@@ -84,21 +88,87 @@ public class FunctionCallParser {
     }
 
     /**
+     * 获取函数最大可能的参数数量
+     *
+     * @param info 函数信息
+     * @param exInfo 扩展函数信息集合
+     * @return 最大可能的参数数量
+     */
+    private static int getMaxExpectedArgumentCount(SymbolFunction info, Set<SymbolFunction> exInfo) {
+        int maxCount = 0;
+        // 检查普通函数
+        if (info != null) {
+            maxCount = Math.max(maxCount, info.getMaxParameterCount());
+        }
+        // 检查扩展函数
+        if (exInfo != null && !exInfo.isEmpty()) {
+            for (SymbolFunction extFunc : exInfo) {
+                maxCount = Math.max(maxCount, extFunc.getMaxParameterCount());
+            }
+        }
+        return maxCount;
+    }
+
+    /**
+     * 检查是否支持指定的参数数量
+     *
+     * @param info 函数信息
+     * @param exInfo 扩展函数信息集合
+     * @param count 参数数量
+     * @return 是否支持指定的参数数量
+     */
+    private static boolean supportsParameterCount(SymbolFunction info, Set<SymbolFunction> exInfo, int count) {
+        // 检查普通函数
+        if (info != null && info.supportsParameterCount(count)) {
+            return true;
+        }
+        // 检查扩展函数
+        if (exInfo != null && !exInfo.isEmpty()) {
+            for (SymbolFunction extFunc : exInfo) {
+                if (extFunc.supportsParameterCount(count)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 获取所有可能的参数数量
+     *
+     * @param info 函数信息
+     * @param exInfo 扩展函数信息集合
+     * @return 所有可能的参数数量列表
+     */
+    private static Set<Integer> getAllParameterCounts(SymbolFunction info, Set<SymbolFunction> exInfo) {
+        Set<Integer> allCounts = new HashSet<>();
+        // 添加普通函数的参数数量
+        if (info != null) {
+            allCounts.addAll(info.getParameterCounts());
+        }
+        // 添加扩展函数的参数数量
+        if (exInfo != null && !exInfo.isEmpty()) {
+            for (SymbolFunction extFunc : exInfo) {
+                allCounts.addAll(extFunc.getParameterCounts());
+            }
+        }
+        return allCounts;
+    }
+
+    /**
      * 找到最接近的参数数量
      *
      * @param paramCounts 参数数量列表
      * @param actualCount 实际参数数量
      * @return 最接近的参数数量
      */
-    private static int findClosestParameterCount(List<Integer> paramCounts, int actualCount) {
+    private static int findClosestParameterCount(Set<Integer> paramCounts, int actualCount) {
         if (paramCounts.isEmpty()) {
             return 0;
         }
-
         // 找到最接近的参数数量
-        int closestCount = paramCounts.get(0);
+        int closestCount = paramCounts.iterator().next();
         int minDiff = Math.abs(closestCount - actualCount);
-
         for (int count : paramCounts) {
             int diff = Math.abs(count - actualCount);
             if (diff < minDiff) {

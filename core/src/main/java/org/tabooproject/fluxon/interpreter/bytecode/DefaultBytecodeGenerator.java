@@ -232,8 +232,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
-        // 实现 call(Object[] args) 方法 - 包含函数的实际执行逻辑
-        mv = cw.visitMethod(ACC_PUBLIC, "call", "([" + OBJECT + ")" + OBJECT, null, null);
+        // 实现 call(Object, Object[]) 方法 - 包含函数的实际执行逻辑
+        mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + OBJECT + "[" + OBJECT + ")" + OBJECT, null, null);
         mv.visitCode();
         // 直接将 Operations.bindFunctionParameters 的结果赋值给 this.environment
         mv.visitVarInsn(ALOAD, 0);  // this（为 PUTFIELD 准备）
@@ -249,7 +249,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             mv.visitLdcInsn(funcDef.getParameters().get(i));
             mv.visitInsn(AASTORE);
         }
-        mv.visitVarInsn(ALOAD, 1);  // args
+        mv.visitVarInsn(ALOAD, 2);  // args (第二个参数是 Object[])
         // 调用 Operations.bindFunctionParameters
         mv.visitMethodInsn(
                 INVOKESTATIC,

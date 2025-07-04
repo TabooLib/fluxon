@@ -73,6 +73,6 @@ public class BytecodeTest {
         RuntimeScriptBase base = (RuntimeScriptBase) scriptClass.newInstance();
 
         // 使用注册中心初始化环境
-        System.out.println("Result: " + base.eval(result.newEnvironment()));
+        System.out.println("Result: " + base.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
 }

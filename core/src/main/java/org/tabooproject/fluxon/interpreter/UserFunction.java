@@ -1,9 +1,12 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.Symbolic;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Collections;
@@ -13,13 +16,15 @@ import java.util.List;
  * 用户自定义的函数
  * 解释执行环境中的函数定义
  */
-public class UserFunction implements Function {
-    
+public class UserFunction implements Function, Symbolic {
+
+    private final SymbolFunction symbolInfo;
     private final Definitions.FunctionDefinition definition;
     private final Environment closure;
     private final Interpreter interpreter;
 
     public UserFunction(Definitions.FunctionDefinition definition, Environment closure, Interpreter interpreter) {
+        this.symbolInfo = new SymbolFunction(definition.getName(), definition.getParameters().size());
         this.definition = definition;
         this.closure = closure;
         this.interpreter = interpreter;
@@ -43,7 +48,7 @@ public class UserFunction implements Function {
     }
 
     @Override
-    public Object call(Object[] args) {
+    public Object call(@Nullable Object target, Object[] args) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
         String[] parameters = definition.getParameters().toArray(new String[0]);
         Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, args);
@@ -56,11 +61,20 @@ public class UserFunction implements Function {
         }
     }
 
-    /**
-     * 获取函数定义
-     * @return 函数定义
-     */
+    @Override
+    public SymbolFunction getInfo() {
+        return symbolInfo;
+    }
+
     public Definitions.FunctionDefinition getDefinition() {
         return definition;
+    }
+
+    public Environment getClosure() {
+        return closure;
+    }
+
+    public Interpreter getInterpreter() {
+        return interpreter;
     }
 }
