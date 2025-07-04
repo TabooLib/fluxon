@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.runtime.function.FunctionMath;
 import org.tabooproject.fluxon.runtime.function.FunctionSystem;
 import org.tabooproject.fluxon.runtime.function.FunctionTime;
 import org.tabooproject.fluxon.runtime.function.FunctionType;
+import org.tabooproject.fluxon.runtime.function.extension.ExtensionList;
 import org.tabooproject.fluxon.runtime.function.extension.ExtensionObject;
 
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public class FluxonRuntime {
         FunctionSystem.init(this);
         FunctionTime.init(this);
         FunctionType.init(this);
+        ExtensionList.init(this);
         ExtensionObject.init(this);
     }
 

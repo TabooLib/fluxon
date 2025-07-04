@@ -1,11 +1,8 @@
 list = [1, 2, 3]
 
-&list :: {
-    print toString
-}
-
-&list :: {
-    print toString
+print &list :: {
+    add 9
+    toString
 }
 
 for i in &list then {

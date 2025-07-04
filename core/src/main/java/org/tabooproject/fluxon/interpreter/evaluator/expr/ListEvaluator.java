@@ -35,16 +35,14 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     @Override
     public Type generateBytecode(ListExpression result, CodeContext ctx, MethodVisitor mv) {
-        // 创建 Object[] 数组
-        mv.visitLdcInsn(result.getElements().size());
-        mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
-        // 遍历所有元素，填充数组
-        int index = 0;
+        // 创建 ArrayList
+        mv.visitTypeInsn(NEW, ARRAY_LIST.getPath());
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, ARRAY_LIST.getPath(), "<init>", "()V", false);
+        // 遍历所有元素，添加到 ArrayList
         for (ParseResult element : result.getElements()) {
-            // 复制数组引用
+            // 复制 ArrayList 引用
             mv.visitInsn(DUP);
-            // 压入数组索引
-            mv.visitLdcInsn(index++);
             // 生成元素的字节码
             Evaluator<ParseResult> eval = ctx.getEvaluator(element);
             if (eval == null) {
@@ -53,11 +51,13 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             if (eval.generateBytecode(element, ctx, mv) == Type.VOID) {
                 throw new VoidValueException("Void type is not allowed for list element");
             }
-            // 存储到数组
-            mv.visitInsn(AASTORE);
+            // 调用 ArrayList.add
+            mv.visitMethodInsn(INVOKEVIRTUAL, ARRAY_LIST.getPath(), "add", "(" + Type.OBJECT + ")Z", false);
+            // 丢弃 add 方法的返回值 (boolean)
+            mv.visitInsn(POP);
         }
-        // 调用 Arrays.asList
-        mv.visitMethodInsn(INVOKESTATIC, "java/util/Arrays", "asList", "([" + Type.OBJECT + ")Ljava/util/List;", false);
         return Type.OBJECT;
     }
+
+    private static final Type ARRAY_LIST = new Type(ArrayList.class);
 }
