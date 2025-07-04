@@ -47,7 +47,7 @@ public class ContextCall implements Expression {
 
     @Override
     public String toString() {
-        return "ContextCallExpression{" +
+        return "ContextCall{" +
                 "target=" + target +
                 ", context=" + context +
                 '}';

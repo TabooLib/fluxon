@@ -76,9 +76,32 @@ public class ExpressionParser {
      * @return Elvis操作符表达式解析结果
      */
     public static ParseResult parseElvis(Parser parser) {
-        ParseResult expr = parseLogicalOr(parser);
+        ParseResult expr = parseContextCall(parser);
         if (parser.match(TokenType.QUESTION_COLON)) {
             expr = new ElvisExpression(expr, parseElvis(parser));
+        }
+        return expr;
+    }
+
+    /**
+     * 解析上下文调用表达式
+     * 上下文调用 :: 用于将左侧表达式作为上下文传递给右侧表达式
+     * 例如：&list :: { print "Hello" } 表示将 &list 作为上下文传递给代码块
+     *
+     * @return 上下文调用表达式解析结果
+     */
+    public static ParseResult parseContextCall(Parser parser) {
+        ParseResult expr = parseLogicalOr(parser);
+        if (parser.match(TokenType.CONTEXT_CALL)) {
+            ParseResult context;
+            // 如果右侧是代码块，解析代码块
+            if (parser.match(TokenType.LEFT_BRACE)) {
+                context = BlockParser.parse(parser, Collections.emptyList(), false, false);
+            } else {
+                // 否则解析表达式
+                context = parseContextCall(parser);
+            }
+            expr = new ContextCall(expr, context);
         }
         return expr;
     }
@@ -104,7 +127,7 @@ public class ExpressionParser {
     public static ParseResult parseLogicalAnd(Parser parser) {
         ParseResult expr = parseRange(parser);
         while (parser.match(TokenType.AND)) {
-            expr = new LogicalExpression(expr, parser.previous(), parseEquality(parser));
+            expr = new LogicalExpression(expr, parser.previous(), parseRange(parser));
         }
         return expr;
     }
@@ -206,32 +229,8 @@ public class ExpressionParser {
             }
             // 函数调用
             default:
-                return parseContextCall(parser);
+                return FunctionCallParser.parse(parser);
         }
-    }
-
-    /**
-     * 解析上下文调用表达式
-     * 处理形如 "text" :: replace("a", "b") 或 "text" :: { replace("a", "b"); length } 的表达式
-     *
-     * @return 上下文调用表达式解析结果
-     */
-    public static ParseResult parseContextCall(Parser parser) {
-        ParseResult expr = FunctionCallParser.parse(parser);
-        while (parser.match(TokenType.CONTEXT_CALL)) {
-            // 检查右侧是否为块表达式
-            if (parser.peek().getType() == TokenType.LEFT_BRACE) {
-                // 解析块表达式
-                parser.consume(TokenType.LEFT_BRACE, "Expected '{' after '::'");
-                ParseResult context = BlockParser.parse(parser, Collections.emptyList(), false, false);
-                expr = new ContextCall(expr, context);
-            } else {
-                // 解析单个表达式或函数调用
-                ParseResult context = FunctionCallParser.parse(parser);
-                expr = new ContextCall(expr, context);
-            }
-        }
-        return expr;
     }
 
     /**
@@ -297,6 +296,10 @@ public class ExpressionParser {
                 ParseResult expr = parse(parser);
                 parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
                 return new GroupingExpression(expr);
+            }
+            // 代码块
+            case LEFT_BRACE: {
+                return BlockParser.parse(parser, Collections.emptyList(), false, false);
             }
             // 文件结束
             case EOF:

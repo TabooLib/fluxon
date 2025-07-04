@@ -23,7 +23,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
 
     @Override
     public Type generateBytecode(T result, CodeContext ctx, MethodVisitor mv) {
-        return Type.OBJECT;
+        return Type.VOID;
     }
 
     protected static void generateCondition(
