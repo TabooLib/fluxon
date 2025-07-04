@@ -3,10 +3,11 @@ package org.tabooproject.fluxon.runtime.function;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
+import java.util.Arrays;
+
 public class FunctionMath {
 
-    public static void init() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
+    public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("min", 2, args -> {
             if (Operations.compare(args[0], args[1]) > 0) {
                 return args[0];
@@ -91,7 +92,7 @@ public class FunctionMath {
             return Math.log(value);
         });
         // random() / random(end) / random(start, end) - 随机数生成函数
-        runtime.registerFunction("random", 3, args -> {
+        runtime.registerFunction("random", Arrays.asList(0, 1, 2),args -> {
             switch (args.length) {
                 case 0:
                     return Math.random();

@@ -37,9 +37,9 @@ public class FluxonRuntime {
      * 私有构造函数，初始化系统函数
      */
     private FluxonRuntime() {
-        FunctionMath.init();
-        FunctionSystem.init();
-        FunctionType.init();
+        FunctionMath.init(this);
+        FunctionSystem.init(this);
+        FunctionType.init(this);
     }
 
     /**

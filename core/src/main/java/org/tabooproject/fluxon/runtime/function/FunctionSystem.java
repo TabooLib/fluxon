@@ -4,8 +4,7 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 public class FunctionSystem {
 
-    public static void init() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
+    public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("print", 1, args -> {
             if (args.length > 0) {
                 System.out.println(args[0]);

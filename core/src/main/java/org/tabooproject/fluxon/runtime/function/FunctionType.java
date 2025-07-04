@@ -6,8 +6,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 public class FunctionType {
 
-    public static void init() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
+    public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("int", 1, args -> Coerce.asInteger(args[0]).orElse(0));
         runtime.registerFunction("long", 1, args -> Coerce.asLong(args[0]).orElse(0L));
         runtime.registerFunction("float", 1, args -> Coerce.asFloat(args[0]).orElse(0f));
