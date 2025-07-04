@@ -9,6 +9,8 @@ import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
 
+import java.util.Collections;
+
 public class ExpressionParser {
 
     private static final int MAX_RECURSION_DEPTH = 1000;
@@ -204,8 +206,32 @@ public class ExpressionParser {
             }
             // 函数调用
             default:
-                return FunctionCallParser.parse(parser);
+                return parseContextCall(parser);
         }
+    }
+
+    /**
+     * 解析上下文调用表达式
+     * 处理形如 "text" :: replace("a", "b") 或 "text" :: { replace("a", "b"); length } 的表达式
+     *
+     * @return 上下文调用表达式解析结果
+     */
+    public static ParseResult parseContextCall(Parser parser) {
+        ParseResult expr = FunctionCallParser.parse(parser);
+        while (parser.match(TokenType.CONTEXT_CALL)) {
+            // 检查右侧是否为块表达式
+            if (parser.peek().getType() == TokenType.LEFT_BRACE) {
+                // 解析块表达式
+                parser.consume(TokenType.LEFT_BRACE, "Expected '{' after '::'");
+                ParseResult context = BlockParser.parse(parser, Collections.emptyList(), false, false);
+                expr = new ContextCall(expr, context);
+            } else {
+                // 解析单个表达式或函数调用
+                ParseResult context = FunctionCallParser.parse(parser);
+                expr = new ContextCall(expr, context);
+            }
+        }
+        return expr;
     }
 
     /**

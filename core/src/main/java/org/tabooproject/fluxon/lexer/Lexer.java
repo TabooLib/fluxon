@@ -95,6 +95,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         DOUBLE_CHAR_TOKENS.put("%=", TokenType.MODULO_ASSIGN);
         DOUBLE_CHAR_TOKENS.put("?:", TokenType.QUESTION_COLON);
         DOUBLE_CHAR_TOKENS.put("..", TokenType.RANGE);
+        DOUBLE_CHAR_TOKENS.put("::", TokenType.CONTEXT_CALL);
         // endregion
     }
 

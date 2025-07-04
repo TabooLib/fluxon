@@ -73,6 +73,7 @@ public class EvaluatorRegistry {
         registerExpression(new FloatLiteralEvaluator());
         registerExpression(new DoubleLiteralEvaluator());
         registerExpression(new BooleanLiteralEvaluator());
+        registerExpression(new ContextCallEvaluator());
     }
 
     /**

@@ -81,6 +81,7 @@ public enum TokenType {
     QUESTION("?"),             // 问号
     QUESTION_COLON("?:"),      // Elvis 操作符
     AMPERSAND("&"),            // 变量引用前缀
+    CONTEXT_CALL("::"),        // 上下文调用操作符
 
     // 其他
     EOF,        // 文件结束

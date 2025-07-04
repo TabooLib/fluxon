@@ -44,5 +44,6 @@ public enum ExpressionType {
     AWAIT,
     REFERENCE,
     ELVIS,
-    GROUPING
+    GROUPING,
+    CONTEXT_CALL
 } 
