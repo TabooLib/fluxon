@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.function.FunctionSystem;
 import org.tabooproject.fluxon.runtime.function.FunctionMath;
+import org.tabooproject.fluxon.runtime.function.FunctionTime;
 import org.tabooproject.fluxon.runtime.function.FunctionType;
 
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class FluxonRuntime {
     private FluxonRuntime() {
         FunctionMath.init(this);
         FunctionSystem.init(this);
+        FunctionTime.init(this);
         FunctionType.init(this);
     }
 
