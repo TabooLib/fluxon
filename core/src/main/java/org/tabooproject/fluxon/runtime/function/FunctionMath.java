@@ -9,13 +9,13 @@ public class FunctionMath {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("min", 2, (target, args) -> {
-            if (Operations.compare(args[0], args[1]) > 0) {
+            if (Operations.compare(args[0], args[1]) < 0) {
                 return args[0];
             }
             return args[1];
         });
         runtime.registerFunction("max", 2, (target, args) -> {
-            if (Operations.compare(args[0], args[1]) < 0) {
+            if (Operations.compare(args[0], args[1]) > 0) {
                 return args[0];
             }
             return args[1];
