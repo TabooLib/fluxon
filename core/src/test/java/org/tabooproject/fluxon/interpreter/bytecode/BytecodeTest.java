@@ -21,9 +21,12 @@ public class BytecodeTest {
         if (files != null) {
             for (File f : files) {
                 if (f.getName().endsWith(".fs")) {
-                    // 编译文件
                     try {
                         run(f);
+                    } catch (Throwable ex) {
+                        ex.printStackTrace();
+                    }
+                    try {
                         compile(f);
                     } catch (Throwable ex) {
                         ex.printStackTrace();

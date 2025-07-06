@@ -30,5 +30,13 @@ public class FunctionSystem {
             }
             return null;
         });
+        runtime.registerFunction("forName", 1, (target, args) -> {
+            String className = (String) args[0];
+            try {
+                return Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("Class not found: " + className, e);
+            }
+        });
     }
 }
