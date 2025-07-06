@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.stdlib.UnsafeAccess;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -13,10 +14,8 @@ public class ExtensionField {
         runtime.registerExtensionFunction(Field.class, "get", 1, (target, args) -> {
             try {
                 Field field = (Field) Objects.requireNonNull(target);
-                Object instance = args[0];
-                field.setAccessible(true);
-                return field.get(instance);
-            } catch (Exception e) {
+                return UnsafeAccess.get(target, field);
+            } catch (Throwable e) {
                 throw new RuntimeException("Failed to get field value: " + e.getMessage(), e);
             }
         });
@@ -26,10 +25,9 @@ public class ExtensionField {
                 Field field = (Field) Objects.requireNonNull(target);
                 Object instance = args[0];
                 Object value = args[1];
-                field.setAccessible(true);
-                field.set(instance, value);
+                UnsafeAccess.put(instance, field, value);
                 return null;
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 throw new RuntimeException("Failed to set field value: " + e.getMessage(), e);
             }
         });
