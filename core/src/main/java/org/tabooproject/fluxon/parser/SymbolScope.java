@@ -24,9 +24,9 @@ public class SymbolScope {
     private final SymbolScope parent;
 
     // 是否可以应用 break 语句
-    private boolean breakable = true;
+    private boolean breakable = false;
     // 是否可以应用 continue 语句
-    private boolean continuable = true;
+    private boolean continuable = false;
 
     /**
      * 创建顶层作用域（全局作用域）
