@@ -29,7 +29,7 @@ public class FunctionCallParser {
             expr = finishCall(parser, expr);
         }
         // 解析无括号的函数调用
-        else if (expr instanceof Identifier && !parser.isOperator()) {
+        else if (expr instanceof Identifier) {
             String functionName = ((Identifier) expr).getValue();
 
             // 检查是否为已知函数
@@ -38,48 +38,56 @@ public class FunctionCallParser {
             Set<SymbolFunction> exInfo = parser.getExtensionFunctions(functionName);
 
             if (info != null || !exInfo.isEmpty()) {
-                // 获取函数的最大参数数量
-                int maxArgCount = getMaxExpectedArgumentCount(info, exInfo);
-                List<ParseResult> arguments = new ArrayList<>();
-
-                // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
-                for (int i = 0; i < maxArgCount && !parser.isEndOfExpression() && !parser.isOperator(); i++) {
-                    // 检查当前标记是否为标识符
-                    if (parser.check(TokenType.IDENTIFIER)) {
-                        String identifier = parser.peek().getLexeme();
-
-                        // 检查标识符是否为已知函数或变量
-                        if (parser.isFunction(identifier) || parser.isExtensionFunction(identifier) || parser.isVariable(identifier)) {
-                            arguments.add(ExpressionParser.parse(parser));
-                        } else {
-                            // 未知标识符，转为字符串
-                            parser.advance(); // 消费标识符
-                            arguments.add(new StringLiteral(identifier));
-                        }
-                    } else {
-                        // 非标识符，按表达式解析
-                        arguments.add(ExpressionParser.parse(parser));
-                    }
-
-                    // 如果遇到分号就跳出
-                    if (parser.match(TokenType.SEMICOLON)) {
-                        break;
-                    }
+                // 特殊处理：如果是 0 参数函数且后面是操作符，直接调用
+                if (parser.isOperator() && supportsParameterCount(info, exInfo, 0)) {
+                    return new FunctionCall(expr, new ArrayList<>());
                 }
 
-                // 检查解析到的参数数量是否有效
-                if (supportsParameterCount(info, exInfo, arguments.size())) {
-                    expr = new FunctionCall(expr, arguments);
-                } else {
-                    // 参数数量不匹配，找到最接近的参数数量
-                    Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
-                    int closestCount = findClosestParameterCount(paramCounts, arguments.size());
-                    List<ParseResult> block = new ArrayList<>();
-                    // 使用足额的参数
-                    block.add(new FunctionCall(expr, arguments.subList(0, closestCount)));
-                    // 和剩下的参数打包成代码块，避免回滚二次解析
-                    block.addAll(arguments.subList(closestCount, arguments.size()));
-                    expr = new Block("ipc", block);
+                // 其他情况：只有不是操作符时才尝试收集参数
+                if (!parser.isOperator()) {
+                    // 获取函数的最大参数数量
+                    int maxArgCount = getMaxExpectedArgumentCount(info, exInfo);
+                    List<ParseResult> arguments = new ArrayList<>();
+
+                    // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
+                    for (int i = 0; i < maxArgCount && !parser.isEndOfExpression(); i++) {
+                        // 检查当前标记是否为标识符
+                        if (parser.check(TokenType.IDENTIFIER)) {
+                            String identifier = parser.peek().getLexeme();
+
+                            // 检查标识符是否为已知函数或变量
+                            if (parser.isFunction(identifier) || parser.isExtensionFunction(identifier) || parser.isVariable(identifier)) {
+                                arguments.add(ExpressionParser.parse(parser));
+                            } else {
+                                // 未知标识符，转为字符串
+                                parser.advance(); // 消费标识符
+                                arguments.add(new StringLiteral(identifier));
+                            }
+                        } else {
+                            // 非标识符，按表达式解析
+                            arguments.add(ExpressionParser.parse(parser));
+                        }
+
+                        // 如果遇到分号就跳出
+                        if (parser.match(TokenType.SEMICOLON)) {
+                            break;
+                        }
+                    }
+
+                    // 检查解析到的参数数量是否有效
+                    if (supportsParameterCount(info, exInfo, arguments.size())) {
+                        expr = new FunctionCall(expr, arguments);
+                    } else {
+                        // 参数数量不匹配，找到最接近的参数数量
+                        Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
+                        int closestCount = findClosestParameterCount(paramCounts, arguments.size());
+                        List<ParseResult> block = new ArrayList<>();
+                        // 使用足额的参数
+                        block.add(new FunctionCall(expr, arguments.subList(0, closestCount)));
+                        // 和剩下的参数打包成代码块，避免回滚二次解析
+                        block.addAll(arguments.subList(closestCount, arguments.size()));
+                        expr = new Block("ipc", block);
+                    }
                 }
             }
         }
@@ -90,7 +98,7 @@ public class FunctionCallParser {
     /**
      * 获取函数最大可能的参数数量
      *
-     * @param info 函数信息
+     * @param info   函数信息
      * @param exInfo 扩展函数信息集合
      * @return 最大可能的参数数量
      */
@@ -112,9 +120,9 @@ public class FunctionCallParser {
     /**
      * 检查是否支持指定的参数数量
      *
-     * @param info 函数信息
+     * @param info   函数信息
      * @param exInfo 扩展函数信息集合
-     * @param count 参数数量
+     * @param count  参数数量
      * @return 是否支持指定的参数数量
      */
     private static boolean supportsParameterCount(SymbolFunction info, Set<SymbolFunction> exInfo, int count) {
@@ -136,7 +144,7 @@ public class FunctionCallParser {
     /**
      * 获取所有可能的参数数量
      *
-     * @param info 函数信息
+     * @param info   函数信息
      * @param exInfo 扩展函数信息集合
      * @return 所有可能的参数数量列表
      */
