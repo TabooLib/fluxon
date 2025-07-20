@@ -4,16 +4,18 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.Objects;
 
 public class ExtensionConstructor {
 
+    @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
         // 创建新实例
         runtime.registerExtensionFunction(Constructor.class, "newInstance", 1, (target, args) -> {
             try {
                 Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(target);
-                Object[] parameters = (Object[]) args[0];
+                Object[] parameters = ((List<Object>) args[0]).toArray();
                 constructor.setAccessible(true);
                 return constructor.newInstance(parameters);
             } catch (Exception e) {

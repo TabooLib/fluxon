@@ -3,17 +3,15 @@ package org.tabooproject.fluxon.runtime.function.extension;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class ExtensionClass {
 
-    @SuppressWarnings("DuplicatedCode")
+    @SuppressWarnings({"DuplicatedCode", "unchecked"})
     public static void init(FluxonRuntime runtime) {
         // 获取类名
         runtime.registerExtensionFunction(Class.class, "name", 0, (target, args) -> {
@@ -29,7 +27,7 @@ public class ExtensionClass {
         runtime.registerExtensionFunction(Class.class, "canonicalName", 0, (target, args) -> {
             Class<?> clazz = (Class<?>) Objects.requireNonNull(target);
             return clazz.getCanonicalName();
-        }); 
+        });
         // 获取类型名
         runtime.registerExtensionFunction(Class.class, "typeName", 0, (target, args) -> {
             Class<?> clazz = (Class<?>) Objects.requireNonNull(target);
@@ -238,13 +236,13 @@ public class ExtensionClass {
         runtime.registerExtensionFunction(Class.class, "getConstructor", 1, (target, args) -> {
             try {
                 Class<?> clazz = (Class<?>) Objects.requireNonNull(target);
-                Object[] paramTypes = (Object[]) args[0];
-                Class<?>[] paramClasses = new Class<?>[paramTypes.length];
-                for (int i = 0; i < paramTypes.length; i++) {
-                    if (paramTypes[i] instanceof Class) {
-                        paramClasses[i] = (Class<?>) paramTypes[i];
+                List<Object> paramTypes = (List<Object>) args[0];
+                Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    if (paramTypes.get(i) instanceof Class) {
+                        paramClasses[i] = (Class<?>) paramTypes.get(i);
                     } else {
-                        paramClasses[i] = paramTypes[i].getClass();
+                        paramClasses[i] = paramTypes.get(i).getClass();
                     }
                 }
                 return clazz.getConstructor(paramClasses);
@@ -256,13 +254,13 @@ public class ExtensionClass {
         runtime.registerExtensionFunction(Class.class, "getDeclaredConstructor", 1, (target, args) -> {
             try {
                 Class<?> clazz = (Class<?>) Objects.requireNonNull(target);
-                Object[] paramTypes = (Object[]) args[0];
-                Class<?>[] paramClasses = new Class<?>[paramTypes.length];
-                for (int i = 0; i < paramTypes.length; i++) {
-                    if (paramTypes[i] instanceof Class) {
-                        paramClasses[i] = (Class<?>) paramTypes[i];
+                List<Object> paramTypes = (List<Object>) args[0];
+                Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    if (paramTypes.get(i) instanceof Class) {
+                        paramClasses[i] = (Class<?>) paramTypes.get(i);
                     } else {
-                        paramClasses[i] = paramTypes[i].getClass();
+                        paramClasses[i] = paramTypes.get(i).getClass();
                     }
                 }
                 return clazz.getDeclaredConstructor(paramClasses);

@@ -4,17 +4,19 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.Objects;
 
 public class ExtensionMethod {
 
+    @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
         // 调用方法
         runtime.registerExtensionFunction(Method.class, "invoke", 2, (target, args) -> {
             try {
                 Method method = (Method) Objects.requireNonNull(target);
                 Object instance = args[0];
-                Object[] parameters = (Object[]) args[1];
+                Object[] parameters = ((List<Object>) args[1]).toArray();
                 method.setAccessible(true);
                 return method.invoke(instance, parameters);
             } catch (Exception e) {
