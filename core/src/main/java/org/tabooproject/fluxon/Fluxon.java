@@ -65,8 +65,24 @@ public class Fluxon {
      * @return 执行结果
      */
     public static Object eval(String source) {
-        // 使用解释器直接执行
-        List<ParseResult> parseResults = parse(source);
+        return eval(parse(source));
+    }
+
+    /**
+     * 解释执行 Fluxon 源代码
+     * 使用特定环境执行
+     */
+    public static Object eval(String source, Environment env) {
+        return eval(parse(source, env), env);
+    }
+
+    /**
+     * 解释执行 Fluxon 源代码
+     *
+     * @param parseResults Fluxon 解析结果
+     * @return 执行结果
+     */
+    public static Object eval(List<ParseResult> parseResults) {
         Interpreter interpreter = new Interpreter();
         try {
             return interpreter.execute(parseResults);
@@ -78,10 +94,11 @@ public class Fluxon {
     /**
      * 解释执行 Fluxon 源代码
      * 使用特定环境执行
+     *
+     * @param parseResults Fluxon 解析结果
+     * @return 执行结果
      */
-    public static Object eval(String source, Environment env) {
-        // 使用解释器直接执行
-        List<ParseResult> parseResults = parse(source, env);
+    public static Object eval(List<ParseResult> parseResults, Environment env) {
         Interpreter interpreter = new Interpreter(env);
         try {
             return interpreter.execute(parseResults);
