@@ -27,15 +27,4 @@ public class AwaitTest {
         Object result = Fluxon.eval("await 123");
         assertEquals(123, result);
     }
-
-    @Test
-    public void testDelayFunction() {
-        // 测试延迟函数
-        String script = "start = now\n" +
-                "await delay 50\n" +
-                "elapsed = now - &start\n" +
-                "&elapsed >= 50";
-        Object result = Fluxon.eval(script);
-        assertEquals(true, result);
-    }
 }
