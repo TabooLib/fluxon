@@ -3,6 +3,7 @@ package org.tabooproject.fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.lexer.Lexer;
@@ -67,7 +68,11 @@ public class Fluxon {
         // 使用解释器直接执行
         List<ParseResult> parseResults = parse(source);
         Interpreter interpreter = new Interpreter();
-        return interpreter.execute(parseResults);
+        try {
+            return interpreter.execute(parseResults);
+        } catch (ReturnValue ex) {
+            return ex.getValue();
+        }
     }
 
     /**
@@ -78,7 +83,11 @@ public class Fluxon {
         // 使用解释器直接执行
         List<ParseResult> parseResults = parse(source, env);
         Interpreter interpreter = new Interpreter(env);
-        return interpreter.execute(parseResults);
+        try {
+            return interpreter.execute(parseResults);
+        } catch (ReturnValue ex) {
+            return ex.getValue();
+        }
     }
 
     /**
