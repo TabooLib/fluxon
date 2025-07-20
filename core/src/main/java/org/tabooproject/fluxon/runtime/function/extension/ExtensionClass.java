@@ -13,7 +13,7 @@ import java.util.Objects;
 
 public class ExtensionClass {
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("DuplicatedCode")
     public static void init(FluxonRuntime runtime) {
         // 获取类名
         runtime.registerExtensionFunction(Class.class, "name", 0, (target, args) -> {

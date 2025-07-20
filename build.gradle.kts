@@ -2,8 +2,11 @@ plugins {
     java
     id("application")
     id("me.champeau.jmh") version "0.7.2"
-    kotlin("jvm") version "2.1.10"
+    `maven-publish`
 }
+
+group = "org.tabooproject"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -13,7 +16,7 @@ subprojects {
     apply<JavaPlugin>()
     apply(plugin = "application")
     apply(plugin = "me.champeau.jmh")
-    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "maven-publish")
 
     repositories {
         mavenCentral()
@@ -37,7 +40,8 @@ subprojects {
         implementation("com.google.guava:guava:31.0.1-jre")
         implementation("org.ow2.asm:asm:9.4")
         implementation("org.ow2.asm:asm-commons:9.4")
-        implementation(kotlin("stdlib"))
+        // org.jetbrains.annotations
+        implementation("org.jetbrains:annotations:23.0.0")
 
         // JEXL 表达式引擎 - 用于性能对比测试
         testImplementation("org.apache.commons:commons-jexl3:3.3")
@@ -68,5 +72,29 @@ subprojects {
         warmupIterations.set(3)
         fork.set(1)
         includeTests.set(true)
+    }
+
+    // Maven 发布配置
+    configure<PublishingExtension> {
+        publications {
+            create<MavenPublication>("maven") {
+                from(components["java"])
+                groupId = "org.tabooproject.fluxon"
+                artifactId = project.name
+                version = rootProject.version.toString()
+            }
+        }
+        repositories {
+            maven {
+                url = uri("https://repo.tabooproject.org/repository/releases")
+                credentials {
+                    username = project.findProperty("taboolibUsername")?.toString() ?: ""
+                    password = project.findProperty("taboolibPassword")?.toString() ?: ""
+                }
+                authentication {
+                    create<BasicAuthentication>("basic")
+                }
+            }
+        }
     }
 }
