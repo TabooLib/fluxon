@@ -4,7 +4,9 @@ import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
+import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -42,6 +44,7 @@ public final class Intrinsics {
 
     /**
      * 执行解构操作并设置环境变量
+     * 此方法通过字节码调用
      *
      * @param scriptBase 运行时脚本基础类
      * @param variables  变量名列表（序列化为字符串数组）
@@ -73,7 +76,7 @@ public final class Intrinsics {
         }
 
         // 创建范围结果列表
-        List<Integer> rangeList = new java.util.ArrayList<>();
+        List<Integer> rangeList = new ArrayList<>();
         // 支持正向和反向范围
         if (startInt <= endInt) {
             // 正向范围
@@ -138,13 +141,7 @@ public final class Intrinsics {
         }
         if (function.isAsync()) {
             Function finalFunction = function;
-            return CompletableFuture.supplyAsync(() -> {
-                try {
-                    return finalFunction.call(target, arguments);
-                } catch (Throwable e) {
-                    throw new IntrinsicException("Error while executing async function: " + e.getMessage(), e);
-                }
-            });
+            return ThreadPoolManager.getInstance().submitAsync(() -> finalFunction.call(target, arguments));
         } else {
             return function.call(target, arguments);
         }
