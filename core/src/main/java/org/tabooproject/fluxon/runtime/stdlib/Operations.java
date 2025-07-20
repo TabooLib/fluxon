@@ -14,7 +14,7 @@ public final class Operations {
      */
     public static void checkNumberOperand(Object operand) {
         if (operand instanceof Number) return;
-        throw new OperationException("Operands must be numbers.");
+        throw new OperationException("Operands must be numbers: " + operand);
     }
 
     /**
@@ -25,7 +25,7 @@ public final class Operations {
      */
     public static void checkNumberOperands(Object left, Object right) {
         if (left instanceof Number && right instanceof Number) return;
-        throw new OperationException("Operands must be numbers.");
+        throw new OperationException("Operands must be numbers: left: " + left + ", right: " + right);
     }
 
     /**
