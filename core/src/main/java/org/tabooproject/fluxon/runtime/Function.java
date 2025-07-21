@@ -40,10 +40,9 @@ public interface Function {
     /**
      * 执行函数
      *
-     * @param target 调用对象
-     * @param args 参数列表
+     * @param context 函数上下文
      * @return 返回值
      */
     @Nullable
-    Object call(@Nullable Object target, Object[] args);
+    Object call(@NotNull final FunctionContext context);
 }
