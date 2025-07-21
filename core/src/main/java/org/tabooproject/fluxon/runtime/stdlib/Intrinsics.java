@@ -139,11 +139,12 @@ public final class Intrinsics {
                 function = environment.getFunction(callee.toString());
             }
         }
+        final FunctionContext context = new FunctionContext(target, arguments, environment);
         if (function.isAsync()) {
             Function finalFunction = function;
-            return ThreadPoolManager.getInstance().submitAsync(() -> finalFunction.call(target, arguments));
+            return ThreadPoolManager.getInstance().submitAsync(() -> finalFunction.call(context));
         } else {
-            return function.call(target, arguments);
+            return function.call(context);
         }
     }
 

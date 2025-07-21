@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Symbolic;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
@@ -48,10 +49,10 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @Override
-    public Object call(@Nullable Object target, Object[] args) {
+    public Object call(@NotNull final FunctionContext context) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
         String[] parameters = definition.getParameters().toArray(new String[0]);
-        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, args);
+        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, context.getArguments());
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);

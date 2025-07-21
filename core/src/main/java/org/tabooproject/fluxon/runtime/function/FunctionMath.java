@@ -8,19 +8,22 @@ import java.util.Arrays;
 public class FunctionMath {
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("min", 2, (target, args) -> {
+        runtime.registerFunction("min", 2, (context) -> {
+            Object[] args = context.getArguments();
             if (Operations.compare(args[0], args[1]) < 0) {
                 return args[0];
             }
             return args[1];
         });
-        runtime.registerFunction("max", 2, (target, args) -> {
+        runtime.registerFunction("max", 2, (context) -> {
+            Object[] args = context.getArguments();
             if (Operations.compare(args[0], args[1]) > 0) {
                 return args[0];
             }
             return args[1];
         });
-        runtime.registerFunction("abs", 1, (target, args) -> {
+        runtime.registerFunction("abs", 1, (context) -> {
+            Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
             double value = num.doubleValue();
             double result = Math.abs(value);
@@ -40,22 +43,26 @@ public class FunctionMath {
             }
             return result;
         });
-        runtime.registerFunction("round", 1, (target, args) -> {
+        runtime.registerFunction("round", 1, (context) -> {
+            Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
             long result = Math.round(num.doubleValue());
             return preserveIntegerType(result);
         });
-        runtime.registerFunction("floor", 1, (target, args) -> {
+        runtime.registerFunction("floor", 1, (context) -> {
+            Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
             double result = Math.floor(num.doubleValue());
             return preserveIntegerTypeFromDouble(result);
         });
-        runtime.registerFunction("ceil", 1, (target, args) -> {
+        runtime.registerFunction("ceil", 1, (context) -> {
+            Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
             double result = Math.ceil(num.doubleValue());
             return preserveIntegerTypeFromDouble(result);
         });
-        runtime.registerFunction("pow", 2, (target, args) -> {
+        runtime.registerFunction("pow", 2, (context) -> {
+            Object[] args = context.getArguments();
             Number base = validateAndGetNumber(args[0]);
             Number exponent = validateAndGetNumber(args[1]);
             double result = Math.pow(base.doubleValue(), exponent.doubleValue());
@@ -66,33 +73,38 @@ public class FunctionMath {
             }
             return result;
         });
-        runtime.registerFunction("sqrt", 1, (target, args) -> {
+        runtime.registerFunction("sqrt", 1, (context) -> {
+            Object[] args = context.getArguments();
             double value = validateAndGetNumber(args[0]).doubleValue();
             validatePositive(value, "Cannot take square root of negative number");
             return Math.sqrt(value);
         });
-        runtime.registerFunction("sin", 1, (target, args) -> Math.sin(validateAndGetNumber(args[0]).doubleValue()));
-        runtime.registerFunction("cos", 1, (target, args) -> Math.cos(validateAndGetNumber(args[0]).doubleValue()));
-        runtime.registerFunction("tan", 1, (target, args) -> Math.tan(validateAndGetNumber(args[0]).doubleValue()));
-        runtime.registerFunction("asin", 1, (target, args) -> {
+        runtime.registerFunction("sin", 1, (context) -> Math.sin(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("cos", 1, (context) -> Math.cos(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("tan", 1, (context) -> Math.tan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("asin", 1, (context) -> {
+            Object[] args = context.getArguments();
             double value = validateAndGetNumber(args[0]).doubleValue();
             validateRange(value, -1.0, 1.0, "asin input must be between -1 and 1");
             return Math.asin(value);
         });
-        runtime.registerFunction("acos", 1, (target, args) -> {
+        runtime.registerFunction("acos", 1, (context) -> {
+            Object[] args = context.getArguments();
             double value = validateAndGetNumber(args[0]).doubleValue();
             validateRange(value, -1.0, 1.0, "acos input must be between -1 and 1");
             return Math.acos(value);
         });
-        runtime.registerFunction("atan", 1, (target, args) -> Math.atan(validateAndGetNumber(args[0]).doubleValue()));
-        runtime.registerFunction("exp", 1, (target, args) -> Math.exp(validateAndGetNumber(args[0]).doubleValue()));
-        runtime.registerFunction("log", 1, (target, args) -> {
+        runtime.registerFunction("atan", 1, (context) -> Math.atan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("exp", 1, (context) -> Math.exp(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("log", 1, (context) -> {
+            Object[] args = context.getArguments();
             double value = validateAndGetNumber(args[0]).doubleValue();
             validatePositive(value, "log input must be positive");
             return Math.log(value);
         });
         // random() / random(end) / random(start, end) - 随机数生成函数
-        runtime.registerFunction("random", Arrays.asList(0, 1, 2),(target, args) -> {
+        runtime.registerFunction("random", Arrays.asList(0, 1, 2),(context) -> {
+            Object[] args = context.getArguments();
             switch (args.length) {
                 case 0:
                     return Math.random();

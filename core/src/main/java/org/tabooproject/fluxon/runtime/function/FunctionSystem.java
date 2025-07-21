@@ -5,7 +5,8 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 public class FunctionSystem {
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("print", 1, (target, args) -> {
+        runtime.registerFunction("print", 1, (context) -> {
+            Object[] args = context.getArguments();
             if (args.length > 0) {
                 System.out.println(args[0]);
             } else {
@@ -13,7 +14,8 @@ public class FunctionSystem {
             }
             return null;
         });
-        runtime.registerFunction("error", 1, (target, args) -> {
+        runtime.registerFunction("error", 1, (context) -> {
+            Object[] args = context.getArguments();
             if (args.length > 0) {
                 System.err.println(args[0]);
             } else {
@@ -21,7 +23,8 @@ public class FunctionSystem {
             }
             return null;
         });
-        runtime.registerFunction("sleep", 1, (target, args) -> {
+        runtime.registerFunction("sleep", 1, (context) -> {
+            Object[] args = context.getArguments();
             int seconds = ((Number) args[0]).intValue();
             try {
                 Thread.sleep(seconds);
@@ -30,7 +33,8 @@ public class FunctionSystem {
             }
             return null;
         });
-        runtime.registerFunction("forName", 1, (target, args) -> {
+        runtime.registerFunction("forName", 1, (context) -> {
+            Object[] args = context.getArguments();
             String className = (String) args[0];
             try {
                 return Class.forName(className);

@@ -44,8 +44,8 @@ public class NativeFunction implements Function, Symbolic {
     }
 
     @Override
-    public Object call(@Nullable Object target, Object[] args) {
-        return callable.call(target, args);
+    public Object call(@NotNull final FunctionContext context) {
+        return callable.call(context);
     }
 
     @Override
@@ -74,10 +74,9 @@ public class NativeFunction implements Function, Symbolic {
         /**
          * 调用原生函数
          *
-         * @param target 调用目标
-         * @param args 参数列表
+         * @param context 函数上下文，包含调用目标、参数列表和环境
          * @return 返回值
          */
-        Object call(@Nullable Object target, Object[] args);
+        Object call(@NotNull FunctionContext context);
     }
 } 
