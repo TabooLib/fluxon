@@ -10,8 +10,9 @@ import org.tabooproject.fluxon.parser.definition.Definitions.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
-import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
 
@@ -40,10 +41,19 @@ public class EnhancedParserTest {
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
         Parser parser = new Parser();
+        
+        // 获取运行时环境并注册函数信息到解析器
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        parser.defineFunction(env.getFunctions());
+        parser.defineVariables(env.getVariables());
+        parser.defineExtensionFunction(env.getExtensionFunctions());
+        
+        // 定义测试用的变量
         parser.defineVariable("variable");
         parser.defineVariable("x");
         parser.defineVariable("y");
         parser.defineVariable("value");
+        
         return parser.process(context);
     }
 
@@ -59,8 +69,8 @@ public class EnhancedParserTest {
         FunctionCall call = (FunctionCall) stmt.getExpression();
         assertEquals("print", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
-        assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof Identifier);
+        assertEquals("hello", ((Identifier) call.getArguments().get(0)).getValue());
 
         // 嵌套无括号调用
         results = parseSource("print checkGrade 95");
@@ -88,8 +98,8 @@ public class EnhancedParserTest {
         FunctionCall call = (FunctionCall) stmt.getExpression();
         assertEquals("player", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
-        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof Identifier);
+        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
 
         // 混合已知函数和未知标识符
         results = parseSource("player checkGrade 95");
@@ -107,9 +117,9 @@ public class EnhancedParserTest {
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCall) stmt.getExpression();
         assertEquals(3, call.getArguments().size());
-        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
-        assertEquals("body", ((StringLiteral) call.getArguments().get(1)).getValue());
-        assertEquals("legs", ((StringLiteral) call.getArguments().get(2)).getValue());
+        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
+        assertEquals("body", ((Identifier) call.getArguments().get(1)).getValue());
+        assertEquals("legs", ((Identifier) call.getArguments().get(2)).getValue());
     }
 
     /**

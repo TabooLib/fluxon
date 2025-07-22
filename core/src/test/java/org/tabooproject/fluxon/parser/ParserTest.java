@@ -13,6 +13,8 @@ import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
 
@@ -41,6 +43,13 @@ public class ParserTest {
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
         Parser parser = new Parser();
+        
+        // 获取运行时环境并注册函数信息到解析器
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        parser.defineFunction(env.getFunctions());
+        parser.defineVariables(env.getVariables());
+        parser.defineExtensionFunction(env.getExtensionFunctions());
+        
         return parser.process(context);
     }
     
@@ -169,8 +178,8 @@ public class ParserTest {
         assertTrue(call.getCallee() instanceof Identifier);
         assertEquals("player", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
-        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof Identifier);
+        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
     }
     
     /**

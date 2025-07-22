@@ -141,6 +141,7 @@ public enum TokenType {
             case AND:
             case OR:
             case ASSIGN:
+            case CONTEXT_CALL:
                 return true;
             default:
                 return false;
