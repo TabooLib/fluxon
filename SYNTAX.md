@@ -113,13 +113,10 @@ Maps use square brackets with key-value pairs:
 ### Variable Declaration
 
 ```fluxon
-// Immutable variable with val
-val x = 5
-val msg = "hello"
-
-// Mutable variable with var
-var counter = 0
-var result = 'fail'
+x = 5
+msg = "hello"
+counter = 0
+result = 'fail'
 ```
 
 ### Variable References
@@ -127,8 +124,8 @@ var result = 'fail'
 Use `&` to reference a variable:
 
 ```fluxon
-val x = 10
-val y = &x + 5  // Reference x
+x = 10
+y = &x + 5  // Reference x
 result = &result + &i  // Reference both variables
 ```
 
@@ -392,7 +389,7 @@ Everything in Fluxon is an expression:
 
 ```fluxon
 // Variable declaration returns the value
-val x = 10
+x = 10
 
 // If expression returns a value
 result = if &x > 0 then "positive" else "negative"
@@ -487,8 +484,8 @@ result = &result + &key + &value
 result = 0; for i in [1, 2, 3] { result += &i }; &result
 
 // Semicolons are optional at end of line
-val x = 10
-val y = 20
+x = 10
+y = 20
 ```
 
 ### Async/Await
