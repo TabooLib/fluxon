@@ -3,10 +3,14 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.statement.BreakStatement;
 import org.tabooproject.fluxon.parser.statement.ContinueStatement;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class StatementParser {
 
@@ -16,11 +20,16 @@ public class StatementParser {
      * @return 解析结果
      */
     public static ParseResult parse(Parser parser) {
+        // 检查注解
+        List<Annotation> annotations = new ArrayList<>();
+        while (parser.check(TokenType.AT)) {
+            annotations.add(AnnotationParser.parse(parser));
+        }
         // 检查异步函数定义
         if (parser.check(TokenType.ASYNC) && parser.peek(1).is(TokenType.DEF)) {
             parser.advance(); // 消费 ASYNC
             parser.advance(); // 消费 DEF
-            return FunctionDefinitionParser.parse(parser, true);
+            return FunctionDefinitionParser.parse(parser, true, annotations);
         }
 
         // 检查特殊语法
@@ -29,7 +38,7 @@ public class StatementParser {
             switch (match) {
                 // 普通函数定义
                 case DEF:
-                    return FunctionDefinitionParser.parse(parser, false);
+                    return FunctionDefinitionParser.parse(parser, false, annotations);
                 // 返回值
                 case RETURN: {
                     // 检查是否有返回值
@@ -63,6 +72,11 @@ public class StatementParser {
             }
         }
 
+        // 如果有注解但不是函数定义，报错
+        if (!annotations.isEmpty()) {
+            throw new RuntimeException("Annotations can only be applied to function definitions");
+        }
+        
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
         parser.match(TokenType.SEMICOLON); // 可选的分号

@@ -102,6 +102,8 @@ public class Interpreter {
                 return expressionVisitor.visitExpression((Expression) result);
             case STATEMENT:
                 return statementVisitor.visitStatement((Statement) result);
+            case ANNOTATION:
+                return null;
             default:
                 throw new RuntimeException("Unknown parse result type: " + result.getType());
         }

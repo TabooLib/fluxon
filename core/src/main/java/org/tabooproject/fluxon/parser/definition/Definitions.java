@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.definition;
 
 import org.tabooproject.fluxon.parser.ParseResult;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -19,12 +20,18 @@ public class Definitions {
         private final List<String> parameters;
         private final ParseResult body;
         private final boolean isAsync;
+        private final List<Annotation> annotations;
 
         public FunctionDefinition(String name, List<String> parameters, ParseResult body, boolean isAsync) {
+            this(name, parameters, body, isAsync, Collections.emptyList());
+        }
+
+        public FunctionDefinition(String name, List<String> parameters, ParseResult body, boolean isAsync, List<Annotation> annotations) {
             this.name = name;
             this.parameters = parameters;
             this.body = body;
             this.isAsync = isAsync;
+            this.annotations = annotations;
         }
 
         public String getName() {
@@ -43,15 +50,24 @@ public class Definitions {
             return isAsync;
         }
 
+        public List<Annotation> getAnnotations() {
+            return annotations;
+        }
+
         @Override
         public String toString() {
             return (isAsync ? "Async" : "") + "FunctionDefinition(" + name + ", " +
-                    parameters + ", " + body + ")";
+                    parameters + ", " + body + ", annotations=" + annotations + ")";
         }
         
         @Override
         public String toPseudoCode() {
             StringBuilder sb = new StringBuilder();
+
+            // 注解
+            for (Annotation annotation : annotations) {
+                sb.append(annotation.toPseudoCode()).append("\n");
+            }
 
             // 函数声明
             if (isAsync) {

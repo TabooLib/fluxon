@@ -30,5 +30,7 @@ public interface ParseResult {
         EXPRESSION,
         // 语句
         STATEMENT,
+        // 注解
+        ANNOTATION
     }
 }

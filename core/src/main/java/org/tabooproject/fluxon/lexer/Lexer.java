@@ -81,6 +81,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         SINGLE_CHAR_TOKENS.put(']', TokenType.RIGHT_BRACKET);
         SINGLE_CHAR_TOKENS.put('?', TokenType.QUESTION);
         SINGLE_CHAR_TOKENS.put('|', TokenType.UNKNOWN);
+        SINGLE_CHAR_TOKENS.put('@', TokenType.AT);
 
         // 初始化双字符映射
         DOUBLE_CHAR_TOKENS = new HashMap<>(32);

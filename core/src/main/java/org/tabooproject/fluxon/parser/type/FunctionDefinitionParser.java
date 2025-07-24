@@ -5,23 +5,37 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FunctionDefinitionParser {
+    
+    /**
+     * 解析函数定义（无注解版本，用于向后兼容）
+     * @param parser 解析器
+     * @param isAsync 是否为异步函数
+     * @return 函数定义解析结果
+     */
+    public static ParseResult parse(Parser parser, boolean isAsync) {
+        return parse(parser, isAsync, new ArrayList<>());
+    }
 
     /**
      * 解析函数定义
      * 关键特性：
      * 1. 允许无括号参数定义，如：def factorial n = { ... }
      * 2. 允许省略大括号
+     * 3. 支持注解，如：@listener(event = "onStart") def handleStart() = { ... }
      *
+     * @param parser 解析器
      * @param isAsync 是否为异步函数
+     * @param annotations 函数的注解列表
      * @return 函数定义解析结果
      */
-    public static ParseResult parse(Parser parser, boolean isAsync) {
+    public static ParseResult parse(Parser parser, boolean isAsync, List<Annotation> annotations) {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
         String functionName = nameToken.getLexeme();
@@ -77,6 +91,6 @@ public class FunctionDefinitionParser {
         }
         // 可选的分号
         parser.match(TokenType.SEMICOLON);
-        return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync);
+        return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync, annotations);
     }
 }

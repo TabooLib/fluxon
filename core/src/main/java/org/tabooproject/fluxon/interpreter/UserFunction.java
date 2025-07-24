@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
@@ -77,5 +78,13 @@ public class UserFunction implements Function, Symbolic {
 
     public Interpreter getInterpreter() {
         return interpreter;
+    }
+
+    /**
+     * 获取函数的注解列表
+     * @return 注解列表
+     */
+    public List<Annotation> getAnnotations() {
+        return definition.getAnnotations();
     }
 }
