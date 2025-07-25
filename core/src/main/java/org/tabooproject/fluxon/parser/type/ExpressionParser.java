@@ -220,8 +220,8 @@ public class ExpressionParser {
             case AMPERSAND: {
                 parser.consume(); // 消费 &
                 String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
-                // 检查变量是否存在
-                if (parser.isVariable(name)) {
+                // 检查函数或变量是否存在
+                if (parser.isFunction(name) || parser.isVariable(name)) {
                     return new ReferenceExpression(new Identifier(name));
                 } else {
                     throw new VariableNotFoundException(name + ", scope: " + parser.getCurrentScope().getAllVariables());

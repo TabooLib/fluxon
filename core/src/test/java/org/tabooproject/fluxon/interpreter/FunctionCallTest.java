@@ -70,4 +70,19 @@ public class FunctionCallTest {
                 "&result");
         assertEquals(12, result);
     }
+
+    @Test
+    public void testRefCall1() {
+        Object result = Fluxon.eval("def test = \"Hello\"\n" +
+                "call(&test)");
+        assertEquals("Hello", result);
+    }
+
+    @Test
+    public void testRefCall2() {
+        Object result = Fluxon.eval("def inc(x) = &x + 1\n" +
+                "ref = &inc\n" +
+                "call(&ref, [1])");
+        assertEquals(2, result);
+    }
 }

@@ -169,7 +169,7 @@ public class Environment {
      *
      * @param name 变量名
      * @return 变量值
-     * @throws RuntimeException 如果变量不存在
+     * @throws VariableNotFoundException 如果变量不存在
      */
     @NotNull
     public Object get(String name) {

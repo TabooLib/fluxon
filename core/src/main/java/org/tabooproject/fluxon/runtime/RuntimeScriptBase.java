@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+
 /**
  * 运行时脚本的基类
  */
@@ -24,6 +26,15 @@ public abstract class RuntimeScriptBase {
     // 获取运行时变量
     public Object get(String name) {
         return environment.get(name);
+    }
+
+    // 获取运行时变量
+    public Object getFunctionOrVariable(String name) {
+        try {
+            return environment.getFunction(name);
+        } catch (FunctionNotFoundException ignored) {
+            return environment.get(name);
+        }
     }
 
     // 调用运行时函数

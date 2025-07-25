@@ -21,6 +21,18 @@ public class FunctionContext {
         this.environment = environment;
     }
 
+    public boolean hasArgument(int index) {
+        return index < arguments.length;
+    }
+
+    @Nullable
+    public Object getArgument(int index) {
+        if (index >= arguments.length) {
+            return null;
+        }
+        return arguments[index];
+    }
+
     @Nullable
     public Object getTarget() {
         return target;
