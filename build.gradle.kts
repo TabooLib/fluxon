@@ -5,9 +5,6 @@ plugins {
     `maven-publish`
 }
 
-group = "org.tabooproject"
-version = "1.0.0"
-
 repositories {
     mavenCentral()
 }
