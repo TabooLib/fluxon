@@ -192,9 +192,6 @@ count -= 1
 ### Special Operators
 
 ```fluxon
-// Member access
-obj.field
-
 // Context call (method on object)
 hash::md5("data")
 base64::encode("text")
