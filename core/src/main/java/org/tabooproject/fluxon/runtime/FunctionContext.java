@@ -7,15 +7,15 @@ import org.jetbrains.annotations.Nullable;
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
  */
-public class FunctionContext {
+public class FunctionContext<Target> {
 
     @Nullable
-    private final Object target;
+    private final Target target;
     private final Object[] arguments;
     @NotNull
     private final Environment environment;
 
-    public FunctionContext(@Nullable Object target, Object[] arguments, @NotNull Environment environment) {
+    public FunctionContext(@Nullable Target target, Object[] arguments, @NotNull Environment environment) {
         this.target = target;
         this.arguments = arguments;
         this.environment = environment;
@@ -34,7 +34,7 @@ public class FunctionContext {
     }
 
     @Nullable
-    public Object getTarget() {
+    public Target getTarget() {
         return target;
     }
 

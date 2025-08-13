@@ -10,17 +10,17 @@ import java.util.List;
  * 原生函数类
  * 表示由 Java 实现的内置函数
  */
-public class NativeFunction implements Function, Symbolic {
+public class NativeFunction<Target> implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
-    private final NativeCallable callable;
+    private final NativeCallable<Target> callable;
     private final boolean isAsync;
 
-    public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable) {
+    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable) {
         this(symbolInfo, callable, false);
     }
 
-    public NativeFunction(SymbolFunction symbolInfo, NativeCallable callable, boolean isAsync) {
+    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync) {
         this.symbolInfo = symbolInfo;
         this.callable = callable;
         this.isAsync = isAsync;
@@ -43,9 +43,10 @@ public class NativeFunction implements Function, Symbolic {
         return isAsync;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Object call(@NotNull final FunctionContext context) {
-        return callable.call(context);
+    public Object call(@NotNull final FunctionContext<?> context) {
+        return callable.call((FunctionContext<Target>) context);
     }
 
     @Override
@@ -53,7 +54,7 @@ public class NativeFunction implements Function, Symbolic {
         return symbolInfo;
     }
 
-    public NativeCallable getCallable() {
+    public NativeCallable<Target> getCallable() {
         return callable;
     }
 
@@ -69,7 +70,7 @@ public class NativeFunction implements Function, Symbolic {
      * 原生函数接口
      */
     @FunctionalInterface
-    public interface NativeCallable {
+    public interface NativeCallable<Target> {
 
         /**
          * 调用原生函数
@@ -77,6 +78,6 @@ public class NativeFunction implements Function, Symbolic {
          * @param context 函数上下文，包含调用目标、参数列表和环境
          * @return 返回值
          */
-        Object call(@NotNull FunctionContext context);
+        Object call(@NotNull FunctionContext<Target> context);
     }
 } 

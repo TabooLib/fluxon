@@ -58,49 +58,42 @@ public class FunctionTime {
 
         // 获取当前年份
         runtime.registerExtensionFunction(TimeObject.class, "year", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.YEAR);
         });
 
         // 获取当前月份（1-12）
         runtime.registerExtensionFunction(TimeObject.class, "month", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.MONTH) + 1;
         });
 
         // 获取当前日期（1-31）
         runtime.registerExtensionFunction(TimeObject.class, "day", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.DAY_OF_MONTH);
         });
 
         // 获取当前小时（0-23）
         runtime.registerExtensionFunction(TimeObject.class, "hour", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.HOUR_OF_DAY);
         });
 
         // 获取当前分钟（0-59）
         runtime.registerExtensionFunction(TimeObject.class, "minute", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.MINUTE);
         });
 
         // 获取当前秒数（0-59）
         runtime.registerExtensionFunction(TimeObject.class, "second", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.SECOND);
         });
 
         // 获取当前星期几（1-7，1=星期日）
         runtime.registerExtensionFunction(TimeObject.class, "weekday", 0, (context) -> {
-            Object[] args = context.getArguments();
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.DAY_OF_WEEK);
         });

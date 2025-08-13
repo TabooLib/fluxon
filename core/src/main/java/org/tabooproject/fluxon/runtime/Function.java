@@ -44,5 +44,5 @@ public interface Function {
      * @return 返回值
      */
     @Nullable
-    Object call(@NotNull final FunctionContext context);
+    Object call(@NotNull final FunctionContext<?> context);
 }
