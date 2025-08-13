@@ -24,11 +24,11 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     @Override
     public Object evaluate(Interpreter interpreter, ReferenceExpression result) {
         Environment environment = interpreter.getEnvironment();
-        try {
-            return environment.get(result.getIdentifier().getValue());
-        } catch (VariableNotFoundException ignored) {
-            return environment.getFunction(result.getIdentifier().getValue());
+        Object var = environment.getOrNull(result.getIdentifier().getValue());
+        if (var != null) {
+            return var;
         }
+        return environment.getFunction(result.getIdentifier().getValue());
     }
 
     @Override

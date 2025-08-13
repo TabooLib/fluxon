@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -22,8 +23,8 @@ public class Environment {
     // 变量
     private final Map<String, Object> variables = new HashMap<>();
 
-    // 扩展函数
-    private final Map<Class<?>, Map<String, Function>> extensionFunctions = new HashMap<>();
+    // 扩展函数 - 优化后的数据结构：函数名 -> (类型 -> 函数实现)
+    private final Map<String, Map<Class<?>, Function>> extensionFunctions = new HashMap<>();
 
     // 父环境，用于实现作用域链
     private final Environment parent;
@@ -42,7 +43,7 @@ public class Environment {
         this.parent = null;
         this.functions.putAll(functions);
         this.variables.putAll(values);
-        this.extensionFunctions.putAll(extensionFunctions);
+        this.extensionFunctions.putAll(convertToOptimizedStructure(extensionFunctions));
     }
 
     /**
@@ -90,7 +91,7 @@ public class Environment {
      * @param value          函数对象
      */
     public void defineExtensionFunction(Class<?> extensionClass, String name, Function value) {
-        extensionFunctions.computeIfAbsent(extensionClass, k -> new HashMap<>()).put(name, value);
+        extensionFunctions.computeIfAbsent(name, k -> new LinkedHashMap<>()).put(extensionClass, value);
     }
 
     /**
@@ -100,7 +101,9 @@ public class Environment {
      * @param functions      函数映射
      */
     public void defineExtensionFunction(Class<?> extensionClass, Map<String, Function> functions) {
-        extensionFunctions.put(extensionClass, functions);
+        for (Map.Entry<String, Function> entry : functions.entrySet()) {
+            defineExtensionFunction(extensionClass, entry.getKey(), entry.getValue());
+        }
     }
 
     /**
@@ -112,11 +115,13 @@ public class Environment {
      */
     @NotNull
     public Function getFunction(String name) {
-        if (functions.containsKey(name)) {
-            return functions.get(name);
-        }
-        if (parent != null) {
-            return parent.getFunction(name);
+        Environment current = this;
+        while (current != null) {
+            Function function = current.functions.get(name);
+            if (function != null) {
+                return function;
+            }
+            current = current.parent;
         }
         throw new FunctionNotFoundException(name);
     }
@@ -131,25 +136,36 @@ public class Environment {
      */
     @NotNull
     public Function getExtensionFunction(Class<?> extensionClass, String name) {
-        // 首先在当前环境中查找精确匹配的扩展函数
-        Map<String, Function> exactExtensionFunctions = this.extensionFunctions.get(extensionClass);
-        if (exactExtensionFunctions != null && exactExtensionFunctions.containsKey(name)) {
-            return exactExtensionFunctions.get(name);
-        }
-        // 如果没有找到精确匹配，尝试模糊匹配（查找兼容的类型）
-        for (Map.Entry<Class<?>, Map<String, Function>> entry : this.extensionFunctions.entrySet()) {
-            // 检查是否为兼容类型（父类或接口）
-            if (entry.getKey().isAssignableFrom(extensionClass)) {
-                Map<String, Function> compatibleFunctions = entry.getValue();
-                if (compatibleFunctions.containsKey(name)) {
-                    return compatibleFunctions.get(name);
-                }
-            }
-        }
-        if (parent != null) {
-            return parent.getExtensionFunction(extensionClass, name);
+        Function function = getExtensionFunctionOrNull(extensionClass, name);
+        if (function != null) {
+            return function;
         }
         throw new FunctionNotFoundException(name);
+    }
+
+    /**
+     * 获取扩展函数（递归查找所有父环境）
+     *
+     * @param extensionClass 扩展类
+     * @param name           函数名
+     * @return 函数值
+     */
+    @Nullable
+    public Function getExtensionFunctionOrNull(Class<?> extensionClass, String name) {
+        Environment current = this;
+        while (current != null) {
+            Map<Class<?>, Function> classFunctionMap = current.extensionFunctions.get(name);
+            if (classFunctionMap != null) {
+                // 查找兼容的类型
+                for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
+                    if (entry.getKey().isAssignableFrom(extensionClass)) {
+                        return entry.getValue();
+                    }
+                }
+            }
+            current = current.parent;
+        }
+        return null;
     }
 
     /**
@@ -173,13 +189,28 @@ public class Environment {
      */
     @NotNull
     public Object get(String name) {
-        if (variables.containsKey(name)) {
-            return variables.get(name);
-        }
-        if (parent != null) {
-            return parent.get(name);
+        Environment current = this;
+        while (current != null) {
+            Object var = current.variables.get(name);
+            if (var != null) {
+                return var;
+            }
+            current = current.parent;
         }
         throw new VariableNotFoundException(name);
+    }
+
+    @Nullable
+    public Object getOrNull(String name) {
+        Environment current = this;
+        while (current != null) {
+            Object var = current.variables.get(name);
+            if (var != null) {
+                return var;
+            }
+            current = current.parent;
+        }
+        return null;
     }
 
     /**
@@ -206,11 +237,12 @@ public class Environment {
      */
     @Nullable
     public Environment getEnvironment(String name) {
-        if (variables.containsKey(name)) {
-            return this;
-        }
-        if (parent != null) {
-            return parent.getEnvironment(name);
+        Environment current = this;
+        while (current != null) {
+            if (current.variables.containsKey(name)) {
+                return current;
+            }
+            current = current.parent;
         }
         return null;
     }
@@ -233,6 +265,38 @@ public class Environment {
      * 获取当前环境中的所有扩展函数
      */
     public Map<Class<?>, Map<String, Function>> getExtensionFunctions() {
-        return new HashMap<>(extensionFunctions);
+        return convertToCompatibleStructure(extensionFunctions);
+    }
+
+    /**
+     * 将 Map<Class, Map<String, Function>> 转换为 Map<String, Map<Class, Function>>
+     * 用于优化查找性能
+     */
+    public static Map<String, Map<Class<?>, Function>> convertToOptimizedStructure(Map<Class<?>, Map<String, Function>> original) {
+        Map<String, Map<Class<?>, Function>> optimized = new HashMap<>();
+        for (Map.Entry<Class<?>, Map<String, Function>> classEntry : original.entrySet()) {
+            Class<?> clazz = classEntry.getKey();
+            for (Map.Entry<String, Function> funcEntry : classEntry.getValue().entrySet()) {
+                optimized.computeIfAbsent(funcEntry.getKey(), k -> new LinkedHashMap<>())
+                        .put(clazz, funcEntry.getValue());
+            }
+        }
+        return optimized;
+    }
+
+    /**
+     * 将 Map<String, Map<Class, Function>> 转换为 Map<Class, Map<String, Function>>
+     * 用于保持向后兼容的API
+     */
+    public static Map<Class<?>, Map<String, Function>> convertToCompatibleStructure(Map<String, Map<Class<?>, Function>> optimized) {
+        Map<Class<?>, Map<String, Function>> compatible = new HashMap<>();
+        for (Map.Entry<String, Map<Class<?>, Function>> entry : optimized.entrySet()) {
+            String functionName = entry.getKey();
+            for (Map.Entry<Class<?>, Function> classEntry : entry.getValue().entrySet()) {
+                compatible.computeIfAbsent(classEntry.getKey(), k -> new HashMap<>())
+                        .put(functionName, classEntry.getValue());
+            }
+        }
+        return compatible;
     }
 }

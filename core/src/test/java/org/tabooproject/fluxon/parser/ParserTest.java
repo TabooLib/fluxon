@@ -178,8 +178,8 @@ public class ParserTest {
         assertTrue(call.getCallee() instanceof Identifier);
         assertEquals("player", ((Identifier) call.getCallee()).getValue());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof Identifier);
-        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
+        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
     }
     
     /**

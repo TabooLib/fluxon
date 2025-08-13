@@ -31,11 +31,11 @@ public abstract class RuntimeScriptBase {
 
     // 获取运行时变量
     public Object getVariableOrFunction(String name) {
-        try {
-            return environment.get(name);
-        } catch (VariableNotFoundException ignored) {
-            return environment.getFunction(name);
+        Object var = environment.getOrNull(name);
+        if (var != null) {
+            return var;
         }
+        return environment.getFunction(name);
     }
 
     // 调用运行时函数

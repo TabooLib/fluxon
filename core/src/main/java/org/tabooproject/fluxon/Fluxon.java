@@ -141,4 +141,28 @@ public class Fluxon {
         List<byte[]> bytecode = generator.generateClassBytecode(className);
         return new CompileResult(source, className, generator, bytecode);
     }
+
+    /**
+     * 将 Fluxon 源代码编译为字节码
+     *
+     * @param source    Fluxon 源代码
+     * @param className 类名
+     * @param env       环境对象
+     * @return 编译结果
+     */
+    public static CompileResult compile(String source, String className, Environment env) {
+        // 创建字节码生成器
+        BytecodeGenerator generator = new DefaultBytecodeGenerator();
+        // 解析源代码
+        for (ParseResult result : parse(source, env)) {
+            if (result instanceof Statement) {
+                generator.addScriptBody((Statement) result);
+            } else if (result instanceof Definition) {
+                generator.addScriptDefinition((Definition) result);
+            }
+        }
+        // 生成字节码
+        List<byte[]> bytecode = generator.generateClassBytecode(className);
+        return new CompileResult(source, className, generator, bytecode);
+    }
 }

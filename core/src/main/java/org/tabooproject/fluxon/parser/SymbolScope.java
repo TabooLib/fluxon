@@ -88,10 +88,14 @@ public class SymbolScope {
      * @return 是否可以应用 break 语句
      */
     public boolean isBreakable() {
-        if (breakable) {
-            return true;
+        SymbolScope current = this;
+        while (current != null) {
+            if (current.breakable) {
+                return true;
+            }
+            current = current.parent;
         }
-        return parent != null && parent.isBreakable();
+        return false;
     }
 
     /**
@@ -100,10 +104,14 @@ public class SymbolScope {
      * @return 是否可以应用 continue 语句
      */
     public boolean isContinuable() {
-        if (continuable) {
-            return true;
+        SymbolScope current = this;
+        while (current != null) {
+            if (current.continuable) {
+                return true;
+            }
+            current = current.parent;
         }
-        return parent != null && parent.isContinuable();
+        return false;
     }
 
     /**
@@ -121,10 +129,14 @@ public class SymbolScope {
      * @return 是否在上下文调用环境
      */
     public boolean isContextCall() {
-        if (isContextCall) {
-            return true;
+        SymbolScope current = this;
+        while (current != null) {
+            if (current.isContextCall) {
+                return true;
+            }
+            current = current.parent;
         }
-        return parent != null && parent.isContextCall();
+        return false;
     }
 
     /**
@@ -205,11 +217,15 @@ public class SymbolScope {
      * @return 函数信息，如果不存在则返回null
      */
     public SymbolFunction getFunction(String name) {
-        SymbolFunction info = functions.get(name);
-        if (info != null) {
-            return info;
+        SymbolScope current = this;
+        while (current != null) {
+            SymbolFunction info = current.functions.get(name);
+            if (info != null) {
+                return info;
+            }
+            current = current.parent;
         }
-        return parent != null ? parent.getFunction(name) : null;
+        return null;
     }
 
     /**
@@ -220,15 +236,15 @@ public class SymbolScope {
      */
     public Set<SymbolFunction> getExtensionFunctions(String name) {
         Set<SymbolFunction> result = new HashSet<>();
-        // 在当前作用域中查找匹配的扩展函数
-        for (SymbolFunction extensionFunction : extensionFunctions) {
-            if (extensionFunction.getName().equals(name)) {
-                result.add(extensionFunction);
+        SymbolScope current = this;
+        while (current != null) {
+            // 在当前作用域中查找匹配的扩展函数
+            for (SymbolFunction extensionFunction : current.extensionFunctions) {
+                if (extensionFunction.getName().equals(name)) {
+                    result.add(extensionFunction);
+                }
             }
-        }
-        // 递归查找父作用域
-        if (parent != null) {
-            result.addAll(parent.getExtensionFunctions(name));
+            current = current.parent;
         }
         return result;
     }
@@ -240,10 +256,14 @@ public class SymbolScope {
      * @return 是否存在
      */
     public boolean hasVariable(String name) {
-        if (variables.contains(name)) {
-            return true;
+        SymbolScope current = this;
+        while (current != null) {
+            if (current.variables.contains(name)) {
+                return true;
+            }
+            current = current.parent;
         }
-        return parent != null && parent.hasVariable(name);
+        return false;
     }
 
     /**
@@ -273,9 +293,11 @@ public class SymbolScope {
      * @return 所有变量
      */
     public Set<String> getAllVariables() {
-        Set<String> allVariables = new HashSet<>(variables);
-        if (parent != null) {
-            allVariables.addAll(parent.getAllVariables());
+        Set<String> allVariables = new HashSet<>();
+        SymbolScope current = this;
+        while (current != null) {
+            allVariables.addAll(current.variables);
+            current = current.parent;
         }
         return allVariables;
     }

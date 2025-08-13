@@ -123,19 +123,15 @@ public final class Intrinsics {
         // 获取调用目标
         Object target = findTarget(environment);
         // 获取函数
-        Function function;
+        Function function = null;
         if (callee instanceof Function) {
             function = ((Function) callee);
         } else {
             // 优先尝试从扩展函数中获取函数
             if (target != null) {
-                try {
-                    function = environment.getExtensionFunction(target.getClass(), callee.toString());
-                } catch (FunctionNotFoundException e) {
-                    function = environment.getFunction(callee.toString());
-                }
+                function = environment.getExtensionFunctionOrNull(target.getClass(), callee.toString());
             }
-            else {
+            if (function == null) {
                 function = environment.getFunction(callee.toString());
             }
         }
