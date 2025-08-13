@@ -8,6 +8,11 @@ import java.util.Arrays;
 public class FunctionMath {
 
     public static void init(FluxonRuntime runtime) {
+        // 数学常数
+        runtime.registerVariable("PI", Math.PI);
+        runtime.registerVariable("E", Math.E);
+
+        // 最大最小值
         runtime.registerFunction("min", 2, (context) -> {
             Object[] args = context.getArguments();
             if (Operations.compare(args[0], args[1]) < 0) {
@@ -22,6 +27,24 @@ public class FunctionMath {
             }
             return args[1];
         });
+        runtime.registerFunction("clamp", 3, (context) -> {
+            Object[] args = context.getArguments();
+            Number num = validateAndGetNumber(args[0]);
+            Number min = validateAndGetNumber(args[1]);
+            Number max = validateAndGetNumber(args[2]);
+            double clamped = Math.max(min.doubleValue(), Math.min(num.doubleValue(), max.doubleValue()));
+            // 尝试保持原始类型
+            if (num instanceof Integer && min instanceof Integer && max instanceof Integer) {
+                return (int) clamped;
+            } else if (num instanceof Long && min instanceof Long && max instanceof Long) {
+                return (long) clamped;
+            } else if (num instanceof Float && min instanceof Float && max instanceof Float) {
+                return (float) clamped;
+            }
+            return clamped;
+        });
+
+        // 绝对值
         runtime.registerFunction("abs", 1, (context) -> {
             Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
@@ -43,6 +66,8 @@ public class FunctionMath {
             }
             return result;
         });
+
+        // 取整函数
         runtime.registerFunction("round", 1, (context) -> {
             Object[] args = context.getArguments();
             Number num = validateAndGetNumber(args[0]);
@@ -60,6 +85,33 @@ public class FunctionMath {
             Number num = validateAndGetNumber(args[0]);
             double result = Math.ceil(num.doubleValue());
             return preserveIntegerTypeFromDouble(result);
+        });
+
+        // 三角函数
+        runtime.registerFunction("sin", 1, (context) -> Math.sin(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("cos", 1, (context) -> Math.cos(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("tan", 1, (context) -> Math.tan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("asin", 1, (context) -> {
+            Object[] args = context.getArguments();
+            double value = validateAndGetNumber(args[0]).doubleValue();
+            validateRange(value, -1.0, 1.0, "asin input must be between -1 and 1");
+            return Math.asin(value);
+        });
+        runtime.registerFunction("acos", 1, (context) -> {
+            Object[] args = context.getArguments();
+            double value = validateAndGetNumber(args[0]).doubleValue();
+            validateRange(value, -1.0, 1.0, "acos input must be between -1 and 1");
+            return Math.acos(value);
+        });
+        runtime.registerFunction("atan", 1, (context) -> Math.atan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+
+        // 指数与对数
+        runtime.registerFunction("exp", 1, (context) -> Math.exp(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("log", 1, (context) -> {
+            Object[] args = context.getArguments();
+            double value = validateAndGetNumber(args[0]).doubleValue();
+            validatePositive(value, "log input must be positive");
+            return Math.log(value);
         });
         runtime.registerFunction("pow", 2, (context) -> {
             Object[] args = context.getArguments();
@@ -79,30 +131,9 @@ public class FunctionMath {
             validatePositive(value, "Cannot take square root of negative number");
             return Math.sqrt(value);
         });
-        runtime.registerFunction("sin", 1, (context) -> Math.sin(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("cos", 1, (context) -> Math.cos(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("tan", 1, (context) -> Math.tan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("asin", 1, (context) -> {
-            Object[] args = context.getArguments();
-            double value = validateAndGetNumber(args[0]).doubleValue();
-            validateRange(value, -1.0, 1.0, "asin input must be between -1 and 1");
-            return Math.asin(value);
-        });
-        runtime.registerFunction("acos", 1, (context) -> {
-            Object[] args = context.getArguments();
-            double value = validateAndGetNumber(args[0]).doubleValue();
-            validateRange(value, -1.0, 1.0, "acos input must be between -1 and 1");
-            return Math.acos(value);
-        });
-        runtime.registerFunction("atan", 1, (context) -> Math.atan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("exp", 1, (context) -> Math.exp(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("log", 1, (context) -> {
-            Object[] args = context.getArguments();
-            double value = validateAndGetNumber(args[0]).doubleValue();
-            validatePositive(value, "log input must be positive");
-            return Math.log(value);
-        });
-        // random() / random(end) / random(start, end) - 随机数生成函数
+
+        // 随机数生成函数
+        // random() / random(end) / random(start, end)
         runtime.registerFunction("random", Arrays.asList(0, 1, 2),(context) -> {
             Object[] args = context.getArguments();
             switch (args.length) {
@@ -115,6 +146,19 @@ public class FunctionMath {
                 default:
                     throw new IllegalArgumentException("random function accepts 0, 1, or 2 arguments, got " + args.length);
             }
+        });
+
+        // 角度与弧度转换
+        runtime.registerFunction("rad", 1, (context) -> Math.toRadians(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("deg", 1, (context) -> Math.toDegrees(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+
+        // 插值
+        runtime.registerFunction("lerp", 3, (context) -> {
+            Object[] args = context.getArguments();
+            Number start = validateAndGetNumber(args[0]);
+            Number end = validateAndGetNumber(args[1]);
+            Number t = validateAndGetNumber(args[2]);
+            return start.doubleValue() + (end.doubleValue() - start.doubleValue()) * t.doubleValue();
         });
     }
 
