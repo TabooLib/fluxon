@@ -64,7 +64,7 @@ public class ExpressionParser {
                 }
                 return new Assignment(name, operator, parseAssignment(parser));
             }
-            throw new ParseException("Invalid assignment target", operator, parser.getResults());
+            throw new ParseException("Invalid assignment target: " + expr, operator, parser.getResults());
         }
         return expr;
     }
@@ -94,12 +94,15 @@ public class ExpressionParser {
         ParseResult expr = parseLogicalOr(parser);
         if (parser.match(TokenType.CONTEXT_CALL)) {
             ParseResult context;
-            // 如果右侧是代码块，解析代码块
+            // 如果右侧是代码块，解析代码块（在上下文调用环境中）
             if (parser.match(TokenType.LEFT_BRACE)) {
-                context = BlockParser.parse(parser, Collections.emptyList(), false, false);
+                context = BlockParser.parse(parser, Collections.emptyList(), false, false, true);
             } else {
-                // 否则解析表达式
+                // 否则解析表达式，但需要在上下文调用环境中
+                // 临时设置当前作用域为上下文调用环境
+                parser.getCurrentScope().setContextCall(true);
                 context = parseContextCall(parser);
+                parser.getCurrentScope().setContextCall(false);
             }
             expr = new ContextCall(expr, context);
         }

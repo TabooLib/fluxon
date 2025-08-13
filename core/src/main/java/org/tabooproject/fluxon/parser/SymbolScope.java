@@ -27,6 +27,8 @@ public class SymbolScope {
     private boolean breakable = false;
     // 是否可以应用 continue 语句
     private boolean continuable = false;
+    // 是否在上下文调用环境
+    private boolean isContextCall = false;
 
     /**
      * 创建顶层作用域（全局作用域）
@@ -102,6 +104,27 @@ public class SymbolScope {
             return true;
         }
         return parent != null && parent.isContinuable();
+    }
+
+    /**
+     * 设置是否在上下文调用环境
+     *
+     * @param isContextCall 是否在上下文调用环境
+     */
+    public void setContextCall(boolean isContextCall) {
+        this.isContextCall = isContextCall;
+    }
+
+    /**
+     * 判断是否在上下文调用环境（递归查找）
+     *
+     * @return 是否在上下文调用环境
+     */
+    public boolean isContextCall() {
+        if (isContextCall) {
+            return true;
+        }
+        return parent != null && parent.isContextCall();
     }
 
     /**

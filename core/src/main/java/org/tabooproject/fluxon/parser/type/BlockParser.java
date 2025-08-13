@@ -18,8 +18,21 @@ public class BlockParser {
      * @return 代码块解析结果
      */
     public static ParseResult parse(Parser parser, List<String> innerVars, boolean breakable, boolean continuable) {
+        return parse(parser, innerVars, breakable, continuable, false);
+    }
+    
+    /**
+     * 解析代码块
+     * 代码块里包含多个语句（Statement）
+     *
+     * @param innerVars 内部变量
+     * @param isContextCall 是否在上下文调用环境
+     * @return 代码块解析结果
+     */
+    public static ParseResult parse(Parser parser, List<String> innerVars, boolean breakable, boolean continuable, boolean isContextCall) {
         // 进入新的作用域并定义内部变量
         parser.enterScope(breakable, continuable);
+        parser.getCurrentScope().setContextCall(isContextCall);
         parser.defineVariables(innerVars);
 
         // 解析 Statement

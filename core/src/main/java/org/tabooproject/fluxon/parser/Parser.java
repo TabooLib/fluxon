@@ -39,6 +39,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private int position = 0;
     private Token currentToken;
 
+    // 当前 CompileContext
+    private CompilationContext context;
+
     // 已经解析出的结果
     private List<ParseResult> results;
 
@@ -59,6 +62,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     @Override
     public List<ParseResult> process(CompilationContext context) {
         // 从上下文中获取词法单元序列
+        this.context = context;
         List<Token> tokens = context.getAttribute("tokens");
         if (tokens == null) {
             throw new IllegalStateException("No tokens found in compilation context");
@@ -378,6 +382,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public SymbolScope getCurrentScope() {
         return scopeStack.peek();
+    }
+
+    /**
+     * 获取当前上下文
+     */
+    public CompilationContext getContext() {
+        return context;
     }
 
     /**

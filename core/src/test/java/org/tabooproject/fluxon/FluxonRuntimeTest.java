@@ -4,8 +4,35 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.Vector;
 
 public class FluxonRuntimeTest {
+
+    public static class TestVector {
+
+        private final double x;
+        private final double y;
+        private final double z;
+
+        public TestVector(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public double getZ() {
+            return z;
+        }
+    }
 
     public static void registerTestFunctions() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
@@ -43,5 +70,16 @@ public class FluxonRuntimeTest {
             }
             throw new RuntimeException("fetch function requires a URL parameter");
         });
+        runtime.registerFunction("vec3", 3, (context) -> {
+            Object[] args = context.getArguments();
+            return new TestVector(
+                    args[0] instanceof Number ? ((Number) args[0]).doubleValue() : 0,
+                    args[1] instanceof Number ? ((Number) args[1]).doubleValue() : 0,
+                    args[2] instanceof Number ? ((Number) args[2]).doubleValue() : 0
+            );
+        });
+        runtime.registerExtensionFunction(TestVector.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getX());
+        runtime.registerExtensionFunction(TestVector.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getY());
+        runtime.registerExtensionFunction(TestVector.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
     }
 }

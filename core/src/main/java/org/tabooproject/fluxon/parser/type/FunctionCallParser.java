@@ -29,13 +29,23 @@ public class FunctionCallParser {
             expr = finishCall(parser, expr);
         }
         // 解析无括号的函数调用
-        else if (expr instanceof Identifier) {
-            String functionName = ((Identifier) expr).getValue();
-
+        else if (expr instanceof Identifier && !parser.getContext().isStrictMode()) {
+            // 如果标识符后面跟着赋值操作符，保持为 Identifier，不进行函数调用解析
+            // 这确保用户可以创建与函数同名的变量
+            if (isAssignmentOperator(parser.peek().getType())) {
+                return expr;
+            }
+            
             // 检查是否为已知函数
             // 只有已知函数才能进行无括号调用
+            String functionName = ((Identifier) expr).getValue();
             SymbolFunction info = parser.getFunctionInfo(functionName);
-            Set<SymbolFunction> exInfo = parser.getExtensionFunctions(functionName);
+            
+            // 只有在上下文调用环境中才查找扩展函数
+            Set<SymbolFunction> exInfo = new HashSet<>();
+            if (parser.getCurrentScope().isContextCall()) {
+                exInfo = parser.getExtensionFunctions(functionName);
+            }
 
             if (info != null || !exInfo.isEmpty()) {
                 // 特殊处理：如果是 0 参数函数且后面是操作符，直接调用
@@ -56,7 +66,11 @@ public class FunctionCallParser {
                             String identifier = parser.peek().getLexeme();
 
                             // 检查标识符是否为已知函数或变量
-                            if (parser.isFunction(identifier) || parser.isExtensionFunction(identifier) || parser.isVariable(identifier)) {
+                            // 在上下文调用环境中也检查扩展函数
+                            if (parser.isFunction(identifier)
+                                    || parser.isVariable(identifier)
+                                    || (parser.getCurrentScope().isContextCall() && parser.isExtensionFunction(identifier))
+                            ) {
                                 arguments.add(ExpressionParser.parse(parser));
                             } else {
                                 // 未知标识符，转为字符串
@@ -185,6 +199,21 @@ public class FunctionCallParser {
             }
         }
         return closestCount;
+    }
+
+    /**
+     * 检查是否为赋值操作符
+     *
+     * @param type Token类型
+     * @return 是否为赋值操作符
+     */
+    private static boolean isAssignmentOperator(TokenType type) {
+        return type == TokenType.ASSIGN ||
+               type == TokenType.PLUS_ASSIGN ||
+               type == TokenType.MINUS_ASSIGN ||
+               type == TokenType.MULTIPLY_ASSIGN ||
+               type == TokenType.DIVIDE_ASSIGN ||
+               type == TokenType.MODULO_ASSIGN;
     }
 
     /**
