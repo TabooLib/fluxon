@@ -65,5 +65,8 @@ public class FunctionSystem {
                 return function.call(new FunctionContext<>(context.getTarget(), parameters, context.getEnvironment()));
             }
         });
+        runtime.registerFunction("throw", 1, (context) -> {
+            throw new RuntimeException(context.getArgument(0).toString());
+        });
     }
 }

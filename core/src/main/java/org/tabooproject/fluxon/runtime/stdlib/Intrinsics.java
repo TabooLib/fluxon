@@ -138,7 +138,14 @@ public final class Intrinsics {
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
         if (function.isAsync()) {
             Function finalFunction = function;
-            return ThreadPoolManager.getInstance().submitAsync(() -> finalFunction.call(context));
+            return ThreadPoolManager.getInstance().submitAsync(() -> {
+                try {
+                    return finalFunction.call(context);
+                } catch (Throwable ex) {
+                    ex.printStackTrace(); // 打印 async 的异常
+                    throw ex;
+                }
+            });
         } else {
             return function.call(context);
         }
