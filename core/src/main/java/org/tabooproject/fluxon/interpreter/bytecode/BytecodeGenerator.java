@@ -37,13 +37,13 @@ public interface BytecodeGenerator {
     /**
      * 生成完整的类字节码
      */
-    List<byte[]> generateClassBytecode(String className);
+    List<byte[]> generateClassBytecode(String className, ClassLoader classLoader);
 
     /**
      * 生成完整的类字节码
      * @param superClassName 父类名称
      */
-    List<byte[]> generateClassBytecode(String className, String superClassName);
+    List<byte[]> generateClassBytecode(String className, String superClassName, ClassLoader classLoader);
 
     /**
      * 获取已生成的语句列表

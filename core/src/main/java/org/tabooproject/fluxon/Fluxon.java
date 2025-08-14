@@ -127,19 +127,7 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(String source, String className) {
-        // 创建字节码生成器
-        BytecodeGenerator generator = new DefaultBytecodeGenerator();
-        // 解析源代码
-        for (ParseResult result : parse(source)) {
-            if (result instanceof Statement) {
-                generator.addScriptBody((Statement) result);
-            } else if (result instanceof Definition) {
-                generator.addScriptDefinition((Definition) result);
-            }
-        }
-        // 生成字节码
-        List<byte[]> bytecode = generator.generateClassBytecode(className);
-        return new CompileResult(source, className, generator, bytecode);
+        return compile(source, className, FluxonRuntime.getInstance().newEnvironment());
     }
 
     /**
@@ -151,6 +139,19 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(String source, String className, Environment env) {
+        return compile(source, className, env, Fluxon.class.getClassLoader());
+    }
+
+    /**
+     * 将 Fluxon 源代码编译为字节码
+     *
+     * @param source      Fluxon 源代码
+     * @param className   类名
+     * @param env         环境对象
+     * @param classLoader 类加载器
+     * @return 编译结果
+     */
+    public static CompileResult compile(String source, String className, Environment env, ClassLoader classLoader) {
         // 创建字节码生成器
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
         // 解析源代码
@@ -162,7 +163,7 @@ public class Fluxon {
             }
         }
         // 生成字节码
-        List<byte[]> bytecode = generator.generateClassBytecode(className);
+        List<byte[]> bytecode = generator.generateClassBytecode(className, classLoader);
         return new CompileResult(source, className, generator, bytecode);
     }
 }

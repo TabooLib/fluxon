@@ -60,18 +60,18 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     @Override
-    public List<byte[]> generateClassBytecode(String className) {
-        return generateClassBytecode(className, RuntimeScriptBase.TYPE.getPath());
+    public List<byte[]> generateClassBytecode(String className, ClassLoader classLoader) {
+        return generateClassBytecode(className, RuntimeScriptBase.TYPE.getPath(), classLoader);
     }
 
     @Override
-    public List<byte[]> generateClassBytecode(String className, String superClassName) {
+    public List<byte[]> generateClassBytecode(String className, String superClassName, ClassLoader classLoader) {
         CodeContext ctx = new CodeContext(className, superClassName);
         ctx.addDefinitions(definitions);
         List<byte[]> byteList = new ArrayList<>();
 
         // 生成主类
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         cw.visit(V1_8, ACC_PUBLIC, className, null, superClassName, null);
         // 生成空的构造函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
@@ -92,7 +92,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 为每个用户函数生成继承 Function 的内部类
         for (Definition definition : definitions) {
             if (definition instanceof Definitions.FunctionDefinition) {
-                byteList.add(generateFunctionClass((Definitions.FunctionDefinition) definition, className));
+                byteList.add(generateFunctionClass((Definitions.FunctionDefinition) definition, className, classLoader));
             }
         }
         return byteList;
@@ -194,9 +194,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成继承 RuntimeScriptBase 并实现 Function 的独立函数类
      */
-    private byte[] generateFunctionClass(Definitions.FunctionDefinition funcDef, String parentClassName) {
+    private byte[] generateFunctionClass(Definitions.FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader) {
         String functionClassName = parentClassName + funcDef.getName();
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
         // 添加 closure 字段来保存构造时的环境
@@ -317,4 +317,73 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     private static final Type LIST = new Type(List.class);
     private static final Type ARRAY_LIST = new Type(ArrayList.class);
+    
+    /**
+     * 自定义 ClassWriter，使用提供的 ClassLoader 来加载类
+     */
+    private static class FluxonClassWriter extends ClassWriter {
+        private final ClassLoader classLoader;
+        
+        public FluxonClassWriter(int flags, ClassLoader classLoader) {
+            super(flags);
+            this.classLoader = classLoader != null ? classLoader : FluxonClassWriter.class.getClassLoader();
+        }
+        
+        @Override
+        protected String getCommonSuperClass(String type1, String type2) {
+            try {
+                // 尝试使用默认实现
+                return super.getCommonSuperClass(type1, type2);
+            } catch (RuntimeException e) {
+                // 如果失败，使用提供的 ClassLoader
+                try {
+                    Class<?> c1 = loadClass(type1);
+                    Class<?> c2 = loadClass(type2);
+                    
+                    if (c1.isAssignableFrom(c2)) {
+                        return type1;
+                    }
+                    if (c2.isAssignableFrom(c1)) {
+                        return type2;
+                    }
+                    if (c1.isInterface() || c2.isInterface()) {
+                        return "java/lang/Object";
+                    }
+
+                    // 查找公共父类
+                    Class<?> current = c1;
+                    do {
+                        current = current.getSuperclass();
+                        if (current == null) {
+                            return "java/lang/Object";
+                        }
+                    } while (!current.isAssignableFrom(c2));
+                    
+                    return current.getName().replace('.', '/');
+                    
+                } catch (Exception ex) {
+                    // 如果还是失败，返回 Object
+                    return "java/lang/Object";
+                }
+            }
+        }
+        
+        private Class<?> loadClass(String type) throws ClassNotFoundException {
+            String className = type.replace('/', '.');
+            try {
+                return Class.forName(className, false, classLoader);
+            } catch (ClassNotFoundException e) {
+                // 尝试线程上下文类加载器
+                ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+                if (contextLoader != null && contextLoader != classLoader) {
+                    try {
+                        return Class.forName(className, false, contextLoader);
+                    } catch (ClassNotFoundException ignored) {
+                    }
+                }
+                // 最后尝试系统类加载器
+                return Class.forName(className);
+            }
+        }
+    }
 }
