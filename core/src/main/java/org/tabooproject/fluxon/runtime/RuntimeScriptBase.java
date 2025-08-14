@@ -1,8 +1,5 @@
 package org.tabooproject.fluxon.runtime;
 
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
-
 /**
  * 运行时脚本的基类
  */
@@ -11,6 +8,9 @@ public abstract class RuntimeScriptBase {
     public static final Type TYPE = new Type(RuntimeScriptBase.class);
 
     protected Environment environment;
+
+    // 克隆当前脚本
+    abstract public RuntimeScriptBase clone();
 
     /**
      * 执行函数

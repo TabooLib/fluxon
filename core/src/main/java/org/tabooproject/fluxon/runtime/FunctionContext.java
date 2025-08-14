@@ -9,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public class FunctionContext<Target> {
 
+    public static final Type TYPE = new Type(FunctionContext.class);
+
     @Nullable
     private final Target target;
     private final Object[] arguments;

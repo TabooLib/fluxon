@@ -1,24 +1,47 @@
 package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.FunctionContext;
 
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Vector;
 
 public class FluxonRuntimeTest {
 
-    public static class TestVector {
+    public static class TestAudience {
+
+        private final TestLocation location;
+
+        public TestAudience(TestLocation location) {
+            this.location = location;
+        }
+
+        public TestLocation getLocation() {
+            return location;
+        }
+    }
+
+    public static class TestLocation {
 
         private final double x;
         private final double y;
         private final double z;
+        private final float yaw;
+        private final float pitch;
 
-        public TestVector(double x, double y, double z) {
+        public TestLocation(double x, double y, double z) {
             this.x = x;
             this.y = y;
             this.z = z;
+            this.yaw = 0;
+            this.pitch = 0;
+        }
+
+        public TestLocation(double x, double y, double z, float yaw, float pitch) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
         }
 
         public double getX() {
@@ -31,6 +54,14 @@ public class FluxonRuntimeTest {
 
         public double getZ() {
             return z;
+        }
+
+        public float getYaw() {
+            return yaw;
+        }
+
+        public float getPitch() {
+            return pitch;
         }
     }
 
@@ -72,14 +103,17 @@ public class FluxonRuntimeTest {
         });
         runtime.registerFunction("vec3", 3, (context) -> {
             Object[] args = context.getArguments();
-            return new TestVector(
+            return new TestLocation(
                     args[0] instanceof Number ? ((Number) args[0]).doubleValue() : 0,
                     args[1] instanceof Number ? ((Number) args[1]).doubleValue() : 0,
                     args[2] instanceof Number ? ((Number) args[2]).doubleValue() : 0
             );
         });
-        runtime.registerExtensionFunction(TestVector.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getX());
-        runtime.registerExtensionFunction(TestVector.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getY());
-        runtime.registerExtensionFunction(TestVector.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
+        runtime.registerExtensionFunction(TestAudience.class, "location", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation());
+        runtime.registerExtensionFunction(TestLocation.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getY());
+        runtime.registerExtensionFunction(TestLocation.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
+        runtime.registerExtensionFunction(TestLocation.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
+        runtime.registerExtensionFunction(TestLocation.class, "yaw", 0, (context) -> Objects.requireNonNull(context.getTarget()).getYaw());
+        runtime.registerExtensionFunction(TestLocation.class, "pitch", 0, (context) -> Objects.requireNonNull(context.getTarget()).getPitch());
     }
 }

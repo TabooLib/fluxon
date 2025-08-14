@@ -9,10 +9,7 @@ import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
-import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.ArrayList;
@@ -86,6 +83,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitEnd();
         // 生成 eval 函数
         generateEvalMethod(cw, ctx);
+        // 生成 clone 函数
+        generateCloneMethod(cw, ctx.getClassName());
         // 主类生成结束
         cw.visitEnd();
         byteList.add(cw.toByteArray());
@@ -131,6 +130,30 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         }
         mv.visitInsn(ARETURN);
         mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
+        mv.visitEnd();
+    }
+
+    /**
+     * 生成 clone() 方法
+     */
+    private void generateCloneMethod(ClassWriter cw, String className) {
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "clone", "()" + RuntimeScriptBase.TYPE, null, null);
+        mv.visitCode();
+        
+        // 创建新实例
+        mv.visitTypeInsn(NEW, className);
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V", false);
+        
+        // 复制 environment 字段
+        mv.visitInsn(DUP);          // 复制新实例引用
+        mv.visitVarInsn(ALOAD, 0);  // 加载 this
+        mv.visitFieldInsn(GETFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        
+        // 返回新实例
+        mv.visitInsn(ARETURN);
+        mv.visitMaxs(3, 1);
         mv.visitEnd();
     }
 
@@ -193,6 +216,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitEnd();
         // 实现 Function 接口的方法
         generateFunctionInterfaceMethods(funcDef, cw, functionClassName);
+        // 实现 clone 函数
+        generateCloneMethod(cw, functionClassName);
         cw.visitEnd();
         return cw.toByteArray();
     }
@@ -232,8 +257,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
-        // 实现 call(Object, Object[]) 方法 - 包含函数的实际执行逻辑
-        mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + OBJECT + "[" + OBJECT + ")" + OBJECT, null, null);
+        // 实现 call(FunctionContext) 方法 - 包含函数的实际执行逻辑
+        mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();
         // 直接将 Operations.bindFunctionParameters 的结果赋值给 this.environment
         mv.visitVarInsn(ALOAD, 0);  // this（为 PUTFIELD 准备）
@@ -249,7 +274,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             mv.visitLdcInsn(funcDef.getParameters().get(i));
             mv.visitInsn(AASTORE);
         }
-        mv.visitVarInsn(ALOAD, 2);  // args (第二个参数是 Object[])
+        // 从 FunctionContext 获取参数数组
+        mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
         // 调用 Operations.bindFunctionParameters
         mv.visitMethodInsn(
                 INVOKESTATIC,
