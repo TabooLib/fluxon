@@ -221,13 +221,18 @@ public class ExpressionParser {
             }
             // 引用
             case AMPERSAND: {
-                parser.consume(); // 消费 &
+                parser.consume();                                      // 消费 &
+                boolean isOptional = parser.match(TokenType.QUESTION); // 如果后面跟一个问号，则不进行合法性检查
                 String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
-                // 检查函数或变量是否存在
-                if (parser.isFunction(name) || parser.isVariable(name)) {
-                    return new ReferenceExpression(new Identifier(name));
+                if (isOptional) {
+                    return new ReferenceExpression(new Identifier(name), true);
                 } else {
-                    throw new VariableNotFoundException(name + ", scope: " + parser.getCurrentScope().getAllVariables());
+                    // 检查函数或变量是否存在
+                    if (parser.isFunction(name) || parser.isVariable(name)) {
+                        return new ReferenceExpression(new Identifier(name), false);
+                    } else {
+                        throw new VariableNotFoundException(name + ", scope: " + parser.getCurrentScope().getAllVariables());
+                    }
                 }
             }
             // 函数调用

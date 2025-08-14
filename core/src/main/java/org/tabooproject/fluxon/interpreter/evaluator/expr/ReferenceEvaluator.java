@@ -25,7 +25,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     public Object evaluate(Interpreter interpreter, ReferenceExpression result) {
         Environment environment = interpreter.getEnvironment();
         Object var = environment.getOrNull(result.getIdentifier().getValue());
-        if (var != null) {
+        if (var != null || result.isOptional()) {
             return var;
         }
         return environment.getFunction(result.getIdentifier().getValue());
@@ -35,7 +35,8 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
         mv.visitVarInsn(Opcodes.ALOAD, 0);                   // this
         mv.visitLdcInsn(result.getIdentifier().getValue());  // 变量名
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariableOrFunction", "(" + Type.STRING + ")" + Type.OBJECT, false);
+        mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);  // isOptional
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariableOrFunction", "(" + Type.STRING + Type.Z + ")" + Type.OBJECT, false);
         return Type.OBJECT;
     }
 }
