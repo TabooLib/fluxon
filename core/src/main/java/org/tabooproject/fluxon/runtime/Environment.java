@@ -27,7 +27,12 @@ public class Environment {
     private final Map<String, Map<Class<?>, Function>> extensionFunctions = new HashMap<>();
 
     // 父环境，用于实现作用域链
+    @Nullable
     private final Environment parent;
+
+    // 根环境
+    @NotNull
+    private final Environment root;
 
     /**
      * 创建顶层环境（全局环境）
@@ -41,6 +46,7 @@ public class Environment {
      */
     public Environment(Map<String, Function> functions, Map<String, Object> values, Map<Class<?>, Map<String, Function>> extensionFunctions) {
         this.parent = null;
+        this.root = this;
         this.functions.putAll(functions);
         this.variables.putAll(values);
         this.extensionFunctions.putAll(convertToOptimizedStructure(extensionFunctions));
@@ -51,17 +57,25 @@ public class Environment {
      *
      * @param parent 父环境
      */
-    public Environment(Environment parent) {
+    public Environment(@Nullable Environment parent, @NotNull Environment root) {
         this.parent = parent;
+        this.root = root;
     }
 
     /**
      * 获取父环境
-     *
-     * @return 父环境
      */
+    @Nullable
     public Environment getParent() {
         return parent;
+    }
+
+    /**
+     * 获取根环境
+     */
+    @NotNull
+    public Environment getRoot() {
+        return root;
     }
 
     /**
@@ -107,7 +121,7 @@ public class Environment {
     }
 
     /**
-     * 获取函数（递归查找所有父环境）
+     * 获取函数（只查找根环境）
      *
      * @param name 函数名
      * @return 函数值
@@ -115,13 +129,9 @@ public class Environment {
      */
     @NotNull
     public Function getFunction(String name) {
-        Environment current = this;
-        while (current != null) {
-            Function function = current.functions.get(name);
-            if (function != null) {
-                return function;
-            }
-            current = current.parent;
+        Function function = root.functions.get(name);
+        if (function != null) {
+            return function;
         }
         throw new FunctionNotFoundException(name);
     }
@@ -144,7 +154,7 @@ public class Environment {
     }
 
     /**
-     * 获取扩展函数（递归查找所有父环境）
+     * 获取扩展函数（只查找根环境）
      *
      * @param extensionClass 扩展类
      * @param name           函数名
@@ -152,18 +162,14 @@ public class Environment {
      */
     @Nullable
     public Function getExtensionFunctionOrNull(Class<?> extensionClass, String name) {
-        Environment current = this;
-        while (current != null) {
-            Map<Class<?>, Function> classFunctionMap = current.extensionFunctions.get(name);
-            if (classFunctionMap != null) {
-                // 查找兼容的类型
-                for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
-                    if (entry.getKey().isAssignableFrom(extensionClass)) {
-                        return entry.getValue();
-                    }
+        Map<Class<?>, Function> classFunctionMap = root.extensionFunctions.get(name);
+        if (classFunctionMap != null) {
+            // 查找兼容的类型
+            for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
+                if (entry.getKey().isAssignableFrom(extensionClass)) {
+                    return entry.getValue();
                 }
             }
-            current = current.parent;
         }
         return null;
     }
@@ -189,13 +195,9 @@ public class Environment {
      */
     @NotNull
     public Object get(String name) {
-        Environment current = this;
-        while (current != null) {
-            Object var = current.variables.get(name);
-            if (var != null) {
-                return var;
-            }
-            current = current.parent;
+        Object value = getOrNull(name);
+        if (value != null) {
+            return value;
         }
         throw new VariableNotFoundException(name);
     }

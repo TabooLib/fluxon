@@ -25,6 +25,9 @@ public class FunctionTime {
         // 获取当前时间戳（秒）
         runtime.registerExtensionFunction(TimeObject.class, "nowSeconds", 0, (context) -> System.currentTimeMillis() / 1000);
 
+        // 获取当前 NanoTime
+        runtime.registerExtensionFunction(TimeObject.class, "nano", 0, (context) -> System.nanoTime());
+
         // 获取当前日期时间字符串 formatDateTime(pattern?)
         runtime.registerExtensionFunction(TimeObject.class, "formatDateTime", Arrays.asList(0, 1), (context) -> {
             Object[] args = context.getArguments();

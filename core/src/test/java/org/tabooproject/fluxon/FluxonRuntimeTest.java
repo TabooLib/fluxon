@@ -101,7 +101,7 @@ public class FluxonRuntimeTest {
             }
             throw new RuntimeException("fetch function requires a URL parameter");
         });
-        runtime.registerFunction("vec3", 3, (context) -> {
+        runtime.registerFunction("location", 3, (context) -> {
             Object[] args = context.getArguments();
             return new TestLocation(
                     args[0] instanceof Number ? ((Number) args[0]).doubleValue() : 0,

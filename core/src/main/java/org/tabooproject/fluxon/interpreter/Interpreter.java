@@ -127,7 +127,7 @@ public class Interpreter {
      * 进入新的环境
      */
     public void enterScope() {
-        environment = new Environment(environment);
+        environment = new Environment(environment, environment.getRoot());
     }
 
     /**

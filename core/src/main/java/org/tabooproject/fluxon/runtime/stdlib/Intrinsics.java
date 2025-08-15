@@ -189,7 +189,7 @@ public final class Intrinsics {
      */
     public static Environment bindFunctionParameters(Environment parentEnv, String[] parameters, Object[] args) {
         // 创建新的环境，父环境为传入的环境
-        Environment functionEnv = new Environment(parentEnv);
+        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot());
         // 绑定参数
         if (parameters != null && args != null) {
             int minParamCount = java.lang.Math.min(parameters.length, args.length);
