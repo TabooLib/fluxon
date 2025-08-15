@@ -37,13 +37,6 @@ public class Environment {
     /**
      * 创建顶层环境（全局环境）
      */
-    public Environment() {
-        this(new HashMap<>(), new HashMap<>(), new HashMap<>());
-    }
-
-    /**
-     * 创建顶层环境（全局环境）
-     */
     public Environment(Map<String, Function> functions, Map<String, Object> values, Map<Class<?>, Map<String, Function>> extensionFunctions) {
         this.parent = null;
         this.root = this;
