@@ -384,6 +384,11 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 L 或 l
                 return new Token(TokenType.LONG, parseLong(start, position - 1), startLine, startColumn);
             }
+            // 检查是否为FLOAT类型（带f或F后缀）
+            if (curr == 'f' || curr == 'F') {
+                advance(); // 消费 f 或 F
+                return new Token(TokenType.FLOAT, parseFloat(start, position - 1), startLine, startColumn);
+            }
             // 优化纯整数情况，直接提取子字符串并返回
             return new Token(TokenType.INTEGER, parseInteger(start, position), startLine, startColumn);
         }

@@ -212,6 +212,22 @@ public class LexerTest {
         }
 
         @Test
+        @DisplayName("测试整数后缀f识别为浮点数")
+        void testIntegerWithFloatSuffix() {
+            String source = "1f 2F 100f 999F";
+            List<Token> tokens = getTokens(source);
+
+            List<String> floats = getValuesByType(tokens, TokenType.FLOAT);
+            assertEquals(4, floats.size(), "应识别 4 个浮点数字面量");
+
+            assertArrayEquals(new String[]{"1.0", "2.0", "100.0", "999.0"}, floats.toArray(new String[0]));
+            
+            // 确保没有被识别为整数
+            List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
+            assertEquals(0, integers.size(), "不应该有整数类型的token");
+        }
+
+        @Test
         @DisplayName("测试科学计数法")
         void testScientificNotation() {
             String source = "1e10 2.5e3 1.2e-5 3e+2";
