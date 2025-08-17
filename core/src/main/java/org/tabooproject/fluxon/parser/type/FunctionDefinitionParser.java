@@ -40,7 +40,7 @@ public class FunctionDefinitionParser {
         parser.enterScope(true, true);
 
         // 解析参数列表
-        Map<String, VariablePosition> parameters = new HashMap<>();
+        LinkedHashMap<String, VariablePosition> parameters = new LinkedHashMap<>();
 
         // 检查是否有左括号
         if (parser.match(TokenType.LEFT_PAREN)) {

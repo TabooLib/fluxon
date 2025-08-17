@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.definition;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.VariablePosition;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,12 +19,12 @@ public class Definitions {
      */
     public static class FunctionDefinition implements Definition {
         private final String name;
-        private final Map<String, VariablePosition> parameters;
+        private final LinkedHashMap<String, VariablePosition> parameters;
         private final ParseResult body;
         private final boolean isAsync;
         private final List<Annotation> annotations;
 
-        public FunctionDefinition(String name, Map<String, VariablePosition> parameters, ParseResult body, boolean isAsync, List<Annotation> annotations) {
+        public FunctionDefinition(String name, LinkedHashMap<String, VariablePosition> parameters, ParseResult body, boolean isAsync, List<Annotation> annotations) {
             this.name = name;
             this.parameters = parameters;
             this.body = body;
@@ -35,7 +36,7 @@ public class Definitions {
             return name;
         }
 
-        public Map<String, VariablePosition> getParameters() {
+        public LinkedHashMap<String, VariablePosition> getParameters() {
             return parameters;
         }
 

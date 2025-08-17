@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class TimeTest {
 
     @Test
-    public void testAwaitNonAsync() {
-        Fluxon.eval("print time");
-        Fluxon.eval("print time::formatDateTime(now)");
+    public void testTime() {
+        Fluxon.eval("print(time)");
+        Fluxon.eval("print(time::formatDateTime(now))");
     }
 }

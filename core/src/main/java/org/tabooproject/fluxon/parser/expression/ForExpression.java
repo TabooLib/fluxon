@@ -3,13 +3,14 @@ package org.tabooproject.fluxon.parser.expression;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.VariablePosition;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * For 表达式
  */
 public class ForExpression implements Expression {
-    private final Map<String, VariablePosition> variables;
+    private final LinkedHashMap<String, VariablePosition> variables;
     private final ParseResult collection;
     private final ParseResult body;
     private final int localVariables;
@@ -21,7 +22,7 @@ public class ForExpression implements Expression {
      * @param collection 集合表达式
      * @param body 循环体
      */
-    public ForExpression(Map<String, VariablePosition> variables, ParseResult collection, ParseResult body, int localVariables) {
+    public ForExpression(LinkedHashMap<String, VariablePosition> variables, ParseResult collection, ParseResult body, int localVariables) {
         this.variables = variables;
         this.collection = collection;
         this.body = body;
@@ -33,7 +34,7 @@ public class ForExpression implements Expression {
      *
      * @return 变量名列表
      */
-    public Map<String, VariablePosition> getVariables() {
+    public LinkedHashMap<String, VariablePosition> getVariables() {
         return variables;
     }
 

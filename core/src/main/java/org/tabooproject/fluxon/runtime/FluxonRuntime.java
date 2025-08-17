@@ -1,11 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.tabooproject.fluxon.parser.SymbolFunction;
-import org.tabooproject.fluxon.runtime.function.FunctionMath;
-import org.tabooproject.fluxon.runtime.function.FunctionSystem;
-import org.tabooproject.fluxon.runtime.function.FunctionTime;
-import org.tabooproject.fluxon.runtime.function.FunctionType;
-import org.tabooproject.fluxon.runtime.function.FunctionEncode;
+import org.tabooproject.fluxon.runtime.function.*;
 import org.tabooproject.fluxon.runtime.function.extension.ExtensionClass;
 import org.tabooproject.fluxon.runtime.function.extension.ExtensionConstructor;
 import org.tabooproject.fluxon.runtime.function.extension.ExtensionField;
@@ -53,6 +49,7 @@ public class FluxonRuntime {
         FunctionTime.init(this);
         FunctionType.init(this);
         FunctionEncode.init(this);
+        FunctionEnvironment.init(this);
         ExtensionClass.init(this);
         ExtensionConstructor.init(this);
         ExtensionField.init(this);

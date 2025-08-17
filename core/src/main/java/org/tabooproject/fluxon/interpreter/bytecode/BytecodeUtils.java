@@ -4,7 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Type;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.DUP;
@@ -18,11 +18,11 @@ public class BytecodeUtils {
     /**
      * 生成创建和填充 Map<String, VariablePosition> 的字节码
      */
-    public static void generateVariablePositionMap(MethodVisitor mv, Map<String, VariablePosition> variables) {
+    public static void generateVariablePositionMap(MethodVisitor mv, LinkedHashMap<String, VariablePosition> variables) {
         // 创建 HashMap 实例
-        mv.visitTypeInsn(NEW, HASH_MAP.getPath());
+        mv.visitTypeInsn(NEW, LINKED_HASH_MAP.getPath());
         mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, HASH_MAP.getPath(), "<init>", "()V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP.getPath(), "<init>", "()V", false);
 
         // 填充 Map
         for (Map.Entry<String, VariablePosition> entry : variables.entrySet()) {
@@ -45,5 +45,5 @@ public class BytecodeUtils {
     }
 
     private static final Type MAP = new Type(Map.class);
-    private static final Type HASH_MAP = new Type(HashMap.class);
+    private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
 }

@@ -25,7 +25,7 @@ public class ForParser {
         parser.enterScope(true, true);
 
         // 解析变量部分
-        Map<String, VariablePosition> variables;
+        LinkedHashMap<String, VariablePosition> variables;
 
         // 检查是否是解构形式 (变量1, 变量2, ...)
         if (parser.match(TokenType.LEFT_PAREN)) {
@@ -34,7 +34,7 @@ public class ForParser {
             // 单变量形式
             String variable = parser.consume(TokenType.IDENTIFIER, "Expected identifier after 'for'").getLexeme();
             parser.defineVariable(variable);
-            variables = new HashMap<>();
+            variables = new LinkedHashMap<>();
             variables.put(variable, parser.getCurrentScope().getLocalVariable(variable));
         }
 
@@ -68,8 +68,8 @@ public class ForParser {
      * @param parser 解析器
      * @return 变量名列表
      */
-    private static Map<String, VariablePosition> parseDestructuringVariables(Parser parser) {
-        Map<String, VariablePosition> variables = new LinkedHashMap<>();
+    private static LinkedHashMap<String, VariablePosition> parseDestructuringVariables(Parser parser) {
+        LinkedHashMap<String, VariablePosition> variables = new LinkedHashMap<>();
         // 解析第一个变量
         String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring declaration").getLexeme();
         parser.defineVariable(first);

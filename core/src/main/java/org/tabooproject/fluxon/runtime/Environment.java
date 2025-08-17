@@ -4,7 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.util.KV;
 
 import java.util.*;
@@ -94,8 +93,22 @@ public class Environment {
         this.extensionFunctions = null;
         this.systemExtensionFunctions = null;
         this.rootVariables = null;
-        this.localVariables = localVariables > 0 ? new Object[localVariables] :  null;
+        this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+    }
+
+    public Environment(@Nullable Map<String, Function> functions, @Nullable Function[] systemFunctions, @Nullable Map<String, Map<Class<?>, Function>> extensionFunctions, @Nullable KV<Class<?>, Function>[][] systemExtensionFunctions, @Nullable Map<String, Object> rootVariables, @Nullable Object[] localVariables, @Nullable String[] localVariableNames, String id, int level, @Nullable Environment parent, @NotNull Environment root) {
+        this.functions = functions;
+        this.systemFunctions = systemFunctions;
+        this.extensionFunctions = extensionFunctions;
+        this.systemExtensionFunctions = systemExtensionFunctions;
+        this.rootVariables = rootVariables;
+        this.localVariables = localVariables;
+        this.localVariableNames = localVariableNames;
+        this.id = id;
+        this.level = level;
+        this.parent = parent;
+        this.root = root;
     }
 
     /**
@@ -250,10 +263,9 @@ public class Environment {
      * 获取变量值
      * 根据 position 参数决定更新局部变量还是根变量
      *
-     * @param name 变量名
+     * @param name  变量名
      * @param level 层级（-1 表示根变量）
      * @param index 索引（-1 索引表示根变量）
-     *
      * @return 变量值
      * @throws VariableNotFoundException 如果变量不存在
      */
@@ -270,10 +282,9 @@ public class Environment {
      * 获取变量值
      * 根据 position 参数决定更新局部变量还是根变量
      *
-     * @param name 变量名
+     * @param name  变量名
      * @param level 层级（-1 表示根变量）
      * @param index 索引（-1 索引表示根变量）
-     *
      * @return 变量值
      */
     @Nullable
@@ -394,8 +405,8 @@ public class Environment {
 
     /**
      * 递归地dump变量，从根环境开始
-     * 
-     * @param sb 字符串构建器
+     *
+     * @param sb           字符串构建器
      * @param currentDepth 当前深度（用于缩进）
      */
     private void dumpVariablesRecursive(StringBuilder sb, int currentDepth) {
@@ -403,7 +414,7 @@ public class Environment {
         if (parent != null) {
             parent.dumpVariablesRecursive(sb, currentDepth);
         }
-        
+
         // 添加当前环境的信息
         StringBuilder indentBuilder = new StringBuilder();
         for (int i = 0; i < currentDepth; i++) {
@@ -411,7 +422,7 @@ public class Environment {
         }
         String indent = indentBuilder.toString();
         sb.append(indent).append("Environment \"").append(id).append("\" Level ").append(level).append(":\n");
-        
+
         // 如果是 0 级（根环境），输出根变量
         if (level == 0 && !Objects.requireNonNull(rootVariables).isEmpty()) {
             for (Map.Entry<String, Object> entry : rootVariables.entrySet()) {
@@ -429,9 +440,9 @@ public class Environment {
             for (int i = 0; i < localVariables.length; i++) {
                 Object value = localVariables[i];
                 // 获取变量名
-                String varName = (localVariableNames != null && i < localVariableNames.length) 
-                    ? localVariableNames[i] 
-                    : "[" + i + "]";
+                String varName = (localVariableNames != null && i < localVariableNames.length)
+                        ? localVariableNames[i]
+                        : "[" + i + "]";
                 sb.append(indent).append("\t").append(i).append(":").append(varName).append(" = ");
                 if (value == null) {
                     sb.append("null");
