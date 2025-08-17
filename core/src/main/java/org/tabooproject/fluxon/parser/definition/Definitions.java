@@ -1,9 +1,10 @@
 package org.tabooproject.fluxon.parser.definition;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.VariablePosition;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 定义类集合
@@ -17,16 +18,12 @@ public class Definitions {
      */
     public static class FunctionDefinition implements Definition {
         private final String name;
-        private final List<String> parameters;
+        private final Map<String, VariablePosition> parameters;
         private final ParseResult body;
         private final boolean isAsync;
         private final List<Annotation> annotations;
 
-        public FunctionDefinition(String name, List<String> parameters, ParseResult body, boolean isAsync) {
-            this(name, parameters, body, isAsync, Collections.emptyList());
-        }
-
-        public FunctionDefinition(String name, List<String> parameters, ParseResult body, boolean isAsync, List<Annotation> annotations) {
+        public FunctionDefinition(String name, Map<String, VariablePosition> parameters, ParseResult body, boolean isAsync, List<Annotation> annotations) {
             this.name = name;
             this.parameters = parameters;
             this.body = body;
@@ -38,7 +35,7 @@ public class Definitions {
             return name;
         }
 
-        public List<String> getParameters() {
+        public Map<String, VariablePosition> getParameters() {
             return parameters;
         }
 
@@ -76,7 +73,7 @@ public class Definitions {
             sb.append("def ").append(name).append("(");
 
             // 参数列表
-            sb.append(String.join(", ", parameters));
+            sb.append(String.join(", ", parameters.keySet()));
             sb.append(") = ");
             
             // 函数体

@@ -2,14 +2,11 @@ package org.tabooproject.fluxon.parser.type;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class FunctionDefinitionParser {
     
@@ -39,39 +36,44 @@ public class FunctionDefinitionParser {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
         String functionName = nameToken.getLexeme();
+        // 进入循环作用域
+        parser.enterScope(true, true);
 
         // 解析参数列表
-        List<String> parameters = new ArrayList<>();
+        Map<String, VariablePosition> parameters = new HashMap<>();
 
         // 检查是否有左括号
         if (parser.match(TokenType.LEFT_PAREN)) {
             // 有括号的参数列表
             if (!parser.check(TokenType.RIGHT_PAREN)) {
                 do {
-                    Token param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name");
-                    parameters.add(param.getLexeme());
+                    String param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name").getLexeme();
+                    parser.defineVariable(param);
+                    parameters.put(param, parser.getCurrentScope().getLocalVariable(param));
                 } while (parser.match(TokenType.COMMA));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
         } else {
             // 无括号的参数列表
             while (parser.match(TokenType.IDENTIFIER)) {
-                parameters.add(parser.previous().getLexeme());
+                String name = parser.previous().getLexeme();
+                parser.defineVariable(name);
+                parameters.put(name, parser.getCurrentScope().getLocalVariable(name));
             }
         }
 
         // 将函数添加到当前作用域
-        SymbolFunction function = parser.getFunctionInfo(functionName);
+        Callable function = parser.getFunction(functionName);
         if (function != null) {
             // 函数已存在，添加新的参数数量
             List<Integer> paramCounts = new ArrayList<>(function.getParameterCounts());
             if (!paramCounts.contains(parameters.size())) {
                 paramCounts.add(parameters.size());
             }
-            parser.defineFunction(functionName, new SymbolFunction(functionName, paramCounts));
+            parser.defineUserFunction(functionName, new SymbolFunction(functionName, paramCounts));
         } else {
             // 函数不存在，创建新条目
-            parser.defineFunction(functionName, new SymbolFunction(functionName, parameters.size()));
+            parser.defineUserFunction(functionName, new SymbolFunction(functionName, parameters.size()));
         }
 
         // 消费可选的等于号
@@ -81,16 +83,14 @@ public class FunctionDefinitionParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, parameters, false, false);
+            body = BlockParser.parse(parser, Collections.emptyList(), false, false);
         } else {
-            // 进入函数作用域并声明内部变量
-            parser.enterScope(false, false);
-            parser.defineVariables(parameters);
             body = ExpressionParser.parse(parser);
-            parser.exitScope();
         }
         // 可选的分号
         parser.match(TokenType.SEMICOLON);
+        // 退出
+        parser.exitScope();
         return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync, annotations);
     }
 }

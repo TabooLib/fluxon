@@ -6,8 +6,10 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
+import org.tabooproject.fluxon.parser.statement.Block;
 
 import java.util.Collections;
 
@@ -58,11 +60,15 @@ public class ExpressionParser {
             // 赋值操作符只能对 Identifier 使用
             if (expr instanceof Identifier) {
                 String name = ((Identifier) expr).getValue();
+                // 获取局部变量的位置
+                VariablePosition position = parser.getCurrentScope().getLocalVariable(name);
                 // 只有 ASSIGN 才会将变量添加到当前作用域
-                if (match == TokenType.ASSIGN) {
+                if (match == TokenType.ASSIGN && !parser.getCurrentScope().hasVariable(name)) {
                     parser.defineVariable(name);
+                    // 更新位置
+                    position = parser.getCurrentScope().getLocalVariable(name);
                 }
-                return new Assignment(name, operator, parseAssignment(parser));
+                return new Assignment(name, operator, parseAssignment(parser), position);
             }
             throw new ParseException("Invalid assignment target: " + expr, operator, parser.getResults());
         }
@@ -94,17 +100,20 @@ public class ExpressionParser {
         ParseResult expr = parseLogicalOr(parser);
         if (parser.match(TokenType.CONTEXT_CALL)) {
             ParseResult context;
+            int localVariables = 0;
             // 如果右侧是代码块，解析代码块（在上下文调用环境中）
             if (parser.match(TokenType.LEFT_BRACE)) {
                 context = BlockParser.parse(parser, Collections.emptyList(), false, false, true);
+                localVariables = ((Block) context).getLocalVariables();
             } else {
                 // 否则解析表达式，但需要在上下文调用环境中
                 // 临时设置当前作用域为上下文调用环境
                 parser.getCurrentScope().setContextCall(true);
                 context = parseContextCall(parser);
+                localVariables = parser.getCurrentScope().getLocalVariables().size();
                 parser.getCurrentScope().setContextCall(false);
             }
-            expr = new ContextCall(expr, context);
+            expr = new ContextCall(expr, context, localVariables);
         }
         return expr;
     }
@@ -225,11 +234,12 @@ public class ExpressionParser {
                 boolean isOptional = parser.match(TokenType.QUESTION); // 如果后面跟一个问号，则不进行合法性检查
                 String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
                 if (isOptional) {
-                    return new ReferenceExpression(new Identifier(name), true);
+                    return new ReferenceExpression(new Identifier(name), true, null);
                 } else {
                     // 检查函数或变量是否存在
                     if (parser.isFunction(name) || parser.isVariable(name)) {
-                        return new ReferenceExpression(new Identifier(name), false);
+                        VariablePosition position = parser.getCurrentScope().getLocalVariable(name);
+                        return new ReferenceExpression(new Identifier(name), false, position);
                     } else {
                         throw new VariableNotFoundException(name + ", scope: " + parser.getCurrentScope().getAllVariables());
                     }

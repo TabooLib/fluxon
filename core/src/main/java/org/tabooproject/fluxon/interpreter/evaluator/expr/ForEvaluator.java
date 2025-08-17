@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -19,8 +20,9 @@ import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -38,9 +40,9 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 使用 Operations 类创建迭代器
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
-        List<String> variables = result.getVariables();
+        Map<String, VariablePosition> variables = result.getVariables();
         // 创建新环境进行迭代
-        interpreter.enterScope();
+        interpreter.enterScope(result.getLocalVariables());
         Object last = null;
         try {
             Environment environment = interpreter.getEnvironment();
@@ -65,7 +67,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     /*
             评估集合表达式并创建迭代器
             |
-            创建变量名数组（在循环外部）
+            创建变量Map（在循环外部）
             |
             注册循环上下文（break -> whileEnd, continue -> whileStart）
             |
@@ -77,7 +79,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             |
             获取 iterator.next() 元素
             |
-            调用 Operations.destructureAndSetVars 设置变量
+            调用 Intrinsics.destructureAndSetVars 设置变量
             |
             执行循环体（break/continue 直接跳转）
             |
@@ -99,9 +101,9 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             throw new EvaluatorNotFoundException("No evaluator found for body expression");
         }
 
-        // 分配局部变量存储迭代器和变量名数组
+        // 分配局部变量存储迭代器和变量Map
         int iteratorVar = ctx.allocateLocalVar(Type.OBJECT);
-        int variablesArrayVar = ctx.allocateLocalVar(Type.OBJECT);
+        int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);
 
         // 创建标签用于跳转
         Label whileStart = new Label();
@@ -114,17 +116,34 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
-        // 创建变量名数组（在循环外部）
-        List<String> variables = result.getVariables();
-        mv.visitLdcInsn(variables.size());
-        mv.visitTypeInsn(ANEWARRAY, Type.STRING.getPath());
-        for (int i = 0; i < variables.size(); i++) {
+        // 创建变量 Map（在循环外部）
+        Map<String, VariablePosition> variables = result.getVariables();
+        
+        // 创建 HashMap 实例
+        mv.visitTypeInsn(NEW, HASH_MAP.getPath());
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, HASH_MAP.getPath(), "<init>", "()V", false);
+        
+        // 填充 Map
+        for (Map.Entry<String, VariablePosition> entry : variables.entrySet()) {
+            mv.visitInsn(DUP);               // 复制 Map 引用
+            mv.visitLdcInsn(entry.getKey()); // 键
+            
+            // 创建 VariablePosition 实例
+            mv.visitTypeInsn(NEW, VariablePosition.TYPE.getPath());
             mv.visitInsn(DUP);
-            mv.visitLdcInsn(i);
-            mv.visitLdcInsn(variables.get(i));
-            mv.visitInsn(AASTORE);
+            VariablePosition position = entry.getValue();
+            mv.visitLdcInsn(position.getLevel()); // level 参数
+            mv.visitLdcInsn(position.getIndex()); // index 参数
+            mv.visitMethodInsn(INVOKESPECIAL, VariablePosition.TYPE.getPath(), "<init>", "(II)V", false);
+            
+            // 调用 put 方法
+            mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);
+            // 丢弃 put 方法的返回值
+            mv.visitInsn(POP);
         }
-        mv.visitVarInsn(ASTORE, variablesArrayVar);
+        
+        mv.visitVarInsn(ASTORE, variablesMapVar);
         // 注册循环上下文：break 跳到 whileEnd，continue 跳到 whileStart
         ctx.enterLoop(whileEnd, whileStart);
         // while 循环开始标签
@@ -137,7 +156,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 执行解构操作：准备参数
         mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitVarInsn(ALOAD, variablesArrayVar); // 变量名数组
+        mv.visitVarInsn(ALOAD, variablesMapVar); // 变量 Map
         
         // 获取下一个元素
         mv.visitVarInsn(ALOAD, iteratorVar);
@@ -147,8 +166,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
-                "destructureAndSetVars",
-                "(" + RuntimeScriptBase.TYPE + STRING_ARRAY + Type.OBJECT + ")V", false);
+                "destructure",
+                "(" + RuntimeScriptBase.TYPE + MAP + Type.OBJECT + ")V", false);
 
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
@@ -165,5 +184,6 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     }
 
     private static final Type ITERATOR = new Type(Iterator.class);
-    private static final Type STRING_ARRAY = new Type(String.class, 1);
+    private static final Type MAP = new Type(Map.class);
+    private static final Type HASH_MAP = new Type(HashMap.class);
 }

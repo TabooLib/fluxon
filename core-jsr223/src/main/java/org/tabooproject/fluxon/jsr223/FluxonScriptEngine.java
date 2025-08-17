@@ -134,7 +134,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         if (engineBindings != null) {
             for (Map.Entry<String, Object> entry : engineBindings.entrySet()) {
                 if (entry.getValue() instanceof Function) {
-                    env.defineFunction(entry.getKey(), (Function) entry.getValue());
+                    env.defineRootFunction(entry.getKey(), (Function) entry.getValue());
                 } else {
                     env.defineRootVariable(entry.getKey(), entry.getValue());
                 }
@@ -145,7 +145,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         if (globalBindings != null) {
             for (Map.Entry<String, Object> entry : globalBindings.entrySet()) {
                 if (entry.getValue() instanceof Function) {
-                    env.defineFunction(entry.getKey(), (Function) entry.getValue());
+                    env.defineRootFunction(entry.getKey(), (Function) entry.getValue());
                 } else {
                     env.defineRootVariable(entry.getKey(), entry.getValue());
                 }
@@ -165,7 +165,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
             engineBindings.putAll(env.getRootVariables());
-            engineBindings.putAll(env.getFunctions());
+            engineBindings.putAll(env.getRootFunctions());
         }
     }
     

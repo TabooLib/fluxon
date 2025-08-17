@@ -1,18 +1,14 @@
 package org.tabooproject.fluxon.parser.type;
 
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.FunctionCall;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
+import org.tabooproject.fluxon.runtime.Function;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class FunctionCallParser {
 
@@ -22,35 +18,36 @@ public class FunctionCallParser {
      * @return 函数调用表达式解析结果
      */
     public static ParseResult parse(Parser parser) {
-        ParseResult expr = ExpressionParser.parsePrimary(parser);
+        ParseResult name = ExpressionParser.parsePrimary(parser);
 
         // 解析有括号的函数调用
-        if (parser.match(TokenType.LEFT_PAREN)) {
-            expr = finishCall(parser, expr);
+        if (name instanceof Identifier && parser.match(TokenType.LEFT_PAREN)) {
+            return finishCall(parser, (Identifier) name);
         }
         // 解析无括号的函数调用
-        else if (expr instanceof Identifier && !parser.getContext().isStrictMode()) {
+        else if (name instanceof Identifier && !parser.getContext().isStrictMode()) {
             // 如果标识符后面跟着赋值操作符，保持为 Identifier，不进行函数调用解析
             // 这确保用户可以创建与函数同名的变量
             if (isAssignmentOperator(parser.peek().getType())) {
-                return expr;
-            }
-            
-            // 检查是否为已知函数
-            // 只有已知函数才能进行无括号调用
-            String functionName = ((Identifier) expr).getValue();
-            SymbolFunction info = parser.getFunctionInfo(functionName);
-            
-            // 只有在上下文调用环境中才查找扩展函数
-            Set<SymbolFunction> exInfo = new HashSet<>();
-            if (parser.getCurrentScope().isContextCall()) {
-                exInfo = parser.getExtensionFunctions(functionName);
+                return name;
             }
 
-            if (info != null || !exInfo.isEmpty()) {
+            // 检查是否为已知函数
+            // 只有已知函数才能进行无括号调用
+            String functionName = ((Identifier) name).getValue();
+            Callable info = parser.getFunction(functionName);
+            FunctionPosition position = info instanceof FunctionPosition ? (FunctionPosition) info : null;
+
+            // 只有在上下文调用环境中才查找扩展函数
+            ExtensionFunctionPosition exInfo = null;
+            if (parser.getCurrentScope().isContextCall()) {
+                exInfo = parser.getExtensionFunction(functionName);
+            }
+
+            if (info != null || exInfo != null) {
                 // 特殊处理：如果是 0 参数函数且后面是操作符，直接调用
                 if (parser.isOperator() && supportsParameterCount(info, exInfo, 0)) {
-                    return new FunctionCall(expr, new ArrayList<>());
+                    return new FunctionCall(((Identifier) name).getValue(), new ArrayList<>(), position, exInfo);
                 }
 
                 // 其他情况：只有不是操作符时才尝试收集参数
@@ -90,23 +87,23 @@ public class FunctionCallParser {
 
                     // 检查解析到的参数数量是否有效
                     if (supportsParameterCount(info, exInfo, arguments.size())) {
-                        expr = new FunctionCall(expr, arguments);
+                        return new FunctionCall(((Identifier) name).getValue(), arguments, position, exInfo);
                     } else {
                         // 参数数量不匹配，找到最接近的参数数量
                         Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
                         int closestCount = findClosestParameterCount(paramCounts, arguments.size());
                         List<ParseResult> block = new ArrayList<>();
                         // 使用足额的参数
-                        block.add(new FunctionCall(expr, arguments.subList(0, closestCount)));
+                        block.add(new FunctionCall(((Identifier) name).getValue(), arguments.subList(0, closestCount), position, exInfo));
                         // 和剩下的参数打包成代码块，避免回滚二次解析
                         block.addAll(arguments.subList(closestCount, arguments.size()));
-                        expr = new Block("ipc", block);
+                        return new Block("ipc", block.toArray(new ParseResult[0]), 0);
                     }
                 }
             }
         }
 
-        return expr;
+        return name;
     }
 
     /**
@@ -116,16 +113,16 @@ public class FunctionCallParser {
      * @param exInfo 扩展函数信息集合
      * @return 最大可能的参数数量
      */
-    private static int getMaxExpectedArgumentCount(SymbolFunction info, Set<SymbolFunction> exInfo) {
+    private static int getMaxExpectedArgumentCount(Callable info, ExtensionFunctionPosition exInfo) {
         int maxCount = 0;
         // 检查普通函数
         if (info != null) {
             maxCount = Math.max(maxCount, info.getMaxParameterCount());
         }
         // 检查扩展函数
-        if (exInfo != null && !exInfo.isEmpty()) {
-            for (SymbolFunction extFunc : exInfo) {
-                maxCount = Math.max(maxCount, extFunc.getMaxParameterCount());
+        if (exInfo != null && !exInfo.getFunctions().isEmpty()) {
+            for (Map.Entry<Class<?>, Function> extFunc : exInfo.getFunctions().entrySet()) {
+                maxCount = Math.max(maxCount, extFunc.getValue().getMaxParameterCount());
             }
         }
         return maxCount;
@@ -139,15 +136,15 @@ public class FunctionCallParser {
      * @param count  参数数量
      * @return 是否支持指定的参数数量
      */
-    private static boolean supportsParameterCount(SymbolFunction info, Set<SymbolFunction> exInfo, int count) {
+    private static boolean supportsParameterCount(Callable info, ExtensionFunctionPosition exInfo, int count) {
         // 检查普通函数
         if (info != null && info.supportsParameterCount(count)) {
             return true;
         }
         // 检查扩展函数
-        if (exInfo != null && !exInfo.isEmpty()) {
-            for (SymbolFunction extFunc : exInfo) {
-                if (extFunc.supportsParameterCount(count)) {
+        if (exInfo != null && !exInfo.getFunctions().isEmpty()) {
+            for (Map.Entry<Class<?>, Function> extFunc : exInfo.getFunctions().entrySet()) {
+                if (extFunc.getValue().getParameterCounts().contains(count)) {
                     return true;
                 }
             }
@@ -162,16 +159,16 @@ public class FunctionCallParser {
      * @param exInfo 扩展函数信息集合
      * @return 所有可能的参数数量列表
      */
-    private static Set<Integer> getAllParameterCounts(SymbolFunction info, Set<SymbolFunction> exInfo) {
-        Set<Integer> allCounts = new HashSet<>();
+    private static Set<Integer> getAllParameterCounts(Callable info, ExtensionFunctionPosition exInfo) {
+        Set<Integer> allCounts = new LinkedHashSet<>();
         // 添加普通函数的参数数量
         if (info != null) {
             allCounts.addAll(info.getParameterCounts());
         }
         // 添加扩展函数的参数数量
-        if (exInfo != null && !exInfo.isEmpty()) {
-            for (SymbolFunction extFunc : exInfo) {
-                allCounts.addAll(extFunc.getParameterCounts());
+        if (exInfo != null && !exInfo.getFunctions().isEmpty()) {
+            for (Map.Entry<Class<?>, Function> extFunc : exInfo.getFunctions().entrySet()) {
+                allCounts.addAll(extFunc.getValue().getParameterCounts());
             }
         }
         return allCounts;
@@ -222,7 +219,7 @@ public class FunctionCallParser {
      * @param callee 被调用者
      * @return 函数调用解析结果
      */
-    private static ParseResult finishCall(Parser parser, ParseResult callee) {
+    private static ParseResult finishCall(Parser parser, Identifier callee) {
         List<ParseResult> arguments = new ArrayList<>();
         // 如果参数列表不为空
         if (!parser.check(TokenType.RIGHT_PAREN)) {
@@ -231,6 +228,10 @@ public class FunctionCallParser {
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return new FunctionCall(callee, arguments);
+        String name = callee.getValue();
+        Callable functionInfo = parser.getFunction(name);
+        FunctionPosition pos = functionInfo instanceof FunctionPosition ? (FunctionPosition) functionInfo : null;
+        ExtensionFunctionPosition exPos = parser.getExtensionFunction(name);
+        return new FunctionCall(name, arguments, pos, exPos);
     }
 }

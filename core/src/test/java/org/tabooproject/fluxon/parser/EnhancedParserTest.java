@@ -42,19 +42,18 @@ public class EnhancedParserTest {
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
         Parser parser = new Parser();
-        
+
         // 获取运行时环境并注册函数信息到解析器
         Environment env = FluxonRuntime.getInstance().newEnvironment();
-        parser.defineFunction(env.getFunctions());
-        parser.defineVariables(env.getRootVariables());
-        parser.defineExtensionFunction(env.getExtensionFunctions());
-        
+        parser.defineUserFunction(env.getRootFunctions());
+        parser.defineRootVariables(env.getRootVariables());
+
         // 定义测试用的变量
         parser.defineVariable("variable");
         parser.defineVariable("x");
         parser.defineVariable("y");
         parser.defineVariable("value");
-        
+
         return parser.process(context);
     }
 
@@ -68,7 +67,7 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertEquals("print", ((Identifier) call.getCallee()).getValue());
+        assertEquals("print", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
@@ -78,11 +77,11 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCall) stmt.getExpression();
-        assertEquals("print", ((Identifier) call.getCallee()).getValue());
+        assertEquals("print", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof FunctionCall);
         FunctionCall nestedCall = (FunctionCall) call.getArguments().get(0);
-        assertEquals("checkGrade", ((Identifier) nestedCall.getCallee()).getValue());
+        assertEquals("checkGrade", nestedCall.getCallee());
         assertEquals(1, nestedCall.getArguments().size());
         assertEquals(95, ((IntLiteral) nestedCall.getArguments().get(0)).getValue());
     }
@@ -97,7 +96,7 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCall call = (FunctionCall) stmt.getExpression();
-        assertEquals("player", ((Identifier) call.getCallee()).getValue());
+        assertEquals("player", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
@@ -109,7 +108,7 @@ public class EnhancedParserTest {
         call = (FunctionCall) stmt.getExpression();
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof FunctionCall);
-        assertEquals("checkGrade", ((Identifier) ((FunctionCall) call.getArguments().get(0)).getCallee()).getValue());
+        assertEquals("checkGrade", ((FunctionCall) call.getArguments().get(0)).getCallee());
 
         // 多个未知标识符
         results = parseSource("player head body legs");
@@ -161,7 +160,7 @@ public class EnhancedParserTest {
         assertTrue(funcDef.isAsync());
         assertEquals("fetchData", funcDef.getName());
         assertEquals(1, funcDef.getParameters().size());
-        assertEquals("url", funcDef.getParameters().get(0));
+        assertNotNull(funcDef.getParameters().get("url"));
         assertTrue(funcDef.getBody() instanceof AwaitExpression);
 
         // 嵌套的await表达式

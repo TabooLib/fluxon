@@ -37,8 +37,6 @@ public class Interpreter {
         this.definitionVisitor = new DefinitionVisitor(this, environment);
         this.expressionVisitor = new ExpressionVisitor(this, environment);
         this.statementVisitor = new StatementVisitor(this, environment);
-        // 使用注册中心初始化环境
-        FluxonRuntime.getInstance().initializeEnvironment(environment);
     }
 
     /**
@@ -130,8 +128,8 @@ public class Interpreter {
     /**
      * 进入新的环境
      */
-    public void enterScope() {
-        environment = new Environment(environment, environment.getRoot());
+    public void enterScope(int localVariables) {
+        environment = new Environment(environment, environment.getRoot(), localVariables);
     }
 
     /**

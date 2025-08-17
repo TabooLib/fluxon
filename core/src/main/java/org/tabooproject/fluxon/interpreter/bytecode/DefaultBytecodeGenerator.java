@@ -12,9 +12,7 @@ import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.Type.*;
@@ -165,7 +163,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 加载 environment
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitInsn(DUP);  // 复制 environment 引用，一个用于 defineFunction，一个用于构造函数
+        mv.visitInsn(DUP);  // 复制 environment 引用，一个用于 defineRootFunction，一个用于构造函数
         // 加载函数名
         mv.visitLdcInsn(funcDef.getName());
         // 创建函数实例: new FunctionClassName(environment)
@@ -181,11 +179,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 "(" + Environment.TYPE + ")V",
                 false
         );
-        // 调用 defineFunction
+        // 调用 defineRootFunction
         mv.visitMethodInsn(
                 INVOKEVIRTUAL,
                 Environment.TYPE.getPath(),
-                "defineFunction",
+                "defineRootFunction",
                 "(" + STRING + Function.TYPE + ")V",
                 false
         );
@@ -249,6 +247,18 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(3, 1);
         mv.visitEnd();
 
+        // 实现 getMaxParameterCount() 方法
+        mv = cw.visitMethod(ACC_PUBLIC, "getMaxParameterCount", "()I", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(ALOAD, 0);  // this
+        mv.visitMethodInsn(INVOKEVIRTUAL, functionClassName, "getParameterCounts", "()" + LIST, false);
+        mv.visitMethodInsn(INVOKESTATIC, COLLECTIONS.getPath(), "max", "(" + COLLECTION + ")" + OBJECT, false);
+        mv.visitTypeInsn(CHECKCAST, INT.getPath());
+        mv.visitMethodInsn(INVOKEVIRTUAL, INT.getPath(), "intValue", "()I", false);
+        mv.visitInsn(IRETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
         // 实现 isAsync() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "isAsync", "()Z", null, null);
         mv.visitCode();
@@ -265,15 +275,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 准备 Operations.bindFunctionParameters 的参数
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, functionClassName, "closure", Environment.TYPE.getDescriptor());
-        // 创建参数名数组
-        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
-        mv.visitTypeInsn(ANEWARRAY, STRING.getPath());
-        for (int i = 0; i < funcDef.getParameters().size(); i++) {
-            mv.visitInsn(DUP);
-            mv.visitIntInsn(BIPUSH, i);
-            mv.visitLdcInsn(funcDef.getParameters().get(i));
-            mv.visitInsn(AASTORE);
-        }
+        // 获取函数参数映射
+        mv.visitVarInsn(ALOAD, 0);  // this
+        mv.visitMethodInsn(INVOKEVIRTUAL, functionClassName, "getParameters", "()" + MAP, false);
         // 从 FunctionContext 获取参数数组
         mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
@@ -282,7 +286,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
                 "bindFunctionParameters",
-                "(" + Environment.TYPE + "[" + STRING + "[" + OBJECT + ")" + Environment.TYPE,
+                "(" + Environment.TYPE + MAP + "[" + OBJECT + ")" + Environment.TYPE,
                 false
         );
         mv.visitFieldInsn(PUTFIELD, functionClassName, "environment", Environment.TYPE.getDescriptor());
@@ -315,9 +319,12 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         return definitions;
     }
 
+    private static final Type MAP = new Type(Map.class);
     private static final Type LIST = new Type(List.class);
     private static final Type ARRAY_LIST = new Type(ArrayList.class);
-    
+    private static final Type COLLECTIONS = new Type(Collections.class);
+    private static final Type COLLECTION = new Type(Collection.class);
+
     /**
      * 自定义 ClassWriter，使用提供的 ClassLoader 来加载类
      */

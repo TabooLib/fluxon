@@ -28,7 +28,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
     @Override
     public Object evaluate(Interpreter interpreter, FunctionCall result) {
         // 评估被调用者
-        Object callee = interpreter.evaluate(result.getCallee());
         // 评估参数列表
         Object[] arguments = new Object[result.getArguments().size()];
         List<ParseResult> expressionArguments = result.getArguments();
@@ -37,21 +36,18 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
             arguments[i] = interpreter.evaluate(argument);
         }
         // 使用 Operations.callFunction 执行函数调用
-        return Intrinsics.callFunction(interpreter.getEnvironment(), callee, arguments);
+        int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
+        int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
+        return Intrinsics.callFunction(interpreter.getEnvironment(), result.getCallee(), arguments, pos1, pos2);
     }
 
     @Override
     public Type generateBytecode(FunctionCall result, CodeContext ctx, MethodVisitor mv) {
-        // 获取被调用者的评估器
-        Evaluator<ParseResult> calleeEval = ctx.getEvaluator(result.getCallee());
-        if (calleeEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for callee expression");
-        }
         // 获取环境
         mv.visitVarInsn(ALOAD, 0); // this (RuntimeScriptBase)
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        // 评估被调用者
-        calleeEval.generateBytecode(result.getCallee(), ctx, mv);
+        // 压入字符串
+        mv.visitLdcInsn(result.getCallee());
 
         // 创建参数数组
         List<ParseResult> arguments = result.getArguments();
@@ -73,12 +69,18 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
             mv.visitInsn(AASTORE); // 存储到数组
         }
 
+        // 压入位置参数
+        int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
+        int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
+        mv.visitIntInsn(BIPUSH, pos1);
+        mv.visitIntInsn(BIPUSH, pos2);
+
         // 调用 Operations.callFunction 方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
                 "callFunction",
-                "(" + Environment.TYPE + Type.OBJECT + OBJECT_ARRAY + ")" + Type.OBJECT,
+                "(" + Environment.TYPE + Type.STRING + OBJECT_ARRAY + Type.I + Type.I + ")" + Type.OBJECT,
                 false
         );
         return Type.OBJECT;

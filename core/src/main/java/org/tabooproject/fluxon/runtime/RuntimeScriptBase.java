@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
+
 /**
  * 运行时脚本的基类
  */
@@ -20,22 +22,26 @@ public abstract class RuntimeScriptBase {
     }
 
     // 设置运行时变量
-    public void assign(String name, Object value) {
-        environment.assign(name, value);
+    public void assign(String name, Object value, int level, int index) {
+        environment.assign(name, value, level, index);
     }
 
     // 获取运行时变量
-    public Object get(String name) {
-        return environment.get(name);
+    public Object get(String name, int level, int index) {
+        return environment.get(name, level, index);
     }
 
     // 获取运行时变量
-    public Object getVariableOrFunction(String name, boolean isOptional) {
-        Object var = environment.getOrNull(name);
+    public Object getVariableOrFunction(String name, boolean isOptional, int level, int index) {
+        Object var = environment.getOrNull(name, level, index);
         if (var != null || isOptional) {
             return var;
         }
-        return environment.getFunction(name);
+        Function fun = environment.getFunctionOrNull(name);
+        if (fun != null) {
+            return fun;
+        }
+        throw new VariableNotFoundException(name);
     }
 
     // 调用运行时函数

@@ -41,7 +41,6 @@ public class FunctionCallTest {
         Object result = Fluxon.eval("def max(x, y) = { if (&x > &y) &x else &y }\n" +
                 "a = 10\n" +
                 "b = 5\n" +
-                "// max 应该接收两个参数：a+b 和 a*b\n" +
                 "result = max &a + &b &a * &b\n" +
                 "&result");
         // max(15, 50) = 50
@@ -53,7 +52,6 @@ public class FunctionCallTest {
         // 测试表达式中的无括号函数调用
         Object result = Fluxon.eval("def double(x) = &x * 2\n" +
                 "a = 5\n" +
-                "// double a 应该返回 10，然后加 3\n" +
                 "result = double &a + 3\n" +
                 "&result");
         // double(5 + 3) = 8 * 2 = 16
@@ -65,9 +63,9 @@ public class FunctionCallTest {
         // 测试链式调用
         Object result = Fluxon.eval("def inc(x) = &x + 1\n" +
                 "def double(x) = &x * 2\n" +
-                "// 应该是 double(inc(5)) = double(6) = 12\n" +
                 "result = double inc 5\n" +
                 "&result");
+        // double(inc(5)) = double(6) = 12
         assertEquals(12, result);
     }
 

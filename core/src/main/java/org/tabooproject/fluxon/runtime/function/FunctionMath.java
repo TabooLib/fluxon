@@ -1,6 +1,9 @@
 package org.tabooproject.fluxon.runtime.function;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.NativeFunction;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import java.util.Arrays;
@@ -88,9 +91,24 @@ public class FunctionMath {
         });
 
         // 三角函数
-        runtime.registerFunction("sin", 1, (context) -> Math.sin(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("cos", 1, (context) -> Math.cos(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
-        runtime.registerFunction("tan", 1, (context) -> Math.tan(validateAndGetNumber(context.getArguments()[0]).doubleValue()));
+        runtime.registerFunction("sin", 1, new NativeFunction.NativeCallable<Object>() {
+            @Override
+            public Object call(@NotNull FunctionContext<Object> context) {
+                return Math.sin(validateAndGetNumber(context.getArguments()[0]).doubleValue());
+            }
+        });
+        runtime.registerFunction("cos", 1, new NativeFunction.NativeCallable<Object>() {
+            @Override
+            public Object call(@NotNull FunctionContext<Object> context) {
+                return Math.cos(validateAndGetNumber(context.getArguments()[0]).doubleValue());
+            }
+        });
+        runtime.registerFunction("tan", 1, new NativeFunction.NativeCallable<Object>() {
+            @Override
+            public Object call(@NotNull FunctionContext<Object> context) {
+                return Math.tan(validateAndGetNumber(context.getArguments()[0]).doubleValue());
+            }
+        });
         runtime.registerFunction("asin", 1, (context) -> {
             Object[] args = context.getArguments();
             double value = validateAndGetNumber(args[0]).doubleValue();

@@ -39,6 +39,11 @@ public class NativeFunction<Target> implements Function, Symbolic {
     }
 
     @Override
+    public int getMaxParameterCount() {
+        return symbolInfo.getMaxParameterCount();
+    }
+
+    @Override
     public boolean isAsync() {
         return isAsync;
     }

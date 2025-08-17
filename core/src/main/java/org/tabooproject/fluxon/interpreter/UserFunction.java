@@ -49,6 +49,11 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @Override
+    public int getMaxParameterCount() {
+        return Collections.max(getParameterCounts());
+    }
+
+    @Override
     public boolean isAsync() {
         return definition.isAsync();
     }
@@ -56,8 +61,7 @@ public class UserFunction implements Function, Symbolic {
     @Override
     public Object call(@NotNull final FunctionContext<?> context) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
-        String[] parameters = definition.getParameters().toArray(new String[0]);
-        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, context.getArguments());
+        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, definition.getParameters(), context.getArguments());
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);

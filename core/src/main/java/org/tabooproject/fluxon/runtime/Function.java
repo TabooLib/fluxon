@@ -31,6 +31,11 @@ public interface Function {
     List<Integer> getParameterCounts();
 
     /**
+     * 获取函数参数最大数量
+     */
+    int getMaxParameterCount();
+
+    /**
      * 判断是否为异步函数
      * 
      * @return 如果是异步函数返回 true，否则返回 false

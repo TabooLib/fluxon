@@ -33,7 +33,7 @@ public class FluxonRuntime {
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
     // 扩展函数
-    private final Map<Class<?>, Map<String, Function>> extensionFunctions = new HashMap<>();
+    private final Map<String, Map<Class<?>, Function>> extensionFunctions = new HashMap<>();
 
     /**
      * 获取单例实例
@@ -121,35 +121,35 @@ public class FluxonRuntime {
      * 注册扩展函数
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(extensionClass, k -> new HashMap<>()).put(name, new NativeFunction<>(new SymbolFunction(name, paramCount), implementation));
+        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(name, paramCount), implementation));
     }
 
     /**
      * 注册扩展函数
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(extensionClass, k -> new HashMap<>()).put(name, new NativeFunction<>(new SymbolFunction(name, paramCounts), implementation));
+        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(name, paramCounts), implementation));
     }
 
     /**
      * 获取所有函数信息
      */
     public Map<String, Function> getSystemFunctions() {
-        return new HashMap<>(systemFunctions);
+        return systemFunctions;
     }
 
     /**
      * 获取所有变量信息
      */
     public Map<String, Object> getSystemVariables() {
-        return new HashMap<>(systemVariables);
+        return systemVariables;
     }
 
     /**
      * 获取所有扩展函数信息
      */
-    public Map<Class<?>, Map<String, Function>> getExtensionFunctions() {
-        return new HashMap<>(extensionFunctions);
+    public Map<String, Map<Class<?>, Function>> getExtensionFunctions() {
+        return extensionFunctions;
     }
 
     /**
@@ -158,21 +158,4 @@ public class FluxonRuntime {
     public Environment newEnvironment() {
         return new Environment(systemFunctions, systemVariables, extensionFunctions);
     }
-
-    /**
-     * 初始化解释器环境
-     *
-     * @param environment 要初始化的环境
-     */
-    public void initializeEnvironment(Environment environment) {
-        for (Map.Entry<String, Function> entry : systemFunctions.entrySet()) {
-            environment.defineFunction(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<String, Object> entry : systemVariables.entrySet()) {
-            environment.defineRootVariable(entry.getKey(), entry.getValue());
-        }
-        for (Map.Entry<Class<?>, Map<String, Function>> entry : extensionFunctions.entrySet()) {
-            environment.defineExtensionFunction(entry.getKey(), entry.getValue());
-        }
-    }
-} 
+}

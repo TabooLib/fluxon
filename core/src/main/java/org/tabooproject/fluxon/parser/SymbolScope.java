@@ -1,12 +1,11 @@
 package org.tabooproject.fluxon.parser;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.Symbolic;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 作用域类
@@ -14,17 +13,23 @@ import java.util.Set;
  */
 public class SymbolScope {
 
+    // 用户定义的函数符号表
+    private final Map<String, SymbolFunction> userFunctions = new HashMap<>();
+
+    // 全局变量符号表
+    private final Set<String> rootVariables = new LinkedHashSet<>();
+    // 局部变量符号表
+    private final Set<String> localVariables = new LinkedHashSet<>();
+
     // 层级
     private final int level;
 
-    // 函数符号表
-    private final Map<String, SymbolFunction> functions = new HashMap<>();
-    // 变量符号表
-    private final Set<String> variables = new HashSet<>();
-    // 扩展函数符号表
-    private final Set<SymbolFunction> extensionFunctions = new HashSet<>();
     // 父作用域
+    @Nullable
     private final SymbolScope parent;
+    // 根作用域
+    @NotNull
+    private final SymbolScope root;
 
     // 是否可以应用 break 语句
     private boolean breakable = false;
@@ -39,6 +44,7 @@ public class SymbolScope {
     public SymbolScope() {
         this.level = 0;
         this.parent = null;
+        this.root = this;
     }
 
     /**
@@ -46,9 +52,10 @@ public class SymbolScope {
      *
      * @param parent 父作用域
      */
-    public SymbolScope(SymbolScope parent) {
+    public SymbolScope(@NotNull SymbolScope parent, @NotNull SymbolScope root) {
         this.level = parent.level + 1;
         this.parent = parent;
+        this.root = root;
     }
 
     /**
@@ -63,8 +70,19 @@ public class SymbolScope {
      *
      * @return 父作用域
      */
+    @Nullable
     public SymbolScope getParent() {
         return parent;
+    }
+
+    /**
+     * 获取根作用域
+     *
+     * @return 根作用域
+     */
+    @NotNull
+    public SymbolScope getRoot() {
+        return root;
     }
 
     /**
@@ -152,13 +170,13 @@ public class SymbolScope {
     }
 
     /**
-     * 在当前作用域中定义函数
+     * 在根作用域中定义用户函数
      *
      * @param name 函数名
      * @param info 函数信息
      */
-    public void defineFunction(String name, SymbolFunction info) {
-        functions.put(name, info);
+    public void defineUserFunction(String name, SymbolFunction info) {
+        root.userFunctions.put(name, info);
     }
 
     /**
@@ -167,16 +185,12 @@ public class SymbolScope {
      * @param name 变量名
      */
     public void defineVariable(String name) {
-        variables.add(name);
-    }
-
-    /**
-     * 在当前作用域中定义扩展函数
-     *
-     * @param info 函数信息
-     */
-    public void defineExtensionFunction(SymbolFunction info) {
-        extensionFunctions.add(info);
+        // 根层级
+        if (level == 0) {
+            root.rootVariables.add(name);
+        } else {
+            localVariables.add(name);
+        }
     }
 
     /**
@@ -184,81 +198,34 @@ public class SymbolScope {
      *
      * @param variables 变量
      */
-    public void defineVariables(Map<String, Object> variables) {
-        this.variables.addAll(variables.keySet());
+    public void defineRootVariables(Map<String, Object> variables) {
+        root.rootVariables.addAll(variables.keySet());
     }
 
     /**
-     * 在当前作用域中定义函数（批量）
+     * 在根作用域中定义函数（批量）
      *
      * @param functions 函数映射
      */
-    public void defineFunctions(Map<String, Function> functions) {
+    public void defineUserFunctions(Map<String, Function> functions) {
         for (Map.Entry<String, Function> entry : functions.entrySet()) {
             Function function = entry.getValue();
             if (function instanceof Symbolic) {
-                this.functions.put(entry.getKey(), ((Symbolic) function).getInfo());
+                root.userFunctions.put(entry.getKey(), ((Symbolic) function).getInfo());
             } else {
-                this.functions.put(entry.getKey(), SymbolFunction.of(function));
+                root.userFunctions.put(entry.getKey(), SymbolFunction.of(function));
             }
         }
     }
 
     /**
-     * 在当前作用域中定义扩展函数（批量）
-     *
-     * @param extensionFunctions 扩展函数映射
-     */
-    public void defineExtensionFunctions(Map<Class<?>, Map<String, Function>> extensionFunctions) {
-        for (Map.Entry<Class<?>, Map<String, Function>> classEntry : extensionFunctions.entrySet()) {
-            for (Map.Entry<String, Function> functionEntry : classEntry.getValue().entrySet()) {
-                Function function = functionEntry.getValue();
-                if (function instanceof Symbolic) {
-                    this.extensionFunctions.add(((Symbolic) function).getInfo());
-                } else {
-                    this.extensionFunctions.add(SymbolFunction.of(function));
-                }
-            }
-        }
-    }
-
-    /**
-     * 获取函数信息（递归查找所有父作用域）
+     * 获取函数信息
      *
      * @param name 函数名
-     * @return 函数信息，如果不存在则返回null
+     * @return 函数信息，如果不存在则返回 null
      */
-    public SymbolFunction getFunction(String name) {
-        SymbolScope current = this;
-        while (current != null) {
-            SymbolFunction info = current.functions.get(name);
-            if (info != null) {
-                return info;
-            }
-            current = current.parent;
-        }
-        return null;
-    }
-
-    /**
-     * 获取扩展函数信息（递归查找所有父作用域）
-     *
-     * @param name 函数名
-     * @return 扩展函数信息集合
-     */
-    public Set<SymbolFunction> getExtensionFunctions(String name) {
-        Set<SymbolFunction> result = new HashSet<>();
-        SymbolScope current = this;
-        while (current != null) {
-            // 在当前作用域中查找匹配的扩展函数
-            for (SymbolFunction extensionFunction : current.extensionFunctions) {
-                if (extensionFunction.getName().equals(name)) {
-                    result.add(extensionFunction);
-                }
-            }
-            current = current.parent;
-        }
-        return result;
+    public SymbolFunction getUserFunction(String name) {
+        return root.userFunctions.get(name);
     }
 
     /**
@@ -268,9 +235,10 @@ public class SymbolScope {
      * @return 是否存在
      */
     public boolean hasVariable(String name) {
+        if (root.rootVariables.contains(name)) return true;
         SymbolScope current = this;
         while (current != null) {
-            if (current.variables.contains(name)) {
+            if (current.localVariables.contains(name)) {
                 return true;
             }
             current = current.parent;
@@ -279,24 +247,50 @@ public class SymbolScope {
     }
 
     /**
+     * 获取局部变量的位置
+     *
+     * @param name 变量名
+     * @return 返回变量所在的层级，以及索引
+     */
+    @Nullable
+    public VariablePosition getLocalVariable(String name) {
+        SymbolScope current = this;
+        while (current != null) {
+            if (current.localVariables.contains(name)) {
+                // 计算在当前层级中的索引位置
+                int index = 0;
+                for (String var : current.localVariables) {
+                    if (var.equals(name)) {
+                        break;
+                    }
+                    index++;
+                }
+                return new VariablePosition(current.level, index);
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
+    /**
      * 获取所有函数（仅当前作用域）
      */
-    public Map<String, SymbolFunction> getFunctions() {
-        return functions;
+    public Map<String, SymbolFunction> getUserFunctions() {
+        return userFunctions;
     }
 
     /**
      * 获取所有变量（仅当前作用域）
      */
-    public Set<String> getVariables() {
-        return variables;
+    public Set<String> getRootVariables() {
+        return rootVariables;
     }
 
     /**
-     * 获取所有扩展函数（仅当前作用域）
+     * 获取所有局部变量（仅当前作用域）
      */
-    public Set<SymbolFunction> getExtensionFunctions() {
-        return extensionFunctions;
+    public Set<String> getLocalVariables() {
+        return localVariables;
     }
 
     /**
@@ -305,10 +299,10 @@ public class SymbolScope {
      * @return 所有变量
      */
     public Set<String> getAllVariables() {
-        Set<String> allVariables = new HashSet<>();
+        Set<String> allVariables = new HashSet<>(root.rootVariables);
         SymbolScope current = this;
         while (current != null) {
-            allVariables.addAll(current.variables);
+            allVariables.addAll(current.localVariables);
             current = current.parent;
         }
         return allVariables;
@@ -317,9 +311,9 @@ public class SymbolScope {
     @Override
     public String toString() {
         return "SymbolScope{" +
-                "variables=" + variables +
-                ", functions=" + functions +
-                ", extensionFunctions=" + extensionFunctions +
+                "rootVariables=" + rootVariables +
+                ", localVariables=" + localVariables +
+                ", userFunctions=" + userFunctions +
                 '}';
     }
 }

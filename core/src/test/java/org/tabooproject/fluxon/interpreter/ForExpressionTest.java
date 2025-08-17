@@ -52,11 +52,12 @@ public class ForExpressionTest {
             "map = [a: 1, b: 2, c: 3];" +
             "result = \"\"; " +
             "for (key, value) in &map { " +
-            "  result = &result + &key + &value; " +
+            "  result += &key + &value; " +
             "}; " +
             "&result";
             
         String mapResult = (String) Fluxon.eval(mapScript);
+        System.out.println(mapResult);
         assertTrue(mapResult.contains("a1"));
         assertTrue(mapResult.contains("b2"));
         assertTrue(mapResult.contains("c3"));

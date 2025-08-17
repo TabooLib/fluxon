@@ -63,18 +63,28 @@ public class FunctionDumper {
     }
 
     private void collectExtensionFunctions() {
-        Map<Class<?>, Map<String, Function>> extensionFunctions = runtime.getExtensionFunctions();
+        Map<String, Map<Class<?>, Function>> extensionFunctions = runtime.getExtensionFunctions();
         
         output.append("## 扩展函数\n");
         
-        TreeMap<String, Map.Entry<Class<?>, Map<String, Function>>> sortedByClassName = new TreeMap<>();
-        for (Map.Entry<Class<?>, Map<String, Function>> entry : extensionFunctions.entrySet()) {
-            sortedByClassName.put(entry.getKey().getSimpleName(), entry);
+        // 按类名分组扩展函数
+        TreeMap<String, Map<String, Function>> sortedByClassName = new TreeMap<>();
+        for (Map.Entry<String, Map<Class<?>, Function>> nameEntry : extensionFunctions.entrySet()) {
+            String functionName = nameEntry.getKey();
+            Map<Class<?>, Function> classFunctionMap = nameEntry.getValue();
+            
+            for (Map.Entry<Class<?>, Function> classEntry : classFunctionMap.entrySet()) {
+                String className = classEntry.getKey().getSimpleName();
+                Function function = classEntry.getValue();
+                
+                sortedByClassName.computeIfAbsent(className, k -> new TreeMap<>())
+                    .put(functionName, function);
+            }
         }
         
-        for (Map.Entry<String, Map.Entry<Class<?>, Map<String, Function>>> classEntry : sortedByClassName.entrySet()) {
+        for (Map.Entry<String, Map<String, Function>> classEntry : sortedByClassName.entrySet()) {
             String className = classEntry.getKey();
-            Map<String, Function> methods = classEntry.getValue().getValue();
+            Map<String, Function> methods = classEntry.getValue();
             
             List<String> methodList = new ArrayList<>();
             for (Map.Entry<String, Function> methodEntry : methods.entrySet()) {

@@ -18,6 +18,13 @@ public class FluxonRuntimeTest {
         public TestLocation getLocation() {
             return location;
         }
+
+        @Override
+        public String toString() {
+            return "TestAudience{" +
+                    "location=" + location +
+                    '}';
+        }
     }
 
     public static class TestLocation {
@@ -62,6 +69,17 @@ public class FluxonRuntimeTest {
 
         public float getPitch() {
             return pitch;
+        }
+
+        @Override
+        public String toString() {
+            return "TestLocation{" +
+                    "x=" + x +
+                    ", y=" + y +
+                    ", z=" + z +
+                    ", yaw=" + yaw +
+                    ", pitch=" + pitch +
+                    '}';
         }
     }
 
@@ -110,6 +128,9 @@ public class FluxonRuntimeTest {
             );
         });
         runtime.registerExtensionFunction(TestAudience.class, "location", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation());
+        runtime.registerExtensionFunction(TestAudience.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getY());
+        runtime.registerExtensionFunction(TestAudience.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getZ());
+        runtime.registerExtensionFunction(TestAudience.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getZ());
         runtime.registerExtensionFunction(TestLocation.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getY());
         runtime.registerExtensionFunction(TestLocation.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
         runtime.registerExtensionFunction(TestLocation.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());

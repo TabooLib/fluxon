@@ -9,7 +9,7 @@ import java.util.List;
  * 函数声明
  * 用于在编译阶段检测合法函数
  */
-public class SymbolFunction {
+public class SymbolFunction implements Callable {
     private final String name;
     private final List<Integer> parameterCounts;
     private final int maxParameterCount;
@@ -35,6 +35,7 @@ public class SymbolFunction {
      *
      * @return 参数数量列表
      */
+    @Override
     public List<Integer> getParameterCounts() {
         return parameterCounts;
     }
@@ -44,6 +45,7 @@ public class SymbolFunction {
      *
      * @return 最大参数数量
      */
+    @Override
     public int getMaxParameterCount() {
         return maxParameterCount;
     }
@@ -54,6 +56,7 @@ public class SymbolFunction {
      * @param count 参数数量
      * @return 是否支持
      */
+    @Override
     public boolean supportsParameterCount(int count) {
         return parameterCounts.contains(count);
     }

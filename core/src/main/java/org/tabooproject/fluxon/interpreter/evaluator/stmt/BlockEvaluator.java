@@ -24,7 +24,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
 
     @Override
     public Object evaluate(Interpreter interpreter, Block result) {
-        interpreter.enterScope();
+        interpreter.enterScope(result.getLocalVariables());
         try {
             Object last = null;
             for (ParseResult statement : result.getStatements()) {
@@ -39,9 +39,9 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
     @Override
     public Type generateBytecode(Block result, CodeContext ctx, MethodVisitor mv) {
         Type last = Type.VOID;
-        List<ParseResult> statements = result.getStatements();
-        for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
-            ParseResult statement = statements.get(i);
+        ParseResult[] statements = result.getStatements();
+        for (int i = 0, statementsSize = statements.length; i < statementsSize; i++) {
+            ParseResult statement = statements[i];
             Evaluator<ParseResult> eval = ctx.getEvaluator(statement);
             if (eval == null) {
                 throw new EvaluatorNotFoundException("No evaluator found for expression");

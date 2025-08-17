@@ -1,17 +1,18 @@
 package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.VariablePosition;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 
 /**
  * For 表达式
  */
 public class ForExpression implements Expression {
-    private final List<String> variables;
+    private final Map<String, VariablePosition> variables;
     private final ParseResult collection;
     private final ParseResult body;
+    private final int localVariables;
 
     /**
      * 创建一个 For 表达式，支持多变量解构
@@ -20,24 +21,11 @@ public class ForExpression implements Expression {
      * @param collection 集合表达式
      * @param body 循环体
      */
-    public ForExpression(List<String> variables, ParseResult collection, ParseResult body) {
+    public ForExpression(Map<String, VariablePosition> variables, ParseResult collection, ParseResult body, int localVariables) {
         this.variables = variables;
         this.collection = collection;
         this.body = body;
-    }
-
-    /**
-     * 创建一个 For 表达式，单变量形式
-     * 为了兼容性保留
-     *
-     * @param variable 循环变量名
-     * @param collection 集合表达式
-     * @param body 循环体
-     */
-    public ForExpression(String variable, ParseResult collection, ParseResult body) {
-        this.variables = Collections.singletonList(variable);
-        this.collection = collection;
-        this.body = body;
+        this.localVariables = localVariables;
     }
 
     /**
@@ -45,18 +33,8 @@ public class ForExpression implements Expression {
      *
      * @return 变量名列表
      */
-    public List<String> getVariables() {
+    public Map<String, VariablePosition> getVariables() {
         return variables;
-    }
-
-    /**
-     * 获取变量名（单个变量情况）
-     * 为了兼容性保留
-     *
-     * @return 第一个变量名
-     */
-    public String getVariable() {
-        return variables.get(0);
     }
 
     public ParseResult getCollection() {
@@ -65,6 +43,10 @@ public class ForExpression implements Expression {
 
     public ParseResult getBody() {
         return body;
+    }
+
+    public int getLocalVariables() {
+        return localVariables;
     }
 
     @Override
@@ -81,23 +63,12 @@ public class ForExpression implements Expression {
     public String toPseudoCode() {
         StringBuilder sb = new StringBuilder();
         sb.append("for ");
-        
-        // 处理变量部分
-        if (variables.size() == 1) {
-            // 单个变量
-            sb.append(variables.get(0));
-        } else {
-            // 多个变量（解构）
-            sb.append("(");
-            for (int i = 0; i < variables.size(); i++) {
-                sb.append(variables.get(i));
-                if (i < variables.size() - 1) {
-                    sb.append(", ");
-                }
-            }
-            sb.append(")");
-        }
-        
+
+        // 变量名
+        sb.append("(");
+        sb.append(String.join(", ", variables.keySet()));
+        sb.append(")");
+
         sb.append(" in ").append(collection.toPseudoCode()).append(" ");
 
         // 处理循环体

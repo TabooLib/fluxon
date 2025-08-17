@@ -16,8 +16,8 @@ public class ContextEnvironment extends Environment {
      * @param parent 父环境
      * @param target 目标对象
      */
-    public ContextEnvironment(Environment parent, Object target) {
-        super(parent, parent.getRoot());
+    public ContextEnvironment(Environment parent, Object target, int localVariables) {
+        super(parent, parent.getRoot(), localVariables);
         this.target = target;
         // 将目标对象绑定为 'this'
         defineRootVariable("this", target);

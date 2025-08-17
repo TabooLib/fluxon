@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.parser.expression;
 
+import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 
 /**
@@ -9,9 +11,13 @@ public class ReferenceExpression implements Expression {
     private final Identifier identifier;
     private final boolean isOptional;
 
-    public ReferenceExpression(Identifier identifier, boolean isOptional) {
+    @Nullable
+    private final VariablePosition position;
+
+    public ReferenceExpression(Identifier identifier, boolean isOptional, @Nullable VariablePosition position) {
         this.identifier = identifier;
         this.isOptional = isOptional;
+        this.position = position;
     }
 
     public Identifier getIdentifier() {
@@ -22,6 +28,11 @@ public class ReferenceExpression implements Expression {
         return isOptional;
     }
 
+    @Nullable
+    public VariablePosition getPosition() {
+        return position;
+    }
+
     @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.REFERENCE;
@@ -29,7 +40,7 @@ public class ReferenceExpression implements Expression {
 
     @Override
     public String toString() {
-        return "Reference(" + identifier + ", isOptional: " + isOptional + ")";
+        return "Reference(" + identifier + ", isOptional: " + isOptional + ", position: " + position + ")";
     }
 
     @Override

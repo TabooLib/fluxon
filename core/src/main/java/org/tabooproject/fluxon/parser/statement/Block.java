@@ -11,19 +11,25 @@ import java.util.List;
 public class Block implements Statement {
 
     private final String label;
-    private final List<ParseResult> statements;
+    private final ParseResult[] statements;
+    private final int localVariables;
 
-    public Block(String label, List<ParseResult> statements) {
+    public Block(String label, ParseResult[] statements, int localVariables) {
         this.label = label;
         this.statements = statements;
+        this.localVariables = localVariables;
     }
 
     public String getLabel() {
         return label;
     }
 
-    public List<ParseResult> getStatements() {
+    public ParseResult[] getStatements() {
         return statements;
+    }
+
+    public int getLocalVariables() {
+        return localVariables;
     }
 
     @Override

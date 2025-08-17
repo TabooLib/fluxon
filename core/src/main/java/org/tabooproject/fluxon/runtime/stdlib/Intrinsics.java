@@ -1,16 +1,15 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -50,8 +49,8 @@ public final class Intrinsics {
      * @param variables  变量名列表（序列化为字符串数组）
      * @param element    要解构的元素
      */
-    public static void destructureAndSetVars(RuntimeScriptBase scriptBase, String[] variables, Object element) {
-        DestructuringRegistry.getInstance().destructure(scriptBase.getEnvironment(), Arrays.asList(variables), element);
+    public static void destructure(RuntimeScriptBase scriptBase, Map<String, VariablePosition> variables, Object element) {
+        DestructuringRegistry.getInstance().destructure(scriptBase.getEnvironment(), variables, element);
     }
 
     /**
@@ -94,7 +93,7 @@ public final class Intrinsics {
 
     /**
      * 查找目标对象
-     * 
+     *
      * @param environment 环境
      * @return 目标对象
      */
@@ -115,24 +114,26 @@ public final class Intrinsics {
      * 执行函数调用
      *
      * @param environment 脚本运行环境
-     * @param callee      被调用的对象
+     * @param name        函数名称
      * @param arguments   参数数组
+     * @param pos         函数位置
+     * @param exPos       扩展函数位置
      * @return 函数调用结果
      */
-    public static Object callFunction(Environment environment, Object callee, Object[] arguments) {
+    public static Object callFunction(Environment environment, String name, Object[] arguments, int pos, int exPos) {
         // 获取调用目标
         Object target = findTarget(environment);
         // 获取函数
         Function function = null;
-        if (callee instanceof Function) {
-            function = ((Function) callee);
-        } else {
-            // 优先尝试从扩展函数中获取函数
-            if (target != null) {
-                function = environment.getExtensionFunctionOrNull(target.getClass(), callee.toString());
-            }
-            if (function == null) {
-                function = environment.getFunction(callee.toString());
+        // 优先尝试从扩展函数中获取函数
+        if (target != null && exPos != -1) {
+            function = environment.getExtensionFunctionOrNull(target.getClass(), name, exPos);
+        }
+        if (function == null) {
+            if (pos != -1) {
+                function = environment.getRootSystemFunctions()[pos];
+            } else {
+                function = environment.getFunction(name);
             }
         }
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
@@ -188,24 +189,26 @@ public final class Intrinsics {
      * @return 绑定了参数的新环境
      */
     @NotNull
-    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, @NotNull String[] parameters, @NotNull Object[] args) {
+    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, VariablePosition> parameters, @NotNull Object[] args) {
         // 创建新的环境，父环境为传入的环境
-        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot());
+        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot(), parameters.size());
         // 绑定参数
-        if (parameters != null && args != null) {
-            int minParamCount = java.lang.Math.min(parameters.length, args.length);
+        if (!parameters.isEmpty() && args != null) {
             // 绑定实际传递的参数
-            for (int i = 0; i < minParamCount; i++) {
-                functionEnv.defineRootVariable(parameters[i], args[i]);
+            int index = 0;
+            for (Map.Entry<String, VariablePosition> entry : parameters.entrySet()) {
+                VariablePosition pos = entry.getValue();
+                if (index < args.length) {
+                    functionEnv.assign(entry.getKey(), args[index], pos.getLevel(), pos.getIndex());
+                } else {
+                    functionEnv.assign(entry.getKey(), null, pos.getLevel(), pos.getIndex());
+                }
+                index++;
             }
-            // 未传递的参数赋值为 null
-            for (int i = minParamCount; i < parameters.length; i++) {
-                functionEnv.defineRootVariable(parameters[i], null);
-            }
-        } else if (parameters != null) {
+        } else if (!parameters.isEmpty()) {
             // 如果没有参数值，所有参数都设为 null
-            for (String parameter : parameters) {
-                functionEnv.defineRootVariable(parameter, null);
+            for (Map.Entry<String, VariablePosition> entry : parameters.entrySet()) {
+                functionEnv.assign(entry.getKey(), null, entry.getValue().getLevel(), entry.getValue().getIndex());
             }
         }
         return functionEnv;

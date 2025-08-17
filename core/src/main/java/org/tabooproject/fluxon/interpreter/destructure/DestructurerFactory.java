@@ -1,8 +1,9 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Environment;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * 解构器工厂
@@ -36,7 +37,7 @@ public class DestructurerFactory {
          * @param variables 变量名列表
          * @param element 要解构的元素
          */
-        void destructure(Environment environment, List<String> variables, T element);
+        void destructure(Environment environment, Map<String, VariablePosition> variables, T element);
     }
     
     /**
@@ -60,7 +61,7 @@ public class DestructurerFactory {
         
         @SuppressWarnings("unchecked")
         @Override
-        public void destructure(Environment environment, List<String> variables, Object element) {
+        public void destructure(Environment environment, Map<String, VariablePosition> variables, Object element) {
             destructureFunction.destructure(environment, variables, (T) element);
         }
     }

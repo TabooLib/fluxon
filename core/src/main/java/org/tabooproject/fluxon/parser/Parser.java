@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.type.StatementParser;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.*;
@@ -246,7 +247,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 进入新作用域
      */
     public void enterScope(boolean breakable, boolean continuable) {
-        SymbolScope newScope = new SymbolScope(getCurrentScope());
+        SymbolScope newScope = new SymbolScope(getCurrentScope(), getCurrentScope().getRoot());
         newScope.setBreakable(breakable);
         newScope.setContinuable(continuable);
         scopeStack.push(newScope);
@@ -270,15 +271,17 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @param info 函数信息
      */
-    public void defineFunction(String name, SymbolFunction info) {
-        getCurrentScope().defineFunction(name, info);
+    public void defineUserFunction(String name, SymbolFunction info) {
+        getCurrentScope().defineUserFunction(name, info);
     }
 
     /**
-     * 在当前作用域中定义扩展函数
+     * 在当前作用域中定义多个函数
+     *
+     * @param functions 函数映射
      */
-    public void defineExtensionFunction(SymbolFunction info) {
-        getCurrentScope().defineExtensionFunction(info);
+    public void defineUserFunction(Map<String, Function> functions) {
+        getCurrentScope().defineUserFunctions(functions);
     }
 
     /**
@@ -302,30 +305,12 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 在当前作用域中定义多个函数
-     *
-     * @param functions 函数映射
-     */
-    public void defineFunction(Map<String, Function> functions) {
-        getCurrentScope().defineFunctions(functions);
-    }
-
-    /**
-     * 在当前作用域中定义多个变量
+     * 在根作用域中定义多个变量
      *
      * @param variables 变量映射
      */
-    public void defineVariables(Map<String, Object> variables) {
-        getCurrentScope().defineVariables(variables);
-    }
-
-    /**
-     * 在当前作用域中定义多个扩展函数
-     *
-     * @param extensionFunctions 扩展函数映射
-     */
-    public void defineExtensionFunction(Map<Class<?>, Map<String, Function>> extensionFunctions) {
-        getCurrentScope().defineExtensionFunctions(extensionFunctions);
+    public void defineRootVariables(Map<String, Object> variables) {
+        getCurrentScope().defineRootVariables(variables);
     }
 
     /**
@@ -334,17 +319,36 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @return 函数信息，如果不存在则返回 null
      */
-    public SymbolFunction getFunctionInfo(String name) {
-        return getCurrentScope().getFunction(name);
+    public Callable getFunction(String name) {
+        SymbolFunction symbolFunction = getCurrentScope().getUserFunction(name);
+        if (symbolFunction != null) {
+            return symbolFunction;
+        }
+        int i = 0;
+        for (Map.Entry<String, Function> entry : FluxonRuntime.getInstance().getSystemFunctions().entrySet()) {
+            if (entry.getKey().equals(name)) {
+                return new FunctionPosition(entry.getValue(), i);
+            }
+            i++;
+        }
+        return null;
     }
     /**
      * 获取扩展函数信息
      *
      * @param name 函数名
-     * @return 扩展函数信息集合
+     * @return 扩展函数信息，如果不存在则返回 null
      */
-    public Set<SymbolFunction> getExtensionFunctions(String name) {
-        return getCurrentScope().getExtensionFunctions(name);
+    public ExtensionFunctionPosition getExtensionFunction(String name) {
+        Set<Map.Entry<String, Map<Class<?>, Function>>> map = FluxonRuntime.getInstance().getExtensionFunctions().entrySet();
+        int i = 0;
+        for (Map.Entry<String, Map<Class<?>, Function>> entry : map) {
+            if (entry.getKey().equals(name)) {
+                return new ExtensionFunctionPosition(entry.getValue(), i);
+            }
+            i++;
+        }
+        return null;
     }
 
     /**
@@ -354,7 +358,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 是否为已知函数
      */
     public boolean isFunction(String name) {
-        return getCurrentScope().getFunction(name) != null;
+        return getCurrentScope().getUserFunction(name) != null;
     }
 
     /**
@@ -364,7 +368,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 是否为已知扩展函数
      */
     public boolean isExtensionFunction(String name) {
-        return getCurrentScope().getExtensionFunctions(name) != null;
+        return getExtensionFunction(name) != null;
     }
 
     /**

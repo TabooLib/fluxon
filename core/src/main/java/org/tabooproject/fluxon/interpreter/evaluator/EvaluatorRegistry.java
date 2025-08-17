@@ -22,9 +22,9 @@ public class EvaluatorRegistry {
     private static final EvaluatorRegistry INSTANCE = new EvaluatorRegistry();
 
     // 表达式求值器列表
-    private final EnumMap<ExpressionType, ExpressionEvaluator<Expression>> expressions = new EnumMap<>(ExpressionType.class);
+    private final ExpressionEvaluator<Expression>[] expressions = new ExpressionEvaluator[ExpressionType.values().length];
     // 语句求值器列表
-    private final EnumMap<StatementType, StatementEvaluator<Statement>> statements = new EnumMap<>(StatementType.class);
+    private final StatementEvaluator<Statement>[] statements = new StatementEvaluator[StatementType.values().length];
 
     /**
      * 获取单例实例
@@ -91,14 +91,14 @@ public class EvaluatorRegistry {
      * 注册自定义表达式求值器
      */
     public void registerExpression(ExpressionEvaluator<?> expression) {
-        expressions.put(expression.getType(), (ExpressionEvaluator<Expression>) expression);
+        expressions[expression.getType().ordinal()] = (ExpressionEvaluator<Expression>) expression;
     }
 
     /**
      * 注册自定义语句求值器
      */
     public void registerStatement(StatementEvaluator<?> statement) {
-        statements.put(statement.getType(), (StatementEvaluator<Statement>) statement);
+        statements[statement.getType().ordinal()] = (StatementEvaluator<Statement>) statement;
     }
 
     /**
@@ -106,7 +106,7 @@ public class EvaluatorRegistry {
      */
     @Nullable
     public ExpressionEvaluator<Expression> getExpression(ExpressionType type) {
-        return expressions.get(type);
+        return expressions[type.ordinal()];
     }
 
     /**
@@ -114,7 +114,7 @@ public class EvaluatorRegistry {
      */
     @Nullable
     public StatementEvaluator<Statement> getStatement(StatementType type) {
-        return statements.get(type);
+        return statements[type.ordinal()];
     }
 
     /**

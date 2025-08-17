@@ -32,7 +32,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
         // 计算目标值
         Object target = interpreter.evaluate(expression.getTarget());
         // 创建上下文环境，将目标值绑定为 'this'
-        ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target);
+        ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target, expression.getLocalVariables());
         // 在上下文环境中求值右侧表达式
         return interpreter.executeWithEnvironment(expression.getContext(), contextEnv);
     }
@@ -71,11 +71,14 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, oldEnvIndex);  // 原环境
         mv.visitVarInsn(ALOAD, targetIndex);  // 目标对象
+
+        // 压入 expression.getLocalVariables()
+        mv.visitIntInsn(BIPUSH, expression.getLocalVariables());
         mv.visitMethodInsn(
                 INVOKESPECIAL,
                 ContextEnvironment.TYPE.getPath(),
                 "<init>",
-                "(" + Environment.TYPE.getDescriptor() + Type.OBJECT.getDescriptor() + ")V", false);
+                "(" + Environment.TYPE + Type.OBJECT + Type.I + ")V", false);
 
         // 设置新环境
         mv.visitVarInsn(ALOAD, 0); // this
