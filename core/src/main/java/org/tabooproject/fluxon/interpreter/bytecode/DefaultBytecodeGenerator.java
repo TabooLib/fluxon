@@ -5,6 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
+import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.Definitions;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -163,7 +164,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 加载 environment
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitInsn(DUP);  // 复制 environment 引用，一个用于 defineRootFunction，一个用于构造函数
+        mv.visitInsn(DUP);          // 复制 environment 引用，一个用于 defineRootFunction，一个用于构造函数
         // 加载函数名
         mv.visitLdcInsn(funcDef.getName());
         // 创建函数实例: new FunctionClassName(environment)
@@ -172,21 +173,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitMethodInsn(
-                INVOKESPECIAL,
-                functionClassName,
-                "<init>",
-                "(" + Environment.TYPE + ")V",
-                false
-        );
+        mv.visitMethodInsn(INVOKESPECIAL, functionClassName, "<init>", "(" + Environment.TYPE + ")V", false);
         // 调用 defineRootFunction
-        mv.visitMethodInsn(
-                INVOKEVIRTUAL,
-                Environment.TYPE.getPath(),
-                "defineRootFunction",
-                "(" + STRING + Function.TYPE + ")V",
-                false
-        );
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "defineRootFunction", "(" + STRING + Function.TYPE + ")V", false);
     }
 
     /**
@@ -199,21 +188,35 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
         // 添加 closure 字段来保存构造时的环境
         cw.visitField(ACC_PRIVATE | ACC_FINAL, "closure", Environment.TYPE.getDescriptor(), null, null);
+        // 添加 parameters 字段来保存函数参数
+        cw.visitField(ACC_PRIVATE | ACC_FINAL, "parameters", MAP.getDescriptor(), null, null);
 
         // 生成构造函数，接收 environment 参数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "(" + Environment.TYPE + ")V", null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, RuntimeScriptBase.TYPE.getPath(), "<init>", "()V", false);
+
         // 设置 closure 字段
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitVarInsn(ALOAD, 1);  // environment 参数
         mv.visitFieldInsn(PUTFIELD, functionClassName, "closure", Environment.TYPE.getDescriptor());
+
+        // 设置 parameters 字段
+        mv.visitVarInsn(ALOAD, 0);  // this
+        // 将 funcDef.getParameters() 转换为 Map
+        BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
+        // 将 Map 存储到 parameters 字段
+        mv.visitFieldInsn(PUTFIELD, functionClassName, "parameters", MAP.getDescriptor());
+
+        // 返回
         mv.visitInsn(RETURN);
         mv.visitMaxs(2, 2);
         mv.visitEnd();
+
         // 实现 Function 接口的方法
         generateFunctionInterfaceMethods(funcDef, cw, functionClassName);
+
         // 实现 clone 函数
         generateCloneMethod(cw, functionClassName);
         cw.visitEnd();
@@ -277,7 +280,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitFieldInsn(GETFIELD, functionClassName, "closure", Environment.TYPE.getDescriptor());
         // 获取函数参数映射
         mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitMethodInsn(INVOKEVIRTUAL, functionClassName, "getParameters", "()" + MAP, false);
+        mv.visitFieldInsn(GETFIELD, functionClassName, "parameters", MAP.getDescriptor());
         // 从 FunctionContext 获取参数数组
         mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);

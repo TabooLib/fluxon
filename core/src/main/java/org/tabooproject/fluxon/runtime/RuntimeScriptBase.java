@@ -54,4 +54,21 @@ public abstract class RuntimeScriptBase {
     public Environment getEnvironment() {
         return environment;
     }
+
+    // 进入新的环境
+    public void enterScope(int localVariables, String id) {
+        environment = new Environment(environment, environment.getRoot(), localVariables, id);
+    }
+
+    // 进入新的上下文环境
+    public void enterContextScope(Object target, int localVariables, String id) {
+        environment = new ContextEnvironment(environment, target, localVariables, id);
+    }
+
+    // 返回上级环境
+    public void exitScope() {
+        if (environment.getParent() != null) {
+            environment = environment.getParent();
+        }
+    }
 }

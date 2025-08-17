@@ -72,8 +72,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
         // 压入位置参数
         int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
         int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
-        mv.visitIntInsn(BIPUSH, pos1);
-        mv.visitIntInsn(BIPUSH, pos2);
+        mv.visitLdcInsn(pos1);
+        mv.visitLdcInsn(pos2);
 
         // 调用 Operations.callFunction 方法
         mv.visitMethodInsn(

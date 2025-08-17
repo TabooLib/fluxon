@@ -128,8 +128,8 @@ public class Interpreter {
     /**
      * 进入新的环境
      */
-    public void enterScope(int localVariables) {
-        environment = new Environment(environment, environment.getRoot(), localVariables);
+    public void enterScope(int localVariables, String id) {
+        environment = new Environment(environment, environment.getRoot(), localVariables, id);
     }
 
     /**

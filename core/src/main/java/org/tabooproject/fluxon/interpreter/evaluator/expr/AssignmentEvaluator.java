@@ -19,8 +19,7 @@ import org.tabooproject.fluxon.runtime.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
@@ -83,25 +82,25 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
         TokenType type = result.getOperator().getType();
         if (type == TokenType.ASSIGN) {
             // 写入变量
-            mv.visitVarInsn(Opcodes.ALOAD, 0);                       // this
-            mv.visitLdcInsn(result.getName());                       // 变量名
+            mv.visitVarInsn(ALOAD, 0);             // this
+            mv.visitLdcInsn(result.getName());     // 变量名
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
                 throw new VoidValueException("Void type is not allowed for assignment value");
             }
             // 压入 index 和 level 参数
-            mv.visitIntInsn(Opcodes.BIPUSH, level);
-            mv.visitIntInsn(Opcodes.BIPUSH, index);
+            mv.visitLdcInsn(level);
+            mv.visitLdcInsn(index);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         } else {
             // 压入变量名 -> 用于后续的写回操作
-            mv.visitVarInsn(Opcodes.ALOAD, 0);  // this
-            mv.visitLdcInsn(result.getName());  // 变量名
+            mv.visitVarInsn(ALOAD, 0);           // this
+            mv.visitLdcInsn(result.getName());   // 变量名
 
             // 复制栈顶的两个值用于进行操作
-            mv.visitInsn(Opcodes.DUP2);
+            mv.visitInsn(DUP2);
             // 压入 index 和 level 参数
-            mv.visitIntInsn(Opcodes.BIPUSH, level);
-            mv.visitIntInsn(Opcodes.BIPUSH, index);
+            mv.visitLdcInsn(level);
+            mv.visitLdcInsn(index);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", GET, false);
             // 执行操作
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
@@ -115,8 +114,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
             }
             mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), name, "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, false);
             // 压入 index 和 level 参数
-            mv.visitIntInsn(Opcodes.BIPUSH, level);
-            mv.visitIntInsn(Opcodes.BIPUSH, index);
+            mv.visitLdcInsn(level);
+            mv.visitLdcInsn(index);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         }
         // Assignment 操作没有返回值
@@ -124,7 +123,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
     }
 
     private static final String ASSIGN = "(" + Type.STRING + Type.OBJECT + Type.I + Type.I + ")" + Type.VOID;
-    private static final String GET = "(" + Type.STRING + ")" + Type.OBJECT;
+    private static final String GET = "(" + Type.STRING + Type.I + Type.I + ")" + Type.OBJECT;
 
     private static final Map<TokenType, String> OPERATORS = new HashMap<>();
 

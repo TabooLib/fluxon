@@ -5,6 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
@@ -42,7 +43,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取变量名列表
         Map<String, VariablePosition> variables = result.getVariables();
         // 创建新环境进行迭代
-        interpreter.enterScope(result.getLocalVariables());
+        interpreter.enterScope(result.getLocalVariables(), "for");
         Object last = null;
         try {
             Environment environment = interpreter.getEnvironment();
@@ -101,6 +102,12 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             throw new EvaluatorNotFoundException("No evaluator found for body expression");
         }
 
+        // 调用 enterScope 方法
+        mv.visitVarInsn(ALOAD, 0);                   // this
+        mv.visitLdcInsn(result.getLocalVariables()); // localVariables 参数
+        mv.visitLdcInsn("for-(" + String.join(",", result.getVariables().keySet()) + ")");
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "enterScope", "(" + Type.I + Type.STRING + ")V", false);
+
         // 分配局部变量存储迭代器和变量Map
         int iteratorVar = ctx.allocateLocalVar(Type.OBJECT);
         int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);
@@ -116,34 +123,10 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
-        // 创建变量 Map（在循环外部）
-        Map<String, VariablePosition> variables = result.getVariables();
-        
-        // 创建 HashMap 实例
-        mv.visitTypeInsn(NEW, HASH_MAP.getPath());
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, HASH_MAP.getPath(), "<init>", "()V", false);
-        
-        // 填充 Map
-        for (Map.Entry<String, VariablePosition> entry : variables.entrySet()) {
-            mv.visitInsn(DUP);               // 复制 Map 引用
-            mv.visitLdcInsn(entry.getKey()); // 键
-            
-            // 创建 VariablePosition 实例
-            mv.visitTypeInsn(NEW, VariablePosition.TYPE.getPath());
-            mv.visitInsn(DUP);
-            VariablePosition position = entry.getValue();
-            mv.visitLdcInsn(position.getLevel()); // level 参数
-            mv.visitLdcInsn(position.getIndex()); // index 参数
-            mv.visitMethodInsn(INVOKESPECIAL, VariablePosition.TYPE.getPath(), "<init>", "(II)V", false);
-            
-            // 调用 put 方法
-            mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);
-            // 丢弃 put 方法的返回值
-            mv.visitInsn(POP);
-        }
-        
+        // 将 result.getVariables() 转换为 Map
+        BytecodeUtils.generateVariablePositionMap(mv, result.getVariables());
         mv.visitVarInsn(ASTORE, variablesMapVar);
+
         // 注册循环上下文：break 跳到 whileEnd，continue 跳到 whileStart
         ctx.enterLoop(whileEnd, whileStart);
         // while 循环开始标签
@@ -161,7 +144,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取下一个元素
         mv.visitVarInsn(ALOAD, iteratorVar);
         mv.visitMethodInsn(INVOKEINTERFACE, ITERATOR.getPath(), "next", "()" + Type.OBJECT, true);
-        
+
         // 调用解构方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
@@ -180,10 +163,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitLabel(whileEnd);
         // 退出循环上下文
         ctx.exitLoop();
+
+        // 调用 exitScope 方法恢复原环境
+        mv.visitVarInsn(ALOAD, 0); // this
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "exitScope", "()V", false);
         return Type.VOID;
     }
 
     private static final Type ITERATOR = new Type(Iterator.class);
     private static final Type MAP = new Type(Map.class);
-    private static final Type HASH_MAP = new Type(HashMap.class);
 }

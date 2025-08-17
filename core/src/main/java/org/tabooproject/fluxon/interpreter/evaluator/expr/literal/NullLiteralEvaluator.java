@@ -9,6 +9,8 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.literal.NullLiteral;
 import org.tabooproject.fluxon.runtime.Type;
 
+import static org.objectweb.asm.Opcodes.ACONST_NULL;
+
 public class NullLiteralEvaluator extends ExpressionEvaluator<NullLiteral> {
 
     @Override
@@ -23,7 +25,7 @@ public class NullLiteralEvaluator extends ExpressionEvaluator<NullLiteral> {
 
     @Override
     public Type generateBytecode(NullLiteral result, CodeContext ctx, MethodVisitor mv) {
-        mv.visitInsn(Opcodes.ACONST_NULL);
+        mv.visitInsn(ACONST_NULL);
         return Type.OBJECT;
     }
 }

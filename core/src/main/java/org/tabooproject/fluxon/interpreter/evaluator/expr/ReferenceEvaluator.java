@@ -13,7 +13,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.Type;
 
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.*;
 
 public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression> {
 
@@ -27,8 +27,8 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         Environment environment = interpreter.getEnvironment();
         // 获取变量位置
         VariablePosition pos = result.getPosition();
-        int level = pos != null ? pos.getLevel() : 0;
-        int index = pos != null ? pos.getIndex() : 0;
+        int level = pos != null ? pos.getLevel() : -1;
+        int index = pos != null ? pos.getIndex() : -1;
         // 获取变量值
         Object var = environment.getOrNull(result.getIdentifier().getValue(), level, index);
         if (var != null || result.isOptional()) {
@@ -44,15 +44,15 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
 
     @Override
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
-        mv.visitVarInsn(Opcodes.ALOAD, 0);                   // this
+        mv.visitVarInsn(ALOAD, 0);                           // this
         mv.visitLdcInsn(result.getIdentifier().getValue());  // 变量名
         mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);  // isOptional
         // 压入 level 和 index 参数
         VariablePosition pos = result.getPosition();
-        int level = pos != null ? pos.getLevel() : 0;
-        int index = pos != null ? pos.getIndex() : 0;
-        mv.visitIntInsn(Opcodes.BIPUSH, level);
-        mv.visitIntInsn(Opcodes.BIPUSH, index);
+        int level = pos != null ? pos.getLevel() : -1;
+        int index = pos != null ? pos.getIndex() : -1;
+        mv.visitLdcInsn(level);
+        mv.visitLdcInsn(index);
         mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "getVariableOrFunction", "(" + Type.STRING + Type.Z + Type.I + Type.I + ")" + Type.OBJECT, false);
         return Type.OBJECT;
     }

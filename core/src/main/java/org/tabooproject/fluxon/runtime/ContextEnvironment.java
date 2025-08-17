@@ -16,8 +16,8 @@ public class ContextEnvironment extends Environment {
      * @param parent 父环境
      * @param target 目标对象
      */
-    public ContextEnvironment(Environment parent, Object target, int localVariables) {
-        super(parent, parent.getRoot(), localVariables);
+    public ContextEnvironment(Environment parent, Object target, int localVariables, String id) {
+        super(parent, parent.getRoot(), localVariables, id);
         this.target = target;
         // 将目标对象绑定为 'this'
         defineRootVariable("this", target);
@@ -30,6 +30,7 @@ public class ContextEnvironment extends Environment {
     @Override
     public String toString() {
         return "ContextEnvironment{" +
+                "id='" + id + '\'' +
                 "target=" + target +
                 ", parent=" + getParent() +
                 '}';

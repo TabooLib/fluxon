@@ -50,7 +50,8 @@ public final class Intrinsics {
      * @param element    要解构的元素
      */
     public static void destructure(RuntimeScriptBase scriptBase, Map<String, VariablePosition> variables, Object element) {
-        DestructuringRegistry.getInstance().destructure(scriptBase.getEnvironment(), variables, element);
+        Environment environment = scriptBase.getEnvironment();
+        DestructuringRegistry.getInstance().destructure(environment, variables, element);
     }
 
     /**
@@ -191,7 +192,7 @@ public final class Intrinsics {
     @NotNull
     public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, VariablePosition> parameters, @NotNull Object[] args) {
         // 创建新的环境，父环境为传入的环境
-        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot(), parameters.size());
+        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot(), parameters.size(), "def");
         // 绑定参数
         if (!parameters.isEmpty() && args != null) {
             // 绑定实际传递的参数

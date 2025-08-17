@@ -32,7 +32,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
         // 计算目标值
         Object target = interpreter.evaluate(expression.getTarget());
         // 创建上下文环境，将目标值绑定为 'this'
-        ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target, expression.getLocalVariables());
+        ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target, expression.getLocalVariables(), "context-call");
         // 在上下文环境中求值右侧表达式
         return interpreter.executeWithEnvironment(expression.getContext(), contextEnv);
     }
@@ -50,57 +50,34 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
             throw new EvaluatorNotFoundException("No evaluator found for context expression");
         }
 
-        // 分配必要的局部变量索引
-        int oldEnvIndex = ctx.allocateLocalVar(Type.OBJECT);
-        int targetIndex = ctx.allocateLocalVar(Type.OBJECT);
-
-        // 保存当前环境
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitVarInsn(ASTORE, oldEnvIndex);
-
         // 计算目标值
         Type targetType = targetEval.generateBytecode(expression.getTarget(), ctx, mv);
         if (targetType == Type.VOID) {
             throw new VoidValueException("Void type is not allowed for context call target");
         }
-        mv.visitVarInsn(ASTORE, targetIndex);
 
-        // 创建新的 ContextEnvironment
-        mv.visitTypeInsn(NEW, ContextEnvironment.TYPE.getPath());
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ALOAD, oldEnvIndex);  // 原环境
-        mv.visitVarInsn(ALOAD, targetIndex);  // 目标对象
-
-        // 压入 expression.getLocalVariables()
-        mv.visitIntInsn(BIPUSH, expression.getLocalVariables());
-        mv.visitMethodInsn(
-                INVOKESPECIAL,
-                ContextEnvironment.TYPE.getPath(),
-                "<init>",
-                "(" + Environment.TYPE + Type.OBJECT + Type.I + ")V", false);
-
-        // 设置新环境
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitInsn(SWAP);
-        mv.visitFieldInsn(PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        // 调用 enterContextScope 方法
+        mv.visitVarInsn(ALOAD, 0);                       // this
+        mv.visitInsn(SWAP);                              // 将目标值移到 this 下面
+        mv.visitLdcInsn(expression.getLocalVariables()); // localVariables 参数
+        mv.visitLdcInsn("context-call");
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "enterContextScope", "(" + Type.OBJECT + Type.I + Type.STRING + ")V", false);
 
         // 在新环境中求值上下文表达式
         Type resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
 
-        // 处理结果（如果不是void）
+        // 处理结果（如果不是 void）
         int resultIndex = -1;
         if (resultType != Type.VOID) {
             resultIndex = ctx.allocateLocalVar(Type.OBJECT);
             mv.visitVarInsn(ASTORE, resultIndex);
         }
 
-        // 恢复原环境
+        // 调用 exitScope 方法恢复原环境
         mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitVarInsn(ALOAD, oldEnvIndex);
-        mv.visitFieldInsn(PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "exitScope", "()V", false);
 
-        // 恢复结果到栈上（如果不是void）
+        // 恢复结果到栈上（如果不是 void）
         if (resultType != Type.VOID) {
             mv.visitVarInsn(ALOAD, resultIndex);
         }

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
+import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -14,26 +15,28 @@ import java.util.List;
 
 public class BytecodeTest {
 
-    public static void main(String[] args) {
-        // 从 build 里获取所有结尾为 .fs 的文件
-        File file = new File("test");
-        File[] files = file.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (f.getName().endsWith(".fs")) {
-                    try {
-                        run(f);
-                    } catch (Throwable ex) {
-                        ex.printStackTrace();
-                    }
-                    try {
-                        compile(f);
-                    } catch (Throwable ex) {
-                        ex.printStackTrace();
-                    }
-                }
-            }
-        }
+    @Test
+    public void test1() throws Exception {
+        run(new File("src/test/fs/test1.fs"));
+        compile(new File("src/test/fs/test1.fs"));
+    }
+
+    @Test
+    public void test2() throws Exception {
+        run(new File("src/test/fs/test2.fs"));
+        compile(new File("src/test/fs/test2.fs"));
+    }
+
+    @Test
+    public void test4() throws Exception {
+        run(new File("src/test/fs/test4.fs"));
+        compile(new File("src/test/fs/test4.fs"));
+    }
+
+    @Test
+    public void test5() throws Exception {
+        run(new File("src/test/fs/test5.fs"));
+        compile(new File("src/test/fs/test5.fs"));
     }
 
     public static void run(File file) throws Exception {

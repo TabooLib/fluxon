@@ -52,7 +52,6 @@ public class Fluxon {
         // 语法分析
         Parser parser = new Parser();
         // 传入上下文符号
-        parser.defineUserFunction(env.getRootFunctions());
         parser.defineRootVariables(env.getRootVariables());
         return parser.process(context);
     }

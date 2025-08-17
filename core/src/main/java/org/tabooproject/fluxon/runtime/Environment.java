@@ -20,42 +20,45 @@ public class Environment {
 
     // 函数
     @Nullable
-    private final Map<String, Function> functions;
+    protected final Map<String, Function> functions;
     @Nullable
-    private final Function[] systemFunctions;
+    protected final Function[] systemFunctions;
 
     // 扩展函数
     @Nullable
-    private final Map<String, Map<Class<?>, Function>> extensionFunctions;
+    protected final Map<String, Map<Class<?>, Function>> extensionFunctions;
     @Nullable
-    private final KV<Class<?>, Function>[][] systemExtensionFunctions;
+    protected final KV<Class<?>, Function>[][] systemExtensionFunctions;
 
     // 根变量
     @Nullable
-    private final Map<String, Object> rootVariables;
+    protected final Map<String, Object> rootVariables;
     // 局部变量
     @Nullable
-    private final Object[] localVariables;
+    protected final Object[] localVariables;
     // 局部变量对照表
     @Nullable
-    private final String[] localVariableNames;
+    protected final String[] localVariableNames;
 
+    // 名称
+    protected final String id;
     // 层级
-    private final int level;
+    protected final int level;
 
     // 父环境
     @Nullable
-    private final Environment parent;
+    protected final Environment parent;
 
     // 根环境
     @NotNull
-    private final Environment root;
+    protected final Environment root;
 
     /**
      * 创建顶层环境（全局环境）
      */
     @SuppressWarnings({"unchecked"})
     public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions) {
+        this.id = "root";
         this.level = 0;
         this.parent = null;
         this.root = this;
@@ -81,7 +84,8 @@ public class Environment {
      *
      * @param parent 父环境
      */
-    public Environment(@NotNull Environment parent, @NotNull Environment root, int localVariables) {
+    public Environment(@NotNull Environment parent, @NotNull Environment root, int localVariables, String id) {
+        this.id = id;
         this.level = parent.level + 1;
         this.parent = parent;
         this.root = root;
@@ -92,6 +96,13 @@ public class Environment {
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] :  null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+    }
+
+    /**
+     * 获取名称
+     */
+    public String getId() {
+        return id;
     }
 
     /**
@@ -294,8 +305,13 @@ public class Environment {
             // 根据层级找到对应的环境并更新局部变量
             Environment targetEnv = getEnvironment(level);
             if (targetEnv != null) {
-                targetEnv.localVariables[index] = value;
-                targetEnv.localVariableNames[index] = name;
+                if (index < targetEnv.localVariables.length) {
+                    targetEnv.localVariables[index] = value;
+                    targetEnv.localVariableNames[index] = name;
+                } else {
+                    System.err.println(dumpVariables());
+                    throw new VariableNotFoundException(name + ", level: " + level + ", index: " + index);
+                }
             } else {
                 throw new VariableNotFoundException(name);
             }
@@ -367,7 +383,7 @@ public class Environment {
 
     /**
      * 从根环境到当前环境，dump 所有变量，展示层级关系
-     * 
+     *
      * @return 包含层级关系的变量信息字符串
      */
     public String dumpVariables() {
@@ -394,7 +410,7 @@ public class Environment {
             indentBuilder.append("\t");
         }
         String indent = indentBuilder.toString();
-        sb.append(indent).append("Environment Level ").append(level).append(":\n");
+        sb.append(indent).append("Environment \"").append(id).append("\" Level ").append(level).append(":\n");
         
         // 如果是 0 级（根环境），输出根变量
         if (level == 0 && !Objects.requireNonNull(rootVariables).isEmpty()) {
