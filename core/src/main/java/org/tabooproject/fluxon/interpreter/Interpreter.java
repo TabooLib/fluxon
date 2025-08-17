@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -16,6 +17,7 @@ import java.util.List;
 public class Interpreter {
 
     // 当前环境
+    @NotNull
     private Environment environment;
 
     // 求值器
@@ -30,7 +32,7 @@ public class Interpreter {
         this.statementVisitor = new StatementVisitor(this, environment);
     }
 
-    public Interpreter(Environment environment) {
+    public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
         this.definitionVisitor = new DefinitionVisitor(this, environment);
         this.expressionVisitor = new ExpressionVisitor(this, environment);
@@ -112,13 +114,15 @@ public class Interpreter {
     /**
      * 设置当前环境
      */
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(@NotNull Environment environment) {
         this.environment = environment;
     }
+
 
     /**
      * 获取当前环境
      */
+    @NotNull
     public Environment getEnvironment() {
         return environment;
     }
@@ -134,6 +138,8 @@ public class Interpreter {
      * 返回上级环境
      */
     public void exitScope() {
-        environment = environment.getParent();
+        if (environment.getParent() != null) {
+            environment = environment.getParent();
+        }
     }
 }

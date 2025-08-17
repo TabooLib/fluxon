@@ -14,6 +14,9 @@ import java.util.Set;
  */
 public class SymbolScope {
 
+    // 层级
+    private final int level;
+
     // 函数符号表
     private final Map<String, SymbolFunction> functions = new HashMap<>();
     // 变量符号表
@@ -34,6 +37,7 @@ public class SymbolScope {
      * 创建顶层作用域（全局作用域）
      */
     public SymbolScope() {
+        this.level = 0;
         this.parent = null;
     }
 
@@ -43,7 +47,15 @@ public class SymbolScope {
      * @param parent 父作用域
      */
     public SymbolScope(SymbolScope parent) {
+        this.level = parent.level + 1;
         this.parent = parent;
+    }
+
+    /**
+     * 获取层级
+     */
+    public int getLevel() {
+        return level;
     }
 
     /**

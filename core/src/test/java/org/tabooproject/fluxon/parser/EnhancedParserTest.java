@@ -46,7 +46,7 @@ public class EnhancedParserTest {
         // 获取运行时环境并注册函数信息到解析器
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         parser.defineFunction(env.getFunctions());
-        parser.defineVariables(env.getVariables());
+        parser.defineVariables(env.getRootVariables());
         parser.defineExtensionFunction(env.getExtensionFunctions());
         
         // 定义测试用的变量

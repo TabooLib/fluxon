@@ -21,11 +21,15 @@ import java.util.List;
 public class UserFunction implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
+
+    @NotNull
     private final Definitions.FunctionDefinition definition;
+    @NotNull
     private final Environment closure;
+    @NotNull
     private final Interpreter interpreter;
 
-    public UserFunction(Definitions.FunctionDefinition definition, Environment closure, Interpreter interpreter) {
+    public UserFunction(@NotNull Definitions.FunctionDefinition definition, @NotNull Environment closure, @NotNull Interpreter interpreter) {
         this.symbolInfo = new SymbolFunction(definition.getName(), definition.getParameters().size());
         this.definition = definition;
         this.closure = closure;
@@ -50,7 +54,7 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @Override
-    public Object call(@NotNull final FunctionContext context) {
+    public Object call(@NotNull final FunctionContext<?> context) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
         String[] parameters = definition.getParameters().toArray(new String[0]);
         Environment functionEnv = Intrinsics.bindFunctionParameters(closure, parameters, context.getArguments());
@@ -68,14 +72,17 @@ public class UserFunction implements Function, Symbolic {
         return symbolInfo;
     }
 
+    @NotNull
     public Definitions.FunctionDefinition getDefinition() {
         return definition;
     }
 
+    @NotNull
     public Environment getClosure() {
         return closure;
     }
 
+    @NotNull
     public Interpreter getInterpreter() {
         return interpreter;
     }

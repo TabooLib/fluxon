@@ -23,7 +23,7 @@ public class ListDestructurer extends AbstractDestructurer {
         List<?> list = (List<?>) element;
         // 设置有值的变量
         for (int i = 0; i < Math.min(variables.size(), list.size()); i++) {
-            environment.defineVariable(variables.get(i), list.get(i));
+            environment.defineRootVariable(variables.get(i), list.get(i));
         }
         // 设置剩余变量为 null
         fillRemainingVariables(environment, variables, list.size());

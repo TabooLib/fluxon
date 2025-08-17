@@ -22,7 +22,7 @@ public class SingleValueDestructurer extends AbstractDestructurer {
             return;
         }
         // 第一个变量为该值
-        environment.defineVariable(variables.get(0), element);
+        environment.defineRootVariable(variables.get(0), element);
         // 设置剩余变量为 null
         fillRemainingVariables(environment, variables, 1);
     }

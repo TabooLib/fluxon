@@ -20,11 +20,14 @@ public class Environment {
 
     // 函数
     private final Map<String, Function> functions = new HashMap<>();
-    // 变量
-    private final Map<String, Object> variables = new HashMap<>();
-
     // 扩展函数 - 优化后的数据结构：函数名 -> (类型 -> 函数实现)
     private final Map<String, Map<Class<?>, Function>> extensionFunctions = new HashMap<>();
+
+    // 根变量
+    private final Map<String, Object> rootVariables = new HashMap<>();
+
+    // 层级
+    private final int level;
 
     // 父环境，用于实现作用域链
     @Nullable
@@ -37,11 +40,12 @@ public class Environment {
     /**
      * 创建顶层环境（全局环境）
      */
-    public Environment(Map<String, Function> functions, Map<String, Object> values, Map<Class<?>, Map<String, Function>> extensionFunctions) {
+    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, @NotNull Map<Class<?>, @NotNull Map<String, Function>> extensionFunctions) {
+        this.level = 0;
         this.parent = null;
         this.root = this;
         this.functions.putAll(functions);
-        this.variables.putAll(values);
+        this.rootVariables.putAll(values);
         this.extensionFunctions.putAll(convertToOptimizedStructure(extensionFunctions));
     }
 
@@ -50,7 +54,8 @@ public class Environment {
      *
      * @param parent 父环境
      */
-    public Environment(@Nullable Environment parent, @NotNull Environment root) {
+    public Environment(@NotNull Environment parent, @NotNull Environment root) {
+        this.level = parent.level + 1;
         this.parent = parent;
         this.root = root;
     }
@@ -168,14 +173,14 @@ public class Environment {
     }
 
     /**
-     * 在当前环境中定义变量
+     * 在当前环境中定义根变量
      * 仅在特殊情况下使用，例如在函数中定义的变量
      *
      * @param name  变量名
      * @param value 变量值
      */
-    public void defineVariable(String name, Object value) {
-        variables.put(name, value);
+    public void defineRootVariable(@NotNull String name, @Nullable Object value) {
+        rootVariables.put(name, value);
     }
 
     /**
@@ -187,7 +192,7 @@ public class Environment {
      * @throws VariableNotFoundException 如果变量不存在
      */
     @NotNull
-    public Object get(String name) {
+    public Object get(@NotNull String name) {
         Object value = getOrNull(name);
         if (value != null) {
             return value;
@@ -196,10 +201,10 @@ public class Environment {
     }
 
     @Nullable
-    public Object getOrNull(String name) {
+    public Object getOrNull(@NotNull String name) {
         Environment current = this;
         while (current != null) {
-            Object var = current.variables.get(name);
+            Object var = current.rootVariables.get(name);
             if (var != null) {
                 return var;
             }
@@ -215,12 +220,12 @@ public class Environment {
      * @param name  变量名
      * @param value 新的变量值
      */
-    public void assign(String name, Object value) {
+    public void assign(@NotNull String name, @Nullable Object value) {
         Environment environment = getEnvironment(name);
         if (environment != null) {
-            environment.variables.put(name, value);
+            environment.rootVariables.put(name, value);
         } else {
-            variables.put(name, value);
+            rootVariables.put(name, value);
         }
     }
 
@@ -234,7 +239,7 @@ public class Environment {
     public Environment getEnvironment(String name) {
         Environment current = this;
         while (current != null) {
-            if (current.variables.containsKey(name)) {
+            if (current.rootVariables.containsKey(name)) {
                 return current;
             }
             current = current.parent;
@@ -252,8 +257,8 @@ public class Environment {
     /**
      * 获取当前环境中的所有变量
      */
-    public Map<String, Object> getVariables() {
-        return new HashMap<>(variables);
+    public Map<String, Object> getRootVariables() {
+        return new HashMap<>(rootVariables);
     }
 
     /**

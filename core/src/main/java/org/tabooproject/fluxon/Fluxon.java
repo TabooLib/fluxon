@@ -53,7 +53,7 @@ public class Fluxon {
         Parser parser = new Parser();
         // 传入上下文符号
         parser.defineFunction(env.getFunctions());
-        parser.defineVariables(env.getVariables());
+        parser.defineVariables(env.getRootVariables());
         parser.defineExtensionFunction(env.getExtensionFunctions());
         return parser.process(context);
     }

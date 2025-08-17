@@ -23,10 +23,10 @@ public class MapEntryDestructurer extends AbstractDestructurer {
         }
         Map.Entry<?, ?> entry = (Map.Entry<?, ?>) element;
         // 第一个变量为键
-        environment.defineVariable(variables.get(0), entry.getKey());
+        environment.defineRootVariable(variables.get(0), entry.getKey());
         // 如果有第二个变量，则为值
         if (variables.size() >= 2) {
-            environment.defineVariable(variables.get(1), entry.getValue());
+            environment.defineRootVariable(variables.get(1), entry.getValue());
         }
         // 设置剩余变量为 null
         fillRemainingVariables(environment, variables, 2);

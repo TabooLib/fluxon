@@ -136,7 +136,7 @@ public class FluxonScriptEngine implements ScriptEngine {
                 if (entry.getValue() instanceof Function) {
                     env.defineFunction(entry.getKey(), (Function) entry.getValue());
                 } else {
-                    env.defineVariable(entry.getKey(), entry.getValue());
+                    env.defineRootVariable(entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -147,7 +147,7 @@ public class FluxonScriptEngine implements ScriptEngine {
                 if (entry.getValue() instanceof Function) {
                     env.defineFunction(entry.getKey(), (Function) entry.getValue());
                 } else {
-                    env.defineVariable(entry.getKey(), entry.getValue());
+                    env.defineRootVariable(entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -164,7 +164,7 @@ public class FluxonScriptEngine implements ScriptEngine {
         // 更新 ENGINE_SCOPE 中的变量
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineBindings != null) {
-            engineBindings.putAll(env.getVariables());
+            engineBindings.putAll(env.getRootVariables());
             engineBindings.putAll(env.getFunctions());
         }
     }

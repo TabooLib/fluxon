@@ -60,7 +60,7 @@ public class SimpleFluxonJexlBenchmark {
         // 创建Fluxon环境
         fluxonEnv = FluxonRuntime.getInstance().newEnvironment();
         for (Map.Entry<String, Object> entry : variables.entrySet()) {
-            fluxonEnv.defineVariable(entry.getKey(), entry.getValue());
+            fluxonEnv.defineRootVariable(entry.getKey(), entry.getValue());
         }
     }
     

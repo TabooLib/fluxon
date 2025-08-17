@@ -20,7 +20,7 @@ public class ContextEnvironment extends Environment {
         super(parent, parent.getRoot());
         this.target = target;
         // 将目标对象绑定为 'this'
-        defineVariable("this", target);
+        defineRootVariable("this", target);
     }
 
     public Object getTarget() {

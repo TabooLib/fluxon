@@ -19,7 +19,7 @@ public abstract class AbstractDestructurer implements Destructurer {
      */
     protected void fillRemainingVariables(Environment environment, List<String> variables, int fromIndex) {
         for (int i = fromIndex; i < variables.size(); i++) {
-            environment.defineVariable(variables.get(i), null);
+            environment.defineRootVariable(variables.get(i), null);
         }
     }
 } 

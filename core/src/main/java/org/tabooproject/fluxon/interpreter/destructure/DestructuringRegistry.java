@@ -87,7 +87,7 @@ public class DestructuringRegistry {
         }
         // 单变量情况特殊处理
         if (variables.size() == 1) {
-            environment.defineVariable(variables.get(0), element);
+            environment.defineRootVariable(variables.get(0), element);
             return;
         }
         // 查找合适的解构器

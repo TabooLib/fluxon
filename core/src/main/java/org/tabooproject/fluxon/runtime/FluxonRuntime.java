@@ -169,7 +169,7 @@ public class FluxonRuntime {
             environment.defineFunction(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<String, Object> entry : systemVariables.entrySet()) {
-            environment.defineVariable(entry.getKey(), entry.getValue());
+            environment.defineRootVariable(entry.getKey(), entry.getValue());
         }
         for (Map.Entry<Class<?>, Map<String, Function>> entry : extensionFunctions.entrySet()) {
             environment.defineExtensionFunction(entry.getKey(), entry.getValue());

@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
@@ -187,7 +187,8 @@ public final class Intrinsics {
      * @param args       参数值数组
      * @return 绑定了参数的新环境
      */
-    public static Environment bindFunctionParameters(Environment parentEnv, String[] parameters, Object[] args) {
+    @NotNull
+    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, @NotNull String[] parameters, @NotNull Object[] args) {
         // 创建新的环境，父环境为传入的环境
         Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot());
         // 绑定参数
@@ -195,16 +196,16 @@ public final class Intrinsics {
             int minParamCount = java.lang.Math.min(parameters.length, args.length);
             // 绑定实际传递的参数
             for (int i = 0; i < minParamCount; i++) {
-                functionEnv.defineVariable(parameters[i], args[i]);
+                functionEnv.defineRootVariable(parameters[i], args[i]);
             }
             // 未传递的参数赋值为 null
             for (int i = minParamCount; i < parameters.length; i++) {
-                functionEnv.defineVariable(parameters[i], null);
+                functionEnv.defineRootVariable(parameters[i], null);
             }
         } else if (parameters != null) {
             // 如果没有参数值，所有参数都设为 null
             for (String parameter : parameters) {
-                functionEnv.defineVariable(parameter, null);
+                functionEnv.defineRootVariable(parameter, null);
             }
         }
         return functionEnv;

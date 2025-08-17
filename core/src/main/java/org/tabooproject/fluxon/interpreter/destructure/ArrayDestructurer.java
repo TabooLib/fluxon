@@ -23,7 +23,7 @@ public class ArrayDestructurer extends AbstractDestructurer {
         Object[] array = (Object[]) element;
         // 设置有值的变量
         for (int i = 0; i < Math.min(variables.size(), array.length); i++) {
-            environment.defineVariable(variables.get(i), array[i]);
+            environment.defineRootVariable(variables.get(i), array[i]);
         }
         // 设置剩余变量为 null
         fillRemainingVariables(environment, variables, array.length);
