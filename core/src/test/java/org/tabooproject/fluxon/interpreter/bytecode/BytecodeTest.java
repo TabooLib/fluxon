@@ -64,7 +64,7 @@ public class BytecodeTest {
         File compiled = new File(file.getParentFile(), className + ".class");
         compiled.createNewFile();
         Files.write(compiled.toPath(), result.getMainClass());
-        
+
         // 输出用户函数类
         int i = 0;
         for (Definition definition : result.getGenerator().getDefinitions()) {

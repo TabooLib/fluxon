@@ -8,6 +8,8 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Export 注册中心
@@ -64,14 +66,19 @@ public class ExportRegistry {
      */
     private void registerClassMethods(Class<?> clazz, Method[] exportMethods, ClassBridge bridge) {
         for (Method method : exportMethods) {
+            Set<String> originalNames = Arrays.stream(exportMethods).map(Method::getName).collect(Collectors.toSet());
             String methodName = StringUtils.transformMethodName(method.getName());
+            if (originalNames.contains(methodName)) {
+                methodName = method.getName();
+            }
             // 分析方法参数，获取支持的参数数量列表
             List<Integer> supportedCounts = analyzeMethodParameterCounts(method);
             // 注册扩展函数，传入支持的参数数量列表
+            String finalMethodName = methodName;
             runtime.registerExtensionFunction(clazz, methodName, supportedCounts, (context) -> {
                 Object[] args = context.getArguments();
                 Object target = context.getTarget();
-                return bridge.invoke(methodName, target, args);
+                return bridge.invoke(finalMethodName, target, args);
             });
         }
     }

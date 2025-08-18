@@ -1,8 +1,12 @@
 package org.tabooproject.fluxon.util;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 伪代码生成工具类
@@ -150,5 +154,24 @@ public class StringUtils {
         }
         // 不符合 getter 格式，返回原方法名
         return originalName;
+    }
+
+    /**
+     * 转换方法名，自动去掉 get 前缀
+     *
+     * @param methods 方法数组
+     * @return 转换后的方法名
+     */
+    public static String[] transformMethodNames(Method[] methods) {
+        Set<String> originalNames = Arrays.stream(methods).map(Method::getName).collect(Collectors.toSet());
+        return Arrays.stream(methods)
+                .map(method -> {
+                    String transformedName = StringUtils.transformMethodName(method.getName());
+                    // 如果转换后的名字已经存在于原始名字中，则不转换
+                    if (originalNames.contains(transformedName)) {
+                        return method.getName();
+                    }
+                    return transformedName;
+                }).toArray(String[]::new);
     }
 }

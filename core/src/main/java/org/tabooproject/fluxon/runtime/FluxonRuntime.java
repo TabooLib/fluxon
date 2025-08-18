@@ -2,14 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.function.*;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionClass;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionConstructor;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionField;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionCollection;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionMap;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionMethod;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionObject;
-import org.tabooproject.fluxon.runtime.function.extension.ExtensionString;
+import org.tabooproject.fluxon.runtime.function.extension.*;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 
 import java.util.HashMap;
@@ -63,7 +56,7 @@ public class FluxonRuntime {
         ExtensionCollection.init(this);
         ExtensionConstructor.init(this);
         ExtensionField.init(this);
-        ExtensionCollection.init(this);
+        ExtensionList.init(this);
         ExtensionMap.init(this);
         ExtensionMethod.init(this);
         ExtensionObject.init(this);

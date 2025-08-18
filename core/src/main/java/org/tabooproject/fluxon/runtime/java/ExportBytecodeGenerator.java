@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -130,8 +131,7 @@ public class ExportBytecodeGenerator {
         // Files.write(new File("out" + classCounter.get() + ".class").toPath(), bytecode);
 
         // 创建方法名数组（使用转换后的方法名）
-        String[] methodNames = Arrays.stream(exportMethods).map(method -> StringUtils.transformMethodName(method.getName())).toArray(String[]::new);
-
+        String[] methodNames = StringUtils.transformMethodNames(exportMethods);
         return bridgeClass.getDeclaredConstructor(String[].class).newInstance((Object) methodNames);
     }
 
@@ -268,12 +268,18 @@ public class ExportBytecodeGenerator {
         Set<String> methodNames = new HashSet<>();
         Map<String, Method> uniqueMethods = new LinkedHashMap<>();
 
+        // 获取原始方法名
+        Set<String> originalNames = Arrays.stream(exportMethods).map(Method::getName).collect(Collectors.toSet());
+        // 输出唯一方法名
         for (Method method : exportMethods) {
-            String transformedName = StringUtils.transformMethodName(method.getName());
-            if (!methodNames.add(transformedName)) {
-                throw new IllegalArgumentException("类 " + targetClass.getName() + " 中存在重复的 @Export 方法名: " + transformedName + "（原方法名: " + method.getName() + "），不支持方法重载");
+            String name = StringUtils.transformMethodName(method.getName());
+            if (originalNames.contains(name)) {
+                name = method.getName();
             }
-            uniqueMethods.put(transformedName, method);
+            if (!methodNames.add(name)) {
+                throw new IllegalArgumentException("类 " + targetClass.getName() + " 中存在重复的 @Export 方法名: " + name + "，不支持方法重载");
+            }
+            uniqueMethods.put(name, method);
         }
 
         // 为每个方法名创建标签
