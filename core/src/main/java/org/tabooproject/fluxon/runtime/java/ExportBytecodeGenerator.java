@@ -334,10 +334,18 @@ public class ExportBytecodeGenerator {
             BytecodeUtils.generateSafeParameterAccess(mv, i, paramTypes[i], parameters[i]);
         }
 
-        // 调用目标方法
+        // 调用目标方法 - 区分接口和类
         String owner = Type.getInternalName(method.getDeclaringClass());
         String methodDesc = Type.getMethodDescriptor(method);
-        mv.visitMethodInsn(INVOKEVIRTUAL, owner, method.getName(), methodDesc, false);
+        boolean isInterface = method.getDeclaringClass().isInterface();
+        
+        if (isInterface) {
+            // 接口方法调用
+            mv.visitMethodInsn(INVOKEINTERFACE, owner, method.getName(), methodDesc, true);
+        } else {
+            // 类方法调用
+            mv.visitMethodInsn(INVOKEVIRTUAL, owner, method.getName(), methodDesc, false);
+        }
 
         // 处理返回值
         Class<?> returnType = method.getReturnType();

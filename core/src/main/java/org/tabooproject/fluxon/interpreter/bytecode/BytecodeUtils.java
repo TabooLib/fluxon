@@ -4,6 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.java.Optional;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,7 +52,7 @@ public class BytecodeUtils {
      * 如果参数不存在，使用默认值；如果参数存在，进行类型转换
      */
     public static void generateSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, java.lang.reflect.Parameter parameter) {
-        boolean isOptional = parameter.isAnnotationPresent(org.tabooproject.fluxon.runtime.java.Optional.class);
+        boolean isOptional = parameter.isAnnotationPresent(Optional.class);
         
         if (isOptional) {
             // 可选参数：检查数组长度，如果不存在则使用默认值
