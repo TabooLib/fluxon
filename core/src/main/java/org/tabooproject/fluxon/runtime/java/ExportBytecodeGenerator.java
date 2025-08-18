@@ -77,7 +77,7 @@ public class ExportBytecodeGenerator {
     private static final ConcurrentHashMap<Class<?>, ClassBridge> generatedBridges = new ConcurrentHashMap<>();
 
     // 动态类加载器
-    private static final FluxonClassLoader fluxonClassLoader = new FluxonClassLoader();
+    private static final FluxonClassLoader fluxonClassLoader = new FluxonClassLoader(ExportBytecodeGenerator.class.getClassLoader());
 
     /**
      * 为指定的类生成优化的类桥接器

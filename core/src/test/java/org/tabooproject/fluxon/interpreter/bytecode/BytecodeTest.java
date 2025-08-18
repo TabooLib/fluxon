@@ -1,9 +1,10 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompileResult;
-import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -14,6 +15,11 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class BytecodeTest {
+
+    @BeforeAll
+    public static void setup() {
+        FluxonRuntimeTest.registerTestFunctions();
+    }
 
     @Test
     public void test1() throws Exception {

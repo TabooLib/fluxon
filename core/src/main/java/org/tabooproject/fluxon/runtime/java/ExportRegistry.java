@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.java;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -63,7 +64,7 @@ public class ExportRegistry {
      */
     private void registerClassMethods(Class<?> clazz, Method[] exportMethods, ClassBridge bridge) {
         for (Method method : exportMethods) {
-            String methodName = method.getName();
+            String methodName = StringUtils.transformMethodName(method.getName());
             // 分析方法参数，获取支持的参数数量列表
             List<Integer> supportedCounts = analyzeMethodParameterCounts(method);
             // 注册扩展函数，传入支持的参数数量列表
