@@ -130,4 +130,25 @@ public class StringUtils {
         }
         return code;
     }
+
+    /**
+     * 转换方法名，自动去掉 get 前缀
+     *
+     * @param originalName 原始方法名
+     * @return 转换后的方法名
+     */
+    public static String transformMethodName(String originalName) {
+        // 如果方法名以 "get" 开头且后面有内容
+        if (originalName.startsWith("get") && originalName.length() > 3) {
+            // 获取去掉 "get" 后的部分
+            String withoutGet = originalName.substring(3);
+            // 检查第一个字符是否为大写字母（标准的 getter 格式）
+            if (Character.isUpperCase(withoutGet.charAt(0))) {
+                // 将首字母转换为小写
+                return Character.toLowerCase(withoutGet.charAt(0)) + withoutGet.substring(1);
+            }
+        }
+        // 不符合 getter 格式，返回原方法名
+        return originalName;
+    }
 }

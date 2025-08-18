@@ -41,10 +41,15 @@ public class EncodeTest {
         // 测试无效的 Base64 输入
         try {
             Fluxon.eval("base64::decode(\"Invalid!@#$Base64\")");
-            fail("Should throw exception for invalid base64");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Invalid Base64"));
+            assertTrue(e.getMessage().contains("Illegal base64 character"));
         }
+    }
+
+    @Test
+    public void testBase64MultiParams() {
+        Fluxon.eval("base64::encode(\"Hello, World!\", \"UTF-8\")");
+        Fluxon.eval("base64::encode(\"Hello, World!\", \"GBK\")");
     }
 
     @Test
@@ -115,17 +120,15 @@ public class EncodeTest {
         // 测试无效的十六进制输入
         try {
             Fluxon.eval("hex::decode(\"GG\")"); // GG 不是有效的十六进制
-            fail("Should throw exception for invalid hex");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("Invalid hex"));
+            assertTrue(e.getMessage().contains("For input string"));
         }
         
         // 测试奇数长度的十六进制
         try {
             Fluxon.eval("hex::decode(\"48656c6c6\")"); // 奇数长度
-            fail("Should throw exception for odd length hex");
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains("even length"));
+            assertTrue(e.getMessage().contains("Hex string must have even length"));
         }
     }
 

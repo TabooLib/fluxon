@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
+import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.util.KV;
 
 import java.util.*;
@@ -114,6 +115,7 @@ public class Environment {
     /**
      * 获取名称
      */
+    @Export
     public String getId() {
         return id;
     }
@@ -121,6 +123,7 @@ public class Environment {
     /**
      * 获取层级
      */
+    @Export
     public int getLevel() {
         return level;
     }
@@ -128,6 +131,7 @@ public class Environment {
     /**
      * 获取父环境
      */
+    @Export
     @Nullable
     public Environment getParent() {
         return parent;
@@ -137,6 +141,7 @@ public class Environment {
      * 获取根环境
      * 如果自己是根环境，则返回自己
      */
+    @Export
     @NotNull
     public Environment getRoot() {
         return root;
@@ -179,6 +184,7 @@ public class Environment {
      * @return 函数值
      * @throws RuntimeException 如果变量不存在
      */
+    @Export
     @NotNull
     public Function getFunction(String name) {
         Function function = Objects.requireNonNull(root.functions).get(name);
@@ -194,6 +200,7 @@ public class Environment {
      * @param name 函数名
      * @return 函数值
      */
+    @Export
     @Nullable
     public Function getFunctionOrNull(String name) {
         return Objects.requireNonNull(root.functions).get(name);
@@ -228,11 +235,9 @@ public class Environment {
         if (index != -1) {
             KV<Class<?>, Function>[] classFunctionMap = Objects.requireNonNull(root.systemExtensionFunctions)[index];
             // 查找兼容的类型
-            if (classFunctionMap != null) {
-                for (KV<Class<?>, Function> entry : classFunctionMap) {
-                    if (entry.getKey().isAssignableFrom(extensionClass)) {
-                        return entry.getValue();
-                    }
+            for (KV<Class<?>, Function> entry : classFunctionMap) {
+                if (entry.getKey().isAssignableFrom(extensionClass)) {
+                    return entry.getValue();
                 }
             }
         } else {
@@ -345,6 +350,7 @@ public class Environment {
     /**
      * 获取根环境中的所有变量
      */
+    @Export
     public Map<String, Object> getRootVariables() {
         return root.rootVariables;
     }
@@ -367,6 +373,7 @@ public class Environment {
     /**
      * 获取根环境中的所有函数
      */
+    @Export
     public Map<String, Function> getRootFunctions() {
         return root.functions;
     }
@@ -381,6 +388,7 @@ public class Environment {
     /**
      * 获取根环境中的所有扩展函数
      */
+    @Export
     public Map<String, Map<Class<?>, Function>> getRootExtensionFunctions() {
         return root.extensionFunctions;
     }
@@ -397,6 +405,7 @@ public class Environment {
      *
      * @return 包含层级关系的变量信息字符串
      */
+    @Export
     public String dumpVariables() {
         StringBuilder sb = new StringBuilder();
         dumpVariablesRecursive(sb, 0);

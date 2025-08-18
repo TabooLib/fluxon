@@ -10,6 +10,6 @@ public class TimeTest {
     @Test
     public void testTime() {
         Fluxon.eval("print(time)");
-        Fluxon.eval("print(time::formatDateTime(now))");
+        Fluxon.eval("print(time::formatTimestamp(now))");
     }
 }

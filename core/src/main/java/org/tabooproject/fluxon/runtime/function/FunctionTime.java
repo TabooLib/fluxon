@@ -1,55 +1,53 @@
 package org.tabooproject.fluxon.runtime.function;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.stdlib.Coerce;
+import org.tabooproject.fluxon.runtime.java.Export;
+import org.tabooproject.fluxon.runtime.java.ExportRegistry;
+import org.tabooproject.fluxon.runtime.java.Optional;
 
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
 public class FunctionTime {
 
-    public static final TimeObject OBJECT = new TimeObject();
+    public static class TimeObject {
 
-    public static class TimeObject {}
+        public static final TimeObject INSTANCE = new TimeObject();
 
-    public static void init(FluxonRuntime runtime) {
-        // 获取时间对象
-        runtime.registerFunction("time", 0, (context) -> OBJECT);
-        // 获取当前时间戳（毫秒）
-        runtime.registerFunction("now", 0, (context) -> System.currentTimeMillis());
+        // 基础时间函数
+        @Export
+        public long getNow() {
+            return System.currentTimeMillis();
+        }
 
-        // 获取当前时间戳（毫秒）
-        runtime.registerExtensionFunction(TimeObject.class, "now", 0, (context) -> System.currentTimeMillis());
-        // 获取当前时间戳（秒）
-        runtime.registerExtensionFunction(TimeObject.class, "nowSeconds", 0, (context) -> System.currentTimeMillis() / 1000);
+        @Export
+        public long getNowSeconds() {
+            return System.currentTimeMillis() / 1000;
+        }
 
-        // 获取当前 NanoTime
-        runtime.registerExtensionFunction(TimeObject.class, "nano", 0, (context) -> System.nanoTime());
+        @Export
+        public long getNano() {
+            return System.nanoTime();
+        }
 
-        // 获取当前日期时间字符串 formatDateTime(pattern?)
-        runtime.registerExtensionFunction(TimeObject.class, "formatDateTime", Arrays.asList(0, 1), (context) -> {
-            Object[] args = context.getArguments();
-            String pattern = args.length == 1 ? Coerce.asString(args[0]).orElse("yyyy-MM-dd HH:mm:ss") : "yyyy-MM-dd HH:mm:ss";
-            SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        // 格式化函数
+        @Export
+        public String formatDateTime(@Optional String pattern) {
+            String datePattern = pattern != null ? pattern : "yyyy-MM-dd HH:mm:ss";
+            SimpleDateFormat sdf = new SimpleDateFormat(datePattern);
             return sdf.format(new Date());
-        });
+        }
 
-        // 格式化时间戳 formatTimestamp(timestamp, pattern?)
-        runtime.registerExtensionFunction(TimeObject.class, "formatTimestamp", Arrays.asList(1, 2), (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
-            String pattern = args.length == 2 ? Coerce.asString(args[1]).orElse("yyyy-MM-dd HH:mm:ss") : "yyyy-MM-dd HH:mm:ss";
-            SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        @Export
+        public String formatTimestamp(long timestamp, @Optional String pattern) {
+            String datePattern = pattern != null ? pattern : "yyyy-MM-dd HH:mm:ss";
+            SimpleDateFormat sdf = new SimpleDateFormat(datePattern);
             return sdf.format(new Date(timestamp));
-        });
+        }
 
-        // 解析日期字符串 parseDateTime(dateString, pattern)
-        runtime.registerExtensionFunction(TimeObject.class, "parseDateTime", 2, (context) -> {
-            Object[] args = context.getArguments();
-            String dateString = Coerce.asString(args[0]).orElse("");
-            String pattern = Coerce.asString(args[1]).orElse("yyyy-MM-dd HH:mm:ss");
+        @Export
+        public long parseDateTime(String dateString, String pattern) {
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat(pattern);
                 Date date = sdf.parse(dateString);
@@ -57,204 +55,165 @@ public class FunctionTime {
             } catch (Exception e) {
                 throw new IllegalArgumentException("Failed to parse date: " + dateString + " with pattern: " + pattern);
             }
-        });
+        }
 
-        // 获取当前年份
-        runtime.registerExtensionFunction(TimeObject.class, "year", 0, (context) -> {
+        // 当前时间组件获取
+        @Export
+        public int getYear() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.YEAR);
-        });
+        }
 
-        // 获取当前月份（1-12）
-        runtime.registerExtensionFunction(TimeObject.class, "month", 0, (context) -> {
+        @Export
+        public int getMonth() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.MONTH) + 1;
-        });
+        }
 
-        // 获取当前日期（1-31）
-        runtime.registerExtensionFunction(TimeObject.class, "day", 0, (context) -> {
+        @Export
+        public int getDay() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.DAY_OF_MONTH);
-        });
+        }
 
-        // 获取当前小时（0-23）
-        runtime.registerExtensionFunction(TimeObject.class, "hour", 0, (context) -> {
+        @Export
+        public int getHour() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.HOUR_OF_DAY);
-        });
+        }
 
-        // 获取当前分钟（0-59）
-        runtime.registerExtensionFunction(TimeObject.class, "minute", 0, (context) -> {
+        @Export
+        public int getMinute() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.MINUTE);
-        });
+        }
 
-        // 获取当前秒数（0-59）
-        runtime.registerExtensionFunction(TimeObject.class, "second", 0, (context) -> {
+        @Export
+        public int getSecond() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.SECOND);
-        });
+        }
 
-        // 获取当前星期几（1-7，1=星期日）
-        runtime.registerExtensionFunction(TimeObject.class, "weekday", 0, (context) -> {
+        @Export
+        public int getWeekday() {
             Calendar cal = Calendar.getInstance();
             return cal.get(Calendar.DAY_OF_WEEK);
-        });
+        }
 
-        // 从时间戳获取年份 yearFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "yearFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        // 从时间戳获取时间组件
+        @Export
+        public int yearFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.YEAR);
-        });
+        }
 
-        // 从时间戳获取月份 monthFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "monthFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public int monthFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.MONTH) + 1;
-        });
+        }
 
-        // 从时间戳获取日期 dayFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "dayFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public int dayFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.DAY_OF_MONTH);
-        });
+        }
 
-        // 从时间戳获取小时 hourFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "hourFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public int hourFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.HOUR_OF_DAY);
-        });
+        }
 
-        // 从时间戳获取分钟 minuteFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "minuteFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public int minuteFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.MINUTE);
-        });
+        }
 
-        // 从时间戳获取秒数 secondFromTimestamp(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "secondFromTimestamp", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public int secondFromTimestamp(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             return cal.get(Calendar.SECOND);
-        });
+        }
 
         // 时间计算函数
-        
-        // 添加天数 addDays(timestamp, days)
-        runtime.registerExtensionFunction(TimeObject.class, "addDays", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
-            int days = Coerce.asInteger(args[1]).orElse(0);
+        @Export
+        public long addDays(long timestamp, int days) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.add(Calendar.DAY_OF_MONTH, days);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 添加小时 addHours(timestamp, hours)
-        runtime.registerExtensionFunction(TimeObject.class, "addHours", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
-            int hours = Coerce.asInteger(args[1]).orElse(0);
+        @Export
+        public long addHours(long timestamp, int hours) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.add(Calendar.HOUR_OF_DAY, hours);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 添加分钟 addMinutes(timestamp, minutes)
-        runtime.registerExtensionFunction(TimeObject.class, "addMinutes", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
-            int minutes = Coerce.asInteger(args[1]).orElse(0);
+        @Export
+        public long addMinutes(long timestamp, int minutes) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.add(Calendar.MINUTE, minutes);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 添加秒数 addSeconds(timestamp, seconds)
-        runtime.registerExtensionFunction(TimeObject.class, "addSeconds", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
-            int seconds = Coerce.asInteger(args[1]).orElse(0);
+        @Export
+        public long addSeconds(long timestamp, int seconds) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.add(Calendar.SECOND, seconds);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 计算两个时间戳之间的天数差 daysBetween(timestamp1, timestamp2)
-        runtime.registerExtensionFunction(TimeObject.class, "daysBetween", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp1 = Coerce.asLong(args[0]).orElse(0L);
-            long timestamp2 = Coerce.asLong(args[1]).orElse(0L);
+        // 时间差计算
+        @Export
+        public long daysBetween(long timestamp1, long timestamp2) {
             long diffInMillis = Math.abs(timestamp2 - timestamp1);
             return diffInMillis / (24 * 60 * 60 * 1000);
-        });
+        }
 
-        // 计算两个时间戳之间的小时差 hoursBetween(timestamp1, timestamp2)
-        runtime.registerExtensionFunction(TimeObject.class, "hoursBetween", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp1 = Coerce.asLong(args[0]).orElse(0L);
-            long timestamp2 = Coerce.asLong(args[1]).orElse(0L);
+        @Export
+        public long hoursBetween(long timestamp1, long timestamp2) {
             long diffInMillis = Math.abs(timestamp2 - timestamp1);
             return diffInMillis / (60 * 60 * 1000);
-        });
+        }
 
-        // 计算两个时间戳之间的分钟差 minutesBetween(timestamp1, timestamp2)
-        runtime.registerExtensionFunction(TimeObject.class, "minutesBetween", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp1 = Coerce.asLong(args[0]).orElse(0L);
-            long timestamp2 = Coerce.asLong(args[1]).orElse(0L);
+        @Export
+        public long minutesBetween(long timestamp1, long timestamp2) {
             long diffInMillis = Math.abs(timestamp2 - timestamp1);
             return diffInMillis / (60 * 1000);
-        });
+        }
 
-        // 计算两个时间戳之间的秒数差 secondsBetween(timestamp1, timestamp2)
-        runtime.registerExtensionFunction(TimeObject.class, "secondsBetween", 2, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp1 = Coerce.asLong(args[0]).orElse(0L);
-            long timestamp2 = Coerce.asLong(args[1]).orElse(0L);
+        @Export
+        public long secondsBetween(long timestamp1, long timestamp2) {
             long diffInMillis = Math.abs(timestamp2 - timestamp1);
             return diffInMillis / 1000;
-        });
+        }
 
         // 时间比较函数
-        
-        // 检查时间戳是否在今天 isToday(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "isToday", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(0L);
+        @Export
+        public boolean isToday(long timestamp) {
             Calendar cal1 = Calendar.getInstance();
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
             
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
-        });
+        }
 
-        // 检查时间戳是否在昨天 isYesterday(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "isYesterday", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(0L);
+        @Export
+        public boolean isYesterday(long timestamp) {
             Calendar cal1 = Calendar.getInstance();
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
@@ -262,12 +221,10 @@ public class FunctionTime {
             
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
-        });
+        }
 
-        // 检查时间戳是否在明天 isTomorrow(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "isTomorrow", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(0L);
+        @Export
+        public boolean isTomorrow(long timestamp) {
             Calendar cal1 = Calendar.getInstance();
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
@@ -275,21 +232,16 @@ public class FunctionTime {
             
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                    cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
-        });
+        }
 
-        // 检查时间戳是否在指定日期范围内 isBetween(timestamp, startTimestamp, endTimestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "isBetween", 3, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(0L);
-            long startTimestamp = Coerce.asLong(args[1]).orElse(0L);
-            long endTimestamp = Coerce.asLong(args[2]).orElse(0L);
+        @Export
+        public boolean isBetween(long timestamp, long startTimestamp, long endTimestamp) {
             return timestamp >= startTimestamp && timestamp <= endTimestamp;
-        });
+        }
 
-        // 获取时间戳的开始时间（00:00:00） startOfDay(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "startOfDay", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        // 时间边界函数
+        @Export
+        public long startOfDay(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -297,12 +249,10 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 0);
             cal.set(Calendar.MILLISECOND, 0);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 获取时间戳的结束时间（23:59:59） endOfDay(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "endOfDay", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public long endOfDay(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.HOUR_OF_DAY, 23);
@@ -310,12 +260,10 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 59);
             cal.set(Calendar.MILLISECOND, 999);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 获取时间戳所在月份的第一天 startOfMonth(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "startOfMonth", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public long startOfMonth(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.DAY_OF_MONTH, 1);
@@ -324,12 +272,10 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 0);
             cal.set(Calendar.MILLISECOND, 0);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 获取时间戳所在月份的最后一天 endOfMonth(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "endOfMonth", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public long endOfMonth(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
@@ -338,12 +284,10 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 59);
             cal.set(Calendar.MILLISECOND, 999);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 获取时间戳所在年份的第一天 startOfYear(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "startOfYear", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public long startOfYear(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.DAY_OF_YEAR, 1);
@@ -352,12 +296,10 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 0);
             cal.set(Calendar.MILLISECOND, 0);
             return cal.getTimeInMillis();
-        });
+        }
 
-        // 获取时间戳所在年份的最后一天 endOfYear(timestamp)
-        runtime.registerExtensionFunction(TimeObject.class, "endOfYear", 1, (context) -> {
-            Object[] args = context.getArguments();
-            long timestamp = Coerce.asLong(args[0]).orElse(System.currentTimeMillis());
+        @Export
+        public long endOfYear(long timestamp) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(timestamp);
             cal.set(Calendar.DAY_OF_YEAR, cal.getActualMaximum(Calendar.DAY_OF_YEAR));
@@ -366,6 +308,15 @@ public class FunctionTime {
             cal.set(Calendar.SECOND, 59);
             cal.set(Calendar.MILLISECOND, 999);
             return cal.getTimeInMillis();
-        });
+        }
+    }
+
+    public static void init(FluxonRuntime runtime) {
+        // 获取时间对象
+        runtime.registerFunction("time", 0, (context) -> TimeObject.INSTANCE);
+        // 获取当前时间戳（毫秒）
+        runtime.registerFunction("now", 0, (context) -> System.currentTimeMillis());
+        // 注册时间相关的对象实例
+        runtime.getExportRegistry().registerClass(TimeObject.class);
     }
 } 
