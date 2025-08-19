@@ -9,7 +9,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
-import org.tabooproject.fluxon.parser.expression.FunctionCall;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -18,7 +18,7 @@ import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
 
-public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
+public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpression> {
 
     @Override
     public ExpressionType getType() {
@@ -26,7 +26,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, FunctionCall result) {
+    public Object evaluate(Interpreter interpreter, FunctionCallExpression result) {
         // 评估被调用者
         // 评估参数列表
         Object[] arguments = new Object[result.getArguments().size()];
@@ -42,7 +42,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCall> {
     }
 
     @Override
-    public Type generateBytecode(FunctionCall result, CodeContext ctx, MethodVisitor mv) {
+    public Type generateBytecode(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取环境
         mv.visitVarInsn(ALOAD, 0); // this (RuntimeScriptBase)
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());

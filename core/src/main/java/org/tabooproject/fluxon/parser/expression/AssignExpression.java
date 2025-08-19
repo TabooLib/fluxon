@@ -8,7 +8,7 @@ import org.tabooproject.fluxon.parser.VariablePosition;
 /**
  * 赋值表达式
  */
-public class Assignment implements Expression {
+public class AssignExpression implements Expression {
 
     private final String name;
     private final Token operator;
@@ -17,7 +17,7 @@ public class Assignment implements Expression {
     @Nullable
     private final VariablePosition position;
 
-    public Assignment(String name, Token operator, ParseResult value, @Nullable VariablePosition position) {
+    public AssignExpression(String name, Token operator, ParseResult value, @Nullable VariablePosition position) {
         this.name = name;
         this.operator = operator;
         this.value = value;

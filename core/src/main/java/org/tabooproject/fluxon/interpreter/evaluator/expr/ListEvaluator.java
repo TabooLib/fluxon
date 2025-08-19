@@ -13,6 +13,7 @@ import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -26,7 +27,7 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, ListExpression result) {
-        List<Object> elements = new ArrayList<>();
+        List<Object> elements = new ArrayList<>(result.getElements().size());
         for (ParseResult element : result.getElements()) {
             elements.add(interpreter.evaluate(element));
         }

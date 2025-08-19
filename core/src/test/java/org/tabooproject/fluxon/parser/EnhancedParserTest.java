@@ -66,7 +66,7 @@ public class EnhancedParserTest {
         List<ParseResult> results = parseSource("print hello");
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        FunctionCall call = (FunctionCall) stmt.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("print", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
@@ -76,11 +76,11 @@ public class EnhancedParserTest {
         results = parseSource("print checkGrade 95");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
-        call = (FunctionCall) stmt.getExpression();
+        call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("print", call.getCallee());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof FunctionCall);
-        FunctionCall nestedCall = (FunctionCall) call.getArguments().get(0);
+        assertTrue(call.getArguments().get(0) instanceof FunctionCallExpression);
+        FunctionCallExpression nestedCall = (FunctionCallExpression) call.getArguments().get(0);
         assertEquals("checkGrade", nestedCall.getCallee());
         assertEquals(1, nestedCall.getArguments().size());
         assertEquals(95, ((IntLiteral) nestedCall.getArguments().get(0)).getValue());
@@ -95,7 +95,7 @@ public class EnhancedParserTest {
         List<ParseResult> results = parseSource("player head");
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        FunctionCall call = (FunctionCall) stmt.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("player", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);
@@ -105,17 +105,17 @@ public class EnhancedParserTest {
         results = parseSource("player checkGrade 95");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
-        call = (FunctionCall) stmt.getExpression();
+        call = (FunctionCallExpression) stmt.getExpression();
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof FunctionCall);
-        assertEquals("checkGrade", ((FunctionCall) call.getArguments().get(0)).getCallee());
+        assertTrue(call.getArguments().get(0) instanceof FunctionCallExpression);
+        assertEquals("checkGrade", ((FunctionCallExpression) call.getArguments().get(0)).getCallee());
 
         // 多个未知标识符
         results = parseSource("player head body legs");
         System.out.println(results);
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
-        call = (FunctionCall) stmt.getExpression();
+        call = (FunctionCallExpression) stmt.getExpression();
         assertEquals(3, call.getArguments().size());
         assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
         assertEquals("body", ((StringLiteral) call.getArguments().get(1)).getValue());
@@ -169,7 +169,7 @@ public class EnhancedParserTest {
         funcDef = (FunctionDefinition) results.get(0);
         assertTrue(funcDef.getBody() instanceof AwaitExpression);
         AwaitExpression awaitExpr = (AwaitExpression) funcDef.getBody();
-        FunctionCall call = (FunctionCall) awaitExpr.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) awaitExpr.getExpression();
         assertTrue(call.getArguments().get(0) instanceof AwaitExpression);
     }
 
@@ -230,7 +230,7 @@ public class EnhancedParserTest {
         results = parseSource("print(&value)");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
-        FunctionCall call = (FunctionCall) stmt.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof ReferenceExpression);
     }

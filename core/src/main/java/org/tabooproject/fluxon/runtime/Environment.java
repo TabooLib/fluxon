@@ -45,6 +45,10 @@ public class Environment {
     // 层级
     protected final int level;
 
+    // 父链
+    @NotNull
+    protected final Environment[] ancestors;
+
     // 父环境
     @Nullable
     protected final Environment parent;
@@ -77,6 +81,7 @@ public class Environment {
         this.rootVariables = new HashMap<>(values);
         this.localVariables = null;
         this.localVariableNames = null;
+        this.ancestors = new Environment[] { this };
     }
 
     /**
@@ -96,20 +101,9 @@ public class Environment {
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
-    }
-
-    public Environment(@Nullable Map<String, Function> functions, @Nullable Function[] systemFunctions, @Nullable Map<String, Map<Class<?>, Function>> extensionFunctions, @Nullable KV<Class<?>, Function>[][] systemExtensionFunctions, @Nullable Map<String, Object> rootVariables, @Nullable Object[] localVariables, @Nullable String[] localVariableNames, String id, int level, @Nullable Environment parent, @NotNull Environment root) {
-        this.functions = functions;
-        this.systemFunctions = systemFunctions;
-        this.extensionFunctions = extensionFunctions;
-        this.systemExtensionFunctions = systemExtensionFunctions;
-        this.rootVariables = rootVariables;
-        this.localVariables = localVariables;
-        this.localVariableNames = localVariableNames;
-        this.id = id;
-        this.level = level;
-        this.parent = parent;
-        this.root = root;
+        // 父链缓存：长度 = 当前 level + 1，直接复用上一级的 ancestors
+        this.ancestors = Arrays.copyOf(parent.ancestors, parent.ancestors.length + 1);
+        this.ancestors[this.level] = this;
     }
 
     /**
@@ -340,11 +334,8 @@ public class Environment {
      */
     @Nullable
     public Environment getEnvironment(int level) {
-        Environment current = this;
-        while (current != null && current.level != level) {
-            current = current.parent;
-        }
-        return current;
+        if (level < 0 || level >= ancestors.length) return null;
+        return ancestors[level];
     }
 
     /**

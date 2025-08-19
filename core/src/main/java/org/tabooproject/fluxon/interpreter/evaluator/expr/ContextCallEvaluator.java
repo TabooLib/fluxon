@@ -8,10 +8,9 @@ import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.expression.ContextCall;
+import org.tabooproject.fluxon.parser.expression.ContextCallExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.ContextEnvironment;
-import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -20,7 +19,7 @@ import static org.objectweb.asm.Opcodes.*;
  * 上下文调用表达式求值器
  * 处理形如 "text" :: replace("a", "b") 或 "text" :: { replace("a", "b"); length } 的表达式
  */
-public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
+public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpression> {
 
     @Override
     public ExpressionType getType() {
@@ -28,17 +27,17 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCall> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ContextCall expression) {
+    public Object evaluate(Interpreter interpreter, ContextCallExpression expression) {
         // 计算目标值
         Object target = interpreter.evaluate(expression.getTarget());
-        // 创建上下文环境，将目标值绑定为 'this'
+        // 创建上下文环境
         ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target, expression.getLocalVariables(), "context-call");
         // 在上下文环境中求值右侧表达式
         return interpreter.executeWithEnvironment(expression.getContext(), contextEnv);
     }
 
     @Override
-    public Type generateBytecode(ContextCall expression, CodeContext ctx, MethodVisitor mv) {
+    public Type generateBytecode(ContextCallExpression expression, CodeContext ctx, MethodVisitor mv) {
         // 获取目标表达式的求值器
         Evaluator<ParseResult> targetEval = ctx.getEvaluator(expression.getTarget());
         if (targetEval == null) {

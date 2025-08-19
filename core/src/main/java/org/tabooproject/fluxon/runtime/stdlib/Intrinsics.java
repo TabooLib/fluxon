@@ -75,16 +75,16 @@ public final class Intrinsics {
             endInt--;
         }
 
-        // 创建范围结果列表
-        List<Integer> rangeList = new ArrayList<>();
-        // 支持正向和反向范围
+        // 计算所需的确切大小
+        int size = Math.abs(endInt - startInt) + 1;
+        // 创建具有预设容量的 ArrayList
+        List<Integer> rangeList = new ArrayList<>(size);
+        // 填充列表
         if (startInt <= endInt) {
-            // 正向范围
             for (int i = startInt; i <= endInt; i++) {
                 rangeList.add(i);
             }
         } else {
-            // 反向范围
             for (int i = startInt; i >= endInt; i--) {
                 rangeList.add(i);
             }

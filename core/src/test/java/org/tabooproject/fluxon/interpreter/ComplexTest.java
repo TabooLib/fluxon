@@ -8,7 +8,6 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
-import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,15 +33,15 @@ public class ComplexTest {
         RuntimeScriptBase base = (RuntimeScriptBase) defineClass.newInstance();
         base.eval(env);
 
-        for (int i = 0; i < 5; i++) {
-            long time = System.currentTimeMillis();
-            for (int j = 0; j < 1000; j++) {
-//                base.eval(env);
-                Fluxon.eval(parsed, env);
-            }
-            System.out.println((System.currentTimeMillis() - time) + "ms");
-        }
-//
+//        for (int i = 0; i < 5; i++) {
+//            long time = System.currentTimeMillis();
+//            for (int j = 0; j < 1000; j++) {
+////                base.eval(env);
+//                Fluxon.eval(parsed, env);
+//            }
+//            System.out.println((System.currentTimeMillis() - time) + "ms");
+//        }
+
         for (int i = 0; i < 10; i++) {
             long time = System.currentTimeMillis();
 //            base.eval(env);

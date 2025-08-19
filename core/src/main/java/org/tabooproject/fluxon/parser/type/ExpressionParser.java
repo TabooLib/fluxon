@@ -68,7 +68,7 @@ public class ExpressionParser {
                     // 更新位置
                     position = parser.getCurrentScope().getLocalVariable(name);
                 }
-                return new Assignment(name, operator, parseAssignment(parser), position);
+                return new AssignExpression(name, operator, parseAssignment(parser), position);
             }
             throw new ParseException("Invalid assignment target: " + expr, operator, parser.getResults());
         }
@@ -101,19 +101,20 @@ public class ExpressionParser {
         if (parser.match(TokenType.CONTEXT_CALL)) {
             ParseResult context;
             int localVariables = 0;
-            // 如果右侧是代码块，解析代码块（在上下文调用环境中）
+            // 如果右侧是代码块
+            // &list :: { print "Hello" }
             if (parser.match(TokenType.LEFT_BRACE)) {
                 context = BlockParser.parse(parser, Collections.emptyList(), false, false, true);
                 localVariables = ((Block) context).getLocalVariables();
-            } else {
-                // 否则解析表达式，但需要在上下文调用环境中
-                // 临时设置当前作用域为上下文调用环境
+            }
+            // 继续解析 context call
+            // &list :: get(0)
+            else {
                 parser.getCurrentScope().setContextCall(true);
                 context = parseContextCall(parser);
-                localVariables = parser.getCurrentScope().getLocalVariables().size();
                 parser.getCurrentScope().setContextCall(false);
             }
-            expr = new ContextCall(expr, context, localVariables);
+            expr = new ContextCallExpression(expr, context, localVariables);
         }
         return expr;
     }

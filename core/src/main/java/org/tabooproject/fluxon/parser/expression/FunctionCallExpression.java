@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 函数调用
  */
-public class FunctionCall implements Expression {
+public class FunctionCallExpression implements Expression {
     private final String callee;
     private final List<ParseResult> arguments;
 
@@ -19,7 +19,7 @@ public class FunctionCall implements Expression {
     @Nullable
     private final ExtensionFunctionPosition extensionPosition;
 
-    public FunctionCall(String callee, List<ParseResult> arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
+    public FunctionCallExpression(String callee, List<ParseResult> arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         this.callee = callee;
         this.arguments = arguments;
         this.position = pos1;

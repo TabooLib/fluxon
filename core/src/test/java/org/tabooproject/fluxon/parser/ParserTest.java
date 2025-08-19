@@ -141,16 +141,16 @@ public class ParserTest {
         assertTrue(results.get(0) instanceof ExpressionStatement);
 
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        assertTrue(stmt.getExpression() instanceof FunctionCall);
+        assertTrue(stmt.getExpression() instanceof FunctionCallExpression);
 
-        FunctionCall call = (FunctionCall) stmt.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("print", call.getCallee());
         assertEquals(1, call.getArguments().size());
 
         ParseResult arg = call.getArguments().get(0);
-        assertTrue(arg instanceof FunctionCall);
+        assertTrue(arg instanceof FunctionCallExpression);
 
-        FunctionCall innerCall = (FunctionCall) arg;
+        FunctionCallExpression innerCall = (FunctionCallExpression) arg;
         assertEquals("checkGrade", innerCall.getCallee());
         assertEquals(1, innerCall.getArguments().size());
         assertTrue(innerCall.getArguments().get(0) instanceof IntLiteral);
@@ -169,9 +169,9 @@ public class ParserTest {
         assertTrue(results.get(0) instanceof ExpressionStatement);
 
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        assertTrue(stmt.getExpression() instanceof FunctionCall);
+        assertTrue(stmt.getExpression() instanceof FunctionCallExpression);
 
-        FunctionCall call = (FunctionCall) stmt.getExpression();
+        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("player", call.getCallee());
         assertEquals(1, call.getArguments().size());
         assertTrue(call.getArguments().get(0) instanceof StringLiteral);

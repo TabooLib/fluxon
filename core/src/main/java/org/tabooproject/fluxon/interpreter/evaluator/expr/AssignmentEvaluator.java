@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
@@ -11,7 +10,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.VariablePosition;
-import org.tabooproject.fluxon.parser.expression.Assignment;
+import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
@@ -22,7 +21,7 @@ import java.util.Map;
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
-public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
+public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
 
     @Override
     public ExpressionType getType() {
@@ -30,7 +29,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, Assignment result) {
+    public Object evaluate(Interpreter interpreter, AssignExpression result) {
         Object value = interpreter.evaluate(result.getValue());
         Environment environment = interpreter.getEnvironment();
         // 根据赋值操作符类型处理赋值
@@ -69,7 +68,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<Assignment> {
     }
 
     @Override
-    public Type generateBytecode(Assignment result, CodeContext ctx, MethodVisitor mv) {
+    public Type generateBytecode(AssignExpression result, CodeContext ctx, MethodVisitor mv) {
         Evaluator<ParseResult> valueEval = ctx.getEvaluator(result.getValue());
         if (valueEval == null) {
             throw new EvaluatorNotFoundException("No evaluator found for value");

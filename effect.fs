@@ -61,7 +61,9 @@ def createComplete3DShape(center, radius, height, segments) = {
           &particles::add(["REDSTONE", &loc])
       }
   }
+
+  &particles
 }
 
 playerPos = &audience::location()
-createComplete3DShape(&playerPos, 2, 6, 20)
+particles = createComplete3DShape(&playerPos, 2, 6, 20)
