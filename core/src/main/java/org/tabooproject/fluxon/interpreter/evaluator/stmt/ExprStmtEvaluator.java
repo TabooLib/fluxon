@@ -5,7 +5,6 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
@@ -26,8 +25,7 @@ public class ExprStmtEvaluator extends StatementEvaluator<ExpressionStatement> {
 
     @Override
     public Type generateBytecode(ExpressionStatement result, CodeContext ctx, MethodVisitor mv) {
-        EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
-        Evaluator<ParseResult> eval = registry.getEvaluator(result.getExpression());
+        Evaluator<ParseResult> eval = ctx.getEvaluator(result.getExpression());
         if (eval == null) {
             throw new EvaluatorNotFoundException("No evaluator found for expression");
         }

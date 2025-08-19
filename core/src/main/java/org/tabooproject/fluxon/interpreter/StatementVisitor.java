@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 
@@ -16,10 +15,6 @@ public class StatementVisitor extends AbstractVisitor {
 
     @Override
     public Object visitStatement(Statement statement) {
-        StatementEvaluator<Statement> evaluator = registry.getStatement(statement.getStatementType());
-        if (evaluator != null) {
-            return evaluator.evaluate(interpreter, statement);
-        }
-        throw new RuntimeException("Unknown statement type: " + statement.getClass().getName());
+        return statement.getStatementType().evaluator.evaluate(interpreter, statement);
     }
 }

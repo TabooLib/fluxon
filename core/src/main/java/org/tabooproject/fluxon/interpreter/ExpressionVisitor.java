@@ -1,7 +1,5 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.runtime.Environment;
 
@@ -17,10 +15,6 @@ public class ExpressionVisitor extends AbstractVisitor {
 
     @Override
     public Object visitExpression(Expression expression) {
-        ExpressionEvaluator<Expression> evaluator = registry.getExpression(expression.getExpressionType());
-        if (evaluator != null) {
-            return evaluator.evaluate(interpreter, expression);
-        }
-        throw new EvaluatorNotFoundException("Unknown expression type: " + expression.getClass().getName());
+        return expression.getExpressionType().evaluator.evaluate(interpreter, expression);
     }
 }

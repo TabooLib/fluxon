@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.parser.expression;
 
-import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
 

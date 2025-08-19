@@ -29,22 +29,12 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
-        ExpressionEvaluator<Expression> evaluator = ctx.getExpression(expr.getExpressionType());
-        if (evaluator != null) {
-            return evaluator.generateBytecode(expr, ctx, mv);
-        } else {
-            throw new EvaluatorNotFoundException("No evaluator found for expression type: " + expr.getExpressionType());
-        }
+        return expr.getExpressionType().evaluator.generateBytecode(expr, ctx, mv);
     }
 
     @Override
     public Type generateStatementBytecode(Statement stmt, CodeContext ctx, MethodVisitor mv) {
-        StatementEvaluator<Statement> evaluator = ctx.getStatement(stmt.getStatementType());
-        if (evaluator != null) {
-            return evaluator.generateBytecode(stmt, ctx, mv);
-        } else {
-            throw new EvaluatorNotFoundException("No evaluator found for statement type: " + stmt.getStatementType());
-        }
+        return stmt.getStatementType().evaluator.generateBytecode(stmt, ctx, mv);
     }
 
     @Override

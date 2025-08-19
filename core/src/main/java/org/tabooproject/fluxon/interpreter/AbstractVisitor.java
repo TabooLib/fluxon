@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.tabooproject.fluxon.interpreter.evaluator.EvaluatorRegistry;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -11,9 +10,6 @@ import org.tabooproject.fluxon.runtime.Environment;
  * 提供访问者模式的基础实现
  */
 public abstract class AbstractVisitor implements Visitor {
-
-    // 求值器注册表
-    protected final EvaluatorRegistry registry = EvaluatorRegistry.getInstance();
 
     // 解释器实例，用于回调其他方法
     protected final Interpreter interpreter;
