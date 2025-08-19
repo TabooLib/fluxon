@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.WhileExpression;
 
 import java.util.Collections;
@@ -25,7 +26,18 @@ public class WhileParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, Collections.emptyList(), true, true);
+            SymbolEnvironment env = parser.getSymbolEnvironment();
+            // 之前的状态
+            boolean isBreakable = env.isBreakable();
+            boolean isContinuable = env.isContinuable();
+            // 设置新的状态
+            env.setBreakable(true);
+            env.setContinuable(true);
+            // 解析代码块
+            body = BlockParser.parse(parser);
+            // 恢复状态
+            env.setBreakable(isBreakable);
+            env.setContinuable(isContinuable);
         } else {
             body = ExpressionParser.parse(parser);
         }

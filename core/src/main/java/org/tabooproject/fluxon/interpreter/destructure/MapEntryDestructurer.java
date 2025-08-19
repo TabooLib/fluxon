@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.util.Map;
@@ -17,20 +16,19 @@ public class MapEntryDestructurer extends AbstractDestructurer {
     }
     
     @Override
-    public void destructure(Environment environment, Map<String, VariablePosition> variables, Object element) {
+    public void destructure(Environment environment, Map<String, Integer> variables, Object element) {
         if (variables.isEmpty()) {
             return;
         }
         Map.Entry<?, ?> entry = (Map.Entry<?, ?>) element;
         // 第一个变量为键
         int i = 0;
-        for (Map.Entry<String, VariablePosition> varEntry : variables.entrySet()) {
-            int level = varEntry.getValue().getLevel();
-            int index = varEntry.getValue().getIndex();
+        for (Map.Entry<String, Integer> varEntry : variables.entrySet()) {
+            int index = varEntry.getValue();
             if (i == 0) {
-                environment.assign(varEntry.getKey(), entry.getKey(), level,  index);
+                environment.assign(varEntry.getKey(), entry.getKey(), index);
             } else if (i == 1) {
-                environment.assign(varEntry.getKey(), entry.getValue(), level,  index);
+                environment.assign(varEntry.getKey(), entry.getValue(), index);
             } else {
                 break;
             }

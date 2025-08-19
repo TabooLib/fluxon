@@ -10,8 +10,8 @@ import org.tabooproject.fluxon.util.KV;
 import java.util.*;
 
 /**
- * 环境类
- * 用于管理运行时的变量和函数
+ * 运行时环境
+ * 用于管理运行时期间的函数和变量
  */
 public class Environment {
 
@@ -39,19 +39,9 @@ public class Environment {
     // 局部变量对照表
     @Nullable
     protected final String[] localVariableNames;
-
-    // 名称
-    protected final String id;
-    // 层级
-    protected final int level;
-
-    // 父链
-    @NotNull
-    protected final Environment[] ancestors;
-
-    // 父环境
+    // 上下文目标
     @Nullable
-    protected final Environment parent;
+    protected Object target;
 
     // 根环境
     @NotNull
@@ -62,9 +52,6 @@ public class Environment {
      */
     @SuppressWarnings({"unchecked"})
     public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions) {
-        this.id = "root";
-        this.level = 0;
-        this.parent = null;
         this.root = this;
         this.functions = new HashMap<>(functions);
         this.systemFunctions = functions.values().toArray(new Function[0]);
@@ -81,18 +68,14 @@ public class Environment {
         this.rootVariables = new HashMap<>(values);
         this.localVariables = null;
         this.localVariableNames = null;
-        this.ancestors = new Environment[] { this };
     }
 
     /**
-     * 创建子环境
+     * 创建子环境（函数环境）
      *
-     * @param parent 父环境
+     * @param root 根环境
      */
-    public Environment(@NotNull Environment parent, @NotNull Environment root, int localVariables, String id) {
-        this.id = id;
-        this.level = parent.level + 1;
-        this.parent = parent;
+    public Environment(@NotNull Environment root, int localVariables) {
         this.root = root;
         this.functions = null;
         this.systemFunctions = null;
@@ -101,34 +84,6 @@ public class Environment {
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
-        // 父链缓存：长度 = 当前 level + 1，直接复用上一级的 ancestors
-        this.ancestors = Arrays.copyOf(parent.ancestors, parent.ancestors.length + 1);
-        this.ancestors[this.level] = this;
-    }
-
-    /**
-     * 获取名称
-     */
-    @Export
-    public String getId() {
-        return id;
-    }
-
-    /**
-     * 获取层级
-     */
-    @Export
-    public int getLevel() {
-        return level;
-    }
-
-    /**
-     * 获取父环境
-     */
-    @Export
-    @Nullable
-    public Environment getParent() {
-        return parent;
     }
 
     /**
@@ -139,15 +94,6 @@ public class Environment {
     @NotNull
     public Environment getRoot() {
         return root;
-    }
-
-    /**
-     * 判断是否为全局环境
-     *
-     * @return 是否为全局环境
-     */
-    public boolean isRoot() {
-        return parent == null;
     }
 
     /**
@@ -201,7 +147,7 @@ public class Environment {
     }
 
     /**
-     * 获取扩展函数（递归查找所有父环境）
+     * 获取扩展函数（只查找根环境）
      *
      * @param extensionClass 扩展类
      * @param name           函数名
@@ -260,17 +206,16 @@ public class Environment {
 
     /**
      * 获取变量值
-     * 根据 position 参数决定更新局部变量还是根变量
+     * 根据 index 参数决定更新局部变量还是根变量
      *
      * @param name  变量名
-     * @param level 层级（-1 表示根变量）
      * @param index 索引（-1 索引表示根变量）
      * @return 变量值
      * @throws VariableNotFoundException 如果变量不存在
      */
     @NotNull
-    public Object get(@NotNull String name, int level, int index) {
-        Object value = getOrNull(name, level, index);
+    public Object get(@NotNull String name, int index) {
+        Object value = getOrNull(name, index);
         if (value != null) {
             return value;
         }
@@ -282,21 +227,16 @@ public class Environment {
      * 根据 position 参数决定更新局部变量还是根变量
      *
      * @param name  变量名
-     * @param level 层级（-1 表示根变量）
      * @param index 索引（-1 索引表示根变量）
      * @return 变量值
      */
     @Nullable
-    public Object getOrNull(@NotNull String name, int level, int index) {
-        if (level == -1 || index == -1) {
+    public Object getOrNull(@NotNull String name, int index) {
+        if (index == -1) {
             return Objects.requireNonNull(root.rootVariables).get(name);
         } else {
-            Environment targetEnv = getEnvironment(level);
-            if (targetEnv != null) {
-                return targetEnv.localVariables[index];
-            }
+            return localVariables[index];
         }
-        return null;
     }
 
     /**
@@ -305,60 +245,19 @@ public class Environment {
      *
      * @param name  变量名
      * @param value 新的变量值
+     * @param index 索引（-1 索引表示根变量）
      */
-    @Nullable
-    public Environment assign(@NotNull String name, @Nullable Object value, int level, int index) {
-        if (level == -1 || index == -1) {
+    public void assign(@NotNull String name, @Nullable Object value, int index) {
+        if (index == -1) {
             Objects.requireNonNull(root.rootVariables).put(name, value);
-            return this;
         } else {
-            // 根据层级找到对应的环境并更新局部变量
-            Environment targetEnv = getEnvironment(level);
-            if (targetEnv != null) {
-                if (index < targetEnv.localVariables.length) {
-                    targetEnv.localVariables[index] = value;
-                    targetEnv.localVariableNames[index] = name;
-                } else {
-                    System.err.println(dumpVariables());
-                    throw new VariableNotFoundException(name + ", level: " + level + ", index: " + index);
-                }
+            if (index < localVariables.length) {
+                localVariables[index] = value;
+                localVariableNames[index] = name;
             } else {
-                throw new VariableNotFoundException(name);
+                throw new VariableNotFoundException(name + ", index: " + index);
             }
-            return targetEnv;
         }
-    }
-
-    /**
-     * 获取环境
-     */
-    @Nullable
-    public Environment getEnvironment(int level) {
-        if (level < 0 || level >= ancestors.length) return null;
-        return ancestors[level];
-    }
-
-    /**
-     * 获取根环境中的所有变量
-     */
-    @Export
-    public Map<String, Object> getRootVariables() {
-        return root.rootVariables;
-    }
-
-    /**
-     * 获取当前环境中的所有局部变量
-     */
-    @Nullable
-    public Object[] getLocalVariables() {
-        return localVariables;
-    }
-
-    /**
-     * 获取当前环境中的所有局部变量名
-     */
-    public String[] getLocalVariableNames() {
-        return localVariableNames;
     }
 
     /**
@@ -392,68 +291,39 @@ public class Environment {
     }
 
     /**
-     * 从根环境到当前环境，dump 所有变量，展示层级关系
-     *
-     * @return 包含层级关系的变量信息字符串
+     * 获取根环境中的所有变量
      */
     @Export
-    public String dumpVariables() {
-        StringBuilder sb = new StringBuilder();
-        dumpVariablesRecursive(sb, 0);
-        return sb.toString();
+    public Map<String, Object> getRootVariables() {
+        return root.rootVariables;
     }
 
     /**
-     * 递归地dump变量，从根环境开始
-     *
-     * @param sb           字符串构建器
-     * @param currentDepth 当前深度（用于缩进）
+     * 获取当前环境中的所有局部变量
      */
-    private void dumpVariablesRecursive(StringBuilder sb, int currentDepth) {
-        // 先处理父环境（从根开始）
-        if (parent != null) {
-            parent.dumpVariablesRecursive(sb, currentDepth);
-        }
+    @Nullable
+    public Object[] getLocalVariables() {
+        return localVariables;
+    }
 
-        // 添加当前环境的信息
-        StringBuilder indentBuilder = new StringBuilder();
-        for (int i = 0; i < currentDepth; i++) {
-            indentBuilder.append("\t");
-        }
-        String indent = indentBuilder.toString();
-        sb.append(indent).append("Environment \"").append(id).append("\" Level ").append(level).append(":\n");
+    /**
+     * 获取当前环境中的所有局部变量名
+     */
+    public String[] getLocalVariableNames() {
+        return localVariableNames;
+    }
 
-        // 如果是 0 级（根环境），输出根变量
-        if (level == 0 && !Objects.requireNonNull(rootVariables).isEmpty()) {
-            for (Map.Entry<String, Object> entry : rootVariables.entrySet()) {
-                Object value = entry.getValue();
-                sb.append(indent).append("\t").append(entry.getKey()).append(" = ");
-                if (value == null) {
-                    sb.append("null");
-                } else {
-                    sb.append(value.getClass().getSimpleName()).append(": ").append(value);
-                }
-                sb.append("\n");
-            }
-        } else if (localVariables != null && localVariables.length > 0) {
-            // 非根环境输出局部变量
-            for (int i = 0; i < localVariables.length; i++) {
-                Object value = localVariables[i];
-                // 获取变量名
-                String varName = (localVariableNames != null && i < localVariableNames.length)
-                        ? localVariableNames[i]
-                        : "[" + i + "]";
-                sb.append(indent).append("\t").append(i).append(":").append(varName).append(" = ");
-                if (value == null) {
-                    sb.append("null");
-                } else {
-                    sb.append(value.getClass().getSimpleName()).append(": ").append(value);
-                }
-                sb.append("\n");
-            }
-        } else {
-            sb.append(indent).append("\t(no variables)\n");
-        }
-        sb.append("\n");
+    /**
+     * 获取当前环境中的目标对象
+     */
+    public @Nullable Object getTarget() {
+        return target;
+    }
+
+    /**
+     * 设置当前环境中的目标对象
+     */
+    public void setTarget(@Nullable Object target) {
+        this.target = target;
     }
 }

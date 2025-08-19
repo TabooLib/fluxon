@@ -14,6 +14,7 @@ public class IfParser {
      *
      * @return If 表达式解析结果
      */
+    @SuppressWarnings("DuplicatedCode")
     public static ParseResult parse(Parser parser) {
         // 消费 IF 标记
         parser.consume(TokenType.IF, "Expected 'if' before if expression");
@@ -28,7 +29,7 @@ public class IfParser {
         ParseResult thenBranch;
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.LEFT_BRACE)) {
-            thenBranch = BlockParser.parse(parser, Collections.emptyList(), false, false);
+            thenBranch = BlockParser.parse(parser);
         } else {
             thenBranch = ExpressionParser.parse(parser);
         }
@@ -38,7 +39,7 @@ public class IfParser {
         // 如果是大括号，解析为代码块
         if (parser.match(TokenType.ELSE)) {
             if (parser.match(TokenType.LEFT_BRACE)) {
-                elseBranch = BlockParser.parse(parser, Collections.emptyList(), false, false);
+                elseBranch = BlockParser.parse(parser);
             } else {
                 elseBranch = ExpressionParser.parse(parser);
             }

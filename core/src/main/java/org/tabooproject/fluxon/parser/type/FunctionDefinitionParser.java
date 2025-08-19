@@ -36,11 +36,11 @@ public class FunctionDefinitionParser {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
         String functionName = nameToken.getLexeme();
-        // 进入循环作用域
-        parser.enterScope(true, true);
+        // 创建函数标记
+        parser.getSymbolEnvironment().setCurrentFunction(functionName);
 
         // 解析参数列表
-        LinkedHashMap<String, VariablePosition> parameters = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> parameters = new LinkedHashMap<>();
 
         // 检查是否有左括号
         if (parser.match(TokenType.LEFT_PAREN)) {
@@ -49,7 +49,7 @@ public class FunctionDefinitionParser {
                 do {
                     String param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name").getLexeme();
                     parser.defineVariable(param);
-                    parameters.put(param, parser.getCurrentScope().getLocalVariable(param));
+                    parameters.put(param, parser.getSymbolEnvironment().getLocalVariable(param));
                 } while (parser.match(TokenType.COMMA));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
@@ -58,7 +58,7 @@ public class FunctionDefinitionParser {
             while (parser.match(TokenType.IDENTIFIER)) {
                 String name = parser.previous().getLexeme();
                 parser.defineVariable(name);
-                parameters.put(name, parser.getCurrentScope().getLocalVariable(name));
+                parameters.put(name, parser.getSymbolEnvironment().getLocalVariable(name));
             }
         }
 
@@ -83,14 +83,20 @@ public class FunctionDefinitionParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, Collections.emptyList(), false, false);
+            body = BlockParser.parse(parser);
         } else {
             body = ExpressionParser.parse(parser);
         }
         // 可选的分号
         parser.match(TokenType.SEMICOLON);
-        // 退出
-        parser.exitScope();
-        return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync, annotations);
+
+        // 函数局部变量
+        Set<String> localVariables = parser.getSymbolEnvironment().getLocalVariables().get(functionName);
+        if (localVariables == null) {
+            localVariables = new HashSet<>();
+        }
+        // 退出函数标记
+        parser.getSymbolEnvironment().setCurrentFunction(null);
+        return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync, annotations, localVariables);
     }
 }

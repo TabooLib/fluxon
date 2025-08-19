@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.util.Map;
@@ -37,7 +36,7 @@ public class DestructurerFactory {
          * @param variables 变量名列表
          * @param element 要解构的元素
          */
-        void destructure(Environment environment, Map<String, VariablePosition> variables, T element);
+        void destructure(Environment environment, Map<String, Integer> variables, T element);
     }
     
     /**
@@ -61,7 +60,7 @@ public class DestructurerFactory {
         
         @SuppressWarnings("unchecked")
         @Override
-        public void destructure(Environment environment, Map<String, VariablePosition> variables, Object element) {
+        public void destructure(Environment environment, Map<String, Integer> variables, Object element) {
             destructureFunction.destructure(environment, variables, (T) element);
         }
     }

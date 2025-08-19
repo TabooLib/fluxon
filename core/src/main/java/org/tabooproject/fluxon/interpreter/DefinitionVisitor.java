@@ -24,7 +24,7 @@ public class DefinitionVisitor extends AbstractVisitor {
 
     private UserFunction evaluateFunctionDefinition(Definitions.FunctionDefinition funcDef) {
         // 创建函数对象，捕获当前环境
-        UserFunction function = new UserFunction(funcDef, interpreter.getEnvironment(), interpreter);
+        UserFunction function = new UserFunction(funcDef, interpreter);
         // 在当前环境中定义函数
         interpreter.getEnvironment().defineRootFunction(funcDef.getName(), function);
         return function;

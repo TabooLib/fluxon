@@ -283,12 +283,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 从 FunctionContext 获取参数数组
         mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
+        // 压入 localVariables
+        mv.visitLdcInsn(funcDef.getLocalVariables().size());
         // 调用 Operations.bindFunctionParameters
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
                 "bindFunctionParameters",
-                "(" + Environment.TYPE + MAP + "[" + OBJECT + ")" + Environment.TYPE,
+                "(" + Environment.TYPE + MAP + "[" + OBJECT + I + ")" + Environment.TYPE,
                 false
         );
         mv.visitFieldInsn(PUTFIELD, functionClassName, "environment", Environment.TYPE.getDescriptor());

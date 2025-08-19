@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.parser.expression;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.VariablePosition;
 
 /**
  * 赋值表达式
@@ -13,11 +12,9 @@ public class AssignExpression implements Expression {
     private final String name;
     private final Token operator;
     private final ParseResult value;
+    private final int position;
 
-    @Nullable
-    private final VariablePosition position;
-
-    public AssignExpression(String name, Token operator, ParseResult value, @Nullable VariablePosition position) {
+    public AssignExpression(String name, Token operator, ParseResult value, int position) {
         this.name = name;
         this.operator = operator;
         this.value = value;
@@ -36,8 +33,7 @@ public class AssignExpression implements Expression {
         return value;
     }
 
-    @Nullable
-    public VariablePosition getPosition() {
+    public int getPosition() {
         return position;
     }
 

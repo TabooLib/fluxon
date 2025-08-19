@@ -53,7 +53,7 @@ public class StatementParser {
                 // 跳出循环
                 case BREAK: {
                     // 是否允许跳出循环
-                    if (parser.getCurrentScope().isBreakable()) {
+                    if (parser.getSymbolEnvironment().isBreakable()) {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
                         return new BreakStatement();
                     }
@@ -62,7 +62,7 @@ public class StatementParser {
                 // 继续循环
                 case CONTINUE: {
                     // 是否允许继续循环
-                    if (parser.getCurrentScope().isContinuable()) {
+                    if (parser.getSymbolEnvironment().isContinuable()) {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
                         return new ContinueStatement();
                     }

@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.util.Map;
@@ -18,11 +17,11 @@ public abstract class AbstractDestructurer implements Destructurer {
      * @param variables 变量名列表
      * @param fromIndex 开始填充的索引
      */
-    protected void fillRemainingVariables(Environment environment, Map<String, VariablePosition> variables, int fromIndex) {
+    protected void fillRemainingVariables(Environment environment, Map<String, Integer> variables, int fromIndex) {
         int index = 0;
-        for (Map.Entry<String, VariablePosition> entry : variables.entrySet()) {
+        for (Map.Entry<String, Integer> entry : variables.entrySet()) {
             if (index >= fromIndex) {
-                environment.assign(entry.getKey(), null, entry.getValue().getLevel(), entry.getValue().getIndex());
+                environment.assign(entry.getKey(), null, entry.getValue());
             }
             index++;
         }

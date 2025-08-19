@@ -33,8 +33,8 @@ import java.util.*;
  */
 public class Parser implements CompilationPhase<List<ParseResult>> {
 
-    // 作用域栈，用于管理不同作用域的符号
-    private final Deque<SymbolScope> scopeStack = new ArrayDeque<>();
+    // 符号环境
+    private final SymbolEnvironment symbolEnvironment = new SymbolEnvironment();
 
     private List<Token> tokens;
     private int position = 0;
@@ -45,14 +45,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
 
     // 已经解析出的结果
     private List<ParseResult> results;
-
-    /**
-     * 创建解析器
-     */
-    public Parser() {
-        // 初始化全局作用域
-        scopeStack.push(new SymbolScope());
-    }
 
     /**
      * 执行解析
@@ -244,57 +236,35 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 进入新作用域
-     */
-    public void enterScope(boolean breakable, boolean continuable) {
-        SymbolScope newScope = new SymbolScope(getCurrentScope(), getCurrentScope().getRoot());
-        newScope.setBreakable(breakable);
-        newScope.setContinuable(continuable);
-        scopeStack.push(newScope);
-    }
-
-    /**
-     * 退出当前作用域
-     *
-     * @throws IllegalStateException 如果尝试退出全局作用域
-     */
-    public void exitScope() {
-        if (scopeStack.size() <= 1) {
-            throw new IllegalStateException("Cannot exit global scope");
-        }
-        scopeStack.pop();
-    }
-
-    /**
-     * 在当前作用域中定义函数
+     * 定义用户函数
      *
      * @param name 函数名
      * @param info 函数信息
      */
     public void defineUserFunction(String name, SymbolFunction info) {
-        getCurrentScope().defineUserFunction(name, info);
+        symbolEnvironment.defineUserFunction(name, info);
     }
 
     /**
-     * 在当前作用域中定义多个函数
+     * 定义用户函数
      *
      * @param functions 函数映射
      */
     public void defineUserFunction(Map<String, Function> functions) {
-        getCurrentScope().defineUserFunctions(functions);
+        symbolEnvironment.defineUserFunctions(functions);
     }
 
     /**
-     * 在当前作用域中定义变量
+     * 定义局部变量
      *
      * @param name 变量名
      */
     public void defineVariable(String name) {
-        getCurrentScope().defineVariable(name);
+        symbolEnvironment.defineVariable(name);
     }
 
     /**
-     * 在当前作用域中定义多个变量
+     * 定义局部变量
      *
      * @param names 变量名列表
      */
@@ -305,12 +275,12 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 在根作用域中定义多个变量
+     * 定义全局变量
      *
      * @param variables 变量映射
      */
     public void defineRootVariables(Map<String, Object> variables) {
-        getCurrentScope().defineRootVariables(variables);
+        symbolEnvironment.defineRootVariables(variables);
     }
 
     /**
@@ -320,7 +290,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 函数信息，如果不存在则返回 null
      */
     public Callable getFunction(String name) {
-        SymbolFunction symbolFunction = getCurrentScope().getUserFunction(name);
+        SymbolFunction symbolFunction = symbolEnvironment.getUserFunction(name);
         if (symbolFunction != null) {
             return symbolFunction;
         }
@@ -358,7 +328,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 是否为已知函数
      */
     public boolean isFunction(String name) {
-        return getCurrentScope().getUserFunction(name) != null;
+        return getFunction(name) != null;
     }
 
     /**
@@ -377,15 +347,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 标识符名称
      * @return 是否为已知变量
      */
-    public boolean isVariable(String name) {
-        return getCurrentScope().hasVariable(name);
+    public boolean hasVariable(String name) {
+        return symbolEnvironment.hasVariable(name);
     }
 
     /**
-     * 获取当前作用域
+     * 获取当前符号环境
      */
-    public SymbolScope getCurrentScope() {
-        return scopeStack.peek();
+    public SymbolEnvironment getSymbolEnvironment() {
+        return symbolEnvironment;
     }
 
     /**
@@ -400,12 +370,5 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public List<ParseResult> getResults() {
         return results;
-    }
-
-    /**
-     * 获取当前作用域栈
-     */
-    public Deque<SymbolScope> getScopeStack() {
-        return scopeStack;
     }
 }

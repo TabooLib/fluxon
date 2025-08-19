@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.VariablePosition;
+import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 
 import java.util.*;
@@ -18,14 +18,20 @@ public class ForParser {
      *
      * @return For 表达式解析结果
      */
+    @SuppressWarnings("DuplicatedCode")
     public static ParseResult parse(Parser parser) {
         // 消费 FOR 标记
         parser.consume(TokenType.FOR, "Expected 'for' before for expression");
-        // 进入循环作用域
-        parser.enterScope(true, true);
+        SymbolEnvironment env = parser.getSymbolEnvironment();
+        // 之前的状态
+        boolean isBreakable = env.isBreakable();
+        boolean isContinuable = env.isContinuable();
+        // 设置新的状态
+        env.setBreakable(true);
+        env.setContinuable(true);
 
         // 解析变量部分
-        LinkedHashMap<String, VariablePosition> variables;
+        LinkedHashMap<String, Integer> variables;
 
         // 检查是否是解构形式 (变量1, 变量2, ...)
         if (parser.match(TokenType.LEFT_PAREN)) {
@@ -35,7 +41,7 @@ public class ForParser {
             String variable = parser.consume(TokenType.IDENTIFIER, "Expected identifier after 'for'").getLexeme();
             parser.defineVariable(variable);
             variables = new LinkedHashMap<>();
-            variables.put(variable, parser.getCurrentScope().getLocalVariable(variable));
+            variables.put(variable, env.getLocalVariable(variable));
         }
 
         // 消费 IN 标记
@@ -51,13 +57,14 @@ public class ForParser {
         ParseResult body;
         // 如果有左大括号，则解析为 Block 函数体
         if (parser.match(TokenType.LEFT_BRACE)) {
-            body = BlockParser.parse(parser, Collections.emptyList(), false, false);
+            body = BlockParser.parse(parser);
         } else {
             body = ExpressionParser.parse(parser);
         }
 
-        // 退出
-        parser.exitScope();
+        // 恢复状态
+        env.setBreakable(isBreakable);
+        env.setContinuable(isContinuable);
         return new ForExpression(variables, collection, body, variables.size());
     }
 
@@ -68,17 +75,17 @@ public class ForParser {
      * @param parser 解析器
      * @return 变量名列表
      */
-    private static LinkedHashMap<String, VariablePosition> parseDestructuringVariables(Parser parser) {
-        LinkedHashMap<String, VariablePosition> variables = new LinkedHashMap<>();
+    private static LinkedHashMap<String, Integer> parseDestructuringVariables(Parser parser) {
+        LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
         // 解析第一个变量
         String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring declaration").getLexeme();
         parser.defineVariable(first);
-        variables.put(first, parser.getCurrentScope().getLocalVariable(first));
+        variables.put(first, parser.getSymbolEnvironment().getLocalVariable(first));
         // 解析其余变量（以逗号分隔）
         while (parser.match(TokenType.COMMA)) {
             String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring declaration").getLexeme();
             parser.defineVariable(name);
-            variables.put(name, parser.getCurrentScope().getLocalVariable(name));
+            variables.put(name, parser.getSymbolEnvironment().getLocalVariable(name));
         }
         // 消费右括号
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after destructuring variables");

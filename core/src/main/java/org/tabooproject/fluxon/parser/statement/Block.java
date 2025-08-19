@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.statement;
 
 import org.tabooproject.fluxon.parser.ParseResult;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -12,12 +13,10 @@ public class Block implements Statement {
 
     private final String label;
     private final ParseResult[] statements;
-    private final int localVariables;
 
-    public Block(String label, ParseResult[] statements, int localVariables) {
+    public Block(String label, ParseResult[] statements) {
         this.label = label;
         this.statements = statements;
-        this.localVariables = localVariables;
     }
 
     public String getLabel() {
@@ -28,10 +27,6 @@ public class Block implements Statement {
         return statements;
     }
 
-    public int getLocalVariables() {
-        return localVariables;
-    }
-
     @Override
     public StatementType getStatementType() {
         return StatementType.BLOCK;
@@ -39,7 +34,7 @@ public class Block implements Statement {
 
     @Override
     public String toString() {
-        return "Block(" + statements + ")";
+        return "Block(" + Arrays.toString(statements) + ")";
     }
 
     @Override

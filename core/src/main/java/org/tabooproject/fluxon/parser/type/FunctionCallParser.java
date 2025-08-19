@@ -40,7 +40,7 @@ public class FunctionCallParser {
 
             // 只有在上下文调用环境中才查找扩展函数
             ExtensionFunctionPosition exInfo = null;
-            if (parser.getCurrentScope().isContextCall()) {
+            if (parser.getSymbolEnvironment().isContextCall()) {
                 exInfo = parser.getExtensionFunction(functionName);
             }
 
@@ -63,10 +63,9 @@ public class FunctionCallParser {
                             String identifier = parser.peek().getLexeme();
 
                             // 检查标识符是否为已知函数或变量
-                            // 在上下文调用环境中也检查扩展函数
-                            if (parser.isFunction(identifier)
-                                    || parser.isVariable(identifier)
-                                    || (parser.getCurrentScope().isContextCall() && parser.isExtensionFunction(identifier))
+                            if (parser.isFunction(identifier) || parser.hasVariable(identifier)
+                                    // 如果在上下文调用环境中也检查扩展函数
+                                    || (parser.getSymbolEnvironment().isContextCall() && parser.isExtensionFunction(identifier))
                             ) {
                                 arguments.add(ExpressionParser.parse(parser));
                             } else {
@@ -97,7 +96,7 @@ public class FunctionCallParser {
                         block.add(new FunctionCallExpression(((Identifier) name).getValue(), arguments.subList(0, closestCount), position, exInfo));
                         // 和剩下的参数打包成代码块，避免回滚二次解析
                         block.addAll(arguments.subList(closestCount, arguments.size()));
-                        return new Block("ipc", block.toArray(new ParseResult[0]), 0);
+                        return new Block("ipc", block.toArray(new ParseResult[0]));
                     }
                 }
             }
@@ -234,7 +233,7 @@ public class FunctionCallParser {
         FunctionPosition pos = functionInfo instanceof FunctionPosition ? (FunctionPosition) functionInfo : null;
         // 只有在上下文环境中才获取扩展函数
         ExtensionFunctionPosition exPos = null;
-        if (parser.getCurrentScope().isContextCall()) {
+        if (parser.getSymbolEnvironment().isContextCall()) {
             exPos = parser.getExtensionFunction(name);
         }
         return new FunctionCallExpression(name, arguments, pos, exPos);

@@ -25,14 +25,11 @@ public class UserFunction implements Function, Symbolic {
     @NotNull
     private final Definitions.FunctionDefinition definition;
     @NotNull
-    private final Environment closure;
-    @NotNull
     private final Interpreter interpreter;
 
-    public UserFunction(@NotNull Definitions.FunctionDefinition definition, @NotNull Environment closure, @NotNull Interpreter interpreter) {
+    public UserFunction(@NotNull Definitions.FunctionDefinition definition, @NotNull Interpreter interpreter) {
         this.symbolInfo = new SymbolFunction(definition.getName(), definition.getParameters().size());
         this.definition = definition;
-        this.closure = closure;
         this.interpreter = interpreter;
     }
 
@@ -61,7 +58,12 @@ public class UserFunction implements Function, Symbolic {
     @Override
     public Object call(@NotNull final FunctionContext<?> context) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
-        Environment functionEnv = Intrinsics.bindFunctionParameters(closure, definition.getParameters(), context.getArguments());
+        Environment functionEnv = Intrinsics.bindFunctionParameters(
+                interpreter.getEnvironment(),
+                definition.getParameters(),
+                context.getArguments(),
+                definition.getLocalVariables().size()
+        );
         try {
             // 执行函数体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
@@ -82,17 +84,13 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @NotNull
-    public Environment getClosure() {
-        return closure;
-    }
-
-    @NotNull
     public Interpreter getInterpreter() {
         return interpreter;
     }
 
     /**
      * 获取函数的注解列表
+     *
      * @return 注解列表
      */
     public List<Annotation> getAnnotations() {

@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -19,27 +18,21 @@ import static org.objectweb.asm.Opcodes.POP;
 public class BytecodeUtils {
 
     /**
-     * 生成创建和填充 Map<String, VariablePosition> 的字节码
+     * 生成创建和填充 Map<String, Integer> 的字节码
      */
-    public static void generateVariablePositionMap(MethodVisitor mv, LinkedHashMap<String, VariablePosition> variables) {
+    public static void generateVariablePositionMap(MethodVisitor mv, LinkedHashMap<String, Integer> variables) {
         // 创建 HashMap 实例
         mv.visitTypeInsn(NEW, LINKED_HASH_MAP.getPath());
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP.getPath(), "<init>", "()V", false);
 
         // 填充 Map
-        for (Map.Entry<String, VariablePosition> entry : variables.entrySet()) {
-            mv.visitInsn(DUP);               // 复制 Map 引用
-            mv.visitLdcInsn(entry.getKey()); // 键
-
-            // 创建 VariablePosition 实例
-            mv.visitTypeInsn(NEW, VariablePosition.TYPE.getPath());
-            mv.visitInsn(DUP);
-            VariablePosition position = entry.getValue();
-            mv.visitLdcInsn(position.getLevel()); // level 参数
-            mv.visitLdcInsn(position.getIndex()); // index 参数
-            mv.visitMethodInsn(INVOKESPECIAL, VariablePosition.TYPE.getPath(), "<init>", "(II)V", false);
-
+        for (Map.Entry<String, Integer> entry : variables.entrySet()) {
+            mv.visitInsn(DUP);                 // 复制 Map 引用
+            mv.visitLdcInsn(entry.getKey());   // 键
+            mv.visitLdcInsn(entry.getValue()); // 值
+            // 装箱
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
             // 调用 put 方法
             mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);
             // 丢弃 put 方法的返回值

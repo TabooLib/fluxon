@@ -1,10 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
@@ -49,7 +46,7 @@ public final class Intrinsics {
      * @param variables  变量名列表（序列化为字符串数组）
      * @param element    要解构的元素
      */
-    public static void destructure(RuntimeScriptBase scriptBase, Map<String, VariablePosition> variables, Object element) {
+    public static void destructure(RuntimeScriptBase scriptBase, Map<String, Integer> variables, Object element) {
         Environment environment = scriptBase.getEnvironment();
         DestructuringRegistry.getInstance().destructure(environment, variables, element);
     }
@@ -93,25 +90,6 @@ public final class Intrinsics {
     }
 
     /**
-     * 查找目标对象
-     *
-     * @param environment 环境
-     * @return 目标对象
-     */
-    public static Object findTarget(Environment environment) {
-        // 向上递归查找目标对象
-        Environment current = environment;
-        while (current != null) {
-            if (current instanceof ContextEnvironment) {
-                return ((ContextEnvironment) current).getTarget();
-            }
-            // 获取父环境继续查找
-            current = current.getParent();
-        }
-        return null;
-    }
-
-    /**
      * 执行函数调用
      *
      * @param environment 脚本运行环境
@@ -123,7 +101,7 @@ public final class Intrinsics {
      */
     public static Object callFunction(Environment environment, String name, Object[] arguments, int pos, int exPos) {
         // 获取调用目标
-        Object target = findTarget(environment);
+        Object target = environment.getTarget();
         // 获取函数
         Function function = null;
         // 优先尝试从扩展函数中获取函数
@@ -184,32 +162,32 @@ public final class Intrinsics {
      * 为函数调用绑定参数到新环境中
      * 参考 UserFunction 的参数绑定逻辑
      *
-     * @param parentEnv  父环境
-     * @param parameters 参数名列表
-     * @param args       参数值数组
+     * @param parentEnv      父环境
+     * @param parameters     参数名列表
+     * @param args           参数值数组
+     * @param localVariables 局部变量数量
      * @return 绑定了参数的新环境
      */
     @NotNull
-    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, VariablePosition> parameters, @NotNull Object[] args) {
-        // 创建新的环境，父环境为传入的环境
-        Environment functionEnv = new Environment(parentEnv, parentEnv.getRoot(), parameters.size(), "def");
+    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, Integer> parameters, @NotNull Object[] args, int localVariables) {
+        // 创建函数环境
+        Environment functionEnv = new Environment(parentEnv, localVariables);
         // 绑定参数
         if (!parameters.isEmpty() && args != null) {
             // 绑定实际传递的参数
             int index = 0;
-            for (Map.Entry<String, VariablePosition> entry : parameters.entrySet()) {
-                VariablePosition pos = entry.getValue();
+            for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
                 if (index < args.length) {
-                    functionEnv.assign(entry.getKey(), args[index], pos.getLevel(), pos.getIndex());
+                    functionEnv.assign(entry.getKey(), args[index], entry.getValue());
                 } else {
-                    functionEnv.assign(entry.getKey(), null, pos.getLevel(), pos.getIndex());
+                    functionEnv.assign(entry.getKey(), null, entry.getValue());
                 }
                 index++;
             }
         } else if (!parameters.isEmpty()) {
             // 如果没有参数值，所有参数都设为 null
-            for (Map.Entry<String, VariablePosition> entry : parameters.entrySet()) {
-                functionEnv.assign(entry.getKey(), null, entry.getValue().getLevel(), entry.getValue().getIndex());
+            for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
+                functionEnv.assign(entry.getKey(), null, entry.getValue());
             }
         }
         return functionEnv;

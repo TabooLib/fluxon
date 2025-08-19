@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
 import org.tabooproject.fluxon.interpreter.error.VoidValueException;
@@ -9,7 +10,6 @@ import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -33,14 +33,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         Object value = interpreter.evaluate(result.getValue());
         Environment environment = interpreter.getEnvironment();
         // 根据赋值操作符类型处理赋值
-        VariablePosition pos = result.getPosition();
-        int level = pos != null ? pos.getLevel() : -1;
-        int index = pos != null ? pos.getIndex() : -1;
         if (result.getOperator().getType() == TokenType.ASSIGN) {
-            environment.assign(result.getName(), value, level, index);
+            environment.assign(result.getName(), value, result.getPosition());
         } else {
             // 处理复合赋值
-            Object current = environment.get(result.getName(), level, index);
+            Object current = environment.get(result.getName(), result.getPosition());
             // 根据操作符类型进行不同的复合赋值操作
             switch (result.getOperator().getType()) {
                 case PLUS_ASSIGN:
@@ -61,7 +58,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 default:
                     throw new RuntimeException("Unknown compound assignment operator: " + result.getOperator().getType());
             }
-            environment.assign(result.getName(), value, level, index);
+            environment.assign(result.getName(), value, result.getPosition());
         }
         // Assignment 操作没有返回值
         return null;
@@ -73,10 +70,6 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         if (valueEval == null) {
             throw new EvaluatorNotFoundException("No evaluator found for value");
         }
-        // 压入 index 和 level 参数
-        VariablePosition pos = result.getPosition();
-        int level = pos != null ? pos.getLevel() : -1;
-        int index = pos != null ? pos.getIndex() : -1;
         // 根据赋值操作符类型处理赋值
         TokenType type = result.getOperator().getType();
         if (type == TokenType.ASSIGN) {
@@ -86,9 +79,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
                 throw new VoidValueException("Void type is not allowed for assignment value");
             }
-            // 压入 index 和 level 参数
-            mv.visitLdcInsn(level);
-            mv.visitLdcInsn(index);
+            // 压入 index 参数
+            mv.visitLdcInsn(result.getPosition());
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         } else {
             // 压入变量名 -> 用于后续的写回操作
@@ -97,9 +89,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
 
             // 复制栈顶的两个值用于进行操作
             mv.visitInsn(DUP2);
-            // 压入 index 和 level 参数
-            mv.visitLdcInsn(level);
-            mv.visitLdcInsn(index);
+            // 压入 index  参数
+            mv.visitLdcInsn(result.getPosition());
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "get", GET, false);
             // 执行操作
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
@@ -112,17 +103,16 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 throw new RuntimeException("Unknown compound assignment operator: " + type);
             }
             mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), name, "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, false);
-            // 压入 index 和 level 参数
-            mv.visitLdcInsn(level);
-            mv.visitLdcInsn(index);
+            // 压入 index 参数
+            mv.visitLdcInsn(result.getPosition());
             mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "assign", ASSIGN, false);
         }
         // Assignment 操作没有返回值
         return Type.VOID;
     }
 
-    private static final String ASSIGN = "(" + Type.STRING + Type.OBJECT + Type.I + Type.I + ")" + Type.VOID;
-    private static final String GET = "(" + Type.STRING + Type.I + Type.I + ")" + Type.OBJECT;
+    private static final String ASSIGN = "(" + Type.STRING + Type.OBJECT + Type.I + ")" + Type.VOID;
+    private static final String GET = "(" + Type.STRING + Type.I + ")" + Type.OBJECT;
 
     private static final Map<TokenType, String> OPERATORS = new HashMap<>();
 

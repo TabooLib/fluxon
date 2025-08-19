@@ -10,7 +10,6 @@ public class ContextCallExpression implements Expression {
 
     private final ParseResult target;
     private final ParseResult context;
-    private final int localVariables;
 
     /**
      * 构造函数
@@ -18,10 +17,9 @@ public class ContextCallExpression implements Expression {
      * @param target  目标表达式（:: 左侧的值）
      * @param context 上下文表达式（:: 右侧的表达式或块）
      */
-    public ContextCallExpression(ParseResult target, ParseResult context, int localVariables) {
+    public ContextCallExpression(ParseResult target, ParseResult context) {
         this.target = target;
         this.context = context;
-        this.localVariables = localVariables;
     }
 
     /**
@@ -40,13 +38,6 @@ public class ContextCallExpression implements Expression {
      */
     public ParseResult getContext() {
         return context;
-    }
-
-    /**
-     * 获取本地变量数量
-     */
-    public int getLocalVariables() {
-        return localVariables;
     }
 
     @Override

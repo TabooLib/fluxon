@@ -10,7 +10,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ContextCallExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
-import org.tabooproject.fluxon.runtime.ContextEnvironment;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -28,12 +28,16 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
 
     @Override
     public Object evaluate(Interpreter interpreter, ContextCallExpression expression) {
-        // 计算目标值
-        Object target = interpreter.evaluate(expression.getTarget());
-        // 创建上下文环境
-        ContextEnvironment contextEnv = new ContextEnvironment(interpreter.getEnvironment(), target, expression.getLocalVariables(), "context-call");
-        // 在上下文环境中求值右侧表达式
-        return interpreter.executeWithEnvironment(expression.getContext(), contextEnv);
+        // 获取之前的目标
+        Object before = interpreter.getEnvironment().getTarget();
+        // 覆盖目标
+        interpreter.getEnvironment().setTarget(interpreter.evaluate(expression.getTarget()));
+        try {
+            return interpreter.evaluate(expression.getContext());
+        } finally {
+            // 恢复目标
+            interpreter.getEnvironment().setTarget(before);
+        }
     }
 
     @Override
@@ -49,18 +53,26 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             throw new EvaluatorNotFoundException("No evaluator found for context expression");
         }
 
-        // 计算目标值
+        // 首先保存当前的 target - 调用 this.environment.getTarget()
+        mv.visitVarInsn(ALOAD, 0); // this
+        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
+        int oldTargetIndex = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, oldTargetIndex);
+
+        // 计算新的目标值
         Type targetType = targetEval.generateBytecode(expression.getTarget(), ctx, mv);
         if (targetType == Type.VOID) {
             throw new VoidValueException("Void type is not allowed for context call target");
         }
 
-        // 调用 enterContextScope 方法
-        mv.visitVarInsn(ALOAD, 0);                       // this
-        mv.visitInsn(SWAP);                              // 将目标值移到 this 下面
-        mv.visitLdcInsn(expression.getLocalVariables()); // localVariables 参数
-        mv.visitLdcInsn("context-call");
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "enterContextScope", "(" + Type.OBJECT + Type.I + Type.STRING + ")V", false);
+        // 设置新的 target - 调用 this.environment.setTarget(newTarget)
+        int newTargetIndex = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, newTargetIndex); // 保存新 target
+        mv.visitVarInsn(ALOAD, 0); // this
+        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        mv.visitVarInsn(ALOAD, newTargetIndex); // 加载新 target
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
 
         // 在新环境中求值上下文表达式
         Type resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
@@ -72,9 +84,11 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             mv.visitVarInsn(ASTORE, resultIndex);
         }
 
-        // 调用 exitScope 方法恢复原环境
+        // 恢复原来的 target - 调用 this.environment.setTarget(oldTarget)
         mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "exitScope", "()V", false);
+        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        mv.visitVarInsn(ALOAD, oldTargetIndex); // 加载原 target
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
 
         // 恢复结果到栈上（如果不是 void）
         if (resultType != Type.VOID) {

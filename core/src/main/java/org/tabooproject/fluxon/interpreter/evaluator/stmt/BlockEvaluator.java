@@ -24,26 +24,15 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
 
     @Override
     public Object evaluate(Interpreter interpreter, Block result) {
-        interpreter.enterScope(result.getLocalVariables(), "block");
-        try {
-            Object last = null;
-            for (ParseResult statement : result.getStatements()) {
-                last = interpreter.evaluate(statement);
-            }
-            return last;
-        } finally {
-            interpreter.exitScope();
+        Object last = null;
+        for (ParseResult statement : result.getStatements()) {
+            last = interpreter.evaluate(statement);
         }
+        return last;
     }
 
     @Override
     public Type generateBytecode(Block result, CodeContext ctx, MethodVisitor mv) {
-        // 调用 enterScope 方法
-        mv.visitVarInsn(ALOAD, 0);                   // this
-        mv.visitLdcInsn(result.getLocalVariables()); // localVariables 参数
-        mv.visitLdcInsn("block");
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "enterScope", "(" + Type.I + Type.STRING + ")V", false);
-
         Type last = Type.VOID;
         ParseResult[] statements = result.getStatements();
         for (int i = 0, statementsSize = statements.length; i < statementsSize; i++) {
@@ -58,10 +47,6 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
                 mv.visitInsn(POP);
             }
         }
-
-        // 调用 exitScope 方法恢复原环境
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "exitScope", "()V", false);
         return last;
     }
 }

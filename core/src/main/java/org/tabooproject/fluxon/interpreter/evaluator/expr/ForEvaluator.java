@@ -13,7 +13,6 @@ import org.tabooproject.fluxon.interpreter.error.VoidValueException;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -21,7 +20,6 @@ import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -41,26 +39,19 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 使用 Operations 类创建迭代器
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
-        Map<String, VariablePosition> variables = result.getVariables();
-        // 创建新环境进行迭代
-        interpreter.enterScope(result.getLocalVariables(), "for");
+        Map<String, Integer> variables = result.getVariables();
         Object last = null;
-        try {
-            Environment environment = interpreter.getEnvironment();
-            // 迭代集合元素
-            while (iterator.hasNext()) {
-                // 使用解构器注册表执行解构
-                DestructuringRegistry.getInstance().destructure(environment, variables, iterator.next());
-                // 执行循环体
-                try {
-                    last = interpreter.evaluate(result.getBody());
-                } catch (ContinueException ignored) {
-                } catch (BreakException ignored) {
-                    break;
-                }
+        // 迭代集合元素
+        while (iterator.hasNext()) {
+            // 使用解构器注册表执行解构
+            DestructuringRegistry.getInstance().destructure(interpreter.getEnvironment(), variables, iterator.next());
+            // 执行循环体
+            try {
+                last = interpreter.evaluate(result.getBody());
+            } catch (ContinueException ignored) {
+            } catch (BreakException ignored) {
+                break;
             }
-        } finally {
-            interpreter.exitScope();
         }
         return last;
     }
@@ -101,12 +92,6 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         if (bodyEval == null) {
             throw new EvaluatorNotFoundException("No evaluator found for body expression");
         }
-
-        // 调用 enterScope 方法
-        mv.visitVarInsn(ALOAD, 0);                   // this
-        mv.visitLdcInsn(result.getLocalVariables()); // localVariables 参数
-        mv.visitLdcInsn("for-(" + String.join(",", result.getVariables().keySet()) + ")");
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "enterScope", "(" + Type.I + Type.STRING + ")V", false);
 
         // 分配局部变量存储迭代器和变量Map
         int iteratorVar = ctx.allocateLocalVar(Type.OBJECT);
@@ -163,10 +148,6 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitLabel(whileEnd);
         // 退出循环上下文
         ctx.exitLoop();
-
-        // 调用 exitScope 方法恢复原环境
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitMethodInsn(INVOKEVIRTUAL, ctx.getClassName(), "exitScope", "()V", false);
         return Type.VOID;
     }
 

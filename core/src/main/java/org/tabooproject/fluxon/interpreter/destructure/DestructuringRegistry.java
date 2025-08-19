@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
-import org.tabooproject.fluxon.parser.VariablePosition;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import java.util.ArrayList;
@@ -83,13 +82,13 @@ public class DestructuringRegistry {
      * @param variables 变量名列表
      * @param element 要解构的元素
      */
-    public void destructure(Environment environment, Map<String, VariablePosition> variables, Object element) {
+    public void destructure(Environment environment, Map<String, Integer> variables, Object element) {
         if (variables.isEmpty()) {
             return;
         }
         // 单变量情况特殊处理
         if (variables.size() == 1) {
-            variables.forEach((name, position) -> environment.assign(name, element, position.getLevel(), position.getIndex()));
+            variables.forEach((name, position) -> environment.assign(name, element, position));
             return;
         }
         // 查找合适的解构器

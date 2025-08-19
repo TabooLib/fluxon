@@ -116,7 +116,6 @@ public class Interpreter {
         this.environment = environment;
     }
 
-
     /**
      * 获取当前环境
      */
@@ -126,18 +125,16 @@ public class Interpreter {
     }
 
     /**
-     * 进入新的环境
+     * 进入新的函数环境
      */
-    public void enterScope(int localVariables, String id) {
-        environment = new Environment(environment, environment.getRoot(), localVariables, id);
+    public void enterScope(int localVariables) {
+        environment = new Environment(environment.getRoot(), localVariables);
     }
 
     /**
-     * 返回上级环境
+     * 返回根环境
      */
     public void exitScope() {
-        if (environment.getParent() != null) {
-            environment = environment.getParent();
-        }
+        environment = environment.getRoot();
     }
 }

@@ -22,18 +22,18 @@ public abstract class RuntimeScriptBase {
     }
 
     // 设置运行时变量
-    public void assign(String name, Object value, int level, int index) {
-        environment.assign(name, value, level, index);
+    public void assign(String name, Object value, int index) {
+        environment.assign(name, value, index);
     }
 
     // 获取运行时变量
-    public Object get(String name, int level, int index) {
-        return environment.get(name, level, index);
+    public Object get(String name, int index) {
+        return environment.get(name, index);
     }
 
     // 获取运行时变量
-    public Object getVariableOrFunction(String name, boolean isOptional, int level, int index) {
-        Object var = environment.getOrNull(name, level, index);
+    public Object getVariableOrFunction(String name, boolean isOptional, int index) {
+        Object var = environment.getOrNull(name, index);
         if (var != null || isOptional) {
             return var;
         }
@@ -53,22 +53,5 @@ public abstract class RuntimeScriptBase {
     // 获取运行时环境
     public Environment getEnvironment() {
         return environment;
-    }
-
-    // 进入新的环境
-    public void enterScope(int localVariables, String id) {
-        environment = new Environment(environment, environment.getRoot(), localVariables, id);
-    }
-
-    // 进入新的上下文环境
-    public void enterContextScope(Object target, int localVariables, String id) {
-        environment = new ContextEnvironment(environment, target, localVariables, id);
-    }
-
-    // 返回上级环境
-    public void exitScope() {
-        if (environment.getParent() != null) {
-            environment = environment.getParent();
-        }
     }
 }
