@@ -315,6 +315,8 @@ public class ExpressionParser {
                 return WhenParser.parse(parser);
             case WHILE:
                 return WhileParser.parse(parser);
+            case TRY:
+                return TryParser.parse(parser);
 
             // 分组表达式
             case LEFT_PAREN: {

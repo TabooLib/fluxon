@@ -119,7 +119,7 @@ public class LexerTest {
         @Test
         @DisplayName("测试关键字识别")
         void testKeywords() {
-            String source = "def fun val var if then else when is in async await return try catch";
+            String source = "def fun val var if then else when is in async await return try catch finally";
             List<Token> tokens = getTokens(source);
 
             // 验证所有关键字都被正确识别
@@ -139,13 +139,14 @@ public class LexerTest {
             assertEquals(TokenType.RETURN, tokens.get(12).getType(), "第13个 token 应为 'return' 关键字");
             assertEquals(TokenType.TRY, tokens.get(13).getType(), "第14个 token 应为 'try' 关键字");
             assertEquals(TokenType.CATCH, tokens.get(14).getType(), "第15个 token 应为 'catch' 关键字");
+            assertEquals(TokenType.FINALLY, tokens.get(15).getType(), "第15个 token 应为 'finally' 关键字");
 
             // 验证值也正确
             assertEquals("def", tokens.get(0).getLexeme(), "第1个 token 的值应为 'def'");
             assertEquals("catch", tokens.get(14).getLexeme(), "第15个 token 的值应为 'catch'");
 
             // 关键字数量
-            assertEquals(15, tokens.size() - 1, "应识别 15 个关键字 (不计 EOF)");
+            assertEquals(16, tokens.size() - 1, "应识别 16 个关键字 (不计 EOF)");
         }
 
         @Test

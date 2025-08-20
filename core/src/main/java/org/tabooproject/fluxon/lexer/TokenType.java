@@ -22,6 +22,7 @@ public enum TokenType {
     RETURN("return"),
     TRY("try"),
     CATCH("catch"),
+    FINALLY("finally"),
     WHILE("while"),
     BREAK("break"),
     CONTINUE("continue"),

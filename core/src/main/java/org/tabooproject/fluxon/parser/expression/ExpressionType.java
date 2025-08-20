@@ -35,6 +35,7 @@ public enum ExpressionType {
     FOR(new ForEvaluator()),
     WHEN(new WhenEvaluator()),
     WHILE(new WhileEvaluator()),
+    TRY(new TryEvaluator()),
 
     // 一元、二元和逻辑表达式
     UNARY(new UnaryEvaluator()),

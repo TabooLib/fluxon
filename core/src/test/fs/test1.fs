@@ -48,4 +48,9 @@ when &sum {
     in 10..100 -> print "Sum is between 10 and 100"
 }
 print "Sum: " + &sum
-print "Random: " + random
+print "Random: " + random()
+
+try throw 'error'
+try throw 'error' finally print 'ok'
+try throw 'error' catch 'ok' finally print 'ok'
+try throw 'error' catch (e) 'ok' finally print 'ok'
