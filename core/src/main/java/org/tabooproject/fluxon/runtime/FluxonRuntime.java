@@ -62,6 +62,7 @@ public class FluxonRuntime {
         ExtensionMethod.init(this);
         ExtensionObject.init(this);
         ExtensionString.init(this);
+        ExtensionThrowable.init(this);
     }
 
     /**

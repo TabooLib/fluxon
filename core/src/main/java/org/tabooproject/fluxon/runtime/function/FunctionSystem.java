@@ -66,7 +66,12 @@ public class FunctionSystem {
             }
         });
         runtime.registerFunction("throw", 1, (context) -> {
-            throw new RuntimeException(context.getArgument(0).toString());
+            Object o = context.getArgument(0);
+            if (o instanceof Error) {
+                throw (Error) o;
+            } else {
+                throw new RuntimeException(o.toString());
+            }
         });
     }
 }
