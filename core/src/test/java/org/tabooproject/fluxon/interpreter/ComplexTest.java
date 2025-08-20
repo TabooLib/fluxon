@@ -33,14 +33,14 @@ public class ComplexTest {
         RuntimeScriptBase base = (RuntimeScriptBase) defineClass.newInstance();
         base.eval(env);
 
-        for (int i = 0; i < 5; i++) {
-            long time = System.currentTimeMillis();
-            for (int j = 0; j < 1000; j++) {
-//                base.eval(env);
-                Fluxon.eval(parsed, env);
-            }
-            System.out.println((System.currentTimeMillis() - time) + "ms");
-        }
+//        for (int i = 0; i < 5; i++) {
+//            long time = System.currentTimeMillis();
+//            for (int j = 0; j < 1000; j++) {
+////                base.eval(env);
+//                Fluxon.eval(parsed, env);
+//            }
+//            System.out.println((System.currentTimeMillis() - time) + "ms");
+//        }
 
         for (int i = 0; i < 10; i++) {
             long time = System.currentTimeMillis();

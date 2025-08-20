@@ -9,11 +9,11 @@ public class ExtensionMapEntry {
 
     @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtensionFunction(Map.Entry.class, "key", 2, (context) -> {
+        runtime.registerExtensionFunction(Map.Entry.class, "key", 0, (context) -> {
             Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
             return entry.getKey();
         });
-        runtime.registerExtensionFunction(Map.Entry.class, "value", 2, (context) -> {
+        runtime.registerExtensionFunction(Map.Entry.class, "value", 0, (context) -> {
             Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
             return entry.getValue();
         });

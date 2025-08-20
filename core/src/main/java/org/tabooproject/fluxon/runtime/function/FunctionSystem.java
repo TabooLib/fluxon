@@ -31,9 +31,9 @@ public class FunctionSystem {
         });
         runtime.registerFunction("sleep", 1, (context) -> {
             Object[] args = context.getArguments();
-            int seconds = ((Number) args[0]).intValue();
+            int sleepMillis = ((Number) args[0]).intValue();
             try {
-                Thread.sleep(seconds);
+                Thread.sleep(sleepMillis);
             } catch (InterruptedException e) {
                 throw new RuntimeException("Sleep function interrupted", e);
             }
