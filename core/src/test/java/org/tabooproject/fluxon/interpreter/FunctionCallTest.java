@@ -1,7 +1,9 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -11,6 +13,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author sky
  */
 public class FunctionCallTest {
+
+    @BeforeAll
+    public static void beforeAll() {
+        CompilationContext.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
+    }
 
     @Test
     public void testZeroParamFunctionWithOperator() {

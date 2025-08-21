@@ -28,6 +28,7 @@ public class ParserTest {
     @BeforeAll
     public static void beforeAll() {
         FluxonRuntimeTest.registerTestFunctions();
+        CompilationContext.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     /**

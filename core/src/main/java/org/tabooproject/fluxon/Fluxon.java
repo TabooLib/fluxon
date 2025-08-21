@@ -38,13 +38,24 @@ public class Fluxon {
     }
 
     /**
-     * 在特定环境中解析 Fluxon 源代码
+     * 解析 Fluxon 源代码
      *
      * @param source Fluxon 源代码
+     * @param env     环境对象
      * @return 解析结果列表
      */
     public static List<ParseResult> parse(String source, Environment env) {
-        CompilationContext context = new CompilationContext(source);
+        return parse(env, new CompilationContext(source));
+    }
+
+    /**
+     * 在特定环境中解析 Fluxon 源代码
+     *
+     * @param env     环境对象
+     * @param context 编译上下文
+     * @return 解析结果列表
+     */
+    public static List<ParseResult> parse(Environment env, CompilationContext context) {
         // 词法分析
         Lexer lexer = new Lexer();
         List<Token> tokens = lexer.process(context);

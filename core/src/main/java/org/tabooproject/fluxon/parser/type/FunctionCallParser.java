@@ -20,88 +20,94 @@ public class FunctionCallParser {
     public static ParseResult parse(Parser parser) {
         ParseResult name = ExpressionParser.parsePrimary(parser);
 
-        // 解析有括号的函数调用
-        if (name instanceof Identifier && parser.match(TokenType.LEFT_PAREN)) {
-            return finishCall(parser, (Identifier) name);
-        }
-        // 解析无括号的函数调用
-        else if (name instanceof Identifier && !parser.getContext().isStrictMode()) {
-            // 如果标识符后面跟着赋值操作符，保持为 Identifier，不进行函数调用解析
-            // 这确保用户可以创建与函数同名的变量
-            if (isAssignmentOperator(parser.peek().getType())) {
-                return name;
+        if (name instanceof Identifier) {
+            // 有括号
+            if (parser.match(TokenType.LEFT_PAREN)) {
+                return finishCall(parser, (Identifier) name);
             }
-
-            // 检查是否为已知函数
-            // 只有已知函数才能进行无括号调用
-            String functionName = ((Identifier) name).getValue();
-            Callable info = parser.getFunction(functionName);
-            FunctionPosition position = info instanceof FunctionPosition ? (FunctionPosition) info : null;
-
-            // 只有在上下文调用环境中才查找扩展函数
-            ExtensionFunctionPosition exInfo = null;
-            if (parser.getSymbolEnvironment().isContextCall()) {
-                exInfo = parser.getExtensionFunction(functionName);
-            }
-
-            if (info != null || exInfo != null) {
-                // 特殊处理：如果是 0 参数函数且后面是操作符，直接调用
-                if (parser.isOperator() && supportsParameterCount(info, exInfo, 0)) {
-                    return new FunctionCallExpression(((Identifier) name).getValue(), new ArrayList<>(), position, exInfo);
+            // 无括号
+            else if (parser.getContext().isAllowKetherStyleCall()) {
+                // 如果标识符后面跟着赋值操作符，保持为 Identifier，不进行函数调用解析
+                // 这确保用户可以创建与函数同名的变量
+                if (isAssignmentOperator(parser.peek().getType())) {
+                    return name;
                 }
 
-                // 其他情况：只有不是操作符时才尝试收集参数
-                if (!parser.isOperator()) {
-                    // 获取函数的最大参数数量
-                    int maxArgCount = getMaxExpectedArgumentCount(info, exInfo);
-                    List<ParseResult> arguments = new ArrayList<>();
+                // 检查是否为已知函数
+                // 只有已知函数才能进行无括号调用
+                String functionName = ((Identifier) name).getValue();
+                Callable info = parser.getFunction(functionName);
+                FunctionPosition position = info instanceof FunctionPosition ? (FunctionPosition) info : null;
 
-                    // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
-                    for (int i = 0; i < maxArgCount && !parser.isEndOfExpression(); i++) {
-                        // 检查当前标记是否为标识符
-                        if (parser.check(TokenType.IDENTIFIER)) {
-                            String identifier = parser.peek().getLexeme();
+                // 只有在上下文调用环境中才查找扩展函数
+                ExtensionFunctionPosition exInfo = null;
+                if (parser.getSymbolEnvironment().isContextCall()) {
+                    exInfo = parser.getExtensionFunction(functionName);
+                }
 
-                            // 检查标识符是否为已知函数或变量
-                            if (parser.isFunction(identifier) || parser.hasVariable(identifier)
-                                    // 如果在上下文调用环境中也检查扩展函数
-                                    || (parser.getSymbolEnvironment().isContextCall() && parser.isExtensionFunction(identifier))
-                            ) {
-                                arguments.add(ExpressionParser.parse(parser));
+                if (info != null || exInfo != null) {
+                    // 特殊处理：如果是 0 参数函数且后面是操作符，直接调用
+                    if (parser.isOperator() && supportsParameterCount(info, exInfo, 0)) {
+                        return new FunctionCallExpression(((Identifier) name).getValue(), new ArrayList<>(), position, exInfo);
+                    }
+
+                    // 其他情况：只有不是操作符时才尝试收集参数
+                    if (!parser.isOperator()) {
+                        // 获取函数的最大参数数量
+                        int maxArgCount = getMaxExpectedArgumentCount(info, exInfo);
+                        List<ParseResult> arguments = new ArrayList<>();
+
+                        // 解析参数，直到达到预期的参数数量或遇到表达式结束标记
+                        for (int i = 0; i < maxArgCount && !parser.isEndOfExpression(); i++) {
+                            // 检查当前标记是否为标识符
+                            if (parser.check(TokenType.IDENTIFIER)) {
+                                String identifier = parser.peek().getLexeme();
+
+                                // 检查标识符是否为已知函数或变量
+                                if (parser.isFunction(identifier) || parser.hasVariable(identifier)
+                                        // 如果在上下文调用环境中也检查扩展函数
+                                        || (parser.getSymbolEnvironment().isContextCall() && parser.isExtensionFunction(identifier))
+                                ) {
+                                    arguments.add(ExpressionParser.parse(parser));
+                                } else {
+                                    // 未知标识符，转为字符串
+                                    parser.advance(); // 消费标识符
+                                    arguments.add(new StringLiteral(identifier));
+                                }
                             } else {
-                                // 未知标识符，转为字符串
-                                parser.advance(); // 消费标识符
-                                arguments.add(new StringLiteral(identifier));
+                                // 非标识符，按表达式解析
+                                arguments.add(ExpressionParser.parse(parser));
                             }
+
+                            // 如果遇到分号就跳出
+                            if (parser.match(TokenType.SEMICOLON)) {
+                                break;
+                            }
+                        }
+
+                        // 检查解析到的参数数量是否有效
+                        if (supportsParameterCount(info, exInfo, arguments.size())) {
+                            return new FunctionCallExpression(((Identifier) name).getValue(), arguments, position, exInfo);
                         } else {
-                            // 非标识符，按表达式解析
-                            arguments.add(ExpressionParser.parse(parser));
+                            // 参数数量不匹配，找到最接近的参数数量
+                            Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
+                            int closestCount = findClosestParameterCount(paramCounts, arguments.size());
+                            List<ParseResult> block = new ArrayList<>();
+                            // 使用足额的参数
+                            block.add(new FunctionCallExpression(((Identifier) name).getValue(), arguments.subList(0, closestCount), position, exInfo));
+                            // 和剩下的参数打包成代码块，避免回滚二次解析
+                            block.addAll(arguments.subList(closestCount, arguments.size()));
+                            return new Block("ipc", block.toArray(new ParseResult[0]));
                         }
-
-                        // 如果遇到分号就跳出
-                        if (parser.match(TokenType.SEMICOLON)) {
-                            break;
-                        }
-                    }
-
-                    // 检查解析到的参数数量是否有效
-                    if (supportsParameterCount(info, exInfo, arguments.size())) {
-                        return new FunctionCallExpression(((Identifier) name).getValue(), arguments, position, exInfo);
-                    } else {
-                        // 参数数量不匹配，找到最接近的参数数量
-                        Set<Integer> paramCounts = getAllParameterCounts(info, exInfo);
-                        int closestCount = findClosestParameterCount(paramCounts, arguments.size());
-                        List<ParseResult> block = new ArrayList<>();
-                        // 使用足额的参数
-                        block.add(new FunctionCallExpression(((Identifier) name).getValue(), arguments.subList(0, closestCount), position, exInfo));
-                        // 和剩下的参数打包成代码块，避免回滚二次解析
-                        block.addAll(arguments.subList(closestCount, arguments.size()));
-                        return new Block("ipc", block.toArray(new ParseResult[0]));
                     }
                 }
             }
+            // 支持一种特殊写法：
+            // 在禁用无括号调用时，允许 time :: now() 这种无参数顶层函数调用，类似于静态工具
+            else if (parser.check(TokenType.CONTEXT_CALL)) {
+                return finishTopLevelContextCall(parser, (Identifier) name);
+            }
         }
-
         return name;
     }
 
@@ -237,5 +243,24 @@ public class FunctionCallParser {
             exPos = parser.getExtensionFunction(name);
         }
         return new FunctionCallExpression(name, arguments, pos, exPos);
+    }
+
+    /**
+     * 完成函数调用解析
+     *
+     * @param callee 被调用者
+     * @return 函数调用解析结果
+     */
+    private static ParseResult finishTopLevelContextCall(Parser parser, Identifier callee) {
+        String name = callee.getValue();
+        // 获取函数
+        Callable functionInfo = parser.getFunction(name);
+        FunctionPosition pos = functionInfo instanceof FunctionPosition ? (FunctionPosition) functionInfo : null;
+        // 只有在上下文环境中才获取扩展函数
+        ExtensionFunctionPosition exPos = null;
+        if (parser.getSymbolEnvironment().isContextCall()) {
+            exPos = parser.getExtensionFunction(name);
+        }
+        return new FunctionCallExpression(name, Collections.emptyList(), pos, exPos);
     }
 }

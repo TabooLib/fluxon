@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -19,6 +20,7 @@ public class BytecodeTest {
     @BeforeAll
     public static void setup() {
         FluxonRuntimeTest.registerTestFunctions();
+        CompilationContext.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     @Test

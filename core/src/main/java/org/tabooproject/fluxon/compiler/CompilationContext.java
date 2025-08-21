@@ -9,9 +9,15 @@ import java.util.Map;
  */
 public class CompilationContext {
 
+    // 全局是否允许无括号调用
+    public static boolean DEFAULT_ALLOW_KETHER_STYLE_CALL = false;
+    // 全局是否允许无效引用
+    public static boolean DEFAULT_ALLOW_INVALID_REFERENCE = false;
+
     private final String source;
     private String sourceName;
-    private final boolean strictMode;
+    private boolean allowKetherStyleCall = DEFAULT_ALLOW_KETHER_STYLE_CALL;
+    private boolean allowInvalidReference = DEFAULT_ALLOW_INVALID_REFERENCE;
     private final Map<String, Object> attributes = new HashMap<>();
     
     /**
@@ -22,8 +28,6 @@ public class CompilationContext {
     public CompilationContext(String source) {
         this.source = source;
         this.sourceName = "unknown"; // 默认源文件名
-        // 检查是否启用严格模式
-        this.strictMode = source.startsWith("#!strict");
     }
     
     /**
@@ -52,16 +56,35 @@ public class CompilationContext {
     public void setSourceName(String sourceName) {
         this.sourceName = sourceName;
     }
-    
+
     /**
-     * 检查是否启用严格模式
-     * 
-     * @return 是否启用严格模式
+     * 是否允许无括号调用（实验功能）
      */
-    public boolean isStrictMode() {
-        return strictMode;
+    public boolean isAllowKetherStyleCall() {
+        return allowKetherStyleCall;
     }
-    
+
+    /**
+     * 设置是否允许无括号调用（实验功能）
+     */
+    public void setAllowKetherStyleCall(boolean allowKetherStyleCall) {
+        this.allowKetherStyleCall = allowKetherStyleCall;
+    }
+
+    /**
+     * 是否允许无效引用
+     */
+    public boolean isAllowInvalidReference() {
+        return allowInvalidReference;
+    }
+
+    /**
+     * 设置是否允许无效引用
+     */
+    public void setAllowInvalidReference(boolean allowInvalidReference) {
+        this.allowInvalidReference = allowInvalidReference;
+    }
+
     /**
      * 设置属性
      * 
