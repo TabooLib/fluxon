@@ -34,12 +34,15 @@ public abstract class RuntimeScriptBase {
     // 获取运行时变量
     public Object getVariableOrFunction(String name, boolean isOptional, int index) {
         Object var = environment.getOrNull(name, index);
-        if (var != null || isOptional) {
+        if (var != null) {
             return var;
         }
         Function fun = environment.getFunctionOrNull(name);
         if (fun != null) {
             return fun;
+        }
+        if (isOptional) {
+            return null;
         }
         throw new VariableNotFoundException(name);
     }

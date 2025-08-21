@@ -247,7 +247,8 @@ public class ExpressionParser {
                 } else {
                     // 检查函数或变量是否存在
                     if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
-                        return new ReferenceExpression(new Identifier(name), false, parser.getSymbolEnvironment().getLocalVariable(name));
+                        // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
+                        return new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                     } else {
                         throw new VariableNotFoundException(name);
                     }

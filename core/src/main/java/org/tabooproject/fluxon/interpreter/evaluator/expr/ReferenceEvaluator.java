@@ -26,13 +26,16 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         Environment environment = interpreter.getEnvironment();
         // 获取变量值
         Object var = environment.getOrNull(result.getIdentifier().getValue(), result.getPosition());
-        if (var != null || result.isOptional()) {
+        if (var != null) {
             return var;
         }
         // 获取函数
         Function fun = environment.getFunctionOrNull(result.getIdentifier().getValue());
         if (fun != null) {
             return fun;
+        }
+        if (result.isOptional()) {
+            return null;
         }
         throw new VariableNotFoundException(result.getIdentifier().getValue());
     }
