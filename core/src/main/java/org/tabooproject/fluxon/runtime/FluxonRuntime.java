@@ -3,6 +3,10 @@ package org.tabooproject.fluxon.runtime;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.function.*;
 import org.tabooproject.fluxon.runtime.function.extension.*;
+import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionClass;
+import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionConstructor;
+import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionField;
+import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMethod;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 
 import java.util.HashMap;
@@ -43,26 +47,39 @@ public class FluxonRuntime {
     }
 
     /**
-     * 私有构造函数，初始化系统函数
+     * 初始化系统函数
      */
     private FluxonRuntime() {
+        // reflect
+        ExtensionClass.init(this);
+        ExtensionConstructor.init(this);
+        ExtensionField.init(this);
+        ExtensionMethod.init(this);
+        // Extension
+        ExtensionCollection.init(this);
+        ExtensionList.init(this);
+        ExtensionMap.init(this);
+        ExtensionMapEntry.init(this);
+        ExtensionObject.init(this);
+        ExtensionString.init(this);
+        ExtensionThrowable.init(this);
+        // Function
+        FunctionCrypto.init(this);
+        FunctionEnvironment.init(this);
         FunctionMath.init(this);
         FunctionSystem.init(this);
         FunctionTime.init(this);
         FunctionType.init(this);
-        FunctionEncode.init(this);
-        FunctionEnvironment.init(this);
-        ExtensionClass.init(this);
-        ExtensionCollection.init(this);
-        ExtensionConstructor.init(this);
-        ExtensionField.init(this);
-        ExtensionList.init(this);
-        ExtensionMap.init(this);
-        ExtensionMapEntry.init(this);
-        ExtensionMethod.init(this);
-        ExtensionObject.init(this);
-        ExtensionString.init(this);
-        ExtensionThrowable.init(this);
+    }
+
+    /**
+     * 注册变量
+     *
+     * @param name  变量名
+     * @param value 变量值
+     */
+    public void registerVariable(String name, Object value) {
+        systemVariables.put(name, value);
     }
 
     /**
@@ -88,6 +105,30 @@ public class FluxonRuntime {
     }
 
     /**
+     * 注册函数
+     *
+     * @param namespace      命名空间
+     * @param name           函数名
+     * @param paramCount     参数数量
+     * @param implementation 函数实现
+     */
+    public void registerFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(name, paramCount), implementation));
+    }
+
+    /**
+     * 注册函数
+     *
+     * @param namespace      命名空间
+     * @param name           函数名
+     * @param paramCounts    可能的参数数量列表
+     * @param implementation 函数实现
+     */
+    public void registerFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(name, paramCounts), implementation));
+    }
+
+    /**
      * 注册异步函数
      *
      * @param name           函数名
@@ -96,6 +137,30 @@ public class FluxonRuntime {
      */
     public void registerAsyncFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(name, paramCount), implementation, true));
+    }
+
+    /**
+     * 注册异步函数
+     *
+     * @param namespace      命名空间
+     * @param name           函数名
+     * @param paramCounts    可能的参数数量列表
+     * @param implementation 函数实现
+     */
+    public void registerAsyncFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(name, paramCounts), implementation, true));
+    }
+
+    /**
+     * 注册异步函数
+     *
+     * @param namespace      命名空间
+     * @param name           函数名
+     * @param paramCount     参数数量
+     * @param implementation 函数实现
+     */
+    public void registerAsyncFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(name, paramCount), implementation, true));
     }
 
     /**
@@ -110,13 +175,17 @@ public class FluxonRuntime {
     }
 
     /**
-     * 注册变量
-     *
-     * @param name  变量名
-     * @param value 变量值
+     * 注册扩展函数
      */
-    public void registerVariable(String name, Object value) {
-        systemVariables.put(name, value);
+    public <Target> ExtensionBuilder<Target> registerExtension(Class<Target> extensionClass) {
+        return new ExtensionBuilder<>(this, extensionClass, null);
+    }
+
+    /**
+     * 注册扩展函数
+     */
+    public <Target> ExtensionBuilder<Target> registerExtension(Class<Target> extensionClass, String namespace) {
+        return new ExtensionBuilder<>(this, extensionClass, namespace);
     }
 
     /**
@@ -131,6 +200,20 @@ public class FluxonRuntime {
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(name, paramCounts), implementation));
+    }
+
+    /**
+     * 注册扩展函数
+     */
+    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
+        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(name, paramCount), implementation));
+    }
+
+    /**
+     * 注册扩展函数
+     */
+    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
+        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(name, paramCounts), implementation));
     }
 
     /**

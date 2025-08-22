@@ -15,17 +15,20 @@ public interface Function {
     Type TYPE = new Type(Function.class);
 
     /**
+     * 获取函数的命名空间（包）
+     * 若为空则表示默认可用
+     */
+    @Nullable
+    String getNamespace();
+
+    /**
      * 获取函数名称
-     * 
-     * @return 函数名称
      */
     @NotNull
     String getName();
 
     /**
      * 获取函数参数数量
-     * 
-     * @return 参数数量
      */
     @NotNull
     List<Integer> getParameterCounts();
@@ -37,7 +40,7 @@ public interface Function {
 
     /**
      * 判断是否为异步函数
-     * 
+     *
      * @return 如果是异步函数返回 true，否则返回 false
      */
     boolean isAsync();

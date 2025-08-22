@@ -24,12 +24,10 @@ public final class Intrinsics {
      * @throws IntrinsicException 如果对象不可迭代
      */
     public static Iterator<?> createIterator(Object collection) {
-        if (collection instanceof List) {
-            return ((List<?>) collection).iterator();
+        if (collection instanceof Iterable) {
+            return ((Iterable<?>) collection).iterator();
         } else if (collection instanceof Map) {
             return ((Map<?, ?>) collection).entrySet().iterator();
-        } else if (collection instanceof Iterable) {
-            return ((Iterable<?>) collection).iterator();
         } else if (collection instanceof Object[]) {
             return Arrays.asList((Object[]) collection).iterator();
         } else if (collection != null) {

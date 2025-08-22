@@ -9,13 +9,14 @@ public class ExtensionMapEntry {
 
     @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtensionFunction(Map.Entry.class, "key", 0, (context) -> {
-            Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
-            return entry.getKey();
-        });
-        runtime.registerExtensionFunction(Map.Entry.class, "value", 0, (context) -> {
-            Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
-            return entry.getValue();
-        });
+        runtime.registerExtension(Map.Entry.class)
+                .function("key", 0, (context) -> {
+                    Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
+                    return entry.getKey();
+                })
+                .function("value", 0, (context) -> {
+                    Map.Entry<Object, Object> entry = Objects.requireNonNull(context.getTarget());
+                    return entry.getValue();
+                });
     }
 }

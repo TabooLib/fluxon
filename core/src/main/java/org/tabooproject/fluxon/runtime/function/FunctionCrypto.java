@@ -10,10 +10,26 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
- * 编码/解码函数
+ * 密码学和编码工具集
+ *
  * @author sky
  */
-public class FunctionEncode {
+public class FunctionCrypto {
+
+    public static void init(FluxonRuntime runtime) {
+        // 获取编码对象
+        runtime.registerFunction("fs:crypto", "hash", 0, (context) -> HashObject.INSTANCE);
+        runtime.registerFunction("fs:crypto", "base64", 0, (context) -> Base64Object.INSTANCE);
+        runtime.registerFunction("fs:crypto", "unicode", 0, (context) -> UnicodeObject.INSTANCE);
+        runtime.registerFunction("fs:crypto", "hex", 0, (context) -> HexObject.INSTANCE);
+
+        // 注册编码相关的对象实例
+        ExportRegistry exportRegistry = runtime.getExportRegistry();
+        exportRegistry.registerClass(HashObject.class, "fs:crypto");
+        exportRegistry.registerClass(Base64Object.class, "fs:crypto");
+        exportRegistry.registerClass(UnicodeObject.class, "fs:crypto");
+        exportRegistry.registerClass(HexObject.class, "fs:crypto");
+    }
 
     public static class HashObject {
 
@@ -102,20 +118,5 @@ public class FunctionEncode {
         public String decode(String input) {
             return new String(StringUtils.hexToBytes(input), StandardCharsets.UTF_8);
         }
-    }
-
-    public static void init(FluxonRuntime runtime) {
-        // 获取编码对象
-        runtime.registerFunction("hash", 0, (context) -> HashObject.INSTANCE);
-        runtime.registerFunction("base64", 0, (context) -> Base64Object.INSTANCE);
-        runtime.registerFunction("unicode", 0, (context) -> UnicodeObject.INSTANCE);
-        runtime.registerFunction("hex", 0, (context) -> HexObject.INSTANCE);
-        
-        // 注册编码相关的对象实例
-        ExportRegistry exportRegistry = runtime.getExportRegistry();
-        exportRegistry.registerClass(HashObject.class);
-        exportRegistry.registerClass(Base64Object.class);
-        exportRegistry.registerClass(UnicodeObject.class);
-        exportRegistry.registerClass(HexObject.class);
     }
 }

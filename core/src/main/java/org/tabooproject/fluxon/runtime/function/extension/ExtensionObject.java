@@ -8,18 +8,19 @@ import java.util.Objects;
 public class ExtensionObject {
 
     public static void init(FluxonRuntime runtime) {
-        // 转换为字符串
-        runtime.registerExtensionFunction(Object.class, "toString", 0, (context) -> Objects.toString(context.getTarget()));
-        runtime.registerExtensionFunction(Object.class, "hashCode", 0, (context) -> context.getTarget() != null ? context.getTarget().hashCode() : 0);
-        // 获取对象的类
-        runtime.registerExtensionFunction(Object.class, "class", 0, (context) -> context.getTarget() != null ? context.getTarget().getClass() : null);
-        // 检查对象是否是指定类的实例
-        runtime.registerExtensionFunction(Object.class, "isInstance", 1, (context) -> {
-            if (context.getTarget() == null) {
-                return false;
-            }
-            Class<?> clazz = (Class<?>) context.getArguments()[0];
-            return clazz.isInstance(context.getTarget());
-        });
+        runtime.registerExtension(Object.class)
+                // 转换为字符串
+                .function("toString", 0, (context) -> Objects.toString(context.getTarget()))
+                .function("hashCode", 0, (context) -> context.getTarget() != null ? context.getTarget().hashCode() : 0)
+                // 获取对象的类
+                .function("class", 0, (context) -> context.getTarget() != null ? context.getTarget().getClass() : null)
+                // 检查对象是否是指定类的实例
+                .function("isInstance", 1, (context) -> {
+                    if (context.getTarget() == null) {
+                        return false;
+                    }
+                    Class<?> clazz = (Class<?>) context.getArguments()[0];
+                    return clazz.isInstance(context.getTarget());
+                });
     }
 }
