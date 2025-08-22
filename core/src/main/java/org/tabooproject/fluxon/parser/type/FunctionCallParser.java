@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
@@ -27,6 +28,7 @@ public class FunctionCallParser {
             }
             // 无括号
             else if (parser.getContext().isAllowKetherStyleCall()) {
+                // region
                 // 如果标识符后面跟着赋值操作符，保持为 Identifier，不进行函数调用解析
                 // 这确保用户可以创建与函数同名的变量
                 if (isAssignmentOperator(parser.peek().getType())) {
@@ -101,6 +103,7 @@ public class FunctionCallParser {
                         }
                     }
                 }
+                // endregion
             }
             // 支持一种特殊写法：
             // 在禁用无括号调用时，允许 time :: now() 这种无参数顶层函数调用，类似于静态工具
@@ -218,12 +221,6 @@ public class FunctionCallParser {
                type == TokenType.MODULO_ASSIGN;
     }
 
-    /**
-     * 完成函数调用解析
-     *
-     * @param callee 被调用者
-     * @return 函数调用解析结果
-     */
     private static ParseResult finishCall(Parser parser, Identifier callee) {
         List<ParseResult> arguments = new ArrayList<>();
         // 如果参数列表不为空
@@ -233,25 +230,14 @@ public class FunctionCallParser {
             } while (parser.match(TokenType.COMMA));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        String name = callee.getValue();
-        // 获取函数
-        Callable functionInfo = parser.getFunction(name);
-        FunctionPosition pos = functionInfo instanceof FunctionPosition ? (FunctionPosition) functionInfo : null;
-        // 只有在上下文环境中才获取扩展函数
-        ExtensionFunctionPosition exPos = null;
-        if (parser.getSymbolEnvironment().isContextCall()) {
-            exPos = parser.getExtensionFunction(name);
-        }
-        return new FunctionCallExpression(name, arguments, pos, exPos);
+        return getFunctionCallExpression(parser, callee, arguments);
     }
 
-    /**
-     * 完成函数调用解析
-     *
-     * @param callee 被调用者
-     * @return 函数调用解析结果
-     */
     private static ParseResult finishTopLevelContextCall(Parser parser, Identifier callee) {
+        return getFunctionCallExpression(parser, callee, Collections.emptyList());
+    }
+
+    private static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, List<ParseResult> arguments) {
         String name = callee.getValue();
         // 获取函数
         Callable functionInfo = parser.getFunction(name);
@@ -261,6 +247,10 @@ public class FunctionCallParser {
         if (parser.getSymbolEnvironment().isContextCall()) {
             exPos = parser.getExtensionFunction(name);
         }
-        return new FunctionCallExpression(name, Collections.emptyList(), pos, exPos);
+        // 如果函数不存在
+        if (functionInfo == null && exPos == null) {
+            parser.error("Function \"" + name + "\" not found");
+        }
+        return new FunctionCallExpression(name, arguments, pos, exPos);
     }
 }

@@ -131,7 +131,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundException(name, root.functions);
+        throw new FunctionNotFoundException(name);
     }
 
     /**
@@ -160,7 +160,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundException(name, Objects.requireNonNull(root.functions));
+        throw new FunctionNotFoundException(name + ", context: " + extensionClass);
     }
 
     /**

@@ -210,6 +210,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 抛出异常
+     */
+    public void error(String error) {
+        throw new ParseException(error, currentToken, results);
+    }
+
+    /**
      * 消费下一个标记
      */
     public Token consume() {

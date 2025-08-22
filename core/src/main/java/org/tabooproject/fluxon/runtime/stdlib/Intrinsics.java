@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
@@ -103,12 +104,11 @@ public final class Intrinsics {
         // 获取调用目标
         Object target = environment.getTarget();
         // 获取函数
-        Function function = null;
+        Function function;
         // 优先尝试从扩展函数中获取函数
         if (target != null && exPos != -1) {
-            function = environment.getExtensionFunctionOrNull(target.getClass(), name, exPos);
-        }
-        if (function == null) {
+            function = environment.getExtensionFunction(target.getClass(), name, exPos);
+        } else {
             if (pos != -1) {
                 function = environment.getRootSystemFunctions()[pos];
             } else {
@@ -117,10 +117,9 @@ public final class Intrinsics {
         }
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
         if (function.isAsync()) {
-            Function finalFunction = function;
             return ThreadPoolManager.getInstance().submitAsync(() -> {
                 try {
-                    return finalFunction.call(context);
+                    return function.call(context);
                 } catch (Throwable ex) {
                     ex.printStackTrace(); // 打印 async 的异常
                     throw ex;
