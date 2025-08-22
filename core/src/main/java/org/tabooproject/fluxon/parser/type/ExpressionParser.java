@@ -9,10 +9,26 @@ import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
-import org.tabooproject.fluxon.parser.statement.Block;
 
-import java.util.Collections;
-
+/**
+ * 表达式解析器 - 递归下降解析
+ * <p>
+ * 运算符优先级（从高到低）：
+ * 1. Primary     - 字面量、标识符、括号、控制流、集合
+ * 2. Call        - 函数调用()、上下文调用::
+ * 3. Reference   - 引用&、可选引用&?
+ * 4. Unary       - !、-、await
+ * 5. Factor      - *、/、%
+ * 6. Term        - +、-
+ * 7. Comparison  - >、>=、<、<=
+ * 8. Equality    - ==、!=
+ * 9. Range       - ..、..<
+ * 10. LogicalAnd - &&
+ * 11. LogicalOr  - ||
+ * 12. Elvis      - ?:
+ * 13. Assignment - =、+=、-=、*=、/=、%=
+ * <p>
+ */
 public class ExpressionParser {
 
     private static final int MAX_RECURSION_DEPTH = 1000;
@@ -83,46 +99,9 @@ public class ExpressionParser {
      * @return Elvis操作符表达式解析结果
      */
     public static ParseResult parseElvis(Parser parser) {
-        ParseResult expr = parseContextCall(parser);
+        ParseResult expr = parseLogicalOr(parser);
         if (parser.match(TokenType.QUESTION_COLON)) {
             expr = new ElvisExpression(expr, parseElvis(parser));
-        }
-        return expr;
-    }
-
-    /**
-     * 解析上下文调用表达式
-     * 上下文调用 :: 用于将左侧表达式作为上下文传递给右侧表达式
-     * 例如：&list :: { print "Hello" } 表示将 &list 作为上下文传递给代码块
-     *
-     * @return 上下文调用表达式解析结果
-     */
-    public static ParseResult parseContextCall(Parser parser) {
-        ParseResult expr = parseLogicalOr(parser);
-        if (parser.match(TokenType.CONTEXT_CALL)) {
-            ParseResult context;
-            // 如果右侧是代码块
-            // &list :: { print "Hello" }
-            if (parser.match(TokenType.LEFT_BRACE)) {
-                // 之前的状态
-                boolean isContextCall = parser.getSymbolEnvironment().isContextCall();
-                // 设置新的状态
-                parser.getSymbolEnvironment().setContextCall(true);
-                // 解析代码块
-                context = BlockParser.parse(parser);
-                // 恢复之前的状态
-                parser.getSymbolEnvironment().setContextCall(isContextCall);
-            }
-            // 继续解析 context call
-            // &list :: get(0)
-            else {
-                SymbolEnvironment env = parser.getSymbolEnvironment();
-                boolean isContextCall = env.isContextCall();
-                env.setContextCall(true);
-                context = parseContextCall(parser);
-                env.setContextCall(isContextCall);
-            }
-            expr = new ContextCallExpression(expr, context);
         }
         return expr;
     }
@@ -222,7 +201,7 @@ public class ExpressionParser {
     }
 
     /**
-     * 解析一元表达式（负号、逻辑非、引用）
+     * 解析一元表达式（负号、逻辑非）
      *
      * @return 一元表达式解析结果
      */
@@ -237,27 +216,72 @@ public class ExpressionParser {
                 parser.consume(); // 消费 await
                 return new AwaitExpression(parseUnary(parser));
             }
-            // 引用
-            case AMPERSAND: {
-                parser.consume();                                      // 消费 &
-                boolean isOptional = parser.match(TokenType.QUESTION); // 如果后面跟一个问号，则不进行合法性检查
-                String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
-                if (isOptional) {
-                    return new ReferenceExpression(new Identifier(name), true, -1);
+            // 其他情况，解析引用表达式
+            default:
+                return parseReference(parser);
+        }
+    }
+
+    /**
+     * 解析引用表达式（&）
+     * 引用的优先级高于一元操作符，低于调用操作
+     *
+     * @return 引用表达式解析结果
+     */
+    public static ParseResult parseReference(Parser parser) {
+        if (parser.peek().getType() == TokenType.AMPERSAND) {
+            parser.consume();                                      // 消费 &
+            boolean isOptional = parser.match(TokenType.QUESTION); // 如果后面跟一个问号，则不进行合法性检查
+            String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
+            ParseResult ref;
+            if (isOptional) {
+                ref = new ReferenceExpression(new Identifier(name), true, -1);
+            } else {
+                // 检查函数或变量是否存在
+                if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
+                    // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
+                    ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                 } else {
-                    // 检查函数或变量是否存在
-                    if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
-                        // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
-                        return new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
-                    } else {
-                        throw new VariableNotFoundException(name);
-                    }
+                    throw new VariableNotFoundException(name);
                 }
             }
-            // 函数调用
-            default:
-                return FunctionCallParser.parse(parser);
+            // 引用后可能有调用操作（如 ::）
+            return parseCallExpression(parser, ref);
         }
+        // 不是引用，继续解析调用表达式
+        return parseCallExpression(parser, FunctionCallParser.parse(parser));
+    }
+
+    /**
+     * 解析调用表达式（处理已有表达式的后续调用操作）
+     *
+     * @param parser 解析器
+     * @param expr   已解析的表达式
+     * @return 应用了调用操作的表达式
+     */
+    private static ParseResult parseCallExpression(Parser parser, ParseResult expr) {
+        // 处理上下文调用（::）
+        while (parser.match(TokenType.CONTEXT_CALL)) {
+            ParseResult context;
+            // 如果右侧是代码块
+            if (parser.match(TokenType.LEFT_BRACE)) {
+                boolean isContextCall = parser.getSymbolEnvironment().isContextCall();
+                parser.getSymbolEnvironment().setContextCall(true);
+                context = BlockParser.parse(parser);
+                parser.getSymbolEnvironment().setContextCall(isContextCall);
+            }
+            // 继续解析上下文调用的右侧
+            else {
+                SymbolEnvironment env = parser.getSymbolEnvironment();
+                boolean isContextCall = env.isContextCall();
+                env.setContextCall(true);
+                // 右侧可能是引用或其他调用表达式
+                context = parseReference(parser);
+                env.setContextCall(isContextCall);
+            }
+            expr = new ContextCallExpression(expr, context);
+        }
+        return expr;
     }
 
     /**
