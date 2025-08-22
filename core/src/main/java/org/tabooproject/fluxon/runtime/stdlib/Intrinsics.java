@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
@@ -88,6 +88,37 @@ public final class Intrinsics {
             }
         }
         return rangeList;
+    }
+
+    /**
+     * 获取变量或函数
+     *
+     * @param environment 脚本运行环境
+     * @param name        变量或函数名称
+     * @param isOptional  是否为可选参数
+     * @param index       索引
+     * @return 变量或函数对象
+     */
+    public static Object getVariableOrFunction(Environment environment, String name, boolean isOptional, int index) {
+        // 如果变量被定义
+        // 无论变量值是否为空，都返回变量值
+        if (environment.has(name, index)) {
+            return environment.get(name, index);
+        }
+        // 获取变量
+        Object var = environment.get(name, index);
+        if (var != null) {
+            return var;
+        }
+        // 获取函数
+        Function fun = environment.getFunctionOrNull(name);
+        if (fun != null) {
+            return fun;
+        }
+        if (isOptional) {
+            return null;
+        }
+        throw new VariableNotFoundException(name);
     }
 
     /**

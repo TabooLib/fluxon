@@ -205,21 +205,18 @@ public class Environment {
     }
 
     /**
-     * 获取变量值
-     * 根据 index 参数决定更新局部变量还是根变量
+     * 判断变量是否存在
      *
      * @param name  变量名
      * @param index 索引（-1 索引表示根变量）
-     * @return 变量值
-     * @throws VariableNotFoundException 如果变量不存在
+     * @return 存在与否
      */
-    @NotNull
-    public Object get(@NotNull String name, int index) {
-        Object value = getOrNull(name, index);
-        if (value != null) {
-            return value;
+    public boolean has(@NotNull String name, int index) {
+        if (index == -1) {
+            return Objects.requireNonNull(root.rootVariables).containsKey(name);
+        } else {
+            return true;
         }
-        throw new VariableNotFoundException(name);
     }
 
     /**
@@ -231,7 +228,7 @@ public class Environment {
      * @return 变量值
      */
     @Nullable
-    public Object getOrNull(@NotNull String name, int index) {
+    public Object get(@NotNull String name, int index) {
         if (index == -1) {
             return Objects.requireNonNull(root.rootVariables).get(name);
         } else {
