@@ -1,9 +1,9 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -13,10 +13,11 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author sky
  */
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class FunctionCallTest {
 
-    @BeforeAll
-    public static void beforeAll() {
+    @BeforeEach
+    public void BeforeEach() {
         FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 

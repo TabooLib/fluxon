@@ -1,0 +1,25 @@
+package org.tabooproject.fluxon.interpreter;
+
+import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.parser.ParseException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class ImportTest {
+
+    @Test
+    public void test1() {
+        try {
+            Fluxon.eval("time :: formatTimestamp(1755611940830L)");
+            throw new IllegalStateException("Failure");
+        } catch (ParseException ex) {
+            assertEquals("Function \"time\" not found at line: 1, column: 6, next: ::", ex.getMessage());
+        }
+    }
+
+    @Test
+    public void test2() {
+        assertEquals("2025-08-19 21:59:00", Fluxon.eval("import 'fs:time'; time :: formatTimestamp(1755611940830L)"));
+    }
+}

@@ -8,7 +8,7 @@ import org.tabooproject.fluxon.parser.expression.*;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImportParserTest {
 
@@ -25,7 +25,8 @@ public class ImportParserTest {
 
     @Test
     public void testImport1() {
-        assertEquals("[fs]", parseSource("import fs").toString());
-        assertEquals("[fs, fs:crypto]", parseSource("import fs; import 'fs:crypto'").toString());
+        assertTrue(parseSource("import fs").contains("fs"));
+        List<String> imports = parseSource("import fs; import 'fs:crypto'");
+        assertTrue(imports.contains("fs") && imports.contains("fs:crypto"));
     }
 }

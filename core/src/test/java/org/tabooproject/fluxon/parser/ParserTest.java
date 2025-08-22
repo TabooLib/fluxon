@@ -1,7 +1,8 @@
 package org.tabooproject.fluxon.parser;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
@@ -24,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 解析器测试类
  */
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ParserTest {
 
-    @BeforeAll
-    public static void beforeAll() {
+    @BeforeEach
+    public void BeforeEach() {
         FluxonRuntimeTest.registerTestFunctions();
         FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }

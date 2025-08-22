@@ -28,7 +28,7 @@ public class UserFunction implements Function, Symbolic {
     private final Interpreter interpreter;
 
     public UserFunction(@NotNull FunctionDefinition definition, @NotNull Interpreter interpreter) {
-        this.symbolInfo = new SymbolFunction(definition.getName(), definition.getParameters().size());
+        this.symbolInfo = new SymbolFunction(null, definition.getName(), definition.getParameters().size());
         this.definition = definition;
         this.interpreter = interpreter;
     }

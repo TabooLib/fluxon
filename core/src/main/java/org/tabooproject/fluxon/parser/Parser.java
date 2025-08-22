@@ -294,7 +294,11 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         int i = 0;
         for (Map.Entry<String, Function> entry : FluxonRuntime.getInstance().getSystemFunctions().entrySet()) {
             if (entry.getKey().equals(name)) {
-                return new FunctionPosition(entry.getValue(), i);
+                String namespace = entry.getValue().getNamespace();
+                if (namespace == null || imports.contains(namespace)) {
+                    return new FunctionPosition(entry.getValue(), i);
+                }
+                return null;
             }
             i++;
         }
@@ -311,7 +315,17 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         int i = 0;
         for (Map.Entry<String, Map<Class<?>, Function>> entry : map) {
             if (entry.getKey().equals(name)) {
-                return new ExtensionFunctionPosition(entry.getValue(), i);
+                Map<Class<?>, Function> typeMap = entry.getValue();
+                for (Map.Entry<Class<?>, Function> typeEntry : typeMap.entrySet()) {
+                    String namespace = typeEntry.getValue().getNamespace();
+                    if (namespace != null && !imports.contains(namespace)) {
+                        typeMap.remove(typeEntry.getKey());
+                    }
+                }
+                if (!typeMap.isEmpty()) {
+                    return new ExtensionFunctionPosition(entry.getValue(), i);
+                }
+                return null;
             }
             i++;
         }

@@ -1,17 +1,20 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ContextCallTest {
 
-    @BeforeAll
-    public static void beforeAll() {
+    @BeforeEach
+    public void BeforeEach() {
         FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
+        FluxonFeatures.DEFAULT_PACKET_AUTO_IMPORT.add("fs:time");
     }
 
     // 1755611940830L = 2025-08-19 21:59:00

@@ -16,7 +16,7 @@ public class FunctionTime {
         // 获取时间对象
         runtime.registerFunction("fs:time", "time", 0, (context) -> TimeObject.INSTANCE);
         // 注册时间相关的对象实例
-        runtime.getExportRegistry().registerClass(TimeObject.class, "fs");
+        runtime.getExportRegistry().registerClass(TimeObject.class, "fs:time");
     }
 
     public static class TimeObject {

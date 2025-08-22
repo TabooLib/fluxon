@@ -1,6 +1,8 @@
+import 'fs:reflect'
+
 def instance(name) = {
     find = forName(&name)
-    return &find :: getDeclaredField("INSTANCE") :: get(&find)
+    return &find :: declaredField("INSTANCE") :: get(&find)
 }
 
 // 输出扩展函数

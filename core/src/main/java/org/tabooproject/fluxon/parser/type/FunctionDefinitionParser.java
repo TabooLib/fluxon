@@ -70,10 +70,10 @@ public class FunctionDefinitionParser {
             if (!paramCounts.contains(parameters.size())) {
                 paramCounts.add(parameters.size());
             }
-            parser.defineUserFunction(functionName, new SymbolFunction(functionName, paramCounts));
+            parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, paramCounts));
         } else {
             // 函数不存在，创建新条目
-            parser.defineUserFunction(functionName, new SymbolFunction(functionName, parameters.size()));
+            parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, parameters.size()));
         }
 
         // 消费可选的等于号

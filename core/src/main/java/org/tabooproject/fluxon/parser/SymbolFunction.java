@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser;
 
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.Collections;
@@ -10,20 +11,28 @@ import java.util.List;
  * 用于在编译阶段检测合法函数
  */
 public class SymbolFunction implements Callable {
+    private final String namespace;
     private final String name;
     private final List<Integer> parameterCounts;
     private final int maxParameterCount;
 
-    public SymbolFunction(String name, int parameterCount) {
+    public SymbolFunction(String namespace, String name, int parameterCount) {
+        this.namespace = namespace;
         this.name = name;
         this.parameterCounts = Collections.singletonList(parameterCount);
         this.maxParameterCount = parameterCount;
     }
 
-    public SymbolFunction(String name, List<Integer> parameterCounts) {
+    public SymbolFunction(String namespace, String name, List<Integer> parameterCounts) {
+        this.namespace = namespace;
         this.name = name;
         this.parameterCounts = parameterCounts;
         this.maxParameterCount = parameterCounts.isEmpty() ? 0 : Collections.max(parameterCounts);
+    }
+
+    @Nullable
+    public String getNamespace() {
+        return namespace;
     }
 
     public String getName() {
@@ -62,12 +71,13 @@ public class SymbolFunction implements Callable {
     }
 
     public static SymbolFunction of(Function function) {
-        return new SymbolFunction(function.getName(), function.getParameterCounts());
+        return new SymbolFunction(function.getNamespace(), function.getName(), function.getParameterCounts());
     }
 
     @Override
     public String toString() {
         return "SymbolFunction{" +
+                "namespace='" + namespace + '\'' +
                 ", name='" + name + '\'' +
                 ", parameterCounts=" + parameterCounts +
                 ", maxParameterCount=" + maxParameterCount +

@@ -7,6 +7,12 @@ public class ImportParser {
 
     public static void parse(Parser parser) {
         while (parser.match(TokenType.IMPORT)) {
+            // 检查是否禁用导入
+            if (!parser.getContext().isAllowImport()) {
+                parser.error("Import is not allowed");
+                return;
+            }
+            // 获取导入名称
             String name;
             if (parser.check(TokenType.STRING) || parser.check(TokenType.IDENTIFIER)) {
                 name = parser.consume().getLexeme();

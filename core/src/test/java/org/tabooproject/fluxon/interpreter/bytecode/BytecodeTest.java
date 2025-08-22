@@ -1,7 +1,8 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompileResult;
@@ -15,10 +16,11 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class BytecodeTest {
 
-    @BeforeAll
-    public static void setup() {
+    @BeforeEach
+    public void BeforeEach() {
         FluxonRuntimeTest.registerTestFunctions();
         FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
