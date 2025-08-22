@@ -21,7 +21,7 @@ public class BlockParser {
         // 解析 Statement
         List<ParseResult> statements = new ArrayList<>();
         while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
-            statements.add(StatementParser.parse(parser));
+            statements.add(StatementParser.parseSub(parser));
         }
         // 消费右大括号
         parser.consume(TokenType.RIGHT_BRACE, "Expected '}' after block");

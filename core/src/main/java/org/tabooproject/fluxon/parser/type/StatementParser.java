@@ -14,31 +14,53 @@ import java.util.List;
 
 public class StatementParser {
 
-    /**
-     * 解析语句
-     *
-     * @return 解析结果
-     */
-    public static ParseResult parse(Parser parser) {
+    public static ParseResult parseTopLevel(Parser parser) {
         // 检查注解
         List<Annotation> annotations = new ArrayList<>();
         while (parser.check(TokenType.AT)) {
             annotations.add(AnnotationParser.parse(parser));
         }
-        // 检查异步函数定义
-        if (parser.check(TokenType.ASYNC) && parser.peek(1).is(TokenType.DEF)) {
-            parser.advance(); // 消费 ASYNC
-            parser.advance(); // 消费 DEF
-            return FunctionDefinitionParser.parse(parser, true, annotations);
-        }
-
-        // 检查特殊语法
-        TokenType match = parser.match(TokenType.DEF, TokenType.RETURN, TokenType.BREAK, TokenType.CONTINUE);
+        // 检查顶层关键字
+        TokenType match = parser.match(TokenType.ASYNC, TokenType.DEF, TokenType.RETURN);
         if (match != null) {
             switch (match) {
+                // 异步函数定义
+                case ASYNC: {
+                    parser.match(TokenType.DEF); // 消费 DEF
+                    return FunctionDefinitionParser.parse(parser, true, annotations);
+                }
                 // 普通函数定义
                 case DEF:
                     return FunctionDefinitionParser.parse(parser, false, annotations);
+                // 返回值
+                case RETURN: {
+                    // 检查是否有返回值
+                    if (parser.isEndOfExpression()) {
+                        parser.match(TokenType.SEMICOLON); // 可选的分号
+                        return new ReturnStatement(null);
+                    }
+                    ParseResult returnValue = ExpressionParser.parse(parser);
+                    parser.match(TokenType.SEMICOLON); // 可选的分号
+                    return new ReturnStatement(returnValue);
+                }
+                default:
+            }
+        }
+        // 如果有注解但不是函数定义，报错
+        if (!annotations.isEmpty()) {
+            throw new RuntimeException("Annotations can only be applied to function definitions");
+        }
+        // 解析表达式语句
+        ParseResult expr = ExpressionParser.parse(parser);
+        parser.match(TokenType.SEMICOLON); // 可选的分号
+        return new ExpressionStatement(expr);
+    }
+
+    public static ParseResult parseSub(Parser parser) {
+        // 检查特殊语法
+        TokenType match = parser.match(TokenType.RETURN, TokenType.BREAK, TokenType.CONTINUE);
+        if (match != null) {
+            switch (match) {
                 // 返回值
                 case RETURN: {
                     // 检查是否有返回值
@@ -71,12 +93,6 @@ public class StatementParser {
                 default:
             }
         }
-
-        // 如果有注解但不是函数定义，报错
-        if (!annotations.isEmpty()) {
-            throw new RuntimeException("Annotations can only be applied to function definitions");
-        }
-        
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
         parser.match(TokenType.SEMICOLON); // 可选的分号

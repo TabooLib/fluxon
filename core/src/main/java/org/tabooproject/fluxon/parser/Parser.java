@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.type.ImportParser;
 import org.tabooproject.fluxon.parser.type.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
@@ -26,6 +27,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     // 当前 CompileContext
     private CompilationContext context;
 
+    // 导入
+    private List<String> imports;
     // 已经解析出的结果
     private List<ParseResult> results;
 
@@ -49,11 +52,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             currentToken = tokens.get(0);
         }
         this.position = 0;
+        this.imports = new ArrayList<>(context.getPacketAutoImport());
         this.results = new ArrayList<>();
+        // 解析导入
+        ImportParser.parse(this);
         // 解析顶层语句
         while (!isAtEnd()) {
-            results.add(StatementParser.parse(this));
+            results.add(StatementParser.parseTopLevel(this));
         }
+        context.setAttribute("results", results);
         return results;
     }
 
@@ -353,6 +360,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public CompilationContext getContext() {
         return context;
+    }
+
+    /**
+     * 获取当前导入列表
+     */
+    public List<String> getImports() {
+        return imports;
     }
 
     /**

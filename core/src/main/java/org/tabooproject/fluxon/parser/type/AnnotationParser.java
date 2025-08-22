@@ -24,17 +24,14 @@ public class AnnotationParser {
      */
     public static Annotation parse(Parser parser) {
         parser.consume(TokenType.AT, "Expected '@' for annotation");
-        
-        Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected annotation name");
-        String name = nameToken.getLexeme();
-        
+        String name = parser.consume(TokenType.IDENTIFIER, "Expected annotation name").getLexeme();
         // 检查是否有属性
         if (parser.match(TokenType.LEFT_PAREN)) {
             Map<String, ParseResult> attributes = parseAttributes(parser);
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after annotation attributes");
             return new Annotation(name, attributes);
         }
-        
+        parser.match(TokenType.SEMICOLON); // 可选的分号
         return new Annotation(name);
     }
     
@@ -45,19 +42,15 @@ public class AnnotationParser {
      */
     private static Map<String, ParseResult> parseAttributes(Parser parser) {
         Map<String, ParseResult> attributes = new HashMap<>();
-        
         if (!parser.check(TokenType.RIGHT_PAREN)) {
             do {
                 Token keyToken = parser.consume(TokenType.IDENTIFIER, "Expected attribute name");
                 String key = keyToken.getLexeme();
-                
                 parser.consume(TokenType.ASSIGN, "Expected '=' after attribute name");
-                
                 ParseResult value = ExpressionParser.parse(parser);
                 attributes.put(key, value);
             } while (parser.match(TokenType.COMMA));
         }
-        
         return attributes;
     }
 }

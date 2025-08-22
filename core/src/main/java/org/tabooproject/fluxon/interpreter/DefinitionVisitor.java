@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.tabooproject.fluxon.parser.definition.Definition;
-import org.tabooproject.fluxon.parser.definition.Definitions;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
 
 /**
@@ -16,13 +16,13 @@ public class DefinitionVisitor extends AbstractVisitor {
 
     @Override
     public Object visitDefinition(Definition definition) {
-        if (definition instanceof Definitions.FunctionDefinition) {
-            return evaluateFunctionDefinition((Definitions.FunctionDefinition) definition);
+        if (definition instanceof FunctionDefinition) {
+            return evaluateFunctionDefinition((FunctionDefinition) definition);
         }
         throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
     }
 
-    private UserFunction evaluateFunctionDefinition(Definitions.FunctionDefinition funcDef) {
+    private UserFunction evaluateFunctionDefinition(FunctionDefinition funcDef) {
         // 创建函数对象，捕获当前环境
         UserFunction function = new UserFunction(funcDef, interpreter);
         // 在当前环境中定义函数

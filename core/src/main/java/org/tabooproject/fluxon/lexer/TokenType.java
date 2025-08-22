@@ -6,6 +6,7 @@ package org.tabooproject.fluxon.lexer;
  */
 public enum TokenType {
     // 关键字
+    IMPORT("import"),
     DEF("def"),
     FUN("fun"),
     VAL("val"),

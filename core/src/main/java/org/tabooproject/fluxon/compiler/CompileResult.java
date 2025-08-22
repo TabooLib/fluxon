@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.compiler;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.definition.Definition;
-import org.tabooproject.fluxon.parser.definition.Definitions;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 
 import java.util.List;
 
@@ -34,8 +34,8 @@ public class CompileResult {
         // 定义用户函数类
         int i = 0;
         for (Definition definition : generator.getDefinitions()) {
-            if (definition instanceof Definitions.FunctionDefinition) {
-                Definitions.FunctionDefinition funcDef = (Definitions.FunctionDefinition) definition;
+            if (definition instanceof FunctionDefinition) {
+                FunctionDefinition funcDef = (FunctionDefinition) definition;
                 String functionClassName = className + funcDef.getName();
                 if (i < innerClasses.size()) {
                     loader.defineClass(functionClassName, innerClasses.get(i));

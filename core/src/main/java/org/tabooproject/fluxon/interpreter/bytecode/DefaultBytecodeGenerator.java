@@ -2,11 +2,8 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.definition.Definition;
-import org.tabooproject.fluxon.parser.definition.Definitions;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
@@ -79,8 +76,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 为每个用户函数生成继承 Function 的内部类
         for (Definition definition : definitions) {
-            if (definition instanceof Definitions.FunctionDefinition) {
-                byteList.add(generateFunctionClass((Definitions.FunctionDefinition) definition, className, classLoader));
+            if (definition instanceof FunctionDefinition) {
+                byteList.add(generateFunctionClass((FunctionDefinition) definition, className, classLoader));
             }
         }
         return byteList;
@@ -99,8 +96,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitFieldInsn(PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
         // 注册用户定义的函数到 environment
         for (Definition definition : definitions) {
-            if (definition instanceof Definitions.FunctionDefinition) {
-                generatorUserFunctionRegister((Definitions.FunctionDefinition) definition, mv, ctx);
+            if (definition instanceof FunctionDefinition) {
+                generatorUserFunctionRegister((FunctionDefinition) definition, mv, ctx);
             }
         }
         // 生成脚本主体代码
@@ -149,7 +146,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
      * 注册用户函数到环境中
      * environment.defineFunction(name, new FunctionClassName(environment))
      */
-    private void generatorUserFunctionRegister(Definitions.FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
+    private void generatorUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
         // 加载 environment
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
@@ -170,7 +167,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成继承 RuntimeScriptBase 并实现 Function 的独立函数类
      */
-    private byte[] generateFunctionClass(Definitions.FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader) {
+    private byte[] generateFunctionClass(FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader) {
         String functionClassName = parentClassName + funcDef.getName();
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
@@ -215,7 +212,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成 Function 接口的实现方法
      */
-    private void generateFunctionInterfaceMethods(Definitions.FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
+    private void generateFunctionInterfaceMethods(FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
         // 实现 getName() 方法
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getName", "()" + STRING, null, null);
         mv.visitCode();

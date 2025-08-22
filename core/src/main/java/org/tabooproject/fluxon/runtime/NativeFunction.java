@@ -12,6 +12,7 @@ import java.util.List;
  */
 public class NativeFunction<Target> implements Function, Symbolic {
 
+    private final String namespace;
     private final SymbolFunction symbolInfo;
     private final NativeCallable<Target> callable;
     private final boolean isAsync;
@@ -20,10 +21,25 @@ public class NativeFunction<Target> implements Function, Symbolic {
         this(symbolInfo, callable, false);
     }
 
+    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable) {
+        this(namespace, symbolInfo, callable, false);
+    }
+
     public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync) {
+        this(null, symbolInfo, callable, isAsync);
+    }
+
+    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync) {
+        this.namespace = namespace;
         this.symbolInfo = symbolInfo;
         this.callable = callable;
         this.isAsync = isAsync;
+    }
+
+    @Nullable
+    @Override
+    public String getNamespace() {
+        return namespace;
     }
 
     @NotNull

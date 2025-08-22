@@ -4,7 +4,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.definition.Annotation;
-import org.tabooproject.fluxon.parser.definition.Definitions;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 
 import java.util.*;
 
@@ -97,6 +97,6 @@ public class FunctionDefinitionParser {
         }
         // 退出函数标记
         parser.getSymbolEnvironment().setCurrentFunction(null);
-        return new Definitions.FunctionDefinition(functionName, parameters, body, isAsync, annotations, localVariables);
+        return new FunctionDefinition(functionName, parameters, body, isAsync, annotations, localVariables);
     }
 }

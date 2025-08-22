@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Annotation;
-import org.tabooproject.fluxon.parser.definition.Definitions;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
@@ -23,11 +23,11 @@ public class UserFunction implements Function, Symbolic {
     private final SymbolFunction symbolInfo;
 
     @NotNull
-    private final Definitions.FunctionDefinition definition;
+    private final FunctionDefinition definition;
     @NotNull
     private final Interpreter interpreter;
 
-    public UserFunction(@NotNull Definitions.FunctionDefinition definition, @NotNull Interpreter interpreter) {
+    public UserFunction(@NotNull FunctionDefinition definition, @NotNull Interpreter interpreter) {
         this.symbolInfo = new SymbolFunction(definition.getName(), definition.getParameters().size());
         this.definition = definition;
         this.interpreter = interpreter;
@@ -37,6 +37,12 @@ public class UserFunction implements Function, Symbolic {
     @Override
     public String getName() {
         return definition.getName();
+    }
+
+    @Nullable
+    @Override
+    public String getNamespace() {
+        return null;
     }
 
     @NotNull
@@ -79,7 +85,7 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @NotNull
-    public Definitions.FunctionDefinition getDefinition() {
+    public FunctionDefinition getDefinition() {
         return definition;
     }
 
