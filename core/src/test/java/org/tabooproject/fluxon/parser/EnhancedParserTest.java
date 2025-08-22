@@ -4,9 +4,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.parser.definition.Definitions.FunctionDefinition;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
@@ -27,7 +28,7 @@ public class EnhancedParserTest {
     @BeforeAll
     public static void beforeAll() {
         FluxonRuntimeTest.registerTestFunctions();
-        CompilationContext.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
+        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     /**

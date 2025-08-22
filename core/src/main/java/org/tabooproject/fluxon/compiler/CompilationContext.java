@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.compiler;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -9,54 +10,31 @@ import java.util.Map;
  */
 public class CompilationContext {
 
-    // 全局是否允许无括号调用
-    public static boolean DEFAULT_ALLOW_KETHER_STYLE_CALL = false;
-    // 全局是否允许无效引用
-    public static boolean DEFAULT_ALLOW_INVALID_REFERENCE = false;
-
     private final String source;
-    private String sourceName;
-    private boolean allowKetherStyleCall = DEFAULT_ALLOW_KETHER_STYLE_CALL;
-    private boolean allowInvalidReference = DEFAULT_ALLOW_INVALID_REFERENCE;
     private final Map<String, Object> attributes = new HashMap<>();
-    
+
+    // 语法特性
+    private boolean allowKetherStyleCall = FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL;
+    private boolean allowInvalidReference = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
+    private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
+
+    private final List<String> packetAutoImport = FluxonFeatures.DEFAULT_PACKET_AUTO_IMPORT;
+    private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
+
     /**
      * 创建编译上下文
-     * 
-     * @param source 源代码
      */
     public CompilationContext(String source) {
         this.source = source;
-        this.sourceName = "unknown"; // 默认源文件名
     }
     
     /**
      * 获取源代码
-     * 
-     * @return 源代码
      */
     public String getSource() {
         return source;
     }
     
-    /**
-     * 获取源文件名
-     * 
-     * @return 源文件名
-     */
-    public String getSourceName() {
-        return sourceName;
-    }
-    
-    /**
-     * 设置源文件名
-     * 
-     * @param sourceName 源文件名
-     */
-    public void setSourceName(String sourceName) {
-        this.sourceName = sourceName;
-    }
-
     /**
      * 是否允许无括号调用（实验功能）
      */
@@ -86,6 +64,34 @@ public class CompilationContext {
     }
 
     /**
+     * 是否允许导入
+     */
+    public boolean isAllowImport() {
+        return allowImport;
+    }
+
+    /**
+     * 设置是否允许导入
+     */
+    public void setAllowImport(boolean allowImport) {
+        this.allowImport = allowImport;
+    }
+
+    /**
+     * 获取自动导入的包
+     */
+    public List<String> getPacketAutoImport() {
+        return packetAutoImport;
+    }
+
+    /**
+     * 获取包黑名单
+     */
+    public List<String> getPackageBlacklist() {
+        return packageBlacklist;
+    }
+
+    /**
      * 设置属性
      * 
      * @param key 属性键
@@ -105,5 +111,12 @@ public class CompilationContext {
     @SuppressWarnings("unchecked")
     public <T> T getAttribute(String key) {
         return (T) attributes.get(key);
+    }
+
+    /**
+     * 获取所有属性
+     */
+    public Map<String, Object> getAttributes() {
+        return attributes;
     }
 }
