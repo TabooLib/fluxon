@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMetho
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,11 +24,11 @@ public class FluxonRuntime {
     private static final FluxonRuntime INSTANCE = new FluxonRuntime();
 
     // 系统函数
-    private final Map<String, Function> systemFunctions = new HashMap<>();
+    private final Map<String, Function> systemFunctions = new LinkedHashMap<>();
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
     // 扩展函数
-    private final Map<String, Map<Class<?>, Function>> extensionFunctions = new HashMap<>();
+    private final Map<String, Map<Class<?>, Function>> extensionFunctions = new LinkedHashMap<>();
 
     // Export 注册中心
     private final ExportRegistry exportRegistry = new ExportRegistry(this);

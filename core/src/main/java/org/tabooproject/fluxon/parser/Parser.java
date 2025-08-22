@@ -316,14 +316,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         for (Map.Entry<String, Map<Class<?>, Function>> entry : map) {
             if (entry.getKey().equals(name)) {
                 Map<Class<?>, Function> typeMap = entry.getValue();
+                Map<Class<?>, Function> filteredTypeMap = new HashMap<>();
                 for (Map.Entry<Class<?>, Function> typeEntry : typeMap.entrySet()) {
                     String namespace = typeEntry.getValue().getNamespace();
-                    if (namespace != null && !imports.contains(namespace)) {
-                        typeMap.remove(typeEntry.getKey());
+                    if (namespace == null || imports.contains(namespace)) {
+                        filteredTypeMap.put(typeEntry.getKey(), typeEntry.getValue());
                     }
                 }
-                if (!typeMap.isEmpty()) {
-                    return new ExtensionFunctionPosition(entry.getValue(), i);
+                if (!filteredTypeMap.isEmpty()) {
+                    return new ExtensionFunctionPosition(filteredTypeMap, i);
                 }
                 return null;
             }
