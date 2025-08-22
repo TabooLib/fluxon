@@ -165,7 +165,7 @@ public class EnhancedParserTest {
         assertTrue(funcDef.getBody() instanceof AwaitExpression);
 
         // 嵌套的await表达式
-        results = parseSource("async def processData() = await processResult(await fetchData(\"api/data\"))");
+        results = parseSource("async def processData() = await print(await fetch(\"api/data\"))");
         assertEquals(1, results.size());
         funcDef = (FunctionDefinition) results.get(0);
         assertTrue(funcDef.getBody() instanceof AwaitExpression);
