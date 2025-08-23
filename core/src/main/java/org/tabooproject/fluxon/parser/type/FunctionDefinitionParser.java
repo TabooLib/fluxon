@@ -9,15 +9,16 @@ import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import java.util.*;
 
 public class FunctionDefinitionParser {
-    
+
     /**
      * 解析函数定义（无注解版本，用于向后兼容）
-     * @param parser 解析器
+     *
+     * @param parser  解析器
      * @param isAsync 是否为异步函数
      * @return 函数定义解析结果
      */
-    public static ParseResult parse(Parser parser, boolean isAsync) {
-        return parse(parser, isAsync, new ArrayList<>());
+    public static ParseResult parse(Parser parser, boolean isAsync, boolean isPrimarySync) {
+        return parse(parser, isAsync, isPrimarySync, new ArrayList<>());
     }
 
     /**
@@ -27,12 +28,13 @@ public class FunctionDefinitionParser {
      * 2. 允许省略大括号
      * 3. 支持注解，如：@listener(event = "onStart") def handleStart() = { ... }
      *
-     * @param parser 解析器
-     * @param isAsync 是否为异步函数
-     * @param annotations 函数的注解列表
+     * @param parser        解析器
+     * @param isAsync       是否为异步函数
+     * @param isPrimarySync 是否为主线程同步函数
+     * @param annotations   函数的注解列表
      * @return 函数定义解析结果
      */
-    public static ParseResult parse(Parser parser, boolean isAsync, List<Annotation> annotations) {
+    public static ParseResult parse(Parser parser, boolean isAsync, boolean isPrimarySync, List<Annotation> annotations) {
         // 解析函数名
         Token nameToken = parser.consume(TokenType.IDENTIFIER, "Expected function name");
         String functionName = nameToken.getLexeme();
@@ -97,6 +99,6 @@ public class FunctionDefinitionParser {
         }
         // 退出函数标记
         parser.getSymbolEnvironment().setCurrentFunction(null);
-        return new FunctionDefinition(functionName, parameters, body, isAsync, annotations, localVariables);
+        return new FunctionDefinition(functionName, parameters, body, isAsync, isPrimarySync, annotations, localVariables);
     }
 }

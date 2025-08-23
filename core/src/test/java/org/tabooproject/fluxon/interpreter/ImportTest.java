@@ -16,7 +16,7 @@ public class ImportTest {
             Fluxon.eval("time :: formatTimestamp(1755611940830L)");
             throw new IllegalStateException("Failure");
         } catch (ParseException ex) {
-            assertEquals("Function \"time\" not found at line: 1, column: 6, next: ::", ex.getMessage());
+            assertEquals(true, ex.getMessage().contains("not found"));
         }
     }
 

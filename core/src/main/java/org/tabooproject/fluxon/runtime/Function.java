@@ -44,6 +44,13 @@ public interface Function {
      * @return 如果是异步函数返回 true，否则返回 false
      */
     boolean isAsync();
+
+    /**
+     * 判断是否为主线程同步函数
+     *
+     * @return 如果是主线程同步函数返回 true，否则返回 false
+     */
+    boolean isPrimarySync();
     
     /**
      * 执行函数

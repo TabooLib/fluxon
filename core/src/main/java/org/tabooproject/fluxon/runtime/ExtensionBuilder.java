@@ -24,6 +24,26 @@ public class ExtensionBuilder<Target> {
         return this;
     }
 
+    public ExtensionBuilder<Target> asyncFunction(String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerAsyncExtensionFunction(extensionClass, namespace, name, paramCount, implementation);
+        return this;
+    }
+
+    public ExtensionBuilder<Target> asyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerAsyncExtensionFunction(extensionClass, namespace, name, paramCounts, implementation);
+        return this;
+    }
+
+    public ExtensionBuilder<Target> syncFunction(String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerSyncExtensionFunction(extensionClass, namespace, name, paramCount, implementation);
+        return this;
+    }
+
+    public ExtensionBuilder<Target> syncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerSyncExtensionFunction(extensionClass, namespace, name, paramCounts, implementation);
+        return this;
+    }
+
     public Class<Target> getExtensionClass() {
         return extensionClass;
     }

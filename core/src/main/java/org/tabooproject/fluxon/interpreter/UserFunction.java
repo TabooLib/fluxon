@@ -62,6 +62,11 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @Override
+    public boolean isPrimarySync() {
+        return definition.isPrimarySync();
+    }
+
+    @Override
     public Object call(@NotNull final FunctionContext<?> context) {
         // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
         Environment functionEnv = Intrinsics.bindFunctionParameters(

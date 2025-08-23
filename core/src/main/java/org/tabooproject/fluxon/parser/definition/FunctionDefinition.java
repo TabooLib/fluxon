@@ -16,6 +16,7 @@ public class FunctionDefinition implements Definition {
     private final LinkedHashMap<String, Integer> parameters;
     private final ParseResult body;
     private final boolean isAsync;
+    private final boolean isPrimarySync;
     private final List<Annotation> annotations;
     private final Set<String> localVariables;
 
@@ -24,6 +25,7 @@ public class FunctionDefinition implements Definition {
             @NotNull LinkedHashMap<String, Integer> parameters,
             @NotNull ParseResult body,
             boolean isAsync,
+            boolean isPrimarySync,
             @NotNull List<Annotation> annotations,
             @NotNull Set<String> localVariables
     ) {
@@ -31,6 +33,7 @@ public class FunctionDefinition implements Definition {
         this.parameters = parameters;
         this.body = body;
         this.isAsync = isAsync;
+        this.isPrimarySync = isPrimarySync;
         this.annotations = annotations;
         this.localVariables = localVariables;
     }
@@ -51,6 +54,10 @@ public class FunctionDefinition implements Definition {
         return isAsync;
     }
 
+    public boolean isPrimarySync() {
+        return isPrimarySync;
+    }
+
     public List<Annotation> getAnnotations() {
         return annotations;
     }
@@ -66,6 +73,7 @@ public class FunctionDefinition implements Definition {
                 ", parameters=" + parameters +
                 ", body=" + body +
                 ", isAsync=" + isAsync +
+                ", isPrimarySync=" + isPrimarySync +
                 ", annotations=" + annotations +
                 ", localVariables=" + localVariables +
                 '}';
@@ -83,6 +91,9 @@ public class FunctionDefinition implements Definition {
         // 函数声明
         if (isAsync) {
             sb.append("async ");
+        }
+        if (isPrimarySync) {
+            sb.append("sync ");
         }
         sb.append("def ").append(name).append("(");
 

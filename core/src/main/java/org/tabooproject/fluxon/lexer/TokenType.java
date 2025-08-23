@@ -18,6 +18,7 @@ public enum TokenType {
     WHEN("when"),
     IS("is"),
     IN("in"),
+    SYNC("sync"),
     ASYNC("async"),
     AWAIT("await"),
     RETURN("return"),

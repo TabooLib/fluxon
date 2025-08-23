@@ -21,17 +21,22 @@ public class StatementParser {
             annotations.add(AnnotationParser.parse(parser));
         }
         // 检查顶层关键字
-        TokenType match = parser.match(TokenType.ASYNC, TokenType.DEF, TokenType.RETURN);
+        TokenType match = parser.match(TokenType.SYNC, TokenType.ASYNC, TokenType.DEF, TokenType.RETURN);
         if (match != null) {
             switch (match) {
+                // 同步函数定义
+                case SYNC: {
+                    parser.match(TokenType.DEF); // 消费 DEF
+                    return FunctionDefinitionParser.parse(parser, false, true, annotations);
+                }
                 // 异步函数定义
                 case ASYNC: {
                     parser.match(TokenType.DEF); // 消费 DEF
-                    return FunctionDefinitionParser.parse(parser, true, annotations);
+                    return FunctionDefinitionParser.parse(parser, true, false, annotations);
                 }
                 // 普通函数定义
                 case DEF:
-                    return FunctionDefinitionParser.parse(parser, false, annotations);
+                    return FunctionDefinitionParser.parse(parser, false, false, annotations);
                 // 返回值
                 case RETURN: {
                     // 检查是否有返回值

@@ -16,24 +16,26 @@ public class NativeFunction<Target> implements Function, Symbolic {
     private final SymbolFunction symbolInfo;
     private final NativeCallable<Target> callable;
     private final boolean isAsync;
+    private final boolean isPrimarySync;
 
     public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable) {
-        this(symbolInfo, callable, false);
+        this(symbolInfo, callable, false, false);
     }
 
     public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable) {
-        this(namespace, symbolInfo, callable, false);
+        this(namespace, symbolInfo, callable, false, false);
     }
 
-    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync) {
-        this(null, symbolInfo, callable, isAsync);
+    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync, boolean isPrimarySync) {
+        this(null, symbolInfo, callable, isAsync, isPrimarySync);
     }
 
-    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync) {
+    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync, boolean isPrimarySync) {
         this.namespace = namespace;
         this.symbolInfo = symbolInfo;
         this.callable = callable;
         this.isAsync = isAsync;
+        this.isPrimarySync = isPrimarySync;
     }
 
     @Nullable
@@ -62,6 +64,11 @@ public class NativeFunction<Target> implements Function, Symbolic {
     @Override
     public boolean isAsync() {
         return isAsync;
+    }
+
+    @Override
+    public boolean isPrimarySync() {
+        return isPrimarySync;
     }
 
     @SuppressWarnings("unchecked")

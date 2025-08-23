@@ -8,9 +8,7 @@ import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public final class Intrinsics {
 
@@ -154,6 +152,17 @@ public final class Intrinsics {
                     throw ex;
                 }
             });
+        } else if (function.isPrimarySync()) {
+            CompletableFuture<Object> future = new CompletableFuture<>();
+            FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
+                try {
+                    future.complete(function.call(context));
+                } catch (Throwable ex) {
+                    ex.printStackTrace(); // 打印 sync 的异常
+                    throw ex;
+                }
+            });
+            return future;
         } else {
             return function.call(context);
         }
@@ -170,16 +179,20 @@ public final class Intrinsics {
         if (value instanceof CompletableFuture<?>) {
             // 如果是 CompletableFuture，等待其完成并返回结果
             try {
-                return ((CompletableFuture<?>) value).get();
+                return ((CompletableFuture<?>) value).get(1, TimeUnit.MINUTES);
             } catch (InterruptedException | ExecutionException e) {
                 throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
+            } catch (TimeoutException e) {
+                throw new RuntimeException(e);
             }
         } else if (value instanceof Future<?>) {
             // 如果是普通的 Future，等待其完成并返回结果
             try {
-                return ((Future<?>) value).get();
+                return ((Future<?>) value).get(1, TimeUnit.MINUTES);
             } catch (InterruptedException | ExecutionException e) {
                 throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
+            } catch (TimeoutException e) {
+                throw new RuntimeException(e);
             }
         }
         // 如果不是异步类型，直接返回值

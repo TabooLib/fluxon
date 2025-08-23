@@ -256,6 +256,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
+        // 实现 isPrimarySync() 方法
+        mv = cw.visitMethod(ACC_PUBLIC, "isPrimarySync", "()Z", null, null);
+        mv.visitCode();
+        mv.visitInsn(funcDef.isPrimarySync() ? ICONST_1 : ICONST_0);  // 根据函数定义决定
+        mv.visitInsn(IRETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
         // 实现 call(FunctionContext) 方法 - 包含函数的实际执行逻辑
         mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();

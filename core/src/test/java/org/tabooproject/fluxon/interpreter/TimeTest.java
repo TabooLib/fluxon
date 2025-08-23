@@ -9,7 +9,7 @@ public class TimeTest {
 
     @Test
     public void testTime() {
-        Fluxon.eval("print(time)");
-        Fluxon.eval("print(time::formatTimestamp(now))");
+        Fluxon.eval("import 'fs:time'; print(time)");
+        Fluxon.eval("import 'fs:time'; print(time::formatTimestamp(now))");
     }
 }

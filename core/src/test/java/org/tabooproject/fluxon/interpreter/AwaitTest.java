@@ -27,4 +27,16 @@ public class AwaitTest {
         Object result = Fluxon.eval("await 123");
         assertEquals(123, result);
     }
+
+    @Test
+    public void testAwaitSync() {
+        Object result = Fluxon.eval("sync def test = { return 42 } await test()");
+        assertEquals(42, result);
+    }
+
+    @Test
+    public void testSyncWithSleep() {
+        Object result = Fluxon.eval("sync def test = { sleep(10) return 'ok' } await test()");
+        assertEquals("ok", result);
+    }
 }

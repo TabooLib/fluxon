@@ -46,6 +46,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("when", TokenType.WHEN);
         KEYWORDS.put("is", TokenType.IS);
         KEYWORDS.put("in", TokenType.IN);
+        KEYWORDS.put("sync", TokenType.SYNC);
         KEYWORDS.put("async", TokenType.ASYNC);
         KEYWORDS.put("await", TokenType.AWAIT);
         KEYWORDS.put("return", TokenType.RETURN);

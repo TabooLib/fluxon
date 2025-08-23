@@ -14,18 +14,17 @@ public class ContextCallTest {
     @BeforeEach
     public void BeforeEach() {
         FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
-        FluxonFeatures.DEFAULT_PACKET_AUTO_IMPORT.add("fs:time");
     }
 
     // 1755611940830L = 2025-08-19 21:59:00
     @Test
     public void test1() {
-        assertEquals("2025-08-19 21:59:00", Fluxon.eval("time :: formatTimestamp(1755611940830L)"));
+        assertEquals("2025-08-19 21:59:00", Fluxon.eval("import 'fs:time'; time :: formatTimestamp(1755611940830L)"));
     }
 
     @Test
     public void test2() {
-        assertEquals("[2025, 08, 19 21:59:00]", Fluxon.eval("time :: formatTimestamp(1755611940830L) :: split('-')").toString());
+        assertEquals("[2025, 08, 19 21:59:00]", Fluxon.eval("import 'fs:time'; time :: formatTimestamp(1755611940830L) :: split('-')").toString());
     }
 
     @Test
@@ -39,7 +38,8 @@ public class ContextCallTest {
         // 2.9088529523673623
         // 3.267841899894786
         // print 和 random 不会被视为扩展函数
-        Fluxon.eval("i = 0" +
+        Fluxon.eval("import 'fs:time'" +
+                "i = 0" +
                 "while (&i < 3) { " +
                 "  time :: formatTimestamp(1755611940830L) :: split('-') " +
                 "  print &i" +
