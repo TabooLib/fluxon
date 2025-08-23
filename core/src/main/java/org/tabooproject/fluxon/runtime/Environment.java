@@ -176,18 +176,24 @@ public class Environment {
             KV<Class<?>, Function>[] classFunctionMap = Objects.requireNonNull(root.systemExtensionFunctions)[index];
             // 查找兼容的类型
             for (KV<Class<?>, Function> entry : classFunctionMap) {
-                if (entry.getKey().isAssignableFrom(extensionClass)) {
-                    return entry.getValue();
-                }
+                if (entry.getKey() == extensionClass) return entry.getValue();
             }
-        } else {
+            for (KV<Class<?>, Function> entry : classFunctionMap) {
+                if (entry.getKey().isAssignableFrom(extensionClass)) return entry.getValue();
+            }
+        }
+        // 回退逻辑，使用名称检索
+        // 效率低于索引逻辑
+        else {
             Map<Class<?>, Function> classFunctionMap = Objects.requireNonNull(root.extensionFunctions).get(name);
             if (classFunctionMap != null) {
                 // 查找兼容的类型
-                for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
-                    if (entry.getKey().isAssignableFrom(extensionClass)) {
-                        return entry.getValue();
-                    }
+                Set<Map.Entry<Class<?>, Function>> entries = classFunctionMap.entrySet();
+                for (Map.Entry<Class<?>, Function> entry : entries) {
+                    if (entry.getKey() == extensionClass) return entry.getValue();
+                }
+                for (Map.Entry<Class<?>, Function> entry : entries) {
+                    if (entry.getKey().isAssignableFrom(extensionClass)) return entry.getValue();
                 }
             }
         }
