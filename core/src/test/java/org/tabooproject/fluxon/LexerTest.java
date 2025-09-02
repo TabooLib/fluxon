@@ -249,6 +249,35 @@ public class LexerTest {
             List<String> doubles = getValuesByType(tokens, TokenType.DOUBLE);
             assertEquals(2, doubles.size(), "应识别 2 个双精度科学计数法字面量");
         }
+
+        @Test
+        @DisplayName("测试下划线分隔的数字字面量")
+        void testNumbersWithUnderscores() {
+            String source = "100_000 1_000_000L 3.14_159f 2.71_828d 1e5 1_000_000.123_456e-2";
+            List<Token> tokens = getTokens(source);
+
+            // 验证整数
+            List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
+            assertEquals(1, integers.size(), "应识别 1 个整数");
+            assertEquals("100000", integers.get(0), "下划线应被移除，值应为 '100000'");
+
+            // 验证长整型
+            List<String> longs = getValuesByType(tokens, TokenType.LONG);
+            assertEquals(1, longs.size(), "应识别 1 个长整型");
+            assertEquals("1000000", longs.get(0), "下划线应被移除，值应为 '1000000'");
+
+            // 验证单精度浮点数
+            List<String> floats = getValuesByType(tokens, TokenType.FLOAT);
+            assertEquals(1, floats.size(), "应识别 1 个单精度浮点数");
+            assertEquals("3.14159", floats.get(0), "下划线应被移除，值应为 '3.14159'");
+
+            // 验证双精度浮点数 - 应该有 3 个: 'd' 后缀、'e5' 科学计数法、'e-2' 科学计数法
+            List<String> doubles = getValuesByType(tokens, TokenType.DOUBLE);
+            assertEquals(3, doubles.size(), "应识别 3 个双精度浮点数");
+            assertEquals("2.71828", doubles.get(0), "下划线应被移除，值应为 '2.71828'");
+            assertEquals("100000.0", doubles.get(1), "科学计数法应被正确解析");  // 1e5 应该是 100000.0
+            assertEquals("10000.00123456", doubles.get(2), "科学计数法和下划线应被正确处理");  // 1_000_000.123_456e-2 = 1000000.123456 * 0.01
+        }
     }
 
     @Nested

@@ -214,4 +214,9 @@ public class ParserTest {
         assertNull(returnStmt.getValue());
     }
 
+    @Test
+    public void testIdentifier() {
+        List<ParseResult> results = parseSource("test");
+        System.out.println(results);
+    }
 }

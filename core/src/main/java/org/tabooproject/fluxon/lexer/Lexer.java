@@ -360,9 +360,12 @@ public class Lexer implements CompilationPhase<List<Token>> {
         int start = position;
         boolean isDouble = false;
 
-        // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()
-        while (position < sourceLength && curr >= '0' && curr <= '9') {
-            advance();
+        // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()，支持下划线分隔符
+        while (position < sourceLength && (curr >= '0' && curr <= '9')) {
+            // 跳过下划线分隔符
+            do {
+                advance();
+            } while (position < sourceLength && curr == '_');
         }
 
         // 检查是否有小数点
@@ -374,9 +377,14 @@ public class Lexer implements CompilationPhase<List<Token>> {
             } else {
                 isDouble = true;
                 // 消费小数点
-                // 消费小数部分 - 使用字符范围检查
-                do advance();
-                while (position < sourceLength && curr >= '0' && curr <= '9');
+                advance();
+                // 消费小数部分 - 使用字符范围检查，支持下划线分隔符
+                while (position < sourceLength && curr >= '0' && curr <= '9') {
+                    // 跳过下划线分隔符
+                    do {
+                        advance();
+                    } while (position < sourceLength && curr == '_');
+                }
             }
         }
 
@@ -404,7 +412,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
             if (position < sourceLength && (curr == '+' || curr == '-')) {
                 advance(); // 消费 + 或 -
             }
-            // 消费指数部分
+            // 消费指数部分，指数部分不支持下划线分隔符
             while (position < sourceLength && curr >= '0' && curr <= '9') {
                 advance(); // 消费数字
             }
@@ -470,22 +478,38 @@ public class Lexer implements CompilationPhase<List<Token>> {
 
     // 辅助方法 - 从缓冲区中提取整数
     private int parseInteger(int start, int end) {
-        return Integer.parseInt(new String(sourceChars, start, end - start));
+        return Integer.parseInt(removeUnderscores(new String(sourceChars, start, end - start)));
     }
 
     // 辅助方法 - 从缓冲区中提取长整数
     private long parseLong(int start, int end) {
-        return Long.parseLong(new String(sourceChars, start, end - start));
+        return Long.parseLong(removeUnderscores(new String(sourceChars, start, end - start)));
     }
 
     // 辅助方法 - 从缓冲区中提取单精度浮点数
     private float parseFloat(int start, int end) {
-        return Float.parseFloat(new String(sourceChars, start, end - start));
+        return Float.parseFloat(removeUnderscores(new String(sourceChars, start, end - start)));
     }
 
     // 辅助方法 - 从缓冲区中提取双精度浮点数
     private double parseDouble(int start, int end) {
-        return Double.parseDouble(new String(sourceChars, start, end - start));
+        return Double.parseDouble(removeUnderscores(new String(sourceChars, start, end - start)));
+    }
+
+    // 辅助方法 - 移除数字中的下划线
+    private String removeUnderscores(String number) {
+        // 快速检查是否包含下划线，避免不必要的处理
+        if (number.indexOf('_') == -1) {
+            return number;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < number.length(); i++) {
+            char c = number.charAt(i);
+            if (c != '_') {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     // 辅助方法 - 根据标识符获取类型
