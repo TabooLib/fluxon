@@ -57,6 +57,7 @@ public class FluxonRuntime {
         ExtensionMethod.init(this);
         // Extension
         ExtensionCollection.init(this);
+        ExtensionIterable.init(this);
         ExtensionList.init(this);
         ExtensionMap.init(this);
         ExtensionMapEntry.init(this);

@@ -35,6 +35,27 @@ public class FunctionContext<Target> {
         return arguments[index];
     }
 
+    @NotNull
+    public Number getNumber(int index) {
+        Object argument = getArgument(index);
+        if (argument instanceof Number) {
+            return ((Number) argument).intValue();
+        }
+        throw new IllegalArgumentException("Argument " + index + " is not a number");
+    }
+
+    @Nullable
+    public Number getNumberOrNull(int index) {
+        Object argument = getArgument(index);
+        if (argument == null) {
+            return null;
+        }
+        if (argument instanceof Number) {
+            return ((Number) argument).intValue();
+        }
+        throw new IllegalArgumentException("Argument " + index + " is not a number");
+    }
+
     @Nullable
     public Target getTarget() {
         return target;
