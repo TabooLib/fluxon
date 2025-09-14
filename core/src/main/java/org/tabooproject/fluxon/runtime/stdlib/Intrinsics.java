@@ -131,22 +131,27 @@ public final class Intrinsics {
         // 获取调用目标
         Object target = environment.getTarget();
         // 获取函数
-        Function function;
+        Function function = null;
         // 优先尝试从扩展函数中获取函数
         if (target != null && exPos != -1) {
-            function = environment.getExtensionFunction(target.getClass(), name, exPos);
-        } else {
+            // 此时有可能获取不到扩展函数
+            // 例如：&sender::location()::isBehand( player(HUAIHEI)::location() )
+            // player 在 isBehand 里调用，因此会尝试检索扩展函数
+            function = environment.getExtensionFunctionOrNull(target.getClass(), name, exPos);
+        }
+        if (function == null) {
             if (pos != -1) {
                 function = environment.getRootSystemFunctions()[pos];
             } else {
                 function = environment.getFunction(name);
             }
         }
+        final Function finalFunction = function;
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
         if (function.isAsync()) {
             return ThreadPoolManager.getInstance().submitAsync(() -> {
                 try {
-                    return function.call(context);
+                    return finalFunction.call(context);
                 } catch (Throwable ex) {
                     ex.printStackTrace(); // 打印 async 的异常
                     throw ex;
@@ -156,7 +161,7 @@ public final class Intrinsics {
             CompletableFuture<Object> future = new CompletableFuture<>();
             FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
                 try {
-                    future.complete(function.call(context));
+                    future.complete(finalFunction.call(context));
                 } catch (Throwable ex) {
                     ex.printStackTrace(); // 打印 sync 的异常
                     throw ex;

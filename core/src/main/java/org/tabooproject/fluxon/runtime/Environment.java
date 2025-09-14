@@ -160,7 +160,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundException(name + ", context: " + extensionClass);
+        throw new FunctionNotFoundException(name + ", context: " + extensionClass + ", index: " + index);
     }
 
     /**
