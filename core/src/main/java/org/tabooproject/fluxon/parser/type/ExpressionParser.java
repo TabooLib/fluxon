@@ -25,8 +25,9 @@ import org.tabooproject.fluxon.parser.expression.literal.*;
  * 9. Range       - ..、..<
  * 10. LogicalAnd - &&
  * 11. LogicalOr  - ||
- * 12. Elvis      - ?:
- * 13. Assignment - =、+=、-=、*=、/=、%=
+ * 12. Ternary    - ? :
+ * 13. Elvis      - ?:
+ * 14. Assignment - =、+=、-=、*=、/=、%=
  * <p>
  */
 public class ExpressionParser {
@@ -93,13 +94,30 @@ public class ExpressionParser {
     }
 
     /**
+     * 解析三元运算符表达式
+     * 三元运算符 condition ? true_expr : false_expr
+     *
+     * @return 三元运算符表达式解析结果
+     */
+    public static ParseResult parseTernary(Parser parser) {
+        ParseResult condition = parseLogicalOr(parser);
+        if (parser.match(TokenType.QUESTION)) {
+            ParseResult trueExpr = parseTernary(parser);
+            parser.consume(TokenType.COLON, "Expected ':' after ternary true expression");
+            ParseResult falseExpr = parseTernary(parser);
+            return new TernaryExpression(condition, trueExpr, falseExpr);
+        }
+        return condition;
+    }
+
+    /**
      * 解析Elvis操作符表达式
      * Elvis操作符 ?: 用于提供默认值，例如：a ?: b 表示如果a为null则返回b，否则返回a
      *
      * @return Elvis操作符表达式解析结果
      */
     public static ParseResult parseElvis(Parser parser) {
-        ParseResult expr = parseLogicalOr(parser);
+        ParseResult expr = parseTernary(parser);
         if (parser.match(TokenType.QUESTION_COLON)) {
             expr = new ElvisExpression(expr, parseElvis(parser));
         }

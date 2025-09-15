@@ -49,6 +49,7 @@ public enum ExpressionType {
 
     AWAIT(new AwaitEvaluator()),
     REFERENCE(new ReferenceEvaluator()),
+    TERNARY(new TernaryEvaluator()),
     ELVIS(new ElvisEvaluator()),
     GROUPING(new GroupingEvaluator()),
     CONTEXT_CALL(new ContextCallEvaluator());
