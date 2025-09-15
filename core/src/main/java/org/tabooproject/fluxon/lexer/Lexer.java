@@ -174,6 +174,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 -
                 advance(); // 消费 >
                 tokens.add(new Token(TokenType.ARROW, "->", startLine, startColumn));
+            } else if (c == '-' && next >= '0' && next <= '9') {
+                // 处理负数 - 直接解析为数字的一部分
+                tokens.add(consumeNumber());
             } else if (c == '/' && next == '/') {
                 // 行注释 - 快速消费
                 consumeLineComment();
@@ -359,6 +362,11 @@ public class Lexer implements CompilationPhase<List<Token>> {
         int startColumn = column;
         int start = position;
         boolean isDouble = false;
+
+        // 检查是否为负数
+        if (curr == '-') {
+            advance(); // 消费负号
+        }
 
         // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()，支持下划线分隔符
         while (position < sourceLength && (curr >= '0' && curr <= '9')) {
