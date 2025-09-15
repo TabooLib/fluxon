@@ -50,13 +50,28 @@ public final class Operations {
      * @return 是否相等
      */
     public static boolean isEqual(Object a, Object b) {
-        if (a == null && b == null) return true;
-        if (a == null) return false;
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        // Number ↔ Number（数值等价）
         if (a instanceof Number && b instanceof Number) {
-            return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) == 0;
-        } else {
-            return a.equals(b);
+            boolean ai = a instanceof Byte || a instanceof Short || a instanceof Integer || a instanceof Long;
+            boolean bi = b instanceof Byte || b instanceof Short || b instanceof Integer || b instanceof Long;
+            if (ai && bi) {
+                return ((Number) a).longValue() == ((Number) b).longValue();
+            }
+            double da = ((Number) a).doubleValue();
+            double db = ((Number) b).doubleValue();
+            if (Double.isNaN(da) && Double.isNaN(db)) return true;
+            return da == db || (da == 0.0 && db == 0.0);
         }
+        // Enum ↔ String（因为 Fluxon 不支持枚举）
+        if (a instanceof Enum<?>) {
+            return b instanceof String && ((Enum<?>) a).name().equals(b);
+        }
+        if (b instanceof Enum<?>) {
+            return a instanceof String && ((Enum<?>) b).name().equals(a);
+        }
+        return a.equals(b);
     }
 
     /**
@@ -90,8 +105,8 @@ public final class Operations {
             switch (getCommonType(a, b)) {
                 case DOUBLE: return a.doubleValue() + b.doubleValue();
                 case FLOAT:  return a.floatValue() + b.floatValue();
-                case LONG:   return java.lang.Math.addExact(a.longValue(), b.longValue());
-                default:     return java.lang.Math.addExact(a.intValue(), b.intValue());
+                case LONG:   return Math.addExact(a.longValue(), b.longValue());
+                default:     return Math.addExact(a.intValue(), b.intValue());
             }
         } catch (ArithmeticException e) {
             return handleOverflow(a, b, '+');
@@ -125,8 +140,8 @@ public final class Operations {
             switch (getCommonType(a, b)) {
                 case DOUBLE: return a.doubleValue() - b.doubleValue();
                 case FLOAT:  return a.floatValue() - b.floatValue();
-                case LONG:   return java.lang.Math.subtractExact(a.longValue(), b.longValue());
-                default:     return java.lang.Math.subtractExact(a.intValue(), b.intValue());
+                case LONG:   return Math.subtractExact(a.longValue(), b.longValue());
+                default:     return Math.subtractExact(a.intValue(), b.intValue());
             }
         } catch (ArithmeticException e) {
             return handleOverflow(a, b, '-');
@@ -160,8 +175,8 @@ public final class Operations {
             switch (getCommonType(a, b)) {
                 case DOUBLE: return a.doubleValue() * b.doubleValue();
                 case FLOAT:  return a.floatValue() * b.floatValue();
-                case LONG:   return java.lang.Math.multiplyExact(a.longValue(), b.longValue());
-                default:     return java.lang.Math.multiplyExact(a.intValue(), b.intValue());
+                case LONG:   return Math.multiplyExact(a.longValue(), b.longValue());
+                default:     return Math.multiplyExact(a.intValue(), b.intValue());
             }
         } catch (ArithmeticException e) {
             return handleOverflow(a, b, '*');
@@ -309,8 +324,8 @@ public final class Operations {
             switch (getType(n)) {
                 case DOUBLE: return -n.doubleValue();
                 case FLOAT:  return -n.floatValue();
-                case LONG:   return java.lang.Math.negateExact(n.longValue());
-                default:     return java.lang.Math.negateExact(n.intValue());
+                case LONG:   return Math.negateExact(n.longValue());
+                default:     return Math.negateExact(n.intValue());
             }
         } catch (ArithmeticException e) {
             // 溢出时统一升级到 double 计算
