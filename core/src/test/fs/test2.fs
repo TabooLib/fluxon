@@ -1,3 +1,4 @@
+@annotation(name="test", value=10)
 def test t msg = {
     print "Test called with argument: " + &t + " " + &msg
     when &t {
