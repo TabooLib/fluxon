@@ -370,6 +370,7 @@ public class ExpressionParser {
             }
             // 代码块
             case LEFT_BRACE: {
+                parser.consume(); // 消费左括号
                 return BlockParser.parse(parser);
             }
             // 文件结束
