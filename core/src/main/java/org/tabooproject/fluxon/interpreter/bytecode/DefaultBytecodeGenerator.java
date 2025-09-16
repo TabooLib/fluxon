@@ -58,6 +58,20 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 生成主类
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         cw.visit(V1_8, ACC_PUBLIC, className, null, superClassName, null);
+        
+        // 为每个用户函数生成静态常量字段
+        for (Definition definition : definitions) {
+            if (definition instanceof FunctionDefinition) {
+                FunctionDefinition funcDef = (FunctionDefinition) definition;
+                String functionClassName = className + funcDef.getName();
+                // 添加静态常量字段: public static final FunctionType functionName = new FunctionType();
+                cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, funcDef.getName(), "L" + functionClassName + ";", null, null);
+            }
+        }
+
+        // 生成静态初始化块
+        generateStaticInitializationBlock(cw, ctx);
+        
         // 生成空的构造函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
@@ -66,6 +80,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitInsn(RETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
+        
         // 生成 eval 函数
         generateEvalMethod(cw, ctx);
         // 生成 clone 函数
@@ -143,23 +158,46 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     /**
+     * 生成静态初始化块
+     */
+    private void generateStaticInitializationBlock(ClassWriter cw, CodeContext ctx) {
+        MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+        mv.visitCode();
+        
+        // 为每个用户函数初始化静态常量
+        for (Definition definition : definitions) {
+            if (definition instanceof FunctionDefinition) {
+                FunctionDefinition funcDef = (FunctionDefinition) definition;
+                String functionClassName = ctx.getClassName() + funcDef.getName();
+                
+                // 创建函数实例: new FunctionClassName()
+                mv.visitTypeInsn(NEW, functionClassName);
+                mv.visitInsn(DUP);
+                mv.visitMethodInsn(INVOKESPECIAL, functionClassName, "<init>", "()V", false);
+                // 存储到静态常量字段
+                mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
+            }
+        }
+        
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(2, 0);
+        mv.visitEnd();
+    }
+
+    /**
      * 注册用户函数到环境中
-     * environment.defineFunction(name, new FunctionClassName(environment))
+     * environment.defineFunction(name, staticFunctionInstance)
      */
     private void generatorUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
         // 加载 environment
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitInsn(DUP);          // 复制 environment 引用，一个用于 defineRootFunction，一个用于构造函数
+        mv.visitInsn(DUP);          // 复制 environment 引用
         // 加载函数名
         mv.visitLdcInsn(funcDef.getName());
-        // 创建函数实例: new FunctionClassName(environment)
+        // 获取静态函数实例
         String functionClassName = ctx.getClassName() + funcDef.getName();
-        mv.visitTypeInsn(NEW, functionClassName);
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        mv.visitMethodInsn(INVOKESPECIAL, functionClassName, "<init>", "(" + Environment.TYPE + ")V", false);
+        mv.visitFieldInsn(GETSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
         // 调用 defineRootFunction
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "defineRootFunction", "(" + STRING + Function.TYPE + ")V", false);
     }
@@ -172,41 +210,45 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
-        // 添加 closure 字段来保存构造时的环境
-        cw.visitField(ACC_PRIVATE | ACC_FINAL, "closure", Environment.TYPE.getDescriptor(), null, null);
-        // 添加 parameters 字段来保存函数参数
-        cw.visitField(ACC_PRIVATE | ACC_FINAL, "parameters", MAP.getDescriptor(), null, null);
+        // 添加 parameters 字段来保存函数参数（static 字段，所有实例共享）
+        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "parameters", MAP.getDescriptor(), null, null);
 
-        // 生成构造函数，接收 environment 参数
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "(" + Environment.TYPE + ")V", null, null);
+        // 生成构造函数，不需要 environment 参数
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, RuntimeScriptBase.TYPE.getPath(), "<init>", "()V", false);
 
-        // 设置 closure 字段
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitVarInsn(ALOAD, 1);  // environment 参数
-        mv.visitFieldInsn(PUTFIELD, functionClassName, "closure", Environment.TYPE.getDescriptor());
-
-        // 设置 parameters 字段
-        mv.visitVarInsn(ALOAD, 0);  // this
-        // 将 funcDef.getParameters() 转换为 Map
-        BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
-        // 将 Map 存储到 parameters 字段
-        mv.visitFieldInsn(PUTFIELD, functionClassName, "parameters", MAP.getDescriptor());
-
         // 返回
         mv.visitInsn(RETURN);
-        mv.visitMaxs(2, 2);
+        mv.visitMaxs(1, 1);
         mv.visitEnd();
 
         // 实现 Function 接口的方法
         generateFunctionInterfaceMethods(funcDef, cw, functionClassName);
 
+        // 生成静态初始化块来初始化 parameters
+        generateStaticInitializationBlock(funcDef, cw, functionClassName);
+
         // 实现 clone 函数
         generateCloneMethod(cw, functionClassName);
         cw.visitEnd();
         return cw.toByteArray();
+    }
+
+    /**
+     * 生成静态初始化块来初始化 parameters 字段
+     */
+    private void generateStaticInitializationBlock(FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
+        MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+        mv.visitCode();
+        // 将 funcDef.getParameters() 转换为 Map
+        BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
+        // 将 Map 存储到 static parameters 字段
+        mv.visitFieldInsn(PUTSTATIC, functionClassName, "parameters", MAP.getDescriptor());
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(1, 0);
+        mv.visitEnd();
     }
 
     /**
@@ -270,11 +312,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 直接将 Operations.bindFunctionParameters 的结果赋值给 this.environment
         mv.visitVarInsn(ALOAD, 0);  // this（为 PUTFIELD 准备）
         // 准备 Operations.bindFunctionParameters 的参数
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitFieldInsn(GETFIELD, functionClassName, "closure", Environment.TYPE.getDescriptor());
-        // 获取函数参数映射
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitFieldInsn(GETFIELD, functionClassName, "parameters", MAP.getDescriptor());
+        // 从 FunctionContext 获取环境
+        mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
+        // 获取函数参数映射（static 字段）
+        mv.visitFieldInsn(GETSTATIC, functionClassName, "parameters", MAP.getDescriptor());
         // 从 FunctionContext 获取参数数组
         mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
