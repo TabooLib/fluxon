@@ -99,11 +99,7 @@ public class UserFunction implements Function, Symbolic {
         return interpreter;
     }
 
-    /**
-     * 获取函数的注解列表
-     *
-     * @return 注解列表
-     */
+    @Override
     public List<Annotation> getAnnotations() {
         return definition.getAnnotations();
     }

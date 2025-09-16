@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 
 import java.util.List;
 
@@ -51,6 +52,13 @@ public interface Function {
      * @return 如果是主线程同步函数返回 true，否则返回 false
      */
     boolean isPrimarySync();
+
+    /**
+     * 获取函数的注解列表
+     *
+     * @return 注解列表
+     */
+    List<Annotation> getAnnotations();
     
     /**
      * 执行函数

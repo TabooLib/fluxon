@@ -3,7 +3,9 @@ package org.tabooproject.fluxon.runtime;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.SymbolFunction;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -69,6 +71,11 @@ public class NativeFunction<Target> implements Function, Symbolic {
     @Override
     public boolean isPrimarySync() {
         return isPrimarySync;
+    }
+
+    @Override
+    public List<Annotation> getAnnotations() {
+        return Collections.emptyList();
     }
 
     @SuppressWarnings("unchecked")
