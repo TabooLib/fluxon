@@ -266,26 +266,23 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 实现 getParameterCounts() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "getParameterCounts", "()" + LIST, null, null);
         mv.visitCode();
-        mv.visitTypeInsn(NEW, ARRAY_LIST.getPath());
+        // 使用 Arrays.asList 创建包含参数数量的列表
+        mv.visitIntInsn(BIPUSH, 1);  // 创建大小为 1 的数组
+        mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
         mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, ARRAY_LIST.getPath(), "<init>", "()V", false);
-        mv.visitInsn(DUP);
+        mv.visitIntInsn(BIPUSH, 0);  // 数组索引 0
         mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
         mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
-        mv.visitMethodInsn(INVOKEVIRTUAL, ARRAY_LIST.getPath(), "add", "(" + OBJECT + ")Z", false);
-        mv.visitInsn(POP);
+        mv.visitInsn(AASTORE);  // 存储到数组中
+        mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
         mv.visitInsn(ARETURN);
-        mv.visitMaxs(3, 1);
+        mv.visitMaxs(4, 1);
         mv.visitEnd();
 
         // 实现 getMaxParameterCount() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "getMaxParameterCount", "()I", null, null);
         mv.visitCode();
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitMethodInsn(INVOKEVIRTUAL, functionClassName, "getParameterCounts", "()" + LIST, false);
-        mv.visitMethodInsn(INVOKESTATIC, COLLECTIONS.getPath(), "max", "(" + COLLECTION + ")" + OBJECT, false);
-        mv.visitTypeInsn(CHECKCAST, INT.getPath());
-        mv.visitMethodInsn(INVOKEVIRTUAL, INT.getPath(), "intValue", "()I", false);
+        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
         mv.visitInsn(IRETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
@@ -362,7 +359,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     private static final Type MAP = new Type(Map.class);
     private static final Type LIST = new Type(List.class);
-    private static final Type ARRAY_LIST = new Type(ArrayList.class);
+    private static final Type ARRAYS = new Type(Arrays.class);
     private static final Type COLLECTIONS = new Type(Collections.class);
     private static final Type COLLECTION = new Type(Collection.class);
 
