@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser.definition;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.Collections;
 import java.util.Map;
@@ -12,6 +13,9 @@ import java.util.Map;
  * @author sky
  */
 public class Annotation implements ParseResult {
+
+    public static final Type TYPE = new Type(Annotation.class);
+
     private final String name;
     private final Map<String, Object> attributes;
 

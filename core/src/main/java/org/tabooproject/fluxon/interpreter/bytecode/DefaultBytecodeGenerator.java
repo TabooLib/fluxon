@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -212,6 +213,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
         // 添加 parameters 字段来保存函数参数（static 字段，所有实例共享）
         cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "parameters", MAP.getDescriptor(), null, null);
+        // 添加 annotations 字段来保存函数注解（static 字段，所有实例共享）
+        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "annotations", LIST.getDescriptor(), null, null);
 
         // 生成构造函数，不需要 environment 参数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
@@ -237,7 +240,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     /**
-     * 生成静态初始化块来初始化 parameters 字段
+     * 生成静态初始化块来初始化 parameters 和 annotations 字段
      */
     private void generateStaticInitializationBlock(FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
@@ -246,9 +249,42 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
         // 将 Map 存储到 static parameters 字段
         mv.visitFieldInsn(PUTSTATIC, functionClassName, "parameters", MAP.getDescriptor());
+
+        // 初始化注解列表
+        generateAnnotationsInitialization(mv, funcDef, functionClassName);
+        
         mv.visitInsn(RETURN);
         mv.visitMaxs(1, 0);
         mv.visitEnd();
+    }
+    
+    /**
+     * 生成注解初始化代码
+     */
+    private void generateAnnotationsInitialization(MethodVisitor mv, FunctionDefinition funcDef, String functionClassName) {
+        List<Annotation> annotations = funcDef.getAnnotations();
+        if (annotations.isEmpty()) {
+            // 如果没有注解，创建空列表
+            mv.visitMethodInsn(INVOKESTATIC, COLLECTIONS.getPath(), "emptyList", "()" + LIST, false);
+        } else {
+            // 创建注解数组
+            mv.visitIntInsn(BIPUSH, annotations.size());
+            mv.visitTypeInsn(ANEWARRAY, ANNOTATION.getPath());
+            // 填充注解数组
+            for (int i = 0; i < annotations.size(); i++) {
+                Annotation annotation = annotations.get(i);
+                mv.visitInsn(DUP);           // 复制数组引用
+                mv.visitIntInsn(BIPUSH, i);  // 数组索引
+                // 使用 BytecodeUtils 生成注解字节码
+                BytecodeUtils.generateAnnotation(mv, annotation);
+                // 存储到数组中
+                mv.visitInsn(AASTORE);
+            }
+            // 使用 Arrays.asList 创建列表
+            mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
+        }
+        // 将注解列表存储到 static annotations 字段
+        mv.visitFieldInsn(PUTSTATIC, functionClassName, "annotations", LIST.getDescriptor());
     }
 
     /**
@@ -304,6 +340,15 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 根据函数定义决定
         mv.visitInsn(funcDef.isPrimarySync() ? ICONST_1 : ICONST_0);
         mv.visitInsn(IRETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+        
+        // 实现 getAnnotations() 方法
+        mv = cw.visitMethod(ACC_PUBLIC, "getAnnotations", "()" + LIST, null, null);
+        mv.visitCode();
+        // 返回 static annotations 字段
+        mv.visitFieldInsn(GETSTATIC, functionClassName, "annotations", LIST.getDescriptor());
+        mv.visitInsn(ARETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
@@ -367,4 +412,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private static final Type MAP = new Type(Map.class);
     private static final Type LIST = new Type(List.class);
     private static final Type ARRAYS = new Type(Arrays.class);
+    private static final Type ANNOTATION = new Type(Annotation.class);
+    private static final Type COLLECTIONS = new Type(Collections.class);
+    private static final Type OBJECT = new Type(Object.class);
 }

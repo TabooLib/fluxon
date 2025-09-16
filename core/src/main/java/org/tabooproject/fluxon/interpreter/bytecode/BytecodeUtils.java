@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -153,6 +154,68 @@ public class BytecodeUtils {
             mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
         } else if (primitiveType == char.class) {
             mv.visitMethodInsn(INVOKESTATIC, "java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
+        }
+    }
+
+    /**
+     * 生成注解的字节码
+     */
+    public static void generateAnnotation(MethodVisitor mv, Annotation annotation) {
+        // 创建 Annotation 实例
+        mv.visitTypeInsn(NEW, Annotation.TYPE.getPath());
+        mv.visitInsn(DUP);
+        
+        // 推送注解名称
+        mv.visitLdcInsn(annotation.getName());
+        
+        // 处理属性
+        Map<String, Object> attributes = annotation.getAttributes();
+        if (attributes.isEmpty()) {
+            // 无属性，使用单参数构造函数
+            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(Ljava/lang/String;)V", false);
+        } else {
+            // 有属性，创建属性 Map
+            mv.visitTypeInsn(NEW, "java/util/HashMap");
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
+            
+            // 填充属性
+            for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+                mv.visitInsn(DUP);               // 复制 Map 引用
+                mv.visitLdcInsn(entry.getKey()); // 键
+
+                // 处理值（Object 类型）
+                Object value = entry.getValue();
+                if (value == null) {
+                    mv.visitInsn(ACONST_NULL);
+                } else if (value instanceof String) {
+                    mv.visitLdcInsn(value);
+                } else if (value instanceof Boolean) {
+                    mv.visitInsn((Boolean) value ? ICONST_1 : ICONST_0);
+                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
+                } else if (value instanceof Integer) {
+                    mv.visitIntInsn(SIPUSH, (Integer) value);
+                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+                } else if (value instanceof Long) {
+                    mv.visitLdcInsn(value);
+                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
+                } else if (value instanceof Double) {
+                    mv.visitLdcInsn(value);
+                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+                } else if (value instanceof Float) {
+                    mv.visitLdcInsn(value);
+                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
+                } else {
+                    mv.visitLdcInsn(value);
+                }
+
+                // 调用 put 方法
+                mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
+                mv.visitInsn(POP);
+            }
+
+            // 调用双参数构造函数
+            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(Ljava/lang/String;Ljava/util/Map;)V", false);
         }
     }
 
