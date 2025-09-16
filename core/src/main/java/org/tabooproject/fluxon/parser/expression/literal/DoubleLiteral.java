@@ -17,6 +17,11 @@ public class DoubleLiteral extends Literal {
     }
 
     @Override
+    public Object getSourceValue() {
+        return value;
+    }
+
+    @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.DOUBLE_LITERAL;
     }

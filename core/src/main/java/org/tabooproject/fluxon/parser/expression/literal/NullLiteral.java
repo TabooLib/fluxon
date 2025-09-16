@@ -13,4 +13,9 @@ public class NullLiteral extends Literal {
     public String toPseudoCode() {
         return "null";
     }
+
+    @Override
+    public Object getSourceValue() {
+        return null;
+    }
 }

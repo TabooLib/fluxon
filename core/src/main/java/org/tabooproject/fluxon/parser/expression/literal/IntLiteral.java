@@ -17,6 +17,11 @@ public class IntLiteral extends Literal {
     }
 
     @Override
+    public Object getSourceValue() {
+        return value;
+    }
+
+    @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.INT_LITERAL;
     }

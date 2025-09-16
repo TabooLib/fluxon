@@ -17,6 +17,11 @@ public class FloatLiteral extends Literal {
     }
 
     @Override
+    public Object getSourceValue() {
+        return value;
+    }
+
+    @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.FLOAT_LITERAL;
     }

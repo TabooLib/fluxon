@@ -17,6 +17,11 @@ public class LongLiteral extends Literal {
     }
 
     @Override
+    public Object getSourceValue() {
+        return value;
+    }
+
+    @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.LONG_LITERAL;
     }

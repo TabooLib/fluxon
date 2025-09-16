@@ -17,6 +17,11 @@ public class BooleanLiteral extends Literal {
     }
 
     @Override
+    public Object getSourceValue() {
+        return value;
+    }
+
+    @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.BOOLEAN_LITERAL;
     }

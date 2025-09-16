@@ -13,13 +13,13 @@ import java.util.Map;
  */
 public class Annotation implements ParseResult {
     private final String name;
-    private final Map<String, ParseResult> attributes;
+    private final Map<String, Object> attributes;
 
     public Annotation(String name) {
         this(name, Collections.emptyMap());
     }
 
-    public Annotation(String name, Map<String, ParseResult> attributes) {
+    public Annotation(String name, Map<String, Object> attributes) {
         this.name = name;
         this.attributes = attributes;
     }
@@ -28,7 +28,7 @@ public class Annotation implements ParseResult {
         return name;
     }
 
-    public Map<String, ParseResult> getAttributes() {
+    public Map<String, Object> getAttributes() {
         return attributes;
     }
 
@@ -51,9 +51,9 @@ public class Annotation implements ParseResult {
         if (!attributes.isEmpty()) {
             sb.append("(");
             boolean first = true;
-            for (Map.Entry<String, ParseResult> entry : attributes.entrySet()) {
+            for (Map.Entry<String, Object> entry : attributes.entrySet()) {
                 if (!first) sb.append(", ");
-                sb.append(entry.getKey()).append(" = ").append(entry.getValue().toPseudoCode());
+                sb.append(entry.getKey()).append(" = ").append(entry.getValue());
                 first = false;
             }
             sb.append(")");
