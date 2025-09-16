@@ -58,7 +58,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 生成主类
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         cw.visit(V1_8, ACC_PUBLIC, className, null, superClassName, null);
-        
+
         // 为每个用户函数生成静态常量字段
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
@@ -71,7 +71,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 生成静态初始化块
         generateStaticInitializationBlock(cw, ctx);
-        
+
         // 生成空的构造函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
@@ -80,7 +80,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitInsn(RETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
-        
+
         // 生成 eval 函数
         generateEvalMethod(cw, ctx);
         // 生成 clone 函数
@@ -139,18 +139,18 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private void generateCloneMethod(ClassWriter cw, String className) {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "clone", "()" + RuntimeScriptBase.TYPE, null, null);
         mv.visitCode();
-        
+
         // 创建新实例
         mv.visitTypeInsn(NEW, className);
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V", false);
-        
+
         // 复制 environment 字段
         mv.visitInsn(DUP);          // 复制新实例引用
         mv.visitVarInsn(ALOAD, 0);  // 加载 this
         mv.visitFieldInsn(GETFIELD, className, "environment", Environment.TYPE.getDescriptor());
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
-        
+
         // 返回新实例
         mv.visitInsn(ARETURN);
         mv.visitMaxs(3, 1);
@@ -163,13 +163,13 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private void generateStaticInitializationBlock(ClassWriter cw, CodeContext ctx) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
-        
+
         // 为每个用户函数初始化静态常量
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
                 String functionClassName = ctx.getClassName() + funcDef.getName();
-                
+
                 // 创建函数实例: new FunctionClassName()
                 mv.visitTypeInsn(NEW, functionClassName);
                 mv.visitInsn(DUP);
@@ -178,7 +178,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
             }
         }
-        
+
         mv.visitInsn(RETURN);
         mv.visitMaxs(2, 0);
         mv.visitEnd();
@@ -266,14 +266,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 实现 getParameterCounts() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "getParameterCounts", "()" + LIST, null, null);
         mv.visitCode();
-        // 使用 Arrays.asList 创建包含参数数量的列表
-        mv.visitIntInsn(BIPUSH, 1);  // 创建大小为 1 的数组
+        // 使用 Arrays.asList 创建大小为 1 的数组
+        mv.visitIntInsn(BIPUSH, 1);
         mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
         mv.visitInsn(DUP);
-        mv.visitIntInsn(BIPUSH, 0);  // 数组索引 0
+        // 数组索引 0
+        mv.visitIntInsn(BIPUSH, 0);
         mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
         mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
-        mv.visitInsn(AASTORE);  // 存储到数组中
+        // 存储到数组中
+        mv.visitInsn(AASTORE);
         mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
         mv.visitInsn(ARETURN);
         mv.visitMaxs(4, 1);
@@ -290,7 +292,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 实现 isAsync() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "isAsync", "()Z", null, null);
         mv.visitCode();
-        mv.visitInsn(funcDef.isAsync() ? ICONST_1 : ICONST_0);  // 根据函数定义决定
+        // 根据函数定义决定
+        mv.visitInsn(funcDef.isAsync() ? ICONST_1 : ICONST_0);
         mv.visitInsn(IRETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
@@ -298,7 +301,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 实现 isPrimarySync() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "isPrimarySync", "()Z", null, null);
         mv.visitCode();
-        mv.visitInsn(funcDef.isPrimarySync() ? ICONST_1 : ICONST_0);  // 根据函数定义决定
+        // 根据函数定义决定
+        mv.visitInsn(funcDef.isPrimarySync() ? ICONST_1 : ICONST_0);
         mv.visitInsn(IRETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
@@ -307,15 +311,18 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();
         // 直接将 Operations.bindFunctionParameters 的结果赋值给 this.environment
-        mv.visitVarInsn(ALOAD, 0);  // this（为 PUTFIELD 准备）
+        // this（为 PUTFIELD 准备）
+        mv.visitVarInsn(ALOAD, 0);
         // 准备 Operations.bindFunctionParameters 的参数
         // 从 FunctionContext 获取环境
-        mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
+        // FunctionContext (第一个参数)
+        mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
         // 获取函数参数映射（static 字段）
         mv.visitFieldInsn(GETSTATIC, functionClassName, "parameters", MAP.getDescriptor());
         // 从 FunctionContext 获取参数数组
-        mv.visitVarInsn(ALOAD, 1);  // FunctionContext (第一个参数)
+        // FunctionContext (第一个参数)
+        mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
         // 压入 localVariables
         mv.visitLdcInsn(funcDef.getLocalVariables().size());
@@ -360,7 +367,4 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private static final Type MAP = new Type(Map.class);
     private static final Type LIST = new Type(List.class);
     private static final Type ARRAYS = new Type(Arrays.class);
-    private static final Type COLLECTIONS = new Type(Collections.class);
-    private static final Type COLLECTION = new Type(Collection.class);
-
 }
