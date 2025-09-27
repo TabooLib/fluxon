@@ -9,14 +9,16 @@ import org.tabooproject.fluxon.runtime.Environment;
 public class FunctionNotFoundError extends RuntimeException {
 
     private final Environment environment;
+    private final Object target;
     private final String name;
     private final Object[] arguments;
     private final int pos;
     private final int exPos;
 
-    public FunctionNotFoundError(Environment environment, String name, Object[] arguments, int pos, int exPos) {
+    public FunctionNotFoundError(Environment environment, Object target, String name, Object[] arguments, int pos, int exPos) {
         super(name);
         this.environment = environment;
+        this.target = target;
         this.name = name;
         this.arguments = arguments;
         this.pos = pos;
@@ -25,6 +27,10 @@ public class FunctionNotFoundError extends RuntimeException {
 
      public Environment getEnvironment() {
         return environment;
+    }
+
+     public Object getTarget() {
+        return target;
     }
 
     public String getName() {

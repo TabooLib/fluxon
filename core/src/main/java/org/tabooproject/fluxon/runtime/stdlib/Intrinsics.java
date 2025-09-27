@@ -149,7 +149,7 @@ public final class Intrinsics {
         }
         // 如果函数不存在
         if (function == null) {
-            throw new FunctionNotFoundError(environment, name, arguments, pos, exPos);
+            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
         }
         final Function finalFunction = function;
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
