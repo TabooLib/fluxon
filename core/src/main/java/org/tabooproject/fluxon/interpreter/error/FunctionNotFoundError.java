@@ -1,0 +1,45 @@
+package org.tabooproject.fluxon.interpreter.error;
+
+import org.tabooproject.fluxon.runtime.Environment;
+
+/**
+ * 没有找到函数异常
+ * 在运行时由 Intrinsics#callFunction 抛出
+ */
+public class FunctionNotFoundError extends RuntimeException {
+
+    private final Environment environment;
+    private final String name;
+    private final Object[] arguments;
+    private final int pos;
+    private final int exPos;
+
+    public FunctionNotFoundError(Environment environment, String name, Object[] arguments, int pos, int exPos) {
+        super(name);
+        this.environment = environment;
+        this.name = name;
+        this.arguments = arguments;
+        this.pos = pos;
+        this.exPos = exPos;
+    }
+
+     public Environment getEnvironment() {
+        return environment;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Object[] getArguments() {
+        return arguments;
+    }
+
+    public int getPos() {
+        return pos;
+    }
+
+    public int getExPos() {
+        return exPos;
+    }
+}

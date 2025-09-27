@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
@@ -143,8 +144,12 @@ public final class Intrinsics {
             if (pos != -1) {
                 function = environment.getRootSystemFunctions()[pos];
             } else {
-                function = environment.getFunction(name);
+                function = environment.getFunctionOrNull(name);
             }
+        }
+        // 如果函数不存在
+        if (function == null) {
+            throw new FunctionNotFoundError(environment, name, arguments, pos, exPos);
         }
         final Function finalFunction = function;
         final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
