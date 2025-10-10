@@ -2,9 +2,7 @@ package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class ExtensionList {
 

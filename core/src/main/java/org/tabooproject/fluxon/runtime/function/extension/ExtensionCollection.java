@@ -2,8 +2,7 @@ package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
-import java.util.Collection;
-import java.util.Objects;
+import java.util.*;
 
 public class ExtensionCollection {
 
@@ -51,6 +50,39 @@ public class ExtensionCollection {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     list.clear();
                     return null;
+                })
+                // 随机获取元素
+                .function("random", Arrays.asList(0, 1), (context) -> {
+                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    if (list.isEmpty()) {
+                        return null;
+                    }
+                    // 如果没有参数，返回一个随机元素
+                    if (context.getArguments().length == 0) {
+                        List<Object> tempList = new ArrayList<>(list);
+                        int index = (int) (Math.random() * tempList.size());
+                        return tempList.get(index);
+                    }
+                    // 如果有参数，返回指定数量的不重复随机元素
+                    int count = ((Number) context.getArguments()[0]).intValue();
+                    if (count <= 0) {
+                        return null;
+                    }
+                    // 如果请求数量大于等于列表大小，返回打乱后的整个列表
+                    if (count >= list.size()) {
+                        List<Object> shuffled = new ArrayList<>(list);
+                        Collections.shuffle(shuffled);
+                        return shuffled;
+                    }
+                    // 否则返回指定数量的不重复随机元素
+                    List<Object> result = new ArrayList<>(count);
+                    List<Object> copy = new ArrayList<>(list);
+                    Collections.shuffle(copy);
+                    for (int i = 0; i < count; i++) {
+                        result.add(copy.get(i));
+                    }
+                    return result;
                 });
+        ;
     }
 }
