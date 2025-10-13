@@ -134,7 +134,7 @@ public final class Intrinsics {
         // 获取函数
         Function function = null;
         // 优先尝试从扩展函数中获取函数
-        if (target != null && exPos != -1) {
+        if (target != null && target != GlobalObject.INSTANCE && exPos != -1) {
             // 此时有可能获取不到扩展函数
             // 例如：&sender::location()::isBehand( player(HUAIHEI)::location() )
             // player 在 isBehand 里调用，因此会尝试检索扩展函数

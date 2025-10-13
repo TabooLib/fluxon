@@ -66,7 +66,7 @@ public class ContextCallTest {
         // 测试 ! 和 :: 的优先级
         assertEquals(false, Fluxon.eval("list = [1,2,3]; !&list::contains(1)"));
         assertEquals(true, Fluxon.eval("list = [1,2,3]; !&list::contains(4)"));
-        
+
         // 测试 & 和 :: 的结合
         assertEquals(true, Fluxon.eval("list = [1,2,3]; &list::contains(2)"));
         assertEquals(false, Fluxon.eval("list = [1,2,3]; &list::contains(5)"));
@@ -77,11 +77,11 @@ public class ContextCallTest {
         // 测试复杂的优先级组合
         assertEquals(false, Fluxon.eval("list = [1,2,3]; !&list::contains(1) && true"));
         assertEquals(true, Fluxon.eval("list = [1,2,3]; !&list::contains(4) || false"));
-        
+
         // 测试多重上下文调用
         assertEquals("HELLO", Fluxon.eval("text = 'hello'; &text::uppercase()"));
         assertEquals(5, Fluxon.eval("text = 'hello'; &text::length()"));
-        
+
         // 测试引用后的多重操作
         assertEquals("HE", Fluxon.eval("text = 'hello'; &text::uppercase()::substring(0, 2)"));
     }
@@ -99,7 +99,7 @@ public class ContextCallTest {
         assertEquals(10, Fluxon.eval("a = 3; b = 7; &a + &b"));
         assertEquals(-4, Fluxon.eval("a = 3; b = 7; &a - &b"));
         assertEquals(21, Fluxon.eval("a = 3; b = 7; &a * &b"));
-        
+
         // 测试比较运算符与引用
         assertEquals(true, Fluxon.eval("a = 3; b = 7; &a < &b"));
         assertEquals(false, Fluxon.eval("a = 3; b = 7; &a > &b"));
@@ -111,7 +111,7 @@ public class ContextCallTest {
         // 测试引用在括号表达式中
         assertEquals(false, Fluxon.eval("list = [1,2,3]; !(&list::contains(1))"));
         assertEquals(true, Fluxon.eval("list = [1,2,3]; !(!&list::contains(1))"));
-        
+
         // 测试引用在条件表达式中
         assertEquals(3, Fluxon.eval("list = [1,2,3]; if &list::contains(1) then 3 else 5"));
         assertEquals(5, Fluxon.eval("list = [1,2,3]; if &list::contains(4) then 3 else 5"));
@@ -122,7 +122,7 @@ public class ContextCallTest {
         // 测试连续的上下文调用
         assertEquals(3, Fluxon.eval("list = [1,2,3]; &list::size()"));
         assertEquals("3", Fluxon.eval("list = [1,2,3]; &list::size()::toString()"));
-        
+
         // 测试上下文调用与其他操作符的组合
         assertEquals(6, Fluxon.eval("list = [1,2,3]; &list::size() * 2"));
         assertEquals(true, Fluxon.eval("list = [1,2,3]; &list::size() > 2"));
@@ -152,13 +152,24 @@ public class ContextCallTest {
         // 测试边界情况
         assertEquals(false, Fluxon.eval("list = []; !&list::isEmpty()"));
         assertEquals(true, Fluxon.eval("list = []; &list::isEmpty()"));
-        
+
         // 测试可选引用
         // &?unknownVar 不会抛出异常
         assertEquals(null, Fluxon.eval("&?unknownVar"));
-        
+
         // 测试多重否定
         assertEquals(true, Fluxon.eval("list = [1,2,3]; !!&list::contains(1)"));
         assertEquals(false, Fluxon.eval("list = [1,2,3]; !!!&list::contains(1)"));
+    }
+
+    @Test
+    public void testRandom() {
+        assertEquals(1, Fluxon.eval("[1]::get(g::random(1))"));
+        try {
+            Fluxon.eval("[1]::get(random(1))");
+            throw new IllegalStateException("random(1) should return a ArrayList");
+        } catch (ClassCastException e) {
+            assertEquals("java.util.ArrayList cannot be cast to java.lang.Number", e.getMessage());
+        }
     }
 }

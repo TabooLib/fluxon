@@ -50,6 +50,9 @@ public class FluxonRuntime {
      * 初始化系统函数
      */
     private FluxonRuntime() {
+        // 全局对象
+        // 用于应对在上下文环境中使用同名的全局函数
+        registerFunction("g", 0, (context) -> GlobalObject.INSTANCE);
         // reflect
         ExtensionClass.init(this);
         ExtensionConstructor.init(this);
