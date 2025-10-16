@@ -17,10 +17,14 @@ public class ExtensionMethod {
                 .function("invoke", 2, (context) -> {
                     try {
                         Method method = Objects.requireNonNull(context.getTarget());
-                        Object instance = context.getArguments()[0];
-                        Object[] parameters = ((List<Object>) context.getArguments()[1]).toArray();
                         method.setAccessible(true);
-                        return method.invoke(instance, parameters);
+                        Object instance = context.getArgument(0);
+                        List<Object> argument = context.getArgumentByType(1, List.class);
+                        if (argument != null) {
+                            return method.invoke(instance, argument.toArray());
+                        } else {
+                            return method.invoke(instance);
+                        }
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to invoke method: " + e.getMessage(), e);
                     }
@@ -48,7 +52,7 @@ public class ExtensionMethod {
                 // 设置可访问性
                 .function("setAccessible", 1, (context) -> {
                     Method method = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArguments()[0];
+                    boolean accessible = context.getBoolean(0);
                     method.setAccessible(accessible);
                     return null;
                 })

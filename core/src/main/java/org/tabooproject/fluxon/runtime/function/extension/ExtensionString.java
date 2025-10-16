@@ -120,7 +120,7 @@ public class ExtensionString {
                 // 检查是否以指定字符串结束
                 .function("endsWith", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String suffix = Coerce.asString(context.getArguments()[0]).orElse("");
+                    String suffix = Coerce.asString(context.getArgument(0)).orElse("");
                     return str.endsWith(suffix);
                 })
                 // 左填充
@@ -154,19 +154,19 @@ public class ExtensionString {
                 // 检查是否匹配正则表达式
                 .function("matches", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String regex = Coerce.asString(context.getArguments()[0]).orElse("");
+                    String regex = Coerce.asString(context.getArgument(0)).orElse("");
                     return str.matches(regex);
                 })
                 // 检查是否包含子字符串
                 .function("contains", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String searchStr = Coerce.asString(context.getArguments()[0]).orElse("");
+                    String searchStr = Coerce.asString(context.getArgument(0)).orElse("");
                     return str.contains(searchStr);
                 })
                 // 重复字符串
                 .function("repeat", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int count = Coerce.asInteger(context.getArguments()[0]).orElse(0);
+                    int count = Coerce.asInteger(context.getArgument(0)).orElse(0);
                     if (count <= 0) return "";
                     StringBuilder result = new StringBuilder();
                     for (int i = 0; i < count; i++) {
@@ -177,7 +177,7 @@ public class ExtensionString {
                 // 获取字符
                 .function("charAt", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getArguments()[0]).orElse(0);
+                    int index = Coerce.asInteger(context.getArgument(0)).orElse(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }
@@ -186,7 +186,7 @@ public class ExtensionString {
                 // 获取字符编码
                 .function("charCodeAt", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getArguments()[0]).orElse(0);
+                    int index = Coerce.asInteger(context.getArgument(0)).orElse(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }
@@ -225,7 +225,7 @@ public class ExtensionString {
                 // 提取所有匹配的子字符串
                 .function("findAll", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String regex = Coerce.asString(context.getArguments()[0]).orElse("");
+                    String regex = Coerce.asString(context.getArgument(0)).orElse("");
                     List<String> matches = new ArrayList<>();
                     Pattern pattern = Pattern.compile(regex);
                     Matcher matcher = pattern.matcher(str);

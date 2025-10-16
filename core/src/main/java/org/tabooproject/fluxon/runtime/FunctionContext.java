@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
+import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 /**
  * 函数调用上下文
@@ -35,25 +37,40 @@ public class FunctionContext<Target> {
         return arguments[index];
     }
 
+    @Nullable
+    public <T> T getArgumentByType(int index, @NotNull Class<T> type) {
+        Object argument = getArgument(index);
+        if (argument == null) return null;
+        if (type.isInstance(argument)) {
+            return type.cast(argument);
+        }
+        throw new ArgumentTypeMismatchException(this, index, type);
+    }
+
     @NotNull
     public Number getNumber(int index) {
         Object argument = getArgument(index);
         if (argument instanceof Number) {
-            return ((Number) argument).intValue();
+            return ((Number) argument);
         }
-        throw new IllegalArgumentException("Argument " + index + " is not a number");
+        throw new ArgumentTypeMismatchException(this, index, Number.class);
     }
 
     @Nullable
     public Number getNumberOrNull(int index) {
+        return getArgumentByType(index, Number.class);
+    }
+
+    public boolean getBoolean(int index) {
         Object argument = getArgument(index);
-        if (argument == null) {
-            return null;
-        }
-        if (argument instanceof Number) {
-            return ((Number) argument).intValue();
-        }
-        throw new IllegalArgumentException("Argument " + index + " is not a number");
+        return Coerce.asBoolean(argument).orElse(false);
+    }
+
+    @Nullable
+    public String getString(int index) {
+        Object argument = getArgument(index);
+        if (argument == null) return null;
+        return argument.toString();
     }
 
     @Nullable

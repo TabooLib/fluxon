@@ -15,7 +15,7 @@ public class ExtensionField {
                 .function("get", 1, (context) -> {
                     try {
                         Field field = Objects.requireNonNull(context.getTarget());
-                        return UnsafeAccess.get(context.getArguments()[0], field);
+                        return UnsafeAccess.get(context.getArgument(0), field);
                     } catch (Throwable e) {
                         throw new RuntimeException("Failed to get field value: " + e.getMessage(), e);
                     }
@@ -24,8 +24,8 @@ public class ExtensionField {
                 .function("set", 2, (context) -> {
                     try {
                         Field field = Objects.requireNonNull(context.getTarget());
-                        Object instance = context.getArguments()[0];
-                        Object value = context.getArguments()[1];
+                        Object instance = context.getArgument(0);
+                        Object value = context.getArgument(1);
                         UnsafeAccess.put(instance, field, value);
                         return null;
                     } catch (Throwable e) {
@@ -50,7 +50,7 @@ public class ExtensionField {
                 // 设置可访问性
                 .function("setAccessible", 1, (context) -> {
                     Field field = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArguments()[0];
+                    boolean accessible = context.getBoolean(0);
                     field.setAccessible(accessible);
                     return null;
                 })

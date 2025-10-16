@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
+import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -168,8 +169,8 @@ public class ContextCallTest {
         try {
             Fluxon.eval("[1]::get(random(1))");
             throw new IllegalStateException("random(1) should return a ArrayList");
-        } catch (ClassCastException e) {
-            assertEquals("java.util.ArrayList cannot be cast to java.lang.Number", e.getMessage());
+        } catch (ArgumentTypeMismatchException e) {
+            assertEquals("Argument 0 expect Number but got [1]", e.getMessage());
         }
     }
 }

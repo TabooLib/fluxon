@@ -19,7 +19,7 @@ public class ExtensionCollection {
                 // 检查是否包含某个元素
                 .function("contains", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    return list.contains(context.getArguments()[0]);
+                    return list.contains(context.getArgument(0));
                 })
                 // 转换为数组
                 .function("toArray", 0, (context) -> {
@@ -27,22 +27,28 @@ public class ExtensionCollection {
                     return list.toArray();
                 })
                 // 添加元素
-                .function("add", 1, (context) -> Objects.requireNonNull(context.getTarget()).add(context.getArguments()[0]))
+                .function("add", 1, (context) -> Objects.requireNonNull(context.getTarget()).add(context.getArgument(0)))
                 // 移除元素
                 .function("remove", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    return list.remove(context.getArguments()[0]);
+                    return list.remove(context.getArgument(0));
                 })
                 // 添加所有元素
                 .function("addAll", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    Collection<Object> collection = (Collection<Object>) context.getArguments()[0];
+                    Collection<Object> collection = context.getArgumentByType(0, Collection.class);
+                    if (collection == null) {
+                        return false;
+                    }
                     return list.addAll(collection);
                 })
                 // 移除所有元素
                 .function("removeAll", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    Collection<Object> collection = (Collection<Object>) context.getArguments()[0];
+                    Collection<Object> collection = context.getArgumentByType(0, Collection.class);
+                    if (collection == null) {
+                        return false;
+                    }
                     return list.removeAll(collection);
                 })
                 // 清空列表
@@ -58,13 +64,13 @@ public class ExtensionCollection {
                         return null;
                     }
                     // 如果没有参数，返回一个随机元素
-                    if (context.getArguments().length == 0) {
+                    if (!context.hasArgument(0)) {
                         List<Object> tempList = new ArrayList<>(list);
                         int index = (int) (Math.random() * tempList.size());
                         return tempList.get(index);
                     }
                     // 如果有参数，返回指定数量的不重复随机元素
-                    int count = ((Number) context.getArguments()[0]).intValue();
+                    int count = context.getNumber(0).intValue();
                     if (count <= 0) {
                         return null;
                     }

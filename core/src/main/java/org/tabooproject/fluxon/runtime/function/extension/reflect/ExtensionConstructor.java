@@ -17,9 +17,12 @@ public class ExtensionConstructor {
                 .function("newInstance", 1, (context) -> {
                     try {
                         Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                        Object[] parameters = ((List<Object>) context.getArguments()[0]).toArray();
-                        constructor.setAccessible(true);
-                        return constructor.newInstance(parameters);
+                        List<Object> argument = context.getArgumentByType(0, List.class);
+                        if (argument != null) {
+                            return constructor.newInstance(argument.toArray());
+                        } else {
+                            return constructor.newInstance();
+                        }
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
                     }
@@ -37,7 +40,7 @@ public class ExtensionConstructor {
                 // 设置可访问性
                 .function("setAccessible", 1, (context) -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArguments()[0];
+                    boolean accessible = (Boolean) context.getArgument(0);
                     constructor.setAccessible(accessible);
                     return null;
                 })

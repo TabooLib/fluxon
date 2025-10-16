@@ -64,13 +64,13 @@ public class ExtensionClass {
                 // 检查是否可以从某个类赋值
                 .function("isAssignableFrom", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    Class<?> other = (Class<?>) context.getArguments()[0];
+                    Class<?> other = (Class<?>) context.getArgument(0);
                     return clazz.isAssignableFrom(other);
                 })
                 // 检查是否是某个对象的实例
                 .function("isInstance", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isInstance(context.getArguments()[0]);
+                    return clazz.isInstance(context.getArgument(0));
                 })
                 // 获取父类
                 .function("superclass", 0, (context) -> {
@@ -140,7 +140,7 @@ public class ExtensionClass {
                 // 强制类型转换
                 .function("cast", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.cast(context.getArguments()[0]);
+                    return clazz.cast(context.getArgument(0));
                 })
                 // 创建实例（无参构造器）
                 .function("newInstance", 0, (context) -> {
@@ -187,7 +187,7 @@ public class ExtensionClass {
                 .function("method", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String methodName = context.getArguments()[0].toString();
+                        String methodName = context.getString(0);
                         List<Method> methods = new ArrayList<>();
                         for (Method method : clazz.getMethods()) {
                             if (method.getName().equals(methodName)) {
@@ -203,7 +203,7 @@ public class ExtensionClass {
                 .function("declaredMethod", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String methodName = context.getArguments()[0].toString();
+                        String methodName = context.getString(0);
                         List<Method> methods = new ArrayList<>();
                         for (Method method : clazz.getDeclaredMethods()) {
                             if (method.getName().equals(methodName)) {
@@ -219,7 +219,8 @@ public class ExtensionClass {
                 .function("field", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String fieldName = context.getArguments()[0].toString();
+                        String fieldName = context.getString(0);
+                        if (fieldName == null) return null;
                         return clazz.getField(fieldName);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get field: " + e.getMessage(), e);
@@ -229,7 +230,8 @@ public class ExtensionClass {
                 .function("declaredField", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String fieldName = context.getArguments()[0].toString();
+                        String fieldName = context.getString(0);
+                        if (fieldName == null) return null;
                         return clazz.getDeclaredField(fieldName);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get declared field: " + e.getMessage(), e);
@@ -239,7 +241,10 @@ public class ExtensionClass {
                 .function("constructor", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        List<Object> paramTypes = (List<Object>) context.getArguments()[0];
+                        List<Object> paramTypes = context.getArgumentByType(0, List.class);
+                        if (paramTypes == null) {
+                            return clazz.getConstructor();
+                        }
                         Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
                         for (int i = 0; i < paramTypes.size(); i++) {
                             if (paramTypes.get(i) instanceof Class) {
@@ -257,7 +262,10 @@ public class ExtensionClass {
                 .function("declaredConstructor", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        List<Object> paramTypes = (List<Object>) context.getArguments()[0];
+                        List<Object> paramTypes = context.getArgumentByType(0, List.class);
+                        if (paramTypes == null) {
+                            return clazz.getDeclaredConstructor();
+                        }
                         Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
                         for (int i = 0; i < paramTypes.size(); i++) {
                             if (paramTypes.get(i) instanceof Class) {

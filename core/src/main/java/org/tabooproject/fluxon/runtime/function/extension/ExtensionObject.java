@@ -19,7 +19,10 @@ public class ExtensionObject {
                     if (context.getTarget() == null) {
                         return false;
                     }
-                    Class<?> clazz = (Class<?>) context.getArguments()[0];
+                    Class<?> clazz = context.getArgumentByType(0, Class.class);
+                    if (clazz == null) {
+                        return false;
+                    }
                     return clazz.isInstance(context.getTarget());
                 });
     }

@@ -9,7 +9,7 @@ import java.util.List;
 
 public class FunctionSystem {
 
-    @SuppressWarnings({"unchecked", "DataFlowIssue"})
+    @SuppressWarnings({"DataFlowIssue"})
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("print", 1, (context) -> {
             Object[] args = context.getArguments();
@@ -30,8 +30,7 @@ public class FunctionSystem {
             return null;
         });
         runtime.registerFunction("sleep", 1, (context) -> {
-            Object[] args = context.getArguments();
-            int sleepMillis = ((Number) args[0]).intValue();
+            int sleepMillis = context.getNumber(0).intValue();
             try {
                 Thread.sleep(sleepMillis);
             } catch (InterruptedException e) {
@@ -40,8 +39,7 @@ public class FunctionSystem {
             return null;
         });
         runtime.registerFunction("forName", 1, (context) -> {
-            Object[] args = context.getArguments();
-            String className = (String) args[0];
+            String className = context.getArgumentByType(0, String.class);
             try {
                 return Class.forName(className);
             } catch (ClassNotFoundException e) {
@@ -53,7 +51,7 @@ public class FunctionSystem {
             // 获取可选的参数
             Object[] parameters;
             if (context.hasArgument(1)) {
-                parameters = ((List<Object>) context.getArgument(1)).toArray();
+                parameters = context.getArgumentByType(1, List.class).toArray();
             } else {
                 parameters = new Object[0];
             }
