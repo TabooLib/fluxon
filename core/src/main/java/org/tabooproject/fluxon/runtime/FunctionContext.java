@@ -14,13 +14,16 @@ public class FunctionContext<Target> {
 
     public static final Type TYPE = new Type(FunctionContext.class);
 
+    @NotNull
+    private final Function function;
     @Nullable
     private final Target target;
     private final Object[] arguments;
     @NotNull
     private final Environment environment;
 
-    public FunctionContext(@Nullable Target target, Object[] arguments, @NotNull Environment environment) {
+    public FunctionContext(@NotNull Function function, @Nullable Target target, Object[] arguments, @NotNull Environment environment) {
+        this.function = function;
         this.target = target;
         this.arguments = arguments;
         this.environment = environment;
@@ -73,6 +76,11 @@ public class FunctionContext<Target> {
         Object argument = getArgument(index);
         if (argument == null) return null;
         return argument.toString();
+    }
+
+    @NotNull
+    public Function getFunction() {
+        return function;
     }
 
     @Nullable

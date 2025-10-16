@@ -57,10 +57,10 @@ public class FunctionSystem {
             }
             // 调用函数
             if (func instanceof Function) {
-                return ((Function) func).call(new FunctionContext<>(context.getTarget(), parameters, context.getEnvironment()));
+                return ((Function) func).call(new FunctionContext<>(context.getFunction(), context.getTarget(), parameters, context.getEnvironment()));
             } else {
                 Function function = context.getEnvironment().getFunction(func.toString());
-                return function.call(new FunctionContext<>(context.getTarget(), parameters, context.getEnvironment()));
+                return function.call(new FunctionContext<>(context.getFunction(), context.getTarget(), parameters, context.getEnvironment()));
             }
         });
         runtime.registerFunction("throw", 1, (context) -> {

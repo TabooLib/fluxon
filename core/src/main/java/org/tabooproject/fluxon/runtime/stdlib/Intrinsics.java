@@ -155,7 +155,7 @@ public final class Intrinsics {
             throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
         }
         final Function finalFunction = function;
-        final FunctionContext<?> context = new FunctionContext<>(target, arguments, environment);
+        final FunctionContext<?> context = new FunctionContext<>(function, target, arguments, environment);
         if (function.isAsync()) {
             return ThreadPoolManager.getInstance().submitAsync(() -> {
                 try {
