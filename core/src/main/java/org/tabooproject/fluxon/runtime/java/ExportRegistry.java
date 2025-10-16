@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime.java;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.NativeFunction;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.util.StringUtils;
 
 import java.lang.reflect.Method;
@@ -113,8 +114,9 @@ public class ExportRegistry {
             String methodName = exportMethod.getTransformedName();
             NativeFunction.NativeCallable<T> callable = context -> {
                 Object[] args = context.getArguments();
-                Object target = context.getTarget();
-                return bridge.invoke(methodName, target, args);
+                // 检查参数类型是否匹配
+                Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName), args);
+                return bridge.invoke(methodName, context.getTarget(), args);
             };
             
             // 分析方法参数，获取支持的参数数量列表

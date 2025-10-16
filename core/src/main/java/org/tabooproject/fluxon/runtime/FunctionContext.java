@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 /**
  * 函数调用上下文
@@ -41,10 +42,11 @@ public class FunctionContext<Target> {
     public <T> T getArgumentByType(int index, @NotNull Class<T> type) {
         Object argument = getArgument(index);
         if (argument == null) return null;
-        if (type.isInstance(argument)) {
+        // 修复：传入对象本身，而不是 Class 对象
+        if (Intrinsics.isCompatibleType(type, argument)) {
             return type.cast(argument);
         }
-        throw new ArgumentTypeMismatchException(this, index, type);
+        throw new ArgumentTypeMismatchException(this, index, type, argument);
     }
 
     @NotNull
@@ -53,7 +55,7 @@ public class FunctionContext<Target> {
         if (argument instanceof Number) {
             return ((Number) argument);
         }
-        throw new ArgumentTypeMismatchException(this, index, Number.class);
+        throw new ArgumentTypeMismatchException(this, index, Number.class, argument);
     }
 
     @Nullable

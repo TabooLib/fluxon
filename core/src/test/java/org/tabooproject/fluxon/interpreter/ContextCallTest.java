@@ -170,7 +170,17 @@ public class ContextCallTest {
             Fluxon.eval("[1]::get(random(1))");
             throw new IllegalStateException("random(1) should return a ArrayList");
         } catch (ArgumentTypeMismatchException e) {
-            assertEquals("Argument 0 expect Number but got [1]", e.getMessage());
+            assertEquals("Argument 0 expect Number but got ArrayList ([1])", e.getMessage());
+        }
+    }
+
+    @Test
+    public void testParameterTypes() {
+        try {
+            Fluxon.eval("env()::function(0)");
+            throw new IllegalStateException("0 is not a String");
+        } catch (ArgumentTypeMismatchException e) {
+            assertEquals("Argument 0 expect String but got Integer (0)", e.getMessage());
         }
     }
 }

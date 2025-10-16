@@ -24,9 +24,16 @@ public abstract class ClassBridge {
      * @param instance   实例对象
      * @param args       方法参数
      * @return 方法返回值
-     * @throws Exception 调用异常
      */
     public abstract Object invoke(String methodName, Object instance, Object... args);
+
+    /**
+     * 获取指定方法的参数类型列表
+     *
+     * @param methodName 方法名
+     * @return 参数类型数组
+     */
+    public abstract Class<?>[] getParameterTypes(String methodName);
 
     /**
      * 获取支持的方法列表

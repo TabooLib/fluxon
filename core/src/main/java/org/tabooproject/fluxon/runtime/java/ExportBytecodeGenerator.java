@@ -118,8 +118,21 @@ public class ExportBytecodeGenerator {
         // 生成构造函数，调用父类构造函数传入支持的方法列表
         generateBridgeConstructor(cw, className, exportMethods);
 
-        // 生成 invoke 方法 - 基于方法名分发
-        generateBridgeInvokeMethod(cw, className, targetClass, exportMethods);
+        // 生成 invoke 方法
+        generateBridgeMethodWithDispatch(cw,
+                "invoke",
+                "(Ljava/lang/String;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;",
+                targetClass,
+                exportMethods,
+                ExportBytecodeGenerator::generateSingleMethodCall);
+
+        // 生成 getParameterTypes 方法
+        generateBridgeMethodWithDispatch(cw,
+                "getParameterTypes",
+                "(Ljava/lang/String;)[Ljava/lang/Class;",
+                targetClass,
+                exportMethods,
+                ExportBytecodeGenerator::generateSingleMethodParameterTypes);
 
         cw.visitEnd();
 
@@ -153,11 +166,24 @@ public class ExportBytecodeGenerator {
     }
 
     /**
-     * 生成桥接器的 invoke 方法
-     * 基于方法名分发到具体的方法调用
+     * 生成带方法分发逻辑的桥接器方法
+     *
+     * @param cw               ClassWriter
+     * @param methodName       方法名
+     * @param methodDescriptor 方法描述符
+     * @param targetClass      目标类
+     * @param exportMethods    导出方法数组
+     * @param methodHandler    方法处理器
      */
-    private static void generateBridgeInvokeMethod(FluxonClassWriter cw, String className, Class<?> targetClass, Method[] exportMethods) {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "invoke", "(Ljava/lang/String;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", null, new String[]{"java/lang/Exception"});
+    private static void generateBridgeMethodWithDispatch(
+            FluxonClassWriter cw,
+            String methodName,
+            String methodDescriptor,
+            Class<?> targetClass,
+            Method[] exportMethods,
+            MethodHandler methodHandler
+    ) {
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, methodName, methodDescriptor, null, new String[]{"java/lang/Exception"});
         mv.visitCode();
 
         if (exportMethods.length == 0) {
@@ -169,11 +195,88 @@ public class ExportBytecodeGenerator {
             mv.visitInsn(ATHROW);
         } else {
             // 生成方法名的 switch-case 分发
-            generateMethodDispatch(mv, targetClass, exportMethods);
+            generateDispatchLogic(mv, targetClass, exportMethods, methodHandler);
         }
 
         mv.visitMaxs(10, 4);
         mv.visitEnd();
+    }
+
+    /**
+     * 生成通用的方法分发逻辑
+     *
+     * @param mv            MethodVisitor
+     * @param targetClass   目标类
+     * @param exportMethods 导出方法数组
+     * @param methodHandler 方法处理器，用于生成具体的方法体
+     */
+    private static void generateDispatchLogic(MethodVisitor mv, Class<?> targetClass, Method[] exportMethods, MethodHandler methodHandler) {
+        Map<String, Method> uniqueMethods = buildUniqueMethodsMap(targetClass, exportMethods);
+        Map<String, Label> methodLabels = createMethodLabels(uniqueMethods);
+        Label defaultLabel = new Label();
+        Label endLabel = new Label();
+
+        // 使用 switch 语句进行高效的字符串分发
+        generateSwitchDispatch(mv, uniqueMethods, methodLabels, defaultLabel);
+
+        // 为每个方法名生成具体的处理代码
+        for (String methodName : uniqueMethods.keySet()) {
+            mv.visitLabel(methodLabels.get(methodName));
+            methodHandler.handle(mv, uniqueMethods.get(methodName));
+            mv.visitJumpInsn(GOTO, endLabel);
+        }
+
+        // 默认处理：抛出异常
+        generateMethodNotFoundError(mv, defaultLabel);
+
+        mv.visitLabel(endLabel);
+    }
+
+    /**
+     * 生成方法未找到时的异常处理代码
+     */
+    private static void generateMethodNotFoundError(MethodVisitor mv, Label defaultLabel) {
+        // 默认处理：抛出异常
+        mv.visitLabel(defaultLabel);
+        mv.visitTypeInsn(NEW, "java/lang/IllegalArgumentException");
+        mv.visitInsn(DUP);
+        mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn("Unknown method: ");
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false);
+        mv.visitVarInsn(ALOAD, 1); // methodName
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/IllegalArgumentException", "<init>", "(Ljava/lang/String;)V", false);
+        mv.visitInsn(ATHROW);
+    }
+
+    /**
+     * 生成单个方法的参数类型返回代码
+     */
+    private static void generateSingleMethodParameterTypes(MethodVisitor mv, Method method) {
+        Class<?>[] paramTypes = method.getParameterTypes();
+
+        // 创建 Class 对象数组: new Class[paramTypes.length]
+        mv.visitLdcInsn(paramTypes.length);
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Class");
+
+        for (int i = 0; i < paramTypes.length; i++) {
+            mv.visitInsn(DUP);  // 复制数组引用
+            mv.visitLdcInsn(i); // 数组索引
+            Class<?> paramType = paramTypes[i];
+            // 加载 Class 对象
+            if (paramType.isPrimitive()) {
+                // 基本类型：使用包装类的 TYPE 字段
+                mv.visitFieldInsn(GETSTATIC, BytecodeUtils.getWrapperClassName(paramType), "TYPE", "Ljava/lang/Class;");
+            } else {
+                // 引用类型：使用 LDC 指令直接加载 Class 常量
+                mv.visitLdcInsn(Type.getType(paramType));
+            }
+            // 存入数组
+            mv.visitInsn(AASTORE);
+        }
+        mv.visitInsn(ARETURN);
     }
 
     /**
@@ -261,15 +364,16 @@ public class ExportBytecodeGenerator {
     }
 
     /**
-     * 生成方法分发逻辑
+     * 构建唯一方法映射表
+     * 检查方法名重复，不允许重载
      */
-    private static void generateMethodDispatch(MethodVisitor mv, Class<?> targetClass, Method[] exportMethods) {
-        // 检查方法名重复，不允许重载
+    private static Map<String, Method> buildUniqueMethodsMap(Class<?> targetClass, Method[] exportMethods) {
         Set<String> methodNames = new HashSet<>();
         Map<String, Method> uniqueMethods = new LinkedHashMap<>();
 
         // 获取原始方法名
         Set<String> originalNames = Arrays.stream(exportMethods).map(Method::getName).collect(Collectors.toSet());
+
         // 输出唯一方法名
         for (Method method : exportMethods) {
             String name = StringUtils.transformMethodName(method.getName());
@@ -282,40 +386,18 @@ public class ExportBytecodeGenerator {
             uniqueMethods.put(name, method);
         }
 
-        // 为每个方法名创建标签
-        Map<String, Label> methodLabels = new HashMap<>();
-        Label defaultLabel = new Label();
-        Label endLabel = new Label();
+        return uniqueMethods;
+    }
 
+    /**
+     * 为每个方法名创建标签
+     */
+    private static Map<String, Label> createMethodLabels(Map<String, Method> uniqueMethods) {
+        Map<String, Label> methodLabels = new HashMap<>();
         for (String methodName : uniqueMethods.keySet()) {
             methodLabels.put(methodName, new Label());
         }
-
-        // 使用 switch 语句进行高效的字符串分发
-        generateSwitchDispatch(mv, uniqueMethods, methodLabels, defaultLabel);
-
-        // 为每个方法名生成调用代码
-        for (String methodName : uniqueMethods.keySet()) {
-            mv.visitLabel(methodLabels.get(methodName));
-            generateSingleMethodCall(mv, uniqueMethods.get(methodName));
-            mv.visitJumpInsn(GOTO, endLabel);
-        }
-
-        // 默认处理：抛出异常
-        mv.visitLabel(defaultLabel);
-        mv.visitTypeInsn(NEW, "java/lang/IllegalArgumentException");
-        mv.visitInsn(DUP);
-        mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
-        mv.visitInsn(DUP);
-        mv.visitLdcInsn("Unknown method: ");
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "(Ljava/lang/String;)V", false);
-        mv.visitVarInsn(ALOAD, 1); // methodName
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/IllegalArgumentException", "<init>", "(Ljava/lang/String;)V", false);
-        mv.visitInsn(ATHROW);
-
-        mv.visitLabel(endLabel);
+        return methodLabels;
     }
 
     /**
@@ -338,7 +420,7 @@ public class ExportBytecodeGenerator {
         String owner = Type.getInternalName(method.getDeclaringClass());
         String methodDesc = Type.getMethodDescriptor(method);
         boolean isInterface = method.getDeclaringClass().isInterface();
-        
+
         if (isInterface) {
             // 接口方法调用
             mv.visitMethodInsn(INVOKEINTERFACE, owner, method.getName(), methodDesc, true);

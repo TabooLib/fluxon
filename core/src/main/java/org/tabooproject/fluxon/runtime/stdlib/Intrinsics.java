@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
@@ -14,6 +15,8 @@ import java.util.concurrent.*;
 public final class Intrinsics {
 
     public static final Type TYPE = new Type(Intrinsics.class);
+
+    public static long AWAIT_TIMEOUT_MINUTES = 1;
 
     /**
      * 为集合对象创建迭代器
@@ -182,14 +185,14 @@ public final class Intrinsics {
      * 等待异步值完成并返回结果
      *
      * @param value 要等待的值（可能是 CompletableFuture、Future 或普通值）
-     * @return 异步操作的结果，如果不是异步类型则直接返回值
+     * @return 异步操作的结果，如果不是 asynchronous 类型则直接返回值
      * @throws IntrinsicException 如果等待过程中发生错误
      */
     public static Object awaitValue(Object value) {
         if (value instanceof CompletableFuture<?>) {
             // 如果是 CompletableFuture，等待其完成并返回结果
             try {
-                return ((CompletableFuture<?>) value).get(1, TimeUnit.MINUTES);
+                return ((CompletableFuture<?>) value).get(AWAIT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
             } catch (InterruptedException | ExecutionException e) {
                 throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
             } catch (TimeoutException e) {
@@ -198,7 +201,7 @@ public final class Intrinsics {
         } else if (value instanceof Future<?>) {
             // 如果是普通的 Future，等待其完成并返回结果
             try {
-                return ((Future<?>) value).get(1, TimeUnit.MINUTES);
+                return ((Future<?>) value).get(AWAIT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
             } catch (InterruptedException | ExecutionException e) {
                 throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
             } catch (TimeoutException e) {
@@ -292,5 +295,53 @@ public final class Intrinsics {
             contains = ((String) condition).contains((String) subject);
         }
         return negate != contains;
+    }
+
+    /**
+     * 批量类型检查
+     */
+    public static void checkArgumentTypes(FunctionContext<?> context, Class<?>[] expect, Object[] args) {
+        for (int i = 0; i < expect.length; i++) {
+            if (args.length <= i || args[i] == null) {
+                continue;
+            }
+            if (!isCompatibleType(expect[i], args[i])) {
+                throw new ArgumentTypeMismatchException(context, i, expect[i], args[i]);
+            }
+        }
+    }
+
+    /**
+     * 检查值是否兼容期望的类型（支持基本类型和包装类型的互相匹配）
+     *
+     * @param expectedType 期望的类型
+     * @param value        实际值
+     * @return 是否兼容
+     */
+    public static boolean isCompatibleType(Class<?> expectedType, Object value) {
+        if (value == null) {
+            return !expectedType.isPrimitive();
+        }
+        Class<?> actualType = value.getClass();
+        // 直接类型匹配
+        if (expectedType == actualType) {
+            return true;
+        }
+        // 处理基本类型和包装类型的匹配
+        if (expectedType.isPrimitive()) {
+            if (expectedType == int.class) return actualType == Integer.class;
+            if (expectedType == long.class) return actualType == Long.class;
+            if (expectedType == double.class) return actualType == Double.class;
+            if (expectedType == float.class) return actualType == Float.class;
+            if (expectedType == boolean.class) return actualType == Boolean.class;
+            if (expectedType == byte.class) return actualType == Byte.class;
+            if (expectedType == short.class) return actualType == Short.class;
+            if (expectedType == char.class) return actualType == Character.class;
+            return false;
+        }
+        // 继承/实现关系检查（ArrayList 是 List 的子类，应该兼容）
+        // expectedType.isAssignableFrom(actualType) 检查：actualType 能否赋值给 expectedType
+        // 例如：List.class.isAssignableFrom(ArrayList.class) = true
+        return expectedType.isAssignableFrom(actualType);
     }
 }

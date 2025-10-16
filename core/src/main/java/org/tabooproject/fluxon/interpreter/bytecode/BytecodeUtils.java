@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Annotation;
@@ -47,29 +48,29 @@ public class BytecodeUtils {
      */
     public static void generateSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, java.lang.reflect.Parameter parameter) {
         boolean isOptional = parameter.isAnnotationPresent(Optional.class);
-        
+
         if (isOptional) {
             // 可选参数：检查数组长度，如果不存在则使用默认值
             Label hasParam = new Label();
             Label endLabel = new Label();
-            
+
             // if (args.length > paramIndex)
             mv.visitVarInsn(ALOAD, 3); // args 数组
             mv.visitInsn(ARRAYLENGTH);
             mv.visitIntInsn(BIPUSH, paramIndex + 1);
             mv.visitJumpInsn(IF_ICMPGE, hasParam);
-            
+
             // 参数不存在，使用默认值
             generateDefaultValue(mv, paramType);
             mv.visitJumpInsn(GOTO, endLabel);
-            
+
             // 参数存在，获取并转换
             mv.visitLabel(hasParam);
             mv.visitVarInsn(ALOAD, 3); // args 数组
             mv.visitIntInsn(BIPUSH, paramIndex);
             mv.visitInsn(AALOAD);
             generateTypeConversion(mv, paramType);
-            
+
             mv.visitLabel(endLabel);
         } else {
             // 必需参数：直接获取并转换
@@ -101,36 +102,64 @@ public class BytecodeUtils {
     }
 
     /**
+     * 获取基本类型对应的包装类内部名称
+     */
+    @Nullable
+    public static String getWrapperClassName(Class<?> primitiveType) {
+        if (primitiveType == int.class) return "java/lang/Integer";
+        if (primitiveType == long.class) return "java/lang/Long";
+        if (primitiveType == double.class) return "java/lang/Double";
+        if (primitiveType == float.class) return "java/lang/Float";
+        if (primitiveType == boolean.class) return "java/lang/Boolean";
+        if (primitiveType == byte.class) return "java/lang/Byte";
+        if (primitiveType == short.class) return "java/lang/Short";
+        if (primitiveType == char.class) return "java/lang/Character";
+        if (primitiveType == void.class) return "java/lang/Void";
+        return null;
+    }
+
+    /**
+     * 获取基本类型对应的拆箱方法名
+     */
+    @Nullable
+    private static String getUnboxingMethodName(Class<?> primitiveType) {
+        if (primitiveType == boolean.class) return "booleanValue";
+        if (primitiveType == byte.class) return "byteValue";
+        if (primitiveType == short.class) return "shortValue";
+        if (primitiveType == int.class) return "intValue";
+        if (primitiveType == long.class) return "longValue";
+        if (primitiveType == float.class) return "floatValue";
+        if (primitiveType == double.class) return "doubleValue";
+        if (primitiveType == char.class) return "charValue";
+        return null;
+    }
+
+    /**
      * 生成类型转换和拆箱代码
      */
     public static void generateTypeConversion(MethodVisitor mv, Class<?> targetType) {
-        if (targetType == boolean.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
-        } else if (targetType == byte.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "byteValue", "()B", false);
-        } else if (targetType == short.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "shortValue", "()S", false);
-        } else if (targetType == int.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
-        } else if (targetType == long.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
-        } else if (targetType == float.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
-        } else if (targetType == double.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
-        } else if (targetType == char.class) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Character");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Character", "charValue", "()C", false);
-        } else {
-            // 对象类型，直接类型转换
+        // 对象类型，直接类型转换
+        if (!targetType.isPrimitive()) {
             mv.visitTypeInsn(CHECKCAST, org.objectweb.asm.Type.getInternalName(targetType));
+            return;
+        }
+
+        String wrapperClass = getWrapperClassName(targetType);
+        if (wrapperClass == null) {
+            throw new IllegalArgumentException("Unknown primitive type: " + targetType);
+        }
+
+        String unboxingMethod = getUnboxingMethodName(targetType);
+        String descriptor = "()" + org.objectweb.asm.Type.getDescriptor(targetType);
+
+        // boolean 和 char 直接从包装类拆箱
+        if (targetType == boolean.class || targetType == char.class) {
+            mv.visitTypeInsn(CHECKCAST, wrapperClass);
+            mv.visitMethodInsn(INVOKEVIRTUAL, wrapperClass, unboxingMethod, descriptor, false);
+        } else {
+            // 其他数字类型通过 Number 拆箱
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", unboxingMethod, descriptor, false);
         }
     }
 
@@ -138,23 +167,14 @@ public class BytecodeUtils {
      * 生成基本类型装箱代码
      */
     public static void generateBoxing(MethodVisitor mv, Class<?> primitiveType) {
-        if (primitiveType == boolean.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
-        } else if (primitiveType == byte.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Byte", "valueOf", "(B)Ljava/lang/Byte;", false);
-        } else if (primitiveType == short.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Short", "valueOf", "(S)Ljava/lang/Short;", false);
-        } else if (primitiveType == int.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-        } else if (primitiveType == long.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
-        } else if (primitiveType == float.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
-        } else if (primitiveType == double.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
-        } else if (primitiveType == char.class) {
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
+        String wrapperClass = getWrapperClassName(primitiveType);
+        if (wrapperClass == null) {
+            return; // 不是基本类型，无需装箱
         }
+        // 获取基本类型的描述符
+        String primitiveDesc = org.objectweb.asm.Type.getDescriptor(primitiveType);
+        String wrapperDesc = "L" + wrapperClass + ";";
+        mv.visitMethodInsn(INVOKESTATIC, wrapperClass, "valueOf", "(" + primitiveDesc + ")" + wrapperDesc, false);
     }
 
     /**
@@ -164,10 +184,8 @@ public class BytecodeUtils {
         // 创建 Annotation 实例
         mv.visitTypeInsn(NEW, Annotation.TYPE.getPath());
         mv.visitInsn(DUP);
-        
         // 推送注解名称
         mv.visitLdcInsn(annotation.getName());
-        
         // 处理属性
         Map<String, Object> attributes = annotation.getAttributes();
         if (attributes.isEmpty()) {
@@ -178,44 +196,55 @@ public class BytecodeUtils {
             mv.visitTypeInsn(NEW, "java/util/HashMap");
             mv.visitInsn(DUP);
             mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
-            
             // 填充属性
             for (Map.Entry<String, Object> entry : attributes.entrySet()) {
                 mv.visitInsn(DUP);               // 复制 Map 引用
                 mv.visitLdcInsn(entry.getKey()); // 键
-
-                // 处理值（Object 类型）
-                Object value = entry.getValue();
-                if (value == null) {
-                    mv.visitInsn(ACONST_NULL);
-                } else if (value instanceof String) {
-                    mv.visitLdcInsn(value);
-                } else if (value instanceof Boolean) {
-                    mv.visitInsn((Boolean) value ? ICONST_1 : ICONST_0);
-                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
-                } else if (value instanceof Integer) {
-                    mv.visitIntInsn(SIPUSH, (Integer) value);
-                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-                } else if (value instanceof Long) {
-                    mv.visitLdcInsn(value);
-                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
-                } else if (value instanceof Double) {
-                    mv.visitLdcInsn(value);
-                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
-                } else if (value instanceof Float) {
-                    mv.visitLdcInsn(value);
-                    mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
-                } else {
-                    mv.visitLdcInsn(value);
-                }
-
+                generatePushValue(mv, entry.getValue()); // 值
                 // 调用 put 方法
                 mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
-                mv.visitInsn(POP);
+                mv.visitInsn(POP); // 丢弃返回值
             }
-
             // 调用双参数构造函数
             mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(Ljava/lang/String;Ljava/util/Map;)V", false);
+        }
+    }
+
+    /**
+     * 生成将对象值推送到栈上的字节码
+     */
+    private static void generatePushValue(MethodVisitor mv, Object value) {
+        if (value == null) {
+            mv.visitInsn(ACONST_NULL);
+        } else if (value instanceof String) {
+            mv.visitLdcInsn(value);
+        } else if (value instanceof Boolean) {
+            mv.visitInsn((Boolean) value ? ICONST_1 : ICONST_0);
+            generateBoxing(mv, boolean.class);
+        } else if (value instanceof Integer) {
+            int intValue = (Integer) value;
+            if (intValue >= -1 && intValue <= 5) {
+                mv.visitInsn(ICONST_0 + intValue);
+            } else if (intValue >= Byte.MIN_VALUE && intValue <= Byte.MAX_VALUE) {
+                mv.visitIntInsn(BIPUSH, intValue);
+            } else if (intValue >= Short.MIN_VALUE && intValue <= Short.MAX_VALUE) {
+                mv.visitIntInsn(SIPUSH, intValue);
+            } else {
+                mv.visitLdcInsn(intValue);
+            }
+            generateBoxing(mv, int.class);
+        } else if (value instanceof Long) {
+            mv.visitLdcInsn(value);
+            generateBoxing(mv, long.class);
+        } else if (value instanceof Double) {
+            mv.visitLdcInsn(value);
+            generateBoxing(mv, double.class);
+        } else if (value instanceof Float) {
+            mv.visitLdcInsn(value);
+            generateBoxing(mv, float.class);
+        } else {
+            // 其他类型直接使用 LDC
+            mv.visitLdcInsn(value);
         }
     }
 
