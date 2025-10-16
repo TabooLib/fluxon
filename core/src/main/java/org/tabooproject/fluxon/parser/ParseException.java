@@ -10,19 +10,30 @@ import java.util.List;
  */
 public class ParseException extends RuntimeException {
 
+    private final String reason;
     private final Token token;
     private final List<ParseResult> results;
 
     /**
      * 创建解析异常
      *
-     * @param message 错误消息
+     * @param reason 错误原因
      * @param token 相关的词法单元
      */
-    public ParseException(String message, Token token, List<ParseResult> results) {
-        super(String.format("%s at line: %d, column: %d, next: %s", message, token.getLine(), token.getColumn(), token.getLexeme()));
+    public ParseException(String reason, Token token, List<ParseResult> results) {
+        super(String.format("%s at line: %d, column: %d, next: %s", reason, token.getLine(), token.getColumn(), token.getLexeme()));
+        this.reason = reason;
         this.token = token;
         this.results = results;
+    }
+
+    /**
+     * 获取错误原因
+     *
+     * @return 错误原因
+     */
+    public String getReason() {
+        return reason;
     }
     
     /**
