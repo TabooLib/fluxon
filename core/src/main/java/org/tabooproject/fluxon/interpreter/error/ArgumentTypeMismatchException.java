@@ -12,12 +12,14 @@ public class ArgumentTypeMismatchException extends RuntimeException {
     private final FunctionContext<?> context;
     private final int index;
     private final Class<?> expect;
+    private final Object actual;
 
     public ArgumentTypeMismatchException(FunctionContext<?> context, int index, @NotNull Class<?> expect, @Nullable Object actual) {
         super("Argument " + index + " expect " + expect.getSimpleName() + " but got " + (actual == null ? "null" : actual.getClass().getSimpleName()) + " (" + actual + ")");
         this.context = context;
         this.index = index;
         this.expect = expect;
+        this.actual = actual;
     }
 
     /**
@@ -40,5 +42,12 @@ public class ArgumentTypeMismatchException extends RuntimeException {
      */
     public Class<?> getExpect() {
         return expect;
+    }
+
+    /**
+     * 获取实际类型
+     */
+    public Object getActual() {
+        return actual;
     }
 }
