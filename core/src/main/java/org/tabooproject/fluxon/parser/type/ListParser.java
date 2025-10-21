@@ -15,9 +15,14 @@ public class ListParser {
      * 尝试解析列表或字典字面量
      */
     public static ParseResult parse(Parser parser) {
-        // 空列表
+        // 空列表 []
         if (parser.match(TokenType.RIGHT_BRACKET)) {
             return new ListExpression(new ArrayList<>());
+        }
+        // 空 Map [:]
+        if (parser.match(TokenType.COLON)) {
+            parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after empty map");
+            return new MapExpression(new ArrayList<>());
         }
         // 检查是否是字典字面量
         boolean isDictionary = false;
