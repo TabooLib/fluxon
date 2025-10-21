@@ -3,14 +3,19 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.List;
-import java.util.Map;
+
+import static org.objectweb.asm.Opcodes.*;
 
 /**
  * 索引访问表达式求值器
@@ -28,58 +33,57 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
     public Object evaluate(Interpreter interpreter, IndexAccessExpression expr) {
         Object target = interpreter.evaluate(expr.getTarget());
         List<ParseResult> indices = expr.getIndices();
-
         // 单索引访问
         if (indices.size() == 1) {
             Object index = interpreter.evaluate(indices.get(0));
-            return getIndex(target, index);
+            return Intrinsics.getIndex(target, index);
         }
         // 多索引访问：嵌套获取 map["k1", "k2"] = map["k1"]["k2"]
         else {
             Object current = target;
             for (ParseResult indexExpr : indices) {
                 Object index = interpreter.evaluate(indexExpr);
-                current = getIndex(current, index);
+                current = Intrinsics.getIndex(current, index);
             }
             return current;
         }
     }
 
-    /**
-     * 执行单次索引访问
-     */
-    private Object getIndex(Object target, Object index) {
-        if (target instanceof List) {
-            int idx = ((Number) index).intValue();
-            List<?> list = (List<?>) target;
-            if (idx < 0 || idx >= list.size()) {
-                throw new IndexOutOfBoundsException("Index: " + idx + ", Size: " + list.size());
-            }
-            return list.get(idx);
-        } else if (target instanceof Map) {
-            return ((Map<?, ?>) target).get(index);
-        } else if (target instanceof String) {
-            int idx = ((Number) index).intValue();
-            String str = (String) target;
-            if (idx < 0 || idx >= str.length()) {
-                throw new IndexOutOfBoundsException("Index: " + idx + ", Length: " + str.length());
-            }
-            return String.valueOf(str.charAt(idx));
-        } else if (target instanceof Object[]) {
-            int idx = ((Number) index).intValue();
-            Object[] arr = (Object[]) target;
-            if (idx < 0 || idx >= arr.length) {
-                throw new IndexOutOfBoundsException("Index: " + idx + ", Length: " + arr.length);
-            }
-            return arr[idx];
-        } else {
-            throw new RuntimeException("Cannot index type: " + (target == null ? "null" : target.getClass().getName()));
-        }
-    }
-
     @Override
     public Type generateBytecode(IndexAccessExpression expr, CodeContext ctx, MethodVisitor mv) {
-        // TODO: 字节码生成
+        // 获取 target 的求值器
+        Evaluator<ParseResult> targetEval = ctx.getEvaluator(expr.getTarget());
+        if (targetEval == null) {
+            throw new EvaluatorNotFoundException("No evaluator found for index access target");
+        }
+        // 生成 target 的字节码
+        Type targetType = targetEval.generateBytecode(expr.getTarget(), ctx, mv);
+        if (targetType == Type.VOID) {
+            throw new VoidValueException("Void type is not allowed for index access target");
+        }
+        List<ParseResult> indices = expr.getIndices();
+        // 对每个索引依次调用 Intrinsics.getIndex
+        for (ParseResult indexExpr : indices) {
+            // 获取索引的求值器
+            Evaluator<ParseResult> indexEval = ctx.getEvaluator(indexExpr);
+            if (indexEval == null) {
+                throw new EvaluatorNotFoundException("No evaluator found for index expression");
+            }
+            // 生成索引的字节码
+            Type indexType = indexEval.generateBytecode(indexExpr, ctx, mv);
+            if (indexType == Type.VOID) {
+                throw new VoidValueException("Void type is not allowed for index");
+            }
+            // 调用 Intrinsics.getIndex(Object target, Object index)
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Intrinsics.TYPE.getPath(),
+                    "getIndex",
+                    "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT,
+                    false
+            );
+            // 如果还有更多索引，当前结果将作为下一次调用的 target
+        }
         return Type.OBJECT;
     }
 }

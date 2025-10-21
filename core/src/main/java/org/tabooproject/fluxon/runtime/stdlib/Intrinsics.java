@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundError;
+import org.tabooproject.fluxon.interpreter.error.IndexAccessException;
 import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
@@ -32,6 +33,24 @@ public final class Intrinsics {
             return ((Map<?, ?>) collection).entrySet().iterator();
         } else if (collection instanceof Object[]) {
             return Arrays.asList((Object[]) collection).iterator();
+        } else if (collection instanceof String) {
+            return new Iterator<String>() {
+                private final String str = (String) collection;
+                private int index = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return index < str.length();
+                }
+
+                @Override
+                public String next() {
+                    if (!hasNext()) {
+                        throw new NoSuchElementException();
+                    }
+                    return String.valueOf(str.charAt(index++));
+                }
+            };
         } else if (collection != null) {
             throw new IntrinsicException("Cannot iterate over " + collection.getClass().getName());
         } else {
@@ -343,5 +362,75 @@ public final class Intrinsics {
         // expectedType.isAssignableFrom(actualType) 检查：actualType 能否赋值给 expectedType
         // 例如：List.class.isAssignableFrom(ArrayList.class) = true
         return expectedType.isAssignableFrom(actualType);
+    }
+
+    /**
+     * 设置索引访问的值
+     *
+     * @param target 目标对象（列表、映射或数组）
+     * @param index  索引对象
+     * @param value  要设置的值
+     * @throws IndexAccessException 如果索引无效或目标类型不支持索引设置
+     */
+    @SuppressWarnings("unchecked")
+    public static void setIndex(Object target, Object index, Object value) {
+        if (target == null) throw IndexAccessException.nullTarget(index);
+        if (target instanceof List) {
+            int idx = ((Number) index).intValue();
+            List<Object> list = (List<Object>) target;
+            if (idx < 0 || idx >= list.size()) {
+                throw IndexAccessException.outOfBounds(target, index, list.size());
+            }
+            list.set(idx, value);
+        } else if (target instanceof Map) {
+            ((Map<Object, Object>) target).put(index, value);
+        } else if (target instanceof Object[]) {
+            int idx = ((Number) index).intValue();
+            Object[] arr = (Object[]) target;
+            if (idx < 0 || idx >= arr.length) {
+                throw IndexAccessException.outOfBounds(target, index, arr.length);
+            }
+            arr[idx] = value;
+        } else {
+            throw IndexAccessException.unsupportedSetType(target, index);
+        }
+    }
+
+    /**
+     * 执行单次索引访问
+     *
+     * @param target 目标对象（列表、映射、字符串或数组）
+     * @param index  索引对象（必须是数字）
+     * @return 索引对应的值
+     * @throws IndexAccessException 如果索引无效或目标类型不支持索引访问
+     */
+    public static Object getIndex(Object target, Object index) {
+        if (target == null) throw IndexAccessException.nullTarget(index);
+        if (target instanceof List) {
+            int idx = ((Number) index).intValue();
+            List<?> list = (List<?>) target;
+            if (idx < 0 || idx >= list.size()) {
+                throw IndexAccessException.outOfBounds(target, index, list.size());
+            }
+            return list.get(idx);
+        } else if (target instanceof Map) {
+            return ((Map<?, ?>) target).get(index);
+        } else if (target instanceof String) {
+            int idx = ((Number) index).intValue();
+            String str = (String) target;
+            if (idx < 0 || idx >= str.length()) {
+                throw IndexAccessException.outOfBounds(target, index, str.length());
+            }
+            return String.valueOf(str.charAt(idx));
+        } else if (target instanceof Object[]) {
+            int idx = ((Number) index).intValue();
+            Object[] arr = (Object[]) target;
+            if (idx < 0 || idx >= arr.length) {
+                throw IndexAccessException.outOfBounds(target, index, arr.length);
+            }
+            return arr[idx];
+        } else {
+            throw IndexAccessException.unsupportedType(target, index);
+        }
     }
 }

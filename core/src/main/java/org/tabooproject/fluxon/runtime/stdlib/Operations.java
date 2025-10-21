@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.Collection;
+
 // @formatter:off
 public final class Operations {
 
@@ -77,15 +79,26 @@ public final class Operations {
     /**
      * 对两个操作数进行加法运算
      * 如果两个操作数都是数字类型，则进行数字加法
+     * 如果第一个操作数是集合类型，则将第二个操作数添加到集合中（支持集合或单个元素）
      * 否则将两个操作数转换为字符串后进行拼接
      *
      * @param a 第一个操作数
      * @param b 第二个操作数
      * @return 运算结果
      */
+    @SuppressWarnings("unchecked")
     public static Object add(Object a, Object b) {
         if (a instanceof Number && b instanceof Number) {
             return addNumbers((Number) a, (Number) b);
+        } else if (a instanceof Collection) {
+            // 集合 + 任意对象：将对象添加到集合中
+            Collection<Object> collection = (Collection<Object>) a;
+            if (b instanceof Collection) {
+                collection.addAll((Collection<?>) b);
+            } else {
+                collection.add(b);
+            }
+            return collection;
         } else {
             return String.valueOf(a) + b;
         }
@@ -115,15 +128,31 @@ public final class Operations {
 
     /**
      * 对两个操作数进行减法运算
+     * 如果两个操作数都是数字类型，则进行数字减法
+     * 如果第一个操作数是集合类型，则从集合中移除第二个操作数（支持集合或单个元素）
      *
      * @param a 被减数
      * @param b 减数
      * @return 减法运算结果
-     * @throws OperationException 当操作数不是数字类型时抛出异常
+     * @throws OperationException 当操作数不是数字或集合类型时抛出异常
      */
+    @SuppressWarnings("unchecked")
     public static Object subtract(Object a, Object b) {
-        checkNumberOperands(a, b);
-        return subtractNumbers((Number) a, (Number) b);
+        if (a instanceof Number && b instanceof Number) {
+            checkNumberOperands(a, b);
+            return subtractNumbers((Number) a, (Number) b);
+        } else if (a instanceof Collection) {
+            // 集合 - 任意对象：从集合中移除对象
+            Collection<Object> collection = (Collection<Object>) a;
+            if (b instanceof Collection) {
+                collection.removeAll((Collection<?>) b);
+            } else {
+                collection.remove(b);
+            }
+            return collection;
+        } else {
+            throw new OperationException("Operands must be numbers or first operand must be a collection: left: " + a + ", right: " + b);
+        }
     }
 
     /**

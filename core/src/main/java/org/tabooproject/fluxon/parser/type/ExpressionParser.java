@@ -74,6 +74,10 @@ public class ExpressionParser {
         );
         if (match != null) {
             Token operator = parser.previous();
+            // 如果是引用表达式，解包成实际的目标
+            if (expr instanceof ReferenceExpression) {
+                expr = ((ReferenceExpression) expr).getIdentifier();
+            }
             // 赋值操作符可以对 Identifier 或 IndexAccessExpression 使用
             if (expr instanceof Identifier) {
                 String name = ((Identifier) expr).getValue();
@@ -387,3 +391,4 @@ public class ExpressionParser {
         }
     }
 }
+
