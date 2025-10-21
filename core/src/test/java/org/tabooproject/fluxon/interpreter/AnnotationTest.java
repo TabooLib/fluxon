@@ -1,11 +1,9 @@
-package org.tabooproject.fluxon.parser;
+package org.tabooproject.fluxon.interpreter;
 
 import org.junit.jupiter.api.Test;
-import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.interpreter.UserFunction;
+import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.parser.definition.Annotation;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.List;
 
@@ -16,17 +14,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * @author sky
  */
-public class AnnotationParserTest {
+public class AnnotationTest {
 
     @Test
     public void testSimpleAnnotation() {
-        Environment env = FluxonRuntime.getInstance().newEnvironment();
-        Fluxon.eval("@listener\n" +
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("@listener\n" +
                 "def handleEvent() = {\n" +
                 "    print(\"Event handled\")\n" +
-                "}", env);
-        
-        UserFunction func = (UserFunction) env.getFunction("handleEvent");
+                "}");
+
+        Function func = testResult.getCompileEnv().getFunction("handleEvent");
         assertNotNull(func);
         
         List<Annotation> annotations = func.getAnnotations();
@@ -37,13 +34,13 @@ public class AnnotationParserTest {
     
     @Test
     public void testAnnotationWithAttributes() {
-        Environment env = FluxonRuntime.getInstance().newEnvironment();
-        Fluxon.eval("@listener(event = \"onStart\", priority = 10)\n" +
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("@listener(event = \"onStart\", priority = 10)\n" +
                 "def handleStart() = {\n" +
                 "    print(\"Start event\")\n" +
-                "}", env);
-        
-        UserFunction func = (UserFunction) env.getFunction("handleStart");
+                "}"
+        );
+
+        Function func = testResult.getCompileEnv().getFunction("handleStart");
         assertNotNull(func);
         
         List<Annotation> annotations = func.getAnnotations();
@@ -58,14 +55,14 @@ public class AnnotationParserTest {
     
     @Test
     public void testMultipleAnnotations() {
-        Environment env = FluxonRuntime.getInstance().newEnvironment();
-        Fluxon.eval("@deprecated\n" +
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("@deprecated\n" +
                 "@listener(event = \"onClick\")\n" +
                 "def clickHandler(x, y) = {\n" +
                 "    print(\"Clicked at \" + x + \", \" + y)\n" +
-                "}", env);
-        
-        UserFunction func = (UserFunction) env.getFunction("clickHandler");
+                "}"
+        );
+
+        Function func = testResult.getCompileEnv().getFunction("clickHandler");
         assertNotNull(func);
         
         List<Annotation> annotations = func.getAnnotations();
@@ -76,13 +73,13 @@ public class AnnotationParserTest {
     
     @Test
     public void testAsyncFunctionWithAnnotation() {
-        Environment env = FluxonRuntime.getInstance().newEnvironment();
-        Fluxon.eval("@async_handler(timeout = 5000)\n" +
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("@async_handler(timeout = 5000)\n" +
                 "async def processAsync() = {\n" +
                 "    print(\"Processing async\")\n" +
-                "}", env);
+                "}"
+        );
         
-        UserFunction func = (UserFunction) env.getFunction("processAsync");
+        Function func = testResult.getCompileEnv().getFunction("processAsync");
         assertNotNull(func);
         assertTrue(func.isAsync());
         
@@ -94,7 +91,7 @@ public class AnnotationParserTest {
     @Test
     public void testAnnotationNotOnFunction() {
         assertThrows(Exception.class, () -> {
-            Fluxon.eval("@invalid\n" +
+            FluxonTestUtil.runSilent("@invalid\n" +
                     "val x = 10");
         });
     }
