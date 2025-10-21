@@ -6,6 +6,8 @@ import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.util.Arrays;
+
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
@@ -95,5 +97,15 @@ public class FunctionContext<Target> {
     @NotNull
     public Environment getEnvironment() {
         return environment;
+    }
+
+    @Override
+    public String toString() {
+        return "FunctionContext{" +
+                "function=" + function +
+                ", target=" + target +
+                ", arguments=" + Arrays.toString(arguments) +
+                ", environment=" + environment +
+                '}';
     }
 }

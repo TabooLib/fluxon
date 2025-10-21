@@ -123,18 +123,4 @@ public class Interpreter {
     public Environment getEnvironment() {
         return environment;
     }
-
-    /**
-     * 进入新的函数环境
-     */
-    public void enterScope(int localVariables) {
-        environment = new Environment(environment.getRoot(), localVariables);
-    }
-
-    /**
-     * 返回根环境
-     */
-    public void exitScope() {
-        environment = environment.getRoot();
-    }
 }

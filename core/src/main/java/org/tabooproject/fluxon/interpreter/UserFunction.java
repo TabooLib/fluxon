@@ -103,4 +103,11 @@ public class UserFunction implements Function, Symbolic {
     public List<Annotation> getAnnotations() {
         return definition.getAnnotations();
     }
+
+    @Override
+    public String toString() {
+        return "UserFunction{" +
+                "definition=" + definition +
+                '}';
+    }
 }

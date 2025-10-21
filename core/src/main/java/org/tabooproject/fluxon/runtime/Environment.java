@@ -73,10 +73,10 @@ public class Environment {
     /**
      * 创建子环境（函数环境）
      *
-     * @param root 根环境
+     * @param parentEnv 父环境
      */
-    public Environment(@NotNull Environment root, int localVariables) {
-        this.root = root;
+    public Environment(@NotNull Environment parentEnv, int localVariables) {
+        this.root = parentEnv.root;
         this.functions = null;
         this.systemFunctions = null;
         this.extensionFunctions = null;
@@ -328,5 +328,17 @@ public class Environment {
      */
     public void setTarget(@Nullable Object target) {
         this.target = target;
+    }
+
+    @Override
+    public String toString() {
+        return "Environment{" +
+                "target=" + target +
+                ", functions=" + functions +
+                ", systemFunctions=" + Arrays.toString(systemFunctions) +
+                ", extensionFunctions=" + extensionFunctions +
+                ", systemExtensionFunctions=" + Arrays.toString(systemExtensionFunctions) +
+                ", rootVariables=" + rootVariables +
+                '}';
     }
 }
