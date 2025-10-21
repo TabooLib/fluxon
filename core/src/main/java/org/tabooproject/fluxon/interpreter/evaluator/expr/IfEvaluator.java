@@ -84,7 +84,8 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
             if (elseEval.generateBytecode(result.getElseBranch(), ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for if else branch");
+                // 压入空对象
+                mv.visitInsn(ACONST_NULL);
             }
             mv.visitVarInsn(ASTORE, storeId);
         } else {

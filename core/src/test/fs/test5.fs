@@ -10,3 +10,9 @@ print(env::rootExtensionFunctions()::keySet()::size())
 print(env::rootExtensionFunctions()::keySet())
 
 return instance("org.tabooproject.fluxon.runtime.FluxonRuntime")
+
+if (true) {
+    1
+} else {
+    a = 1
+}

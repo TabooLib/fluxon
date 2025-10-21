@@ -22,5 +22,12 @@ public class FunctionType {
                 return null;
             }
         });
+        runtime.registerFunction("typeOf", 1, (context) -> {
+            Object input = context.getArgument(0);
+            if (input == null) {
+                return "null";
+            }
+            return input.getClass().getSimpleName();
+        });
     }
 }

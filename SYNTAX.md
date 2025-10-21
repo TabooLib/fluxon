@@ -252,14 +252,6 @@ hex::decode("48656c6c6f")
 time::formatDateTime(now)
 ```
 
-### Lambda Expressions
-
-```fluxon
-// Lambda with arrow operator
-(x) -> x * 2
-(a, b) -> a + b
-```
-
 ## Control Flow
 
 ### If-Then-Else Expressions
