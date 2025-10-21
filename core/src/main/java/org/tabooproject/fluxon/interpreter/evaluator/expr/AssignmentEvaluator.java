@@ -12,10 +12,13 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
+import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -30,38 +33,96 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, AssignExpression result) {
+        ParseResult target = result.getTarget();
         Object value = interpreter.evaluate(result.getValue());
         Environment environment = interpreter.getEnvironment();
-        // 根据赋值操作符类型处理赋值
-        if (result.getOperator().getType() == TokenType.ASSIGN) {
-            environment.assign(result.getName(), value, result.getPosition());
-        } else {
-            // 处理复合赋值
-            Object current = environment.get(result.getName(), result.getPosition());
-            // 根据操作符类型进行不同的复合赋值操作
-            switch (result.getOperator().getType()) {
-                case PLUS_ASSIGN:
-                    value = add(current, value);
-                    break;
-                case MINUS_ASSIGN:
-                    value = subtract(current, value);
-                    break;
-                case MULTIPLY_ASSIGN:
-                    value = multiply(current, value);
-                    break;
-                case DIVIDE_ASSIGN:
-                    value = divide(current, value);
-                    break;
-                case MODULO_ASSIGN:
-                    value = modulo(current, value);
-                    break;
-                default:
-                    throw new RuntimeException("Unknown compound assignment operator: " + result.getOperator().getType());
+
+        // 变量赋值
+        if (target instanceof Identifier) {
+            String name = ((Identifier) target).getValue();
+            // 根据赋值操作符类型处理赋值
+            if (result.getOperator().getType() == TokenType.ASSIGN) {
+                environment.assign(name, value, result.getPosition());
+            } else {
+                // 处理复合赋值
+                Object current = environment.get(name, result.getPosition());
+                value = applyCompoundOperation(current, value, result.getOperator().getType());
+                environment.assign(name, value, result.getPosition());
             }
-            environment.assign(result.getName(), value, result.getPosition());
+        }
+        // 索引访问赋值
+        else if (target instanceof IndexAccessExpression) {
+            IndexAccessExpression idx = (IndexAccessExpression) target;
+            Object container = interpreter.evaluate(idx.getTarget());
+            List<ParseResult> indices = idx.getIndices();
+
+            // 处理多索引：map["k1", "k2"] = v 等价于 map["k1"]["k2"] = v
+            // 前 n-1 个索引用于导航到目标容器
+            for (int i = 0; i < indices.size() - 1; i++) {
+                Object index = interpreter.evaluate(indices.get(i));
+                container = getIndex(container, index);
+            }
+
+            // 最后一个索引用于赋值
+            Object lastIndex = interpreter.evaluate(indices.get(indices.size() - 1));
+            if (result.getOperator().getType() == TokenType.ASSIGN) {
+                setIndex(container, lastIndex, value);
+            } else {
+                // 复合赋值
+                Object current = getIndex(container, lastIndex);
+                value = applyCompoundOperation(current, value, result.getOperator().getType());
+                setIndex(container, lastIndex, value);
+            }
         }
         // Assignment 操作没有返回值
         return null;
+    }
+
+    /**
+     * 应用复合赋值操作
+     */
+    private Object applyCompoundOperation(Object current, Object value, TokenType operator) {
+        switch (operator) {
+            case PLUS_ASSIGN:
+                return add(current, value);
+            case MINUS_ASSIGN:
+                return subtract(current, value);
+            case MULTIPLY_ASSIGN:
+                return multiply(current, value);
+            case DIVIDE_ASSIGN:
+                return divide(current, value);
+            case MODULO_ASSIGN:
+                return modulo(current, value);
+            default:
+                throw new RuntimeException("Unknown compound assignment operator: " + operator);
+        }
+    }
+
+    /**
+     * 获取索引访问的值
+     */
+    private Object getIndex(Object container, Object index) {
+        if (container instanceof List) {
+            return ((List<?>) container).get(((Number) index).intValue());
+        } else if (container instanceof Map) {
+            return ((Map<?, ?>) container).get(index);
+        } else {
+            throw new RuntimeException("Cannot index type: " + (container == null ? "null" : container.getClass().getName()));
+        }
+    }
+
+    /**
+     * 设置索引访问的值
+     */
+    @SuppressWarnings("unchecked")
+    private void setIndex(Object container, Object index, Object value) {
+        if (container instanceof List) {
+            ((List<Object>) container).set(((Number) index).intValue(), value);
+        } else if (container instanceof Map) {
+            ((Map<Object, Object>) container).put(index, value);
+        } else {
+            throw new RuntimeException("Cannot set index on type: " + (container == null ? "null" : container.getClass().getName()));
+        }
     }
 
     @Override

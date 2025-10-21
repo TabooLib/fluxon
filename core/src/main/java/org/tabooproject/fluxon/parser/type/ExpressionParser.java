@@ -74,7 +74,7 @@ public class ExpressionParser {
         );
         if (match != null) {
             Token operator = parser.previous();
-            // 赋值操作符只能对 Identifier 使用
+            // 赋值操作符可以对 Identifier 或 IndexAccessExpression 使用
             if (expr instanceof Identifier) {
                 String name = ((Identifier) expr).getValue();
                 // 获取局部变量的位置
@@ -86,7 +86,10 @@ public class ExpressionParser {
                     // 更新位置
                     position = parser.getSymbolEnvironment().getLocalVariable(name);
                 }
-                return new AssignExpression(name, operator, parseAssignment(parser), position);
+                return new AssignExpression(expr, operator, parseAssignment(parser), position);
+            } else if (expr instanceof IndexAccessExpression) {
+                // 索引访问赋值 map["key"] = value
+                return new AssignExpression(expr, operator, parseAssignment(parser), -1);
             }
             throw new ParseException("Invalid assignment target: " + expr, operator, parser.getResults());
         }
@@ -263,7 +266,10 @@ public class ExpressionParser {
                     throw new VariableNotFoundException(name);
                 }
             }
-            // 引用后可能有调用操作（如 ::）
+            // 引用后可能有后缀操作（[]、()）和上下文调用（::）
+            // 先处理后缀操作
+            ref = FunctionCallParser.parsePostfixOperations(parser, ref);
+            // 再处理上下文调用
             return parseCallExpression(parser, ref);
         }
         // 不是引用，继续解析调用表达式

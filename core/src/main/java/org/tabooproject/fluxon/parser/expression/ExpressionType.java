@@ -46,6 +46,8 @@ public enum ExpressionType {
     ASSIGNMENT(new AssignmentEvaluator()),
     // 函数调用
     FUNCTION_CALL(new FunctionCallEvaluator()),
+    // 索引访问
+    INDEX_ACCESS(new IndexAccessEvaluator()),
 
     AWAIT(new AwaitEvaluator()),
     REFERENCE(new ReferenceEvaluator()),
