@@ -52,7 +52,7 @@ public class FunctionDefinitionParser {
                     String param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name").getLexeme();
                     parser.defineVariable(param);
                     parameters.put(param, parser.getSymbolEnvironment().getLocalVariable(param));
-                } while (parser.match(TokenType.COMMA));
+                } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
         } else {

@@ -91,7 +91,7 @@ public class AnnotationParser {
                         parser.error("Expected a literal value for attribute '" + key + "'");
                     }
                 }
-            } while (parser.match(TokenType.COMMA));
+            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
         }
         return attributes;
     }

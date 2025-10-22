@@ -49,7 +49,7 @@ public class ListParser {
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
             do {
                 elements.add(ExpressionParser.parse(parser));
-            } while (parser.match(TokenType.COMMA));
+            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_BRACKET));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
         return new ListExpression(elements);
@@ -73,7 +73,7 @@ public class ListParser {
                 ParseResult value = ExpressionParser.parse(parser);
                 // 添加键值对
                 entries.add(new MapExpression.MapEntry(key, value));
-            } while (parser.match(TokenType.COMMA));
+            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_BRACKET));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
         return new MapExpression(entries);

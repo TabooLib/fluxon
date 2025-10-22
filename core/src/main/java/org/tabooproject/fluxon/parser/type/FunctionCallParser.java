@@ -283,7 +283,7 @@ public class FunctionCallParser {
         if (!parser.check(TokenType.RIGHT_PAREN)) {
             do {
                 arguments.add(ExpressionParser.parse(parser));
-            } while (parser.match(TokenType.COMMA));
+            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
         return getFunctionCallExpression(parser, callee, arguments);
