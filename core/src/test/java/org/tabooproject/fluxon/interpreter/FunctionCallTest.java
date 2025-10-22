@@ -277,17 +277,16 @@ public class FunctionCallTest {
     @Test
     public void testSimpleRecursion() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def fib(n) = if &n <= 1 then &n else { fib(&n - 1) + fib(&n - 2); }; " +
+                "def fib(n) = if &n <= 1 then &n else { &n + fib(&n - 1); }; " +
                         "fib 6");
-        assertEquals(8, result.getInterpretResult());
-        // TODO assertEquals(8, result.getCompileResult());
-        // 已知问题：递归函数暂时无法处理局部变量
+        assertEquals(21, result.getInterpretResult());
+        assertEquals(21, result.getCompileResult());
     }
 
     @Test
     public void testFactorial() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def fact(n) = if &n <= 1 then 1 else &n * (fact (&n - 1)); " +
+                "def fact(n) = if &n <= 1 then 1 else &n * fact(&n - 1); " +
                         "fact 5");
         assertEquals(120, result.getInterpretResult());
         assertEquals(120, result.getCompileResult());
