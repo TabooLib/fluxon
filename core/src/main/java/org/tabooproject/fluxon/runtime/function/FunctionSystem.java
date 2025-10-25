@@ -71,5 +71,14 @@ public class FunctionSystem {
                 throw new RuntimeException(o.toString());
             }
         });
+        runtime.registerFunction("greet", Arrays.asList(0, 1), (context) -> {
+            Object[] args = context.getArguments();
+            if (args.length > 0 && args[0] != null) {
+                System.out.println("你好, " + args[0] + "!");
+            } else {
+                System.out.println("你好!");
+            }
+            return null;
+        });
     }
 }
