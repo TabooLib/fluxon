@@ -34,3 +34,7 @@ bin/
 
 .claude/
 CLAUDE.md
+
+### Fluxon ###
+**/dump/
+*.class
