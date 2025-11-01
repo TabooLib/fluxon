@@ -18,7 +18,7 @@ public class CompilationContext {
     private boolean allowInvalidReference = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
     private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
 
-    private final List<String> packetAutoImport = FluxonFeatures.DEFAULT_PACKET_AUTO_IMPORT;
+    private final List<String> packageAutoImport = FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT;
     private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
 
     /**
@@ -80,8 +80,8 @@ public class CompilationContext {
     /**
      * 获取自动导入的包
      */
-    public List<String> getPacketAutoImport() {
-        return packetAutoImport;
+    public List<String> getPackageAutoImport() {
+        return packageAutoImport;
     }
 
     /**

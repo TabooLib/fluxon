@@ -52,7 +52,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             currentToken = tokens.get(0);
         }
         this.position = 0;
-        this.imports = new ArrayList<>(context.getPacketAutoImport());
+        this.imports = new ArrayList<>(context.getPackageAutoImport());
         this.results = new ArrayList<>();
         // 解析导入
         ImportParser.parse(this);

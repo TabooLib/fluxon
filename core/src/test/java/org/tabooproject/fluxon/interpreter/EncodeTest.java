@@ -18,7 +18,7 @@ public class EncodeTest {
 
     @BeforeEach
     public void BeforeEach() {
-        FluxonFeatures.DEFAULT_PACKET_AUTO_IMPORT.add("fs:crypto");
+        FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT.add("fs:crypto");
     }
 
     // ========== Base64 编码/解码测试 ==========

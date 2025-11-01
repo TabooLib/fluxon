@@ -31,7 +31,7 @@ public class FluxonFeatures {
      * 将自动导入这些包，无需在脚本中显式导入
      * 默认值：无
      */
-    public static List<String> DEFAULT_PACKET_AUTO_IMPORT = new ArrayList<>();
+    public static List<String> DEFAULT_PACKAGE_AUTO_IMPORT = new ArrayList<>();
 
     /**
      * 全局特性：禁用的包
