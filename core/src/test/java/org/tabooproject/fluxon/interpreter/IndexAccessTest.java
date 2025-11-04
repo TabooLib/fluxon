@@ -208,4 +208,31 @@ public class IndexAccessTest {
         assertEquals(150, testResult.getInterpretResult());
         assertEquals(150, testResult.getCompileResult());
     }
+
+    @Test
+    public void testMethodCallWithIndexAccess() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "field = 'a\"b\"c\"d\"e'\n" +
+                "&field::split(\"\\\"\")[3]");
+        assertEquals("d", testResult.getInterpretResult());
+        assertEquals("d", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testChainedMethodCallWithIndexAccess() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "text = 'hello world test'\n" +
+                "&text::split(' ')[1]");
+        assertEquals("world", testResult.getInterpretResult());
+        assertEquals("world", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testMultipleMethodCallsWithIndexAccess() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "text = 'Hello World'\n" +
+                "&text::lowercase()::split(' ')[0]");
+        assertEquals("hello", testResult.getInterpretResult());
+        assertEquals("hello", testResult.getCompileResult());
+    }
 }

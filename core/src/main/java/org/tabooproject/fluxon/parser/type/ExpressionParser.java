@@ -303,13 +303,15 @@ public class ExpressionParser {
                 SymbolEnvironment env = parser.getSymbolEnvironment();
                 boolean isContextCall = env.isContextCall();
                 env.setContextCall(true);
-                // 右侧可能是引用或其他调用表达式
-                context = parseReference(parser);
+                // 右侧可能是函数调用，但不要在这里处理后缀操作
+                // 因为后缀操作应该在整个上下文调用链结束后才处理
+                context = FunctionCallParser.parse(parser);
                 env.setContextCall(isContextCall);
             }
             expr = new ContextCallExpression(expr, context);
         }
-        return expr;
+        // 处理完所有上下文调用后，处理后缀操作（索引访问）
+        return FunctionCallParser.parsePostfixOperations(parser, expr);
     }
 
     /**
