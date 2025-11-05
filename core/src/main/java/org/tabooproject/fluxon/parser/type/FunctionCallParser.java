@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
@@ -149,7 +150,7 @@ public class FunctionCallParser {
      *
      * @param parser 解析器
      * @param target 被索引的目标表达式
-     * @return IndexAccessExpression
+     * @return IndexAccessExpression 或 ListExpression（空列表）
      */
     private static ParseResult finishIndexAccess(Parser parser, ParseResult target) {
         List<ParseResult> indices = new ArrayList<>();
@@ -163,10 +164,11 @@ public class FunctionCallParser {
 
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after index");
 
+        // 如果索引为空，返回空列表字面量而不是抛出异常
+        // 这允许 `[]` 在表达式后面（如新行）作为独立的空列表字面量
         if (indices.isEmpty()) {
-            throw new ParseException("Index access requires at least one index", parser.peek(), parser.getResults());
+            return new ListExpression(new ArrayList<>());
         }
-
         return new IndexAccessExpression(target, indices, -1);
     }
 
