@@ -21,6 +21,7 @@ public class FunctionContext<Target> {
     @Nullable
     private final Target target;
     private final Object[] arguments;
+    private final int argumentCount;
     @NotNull
     private final Environment environment;
 
@@ -28,16 +29,17 @@ public class FunctionContext<Target> {
         this.function = function;
         this.target = target;
         this.arguments = arguments;
+        this.argumentCount = arguments.length;
         this.environment = environment;
     }
 
     public boolean hasArgument(int index) {
-        return index < arguments.length;
+        return index < argumentCount;
     }
 
     @Nullable
     public Object getArgument(int index) {
-        if (index >= arguments.length) {
+        if (index >= argumentCount) {
             return null;
         }
         return arguments[index];
@@ -92,6 +94,10 @@ public class FunctionContext<Target> {
 
     public Object[] getArguments() {
         return arguments;
+    }
+
+    public int getArgumentCount() {
+        return argumentCount;
     }
 
     @NotNull
