@@ -13,7 +13,6 @@ import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;

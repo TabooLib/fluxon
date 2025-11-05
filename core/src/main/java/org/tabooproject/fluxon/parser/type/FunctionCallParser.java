@@ -41,14 +41,14 @@ public class FunctionCallParser {
             } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return getFunctionCallExpression(parser, callee, arguments);
+        return getFunctionCallExpression(parser, callee, arguments.toArray(new ParseResult[0]));
     }
 
     private static ParseResult finishTopLevelContextCall(Parser parser, Identifier callee) {
-        return getFunctionCallExpression(parser, callee, Collections.emptyList());
+        return getFunctionCallExpression(parser, callee, new ParseResult[0]);
     }
 
-    private static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, List<ParseResult> arguments) {
+    private static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, ParseResult[] arguments) {
         String name = callee.getValue();
         // 查找函数信息（普通函数和扩展函数）
         FunctionInfo funcInfo = FunctionInfo.lookup(parser, name);

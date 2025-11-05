@@ -14,8 +14,6 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.List;
-
 import static org.objectweb.asm.Opcodes.*;
 
 public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpression> {
@@ -29,10 +27,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Object evaluate(Interpreter interpreter, FunctionCallExpression result) {
         // 评估被调用者
         // 评估参数列表
-        Object[] arguments = new Object[result.getArguments().size()];
-        List<ParseResult> expressionArguments = result.getArguments();
-        for (int i = 0; i < expressionArguments.size(); i++) {
-            ParseResult argument = expressionArguments.get(i);
+        Object[] arguments = new Object[result.getArguments().length];
+        ParseResult[] expressionArguments = result.getArguments();
+        for (int i = 0; i < expressionArguments.length; i++) {
+            ParseResult argument = expressionArguments[i];
             arguments[i] = interpreter.evaluate(argument);
         }
         // 使用 Operations.callFunction 执行函数调用
@@ -50,20 +48,20 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         mv.visitLdcInsn(result.getCallee());
 
         // 创建参数数组
-        List<ParseResult> arguments = result.getArguments();
-        mv.visitLdcInsn(arguments.size());
+        ParseResult[] arguments = result.getArguments();
+        mv.visitLdcInsn(arguments.length);
         mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
 
         // 填充参数数组
-        for (int i = 0; i < arguments.size(); i++) {
+        for (int i = 0; i < arguments.length; i++) {
             mv.visitInsn(DUP);  // 复制数组引用
             mv.visitLdcInsn(i); // 数组索引
             // 评估参数表达式
-            Evaluator<ParseResult> argEval = ctx.getEvaluator(arguments.get(i));
+            Evaluator<ParseResult> argEval = ctx.getEvaluator(arguments[i]);
             if (argEval == null) {
                 throw new EvaluatorNotFoundException("No evaluator found for argument expression");
             }
-            if (argEval.generateBytecode(arguments.get(i), ctx, mv) == Type.VOID) {
+            if (argEval.generateBytecode(arguments[i], ctx, mv) == Type.VOID) {
                 throw new VoidValueException("Void type is not allowed for function arguments");
             }
             mv.visitInsn(AASTORE); // 存储到数组

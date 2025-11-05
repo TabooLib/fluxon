@@ -5,21 +5,21 @@ import org.tabooproject.fluxon.parser.ExtensionFunctionPosition;
 import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
 
-import java.util.List;
+import java.util.Arrays;
 
 /**
  * 函数调用
  */
 public class FunctionCallExpression implements Expression {
     private final String callee;
-    private final List<ParseResult> arguments;
+    private final ParseResult[] arguments;
 
     @Nullable
     private final FunctionPosition position;
     @Nullable
     private final ExtensionFunctionPosition extensionPosition;
 
-    public FunctionCallExpression(String callee, List<ParseResult> arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
+    public FunctionCallExpression(String callee, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         this.callee = callee;
         this.arguments = arguments;
         this.position = pos1;
@@ -30,7 +30,7 @@ public class FunctionCallExpression implements Expression {
         return callee;
     }
 
-    public List<ParseResult> getArguments() {
+    public ParseResult[] getArguments() {
         return arguments;
     }
 
@@ -51,18 +51,18 @@ public class FunctionCallExpression implements Expression {
 
     @Override
     public String toString() {
-        return "Call(" + callee + ", " + arguments + ")";
+        return "Call(" + callee + ", " + Arrays.toString(arguments) + ")";
     }
 
     @Override
     public String toPseudoCode() {
         StringBuilder sb = new StringBuilder();
         sb.append(callee).append("(");
-        for (int i = 0; i < arguments.size(); i++) {
+        for (int i = 0; i < arguments.length; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
-            sb.append(arguments.get(i).toPseudoCode());
+            sb.append(arguments[i].toPseudoCode());
         }
         sb.append(")");
         return sb.toString();

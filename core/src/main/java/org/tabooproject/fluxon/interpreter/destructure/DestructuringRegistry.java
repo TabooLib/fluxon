@@ -88,7 +88,8 @@ public class DestructuringRegistry {
         }
         // 单变量情况特殊处理
         if (variables.size() == 1) {
-            variables.forEach((name, position) -> environment.assign(name, element, position));
+            Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
+            environment.assign(entry.getKey(), element, entry.getValue());
             return;
         }
         // 查找合适的解构器
