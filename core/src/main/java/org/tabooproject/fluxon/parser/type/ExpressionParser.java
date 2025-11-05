@@ -272,7 +272,7 @@ public class ExpressionParser {
             }
             // 引用后可能有后缀操作（[]、()）和上下文调用（::）
             // 先处理后缀操作
-            ref = FunctionCallParser.parsePostfixOperations(parser, ref);
+            ref = PostfixParser.parsePostfixOperations(parser, ref);
             // 再处理上下文调用
             return parseCallExpression(parser, ref);
         }
@@ -311,7 +311,7 @@ public class ExpressionParser {
             expr = new ContextCallExpression(expr, context);
         }
         // 处理完所有上下文调用后，处理后缀操作（索引访问）
-        return FunctionCallParser.parsePostfixOperations(parser, expr);
+        return PostfixParser.parsePostfixOperations(parser, expr);
     }
 
     /**

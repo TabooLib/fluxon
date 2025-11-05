@@ -96,6 +96,23 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 检查当前 token 是否在语句边界
+     * 通过以下条件判断：
+     * 1. 当前 token 在新行（行号大于前一个 token）
+     * 2. 前一个 token 是分号
+     *
+     * @return 是否在语句边界
+     */
+    public boolean isStatementBoundary() {
+        // 检查是否在新行
+        if (currentToken.getLine() > previous().getLine()) {
+            return true;
+        }
+        // 检查前一个 token 是否是分号
+        return previous().getType() == TokenType.SEMICOLON;
+    }
+
+    /**
      * 消费当前标记并前进
      */
     public void advance() {

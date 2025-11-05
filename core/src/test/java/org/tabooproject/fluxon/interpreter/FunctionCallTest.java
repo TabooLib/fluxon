@@ -181,9 +181,9 @@ public class FunctionCallTest {
     @Test
     public void testParameterWithSameName() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "x = 100; " +
-                        "def func(x) = &x * 2; " +
-                        "result = func 5; " +
+                "x = 100\n" +
+                        "def func(x) = &x * 2\n" +
+                        "result = func 5\n" +
                         "[&x, &result]");
         assertEquals("[100, 10]", result.getInterpretResult().toString());
         assertEquals("[100, 10]", result.getCompileResult().toString());

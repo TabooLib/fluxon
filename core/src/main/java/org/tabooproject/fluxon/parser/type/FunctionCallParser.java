@@ -3,8 +3,6 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
-import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
-import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
@@ -112,64 +110,8 @@ public class FunctionCallParser {
                 name = finishTopLevelContextCall(parser, (Identifier) name);
             }
         }
-
         // 处理后缀操作：函数调用 () 和索引访问 []
-        return parsePostfixOperations(parser, name);
-    }
-
-    /**
-     * 处理后缀操作（函数调用和索引访问）
-     *
-     * @param parser 解析器
-     * @param expr   已解析的表达式
-     * @return 应用后缀操作后的表达式
-     */
-    public static ParseResult parsePostfixOperations(Parser parser, ParseResult expr) {
-        while (true) {
-            if (parser.match(TokenType.LEFT_BRACKET)) {
-                // 索引访问
-                expr = finishIndexAccess(parser, expr);
-            }
-            else if (parser.match(TokenType.LEFT_PAREN)) {
-                // 后缀函数调用（用于链式调用）
-                if (expr instanceof Identifier) {
-                    expr = finishCall(parser, (Identifier) expr);
-                } else {
-                    throw new ParseException("Cannot call non-identifier expression", parser.peek(), parser.getResults());
-                }
-            }
-            else {
-                break;
-            }
-        }
-        return expr;
-    }
-
-    /**
-     * 完成索引访问解析
-     *
-     * @param parser 解析器
-     * @param target 被索引的目标表达式
-     * @return IndexAccessExpression 或 ListExpression（空列表）
-     */
-    private static ParseResult finishIndexAccess(Parser parser, ParseResult target) {
-        List<ParseResult> indices = new ArrayList<>();
-
-        // 解析索引参数（支持多个，用逗号分隔）
-        if (!parser.check(TokenType.RIGHT_BRACKET)) {
-            do {
-                indices.add(ExpressionParser.parse(parser));
-            } while (parser.match(TokenType.COMMA));
-        }
-
-        parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after index");
-
-        // 如果索引为空，返回空列表字面量而不是抛出异常
-        // 这允许 `[]` 在表达式后面（如新行）作为独立的空列表字面量
-        if (indices.isEmpty()) {
-            return new ListExpression(new ArrayList<>());
-        }
-        return new IndexAccessExpression(target, indices, -1);
+        return PostfixParser.parsePostfixOperations(parser, name);
     }
 
     /**
@@ -279,7 +221,7 @@ public class FunctionCallParser {
                type == TokenType.MODULO_ASSIGN;
     }
 
-    private static ParseResult finishCall(Parser parser, Identifier callee) {
+    public static ParseResult finishCall(Parser parser, Identifier callee) {
         List<ParseResult> arguments = new ArrayList<>();
         // 如果参数列表不为空
         if (!parser.check(TokenType.RIGHT_PAREN)) {
