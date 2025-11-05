@@ -27,11 +27,11 @@ sum = 0
 for i in 1..10 then {
     print &i
     if &i % 2 == 0 then {
-        print "continue"
+        print("continue")
         continue
     }
     if &i == 5 then {
-        print "break"
+        print("break")
         break
     }
     sum += &i
@@ -44,13 +44,13 @@ while &i < 10 then {
 }
 
 when &sum {
-    in 0..10 -> print "Sum is between 0 and 10"
-    in 10..100 -> print "Sum is between 10 and 100"
+    in 0..10 -> print("Sum is between 0 and 10")
+    in 10..100 -> print("Sum is between 10 and 100")
 }
-print "Sum: " + &sum
-print "Random: " + random()
+print("Sum: " + &sum)
+print("Random: " + random())
 
-try throw 'error'
-try throw 'error' finally print 'ok'
-try throw 'error' catch 'ok' finally print 'ok'
-try throw 'error' catch (e) 'ok' finally print 'ok'
+try throw('error')
+try throw('error') finally print("ok")
+try throw('error') catch 'ok' finally print("ok")
+try throw('error') catch (e) 'ok' finally print("ok")

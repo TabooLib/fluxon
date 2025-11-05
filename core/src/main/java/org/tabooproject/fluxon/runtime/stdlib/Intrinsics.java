@@ -137,7 +137,7 @@ public final class Intrinsics {
         if (isOptional) {
             return null;
         }
-        throw new VariableNotFoundException(name);
+        throw new VariableNotFoundException(name, Arrays.asList(environment.getLocalVariableNames()));
     }
 
     /**

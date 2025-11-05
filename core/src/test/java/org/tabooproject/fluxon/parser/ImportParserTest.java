@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.parser.expression.*;
 
 import java.util.List;
 

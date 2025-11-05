@@ -1,11 +1,8 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,11 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ContextCallTest {
-
-    @BeforeEach
-    public void BeforeEach() {
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
-    }
 
     // ========== 基础上下文调用测试 ==========
 
@@ -66,7 +58,7 @@ public class ContextCallTest {
         assertEquals(1, result.getCompileResult());
 
         // Test closure context
-        FluxonTestUtil.runSilent("time :: { time = 10 }");
+        FluxonTestUtil.runSilent("import 'fs:time'; time :: { time = 10 }");
     }
 
     @Test

@@ -30,7 +30,6 @@ public class EnhancedParserTest {
     @BeforeEach
     public void BeforeEach() {
         FluxonRuntimeTest.registerTestFunctions();
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     /**
@@ -67,7 +66,7 @@ public class EnhancedParserTest {
     @Test
     public void testNoBracketFunctionCalls() {
         // 基本无括号调用
-        List<ParseResult> results = parseSource("print hello");
+        List<ParseResult> results = parseSource("print(hello)");
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
@@ -77,7 +76,7 @@ public class EnhancedParserTest {
         assertEquals("hello", ((StringLiteral) call.getArguments().get(0)).getValue());
 
         // 嵌套无括号调用
-        results = parseSource("print checkGrade 95");
+        results = parseSource("print(checkGrade(95))");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCallExpression) stmt.getExpression();
@@ -96,17 +95,17 @@ public class EnhancedParserTest {
     @Test
     public void testUnquotedIdentifiersAsStrings() {
         // 未知标识符作为字符串参数
-        List<ParseResult> results = parseSource("player head");
+        List<ParseResult> results = parseSource("player(head)");
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
         assertEquals("player", call.getCallee());
         assertEquals(1, call.getArguments().size());
-        assertTrue(call.getArguments().get(0) instanceof StringLiteral);
-        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
+        assertTrue(call.getArguments().get(0) instanceof Identifier);
+        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
 
         // 混合已知函数和未知标识符
-        results = parseSource("player checkGrade 95");
+        results = parseSource("player(checkGrade(95))");
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCallExpression) stmt.getExpression();
@@ -115,15 +114,15 @@ public class EnhancedParserTest {
         assertEquals("checkGrade", ((FunctionCallExpression) call.getArguments().get(0)).getCallee());
 
         // 多个未知标识符
-        results = parseSource("player head body legs");
+        results = parseSource("player(head, body, legs)");
         System.out.println(results);
         assertEquals(1, results.size());
         stmt = (ExpressionStatement) results.get(0);
         call = (FunctionCallExpression) stmt.getExpression();
         assertEquals(3, call.getArguments().size());
-        assertEquals("head", ((StringLiteral) call.getArguments().get(0)).getValue());
-        assertEquals("body", ((StringLiteral) call.getArguments().get(1)).getValue());
-        assertEquals("legs", ((StringLiteral) call.getArguments().get(2)).getValue());
+        assertEquals("head", ((Identifier) call.getArguments().get(0)).getValue());
+        assertEquals("body", ((Identifier) call.getArguments().get(1)).getValue());
+        assertEquals("legs", ((Identifier) call.getArguments().get(2)).getValue());
     }
 
     /**

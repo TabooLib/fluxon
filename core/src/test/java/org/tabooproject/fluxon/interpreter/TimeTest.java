@@ -3,13 +3,11 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 public class TimeTest {
 
     @Test
     public void testTime() {
-        Fluxon.eval("import 'fs:time'; print(time)");
-        Fluxon.eval("import 'fs:time'; print(time::formatTimestamp(now))");
+        Fluxon.eval("import 'fs:time'; print(time())");
+        Fluxon.eval("import 'fs:time'; print(time::formatTimestamp(now()))");
     }
 }

@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.parser.ParseException;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -15,8 +15,7 @@ public class ImportTest {
         try {
             Fluxon.eval("time :: formatTimestamp(1755611940830L)");
             throw new IllegalStateException("Failure");
-        } catch (ParseException ex) {
-            assertEquals(true, ex.getMessage().contains("not found"));
+        } catch (FunctionNotFoundException ignored) {
         }
     }
 

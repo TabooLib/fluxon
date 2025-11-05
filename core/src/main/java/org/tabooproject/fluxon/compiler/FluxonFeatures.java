@@ -6,13 +6,6 @@ import java.util.List;
 public class FluxonFeatures {
 
     /**
-     * 全局特性：是否允许无括号调用（Kether 风格）
-     * 当启用时，允许函数调用省略括号，例如：print "hello" 等同于 print("hello")
-     * 默认值：false（禁用），保持标准的函数调用语法
-     */
-    public static boolean DEFAULT_ALLOW_KETHER_STYLE_CALL = false;
-    
-    /**
      * 全局特性：是否允许无效引用
      * 当启用时，对未定义的变量或函数引用不会抛出错误，而是返回 null 或默认值
      * 默认值：false（禁用），严格检查所有引用的有效性

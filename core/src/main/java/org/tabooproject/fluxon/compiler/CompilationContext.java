@@ -14,7 +14,6 @@ public class CompilationContext {
     private final Map<String, Object> attributes = new HashMap<>();
 
     // 语法特性
-    private boolean allowKetherStyleCall = FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL;
     private boolean allowInvalidReference = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
     private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
 
@@ -35,20 +34,6 @@ public class CompilationContext {
         return source;
     }
     
-    /**
-     * 是否允许无括号调用（实验功能）
-     */
-    public boolean isAllowKetherStyleCall() {
-        return allowKetherStyleCall;
-    }
-
-    /**
-     * 设置是否允许无括号调用（实验功能）
-     */
-    public void setAllowKetherStyleCall(boolean allowKetherStyleCall) {
-        this.allowKetherStyleCall = allowKetherStyleCall;
-    }
-
     /**
      * 是否允许无效引用
      */

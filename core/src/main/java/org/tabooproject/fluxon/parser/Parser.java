@@ -303,6 +303,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @param name 函数名
      * @return 函数信息，如果不存在则返回 null
      */
+    @Nullable
     public Callable getFunction(String name) {
         SymbolFunction symbolFunction = symbolEnvironment.getUserFunction(name);
         if (symbolFunction != null) {

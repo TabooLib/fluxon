@@ -1,10 +1,9 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.junit.jupiter.api.Test;
-import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class AwaitTest {
 

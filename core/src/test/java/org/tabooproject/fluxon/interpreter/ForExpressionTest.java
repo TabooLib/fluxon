@@ -1,12 +1,11 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * For 循环表达式测试
@@ -16,10 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ForExpressionTest {
 
-    @BeforeEach
-    public void BeforeEach() {
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
-    }
 
     // ========== 基础 For 循环测试 ==========
 

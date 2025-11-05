@@ -98,9 +98,9 @@ public class PseudoCodeTest {
     @Test
     public void testList() {
         // 测试 List 和 Map 字面量
-        testPseudoCode("print 1..10\n" +
-                "print [1,2,3,4,5]\n" +
-                "print [a:1,b:2,c:3]");
+        testPseudoCode("print(1..10)\n" +
+                "print([1,2,3,4,5])\n" +
+                "print([a:1,b:2,c:3])");
     }
 
     private void testPseudoCode(String source) {

@@ -7,10 +7,10 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
+import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
-import org.tabooproject.fluxon.parser.definition.Definition;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -22,7 +22,6 @@ public class BytecodeTest {
     @BeforeEach
     public void BeforeEach() {
         FluxonRuntimeTest.registerTestFunctions();
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     @Test

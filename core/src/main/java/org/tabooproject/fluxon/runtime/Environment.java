@@ -258,7 +258,7 @@ public class Environment {
                 localVariables[index] = value;
                 localVariableNames[index] = name;
             } else {
-                throw new VariableNotFoundException(name + ", index: " + index);
+                throw new VariableNotFoundException(name + ", index: " + index, Arrays.asList(localVariableNames));
             }
         }
     }

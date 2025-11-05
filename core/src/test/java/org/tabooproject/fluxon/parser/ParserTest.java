@@ -9,7 +9,10 @@ import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
-import org.tabooproject.fluxon.parser.expression.*;
+import org.tabooproject.fluxon.parser.expression.AwaitExpression;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.expression.IfExpression;
+import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
 import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
@@ -31,7 +34,6 @@ public class ParserTest {
     @BeforeEach
     public void BeforeEach() {
         FluxonRuntimeTest.registerTestFunctions();
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
     }
 
     /**

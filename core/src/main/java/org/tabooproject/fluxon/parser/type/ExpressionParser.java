@@ -10,6 +10,8 @@ import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
 
+import java.util.ArrayList;
+
 /**
  * 表达式解析器 - 递归下降解析
  * <p>
@@ -267,7 +269,7 @@ public class ExpressionParser {
                     // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
                     ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                 } else {
-                    throw new VariableNotFoundException(name);
+                    throw new VariableNotFoundException(name, new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()));
                 }
             }
             // 引用后可能有后缀操作（[]、()）和上下文调用（::）

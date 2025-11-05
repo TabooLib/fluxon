@@ -1,8 +1,9 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 import org.tabooproject.fluxon.Fluxon;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * 三元运算符测试类

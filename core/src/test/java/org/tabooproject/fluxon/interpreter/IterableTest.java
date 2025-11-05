@@ -1,12 +1,10 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * 可迭代类型测试
@@ -15,11 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class IterableTest {
-
-    @BeforeEach
-    public void BeforeEach() {
-        FluxonFeatures.DEFAULT_ALLOW_KETHER_STYLE_CALL = true;
-    }
 
     // ========== first() 方法测试 ==========
 
