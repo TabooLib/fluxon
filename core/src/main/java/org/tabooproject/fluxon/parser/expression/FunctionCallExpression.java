@@ -15,9 +15,9 @@ public class FunctionCallExpression implements Expression {
     private final ParseResult[] arguments;
 
     @Nullable
-    private final FunctionPosition position;
+    private FunctionPosition position;
     @Nullable
-    private final ExtensionFunctionPosition extensionPosition;
+    private ExtensionFunctionPosition extensionPosition;
 
     public FunctionCallExpression(String callee, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         this.callee = callee;
@@ -42,6 +42,20 @@ public class FunctionCallExpression implements Expression {
     @Nullable
     public ExtensionFunctionPosition getExtensionPosition() {
         return extensionPosition;
+    }
+
+    /**
+     * 设置函数位置（用于延迟解析）
+     */
+    public void setPosition(@Nullable FunctionPosition position) {
+        this.position = position;
+    }
+
+    /**
+     * 设置扩展函数位置（用于延迟解析）
+     */
+    public void setExtensionPosition(@Nullable ExtensionFunctionPosition extensionPosition) {
+        this.extensionPosition = extensionPosition;
     }
 
     @Override

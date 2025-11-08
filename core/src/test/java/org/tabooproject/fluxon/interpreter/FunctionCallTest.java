@@ -286,6 +286,58 @@ public class FunctionCallTest {
         assertEquals(120, result.getCompileResult());
     }
 
+    // ========== 前向引用测试 ==========
+
+    @Test
+    public void testForwardReference() {
+        // 测试函数可以在定义前调用（前向引用）
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = foo(10); " +
+                        "def foo(x) = &x * 2; " +
+                        "&result");
+        assertEquals(20, result.getInterpretResult());
+        assertEquals(20, result.getCompileResult());
+    }
+
+    @Test
+    public void testForwardReferenceWithMultipleFunctions() {
+        // 测试多个函数的前向引用
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = add(mul(2, 3), mul(4, 5)); " +
+                        "def add(x, y) = &x + &y; " +
+                        "def mul(x, y) = &x * &y; " +
+                        "&result");
+        // add(mul(2, 3), mul(4, 5)) = add(6, 20) = 26
+        assertEquals(26, result.getInterpretResult());
+        assertEquals(26, result.getCompileResult());
+    }
+
+    @Test
+    public void testForwardReferenceInExpression() {
+        // 测试表达式中的前向引用
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "a = 5; " +
+                        "b = d(&a) + 3; " +
+                        "def d(x) = &x * 2; " +
+                        "&b");
+        // d(5) + 3 = 10 + 3 = 13
+        assertEquals(13, result.getInterpretResult());
+        assertEquals(13, result.getCompileResult());
+    }
+
+    @Test
+    public void testMixedForwardAndBackwardReference() {
+        // 测试混合的前向和后向引用
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def inc(x) = &x + 1; " +
+                        "a = inc(5); " +
+                        "b = dec(10); " +
+                        "def dec(x) = &x - 1; " +
+                        "[&a, &b]");
+        assertEquals("[6, 9]", result.getInterpretResult().toString());
+        assertEquals("[6, 9]", result.getCompileResult().toString());
+    }
+
     // ========== 边界情况测试 ==========
 
     @Test

@@ -3,8 +3,11 @@ package org.tabooproject.fluxon.parser;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
+import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.type.FunctionInfo;
 import org.tabooproject.fluxon.parser.type.ImportParser;
 import org.tabooproject.fluxon.parser.type.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -31,6 +34,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private List<String> imports;
     // 已经解析出的结果
     private List<ParseResult> results;
+    // 待解析的函数调用列表
+    private List<PendingFunctionCall> pendingCalls;
 
     /**
      * 执行解析
@@ -54,12 +59,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         this.position = 0;
         this.imports = new ArrayList<>(context.getPackageAutoImport());
         this.results = new ArrayList<>();
+        this.pendingCalls = new ArrayList<>();
         // 解析导入
         ImportParser.parse(this);
         // 解析顶层语句
         while (!isAtEnd()) {
             results.add(StatementParser.parseTopLevel(this));
         }
+        // 解析所有待解析的函数调用
+        resolvePendingCalls();
         context.setAttribute("results", results);
         return results;
     }
@@ -407,5 +415,39 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public List<ParseResult> getResults() {
         return results;
+    }
+
+    /**
+     * 注册待解析的函数调用
+     * 
+     * @param expression 函数调用表达式
+     * @param nameToken 函数名 token
+     */
+    public void registerPendingCall(FunctionCallExpression expression, Token nameToken) {
+        pendingCalls.add(new PendingFunctionCall(expression, nameToken));
+    }
+
+    /**
+     * 解析所有待解析的函数调用
+     * 在所有函数定义都已解析后调用
+     */
+    private void resolvePendingCalls() {
+        for (PendingFunctionCall pending : pendingCalls) {
+            FunctionCallExpression expr = pending.getExpression();
+            String name = pending.getFunctionName();
+            
+            // 查找函数信息
+            FunctionInfo funcInfo = FunctionInfo.lookup(this, name);
+            
+            // 如果函数不存在，抛出异常
+            if (!funcInfo.isFound()) {
+                // 恢复到调用位置以提供准确的错误信息
+                throw new FunctionNotFoundException(name);
+            }
+            
+            // 设置函数位置信息
+            expr.setPosition(funcInfo.getPosition());
+            expr.setExtensionPosition(funcInfo.getExtensionPosition());
+        }
     }
 }

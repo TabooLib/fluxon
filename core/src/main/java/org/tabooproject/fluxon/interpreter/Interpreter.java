@@ -46,9 +46,18 @@ public class Interpreter {
      * @return 最后一个表达式的执行结果
      */
     public Object execute(List<ParseResult> parseResults) {
+        // 第一遍：提前注册所有顶层函数定义，支持前向引用
+        for (ParseResult result : parseResults) {
+            if (result.getType() == ParseResult.ResultType.DEFINITION) {
+                definitionVisitor.visitDefinition((Definition) result);
+            }
+        }
+        // 第二遍：真正执行表达式和语句；定义节点已经处理过，直接跳过即可
         Object lastValue = null;
         for (ParseResult result : parseResults) {
-            lastValue = evaluate(result);
+            if (result.getType() != ParseResult.ResultType.DEFINITION) {
+                lastValue = evaluate(result);
+            }
         }
         return lastValue;
     }

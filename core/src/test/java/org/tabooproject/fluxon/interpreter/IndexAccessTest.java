@@ -228,4 +228,40 @@ public class IndexAccessTest {
         assertEquals("hello", testResult.getInterpretResult());
         assertEquals("hello", testResult.getCompileResult());
     }
+
+    @Test
+    public void testMapIndexAccessWithReplace() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "map = [text: 'hello world']\n" +
+                "&map['text']::replace('world', 'fluxon')");
+        assertEquals("hello fluxon", testResult.getInterpretResult());
+        assertEquals("hello fluxon", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testMapIndexAccessWithReplaceInMapConstruction() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "i = [模板: 'template1', 数量: '10~20']\n" +
+                "templates = [template1: []]\n" +
+                "find = 'item_sword'\n" +
+                "rewards = &templates[&i['模板']] ?: []\n" +
+                "rewards += [\n" +
+                "    id: &find,\n" +
+                "    count: &i['数量']::replace('~', '-'),\n" +
+                "    chance: 1,\n" +
+                "    scatter: 1\n" +
+                "]\n" +
+                "&rewards[0]['count']");
+        assertEquals("10-20", testResult.getInterpretResult());
+        assertEquals("10-20", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testNestedMapIndexAccessWithReplace() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent(
+                "data = [info: [text: 'a~b~c']]\n" +
+                "&data['info']['text']::replace('~', '-')");
+        assertEquals("a-b-c", testResult.getInterpretResult());
+        assertEquals("a-b-c", testResult.getCompileResult());
+    }
 }
