@@ -144,23 +144,6 @@ public class ParserPerformanceTest {
     }
 
     /**
-     * 测试无括号函数调用的解析性能
-     */
-    @RepeatedTest(TEST_ITERATIONS)
-    @DisplayName("无括号函数调用解析性能测试")
-    public void testNoBracketFunctionCallPerformance() {
-        String source = "print checkGrade 85";
-        
-        long executionTime = measureExecutionTime(() -> {
-            List<ParseResult> results = parseSource(source);
-            assertNotNull(results);
-            assertTrue(results.size() > 0);
-        });
-        
-        System.out.println("无括号函数调用解析耗时: " + formatExecutionTime(executionTime));
-    }
-
-    /**
      * 测试嵌套函数调用的解析性能
      */
     @RepeatedTest(TEST_ITERATIONS)

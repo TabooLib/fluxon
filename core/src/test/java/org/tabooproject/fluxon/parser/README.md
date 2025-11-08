@@ -17,17 +17,6 @@
    ./gradlew test --tests ParserPerformanceTest
    ```
 
-### 测试内容
-
-- 简单函数定义解析性能
-- 复杂函数定义解析性能
-- 异步函数定义解析性能
-- When 表达式解析性能
-- 无括号函数调用解析性能
-- 嵌套函数调用解析性能
-- 大型代码解析性能
-- 混合代码解析性能
-
 ## JMH 基准测试
 
 `ParserJmhBenchmark` 使用 JMH (Java Microbenchmark Harness) 框架进行更专业的性能测试。JMH 是一个专门为 Java 代码微基准测试设计的工具，它能够更准确地测量代码的性能，避免 JIT 编译、垃圾回收等因素的干扰。
@@ -68,22 +57,3 @@ ParserJmhBenchmark.noBracketFunctionCall      avgt    5   0.405 ± 0.039  us/op
 ParserJmhBenchmark.simpleFunctionDefinition   avgt    5   0.384 ± 0.015  us/op
 ParserJmhBenchmark.whenExpression             avgt    5   1.221 ± 0.037  us/op
 ```
-
-## 性能优化建议
-
-根据性能测试结果，可以考虑以下优化方向：
-
-1. **符号表优化**：使用更高效的数据结构存储符号表，如 HashMap 的优化版本或自定义哈希表。
-
-2. **解析算法优化**：
-   - 减少不必要的对象创建
-   - 使用缓存减少重复计算
-   - 优化递归调用，考虑使用迭代方式替代
-
-3. **内存使用优化**：
-   - 使用对象池减少垃圾回收压力
-   - 减少中间对象的创建
-
-4. **并行解析**：对于大型代码，考虑使用并行解析技术提高性能。
-
-5. **预编译**：对于频繁使用的表达式，考虑使用预编译技术提高性能。

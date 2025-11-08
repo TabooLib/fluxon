@@ -52,16 +52,6 @@ public class PseudoCodeTest {
     }
 
     @Test
-    public void testCall() {
-        // 测试无括号函数调用
-        // 测试未加引号标识符自动转为字符串
-        testPseudoCode("print checkGrade 85 - 1\n" +
-                "print head\n" +
-                "player head\n" +
-                "player head to player hand");
-    }
-
-    @Test
     public void testIf() {
         // 测试复杂表达式
         testPseudoCode("if if true then 1 else 0 then true else false");

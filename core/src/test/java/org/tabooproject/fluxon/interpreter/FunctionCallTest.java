@@ -75,18 +75,6 @@ public class FunctionCallTest {
         assertEquals(50, result.getCompileResult());
     }
 
-    @Test
-    public void testNoParenthesesCallInExpression() {
-        // 测试表达式中的无括号函数调用
-        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def double(x) = &x * 2; " +
-                        "a = 5; " +
-                        "double(&a + 3)");
-        // double(5 + 3) = 8 * 2 = 16
-        assertEquals(16, result.getInterpretResult());
-        assertEquals(16, result.getCompileResult());
-    }
-
     // ========== 链式调用测试 ==========
 
     @Test

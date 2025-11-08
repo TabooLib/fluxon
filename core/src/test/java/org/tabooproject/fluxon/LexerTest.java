@@ -628,22 +628,6 @@ public class LexerTest {
         }
 
         @Test
-        @DisplayName("测试无括号函数调用")
-        void testFunctionCallWithoutParentheses() {
-            String source = "max 10 20";
-            List<Token> tokens = getTokens(source);
-
-            // 验证函数名和参数
-            List<String> identifiers = getValuesByType(tokens, TokenType.IDENTIFIER);
-            assertEquals(1, identifiers.size(), "应识别 1 个标识符");
-            assertEquals("max", identifiers.get(0), "标识符应为 'max'");
-
-            List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
-            assertEquals(2, integers.size(), "应识别 2 个整数字面量");
-            assertArrayEquals(new String[]{"10", "20"}, integers.toArray(new String[0]));
-        }
-
-        @Test
         @DisplayName("测试带括号函数调用")
         void testFunctionCallWithParentheses() {
             String source = "max(10, 20)";
