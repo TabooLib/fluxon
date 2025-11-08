@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -63,11 +63,11 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         // 获取评估器注册表
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for condition expression");
+            throw new EvaluatorNotFoundError("No evaluator found for condition expression");
         }
         Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for body expression");
+            throw new EvaluatorNotFoundError("No evaluator found for body expression");
         }
 
         // 创建标签用于跳转

@@ -2,8 +2,8 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
+import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.util.KV;
 
@@ -122,7 +122,7 @@ public class Environment {
      *
      * @param name 函数名
      * @return 函数值
-     * @throws RuntimeException 如果变量不存在
+     * @throws FluxonRuntimeError 如果函数不存在
      */
     @Export
     @NotNull
@@ -131,7 +131,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundException(name);
+        throw new FunctionNotFoundError(this, null, name, new Object[0], -1, -1);
     }
 
     /**
@@ -152,7 +152,7 @@ public class Environment {
      * @param extensionClass 扩展类
      * @param name           函数名
      * @return 函数值
-     * @throws RuntimeException 如果变量不存在
+     * @throws FluxonRuntimeError 如果函数不存在
      */
     @NotNull
     public Function getExtensionFunction(Class<?> extensionClass, String name, int index) {
@@ -160,7 +160,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundException(name, extensionClass, index);
+        throw new FunctionNotFoundError(this, extensionClass, name, new Object[0], -1, index);
     }
 
     /**
@@ -258,7 +258,7 @@ public class Environment {
                 localVariables[index] = value;
                 localVariableNames[index] = name;
             } else {
-                throw new VariableNotFoundException(name + ", index: " + index, Arrays.asList(localVariableNames));
+                throw new VariableNotFoundError(this, name, index, Arrays.asList(localVariableNames));
             }
         }
     }

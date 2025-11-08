@@ -1,20 +1,21 @@
-package org.tabooproject.fluxon.interpreter.error;
+package org.tabooproject.fluxon.runtime.error;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.runtime.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 
 /**
  * 函数参数不匹配
  */
-public class ArgumentTypeMismatchException extends RuntimeException {
+public class ArgumentTypeMismatchError extends FluxonRuntimeError {
 
     private final FunctionContext<?> context;
     private final int index;
     private final Class<?> expect;
     private final Object actual;
 
-    public ArgumentTypeMismatchException(FunctionContext<?> context, int index, @NotNull Class<?> expect, @Nullable Object actual) {
+    public ArgumentTypeMismatchError(FunctionContext<?> context, int index, @NotNull Class<?> expect, @Nullable Object actual) {
         super("Argument " + index + " expect " + expect.getSimpleName() + " but got " + (actual == null ? "null" : actual.getClass().getSimpleName()) + " (" + actual + ")");
         this.context = context;
         this.index = index;

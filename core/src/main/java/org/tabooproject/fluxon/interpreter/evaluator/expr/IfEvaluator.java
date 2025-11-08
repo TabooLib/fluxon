@@ -4,8 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -55,11 +54,11 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         // 获取评估器注册表
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for expression");
+            throw new EvaluatorNotFoundError("No evaluator found for expression");
         }
         Evaluator<ParseResult> thenEval = ctx.getEvaluator(result.getThenBranch());
         if (thenEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for expression");
+            throw new EvaluatorNotFoundError("No evaluator found for expression");
         }
         Evaluator<ParseResult> elseEval = result.getElseBranch() != null ? ctx.getEvaluator(result.getElseBranch()) : null;
 

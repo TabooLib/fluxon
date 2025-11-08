@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
-import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
+import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -318,7 +318,7 @@ public class ContextCallTest {
         try {
             FluxonTestUtil.runSilent("[1]::get(random(1))");
             fail("Should throw ArgumentTypeMismatchException");
-        } catch (ArgumentTypeMismatchException e) {
+        } catch (ArgumentTypeMismatchError e) {
             assertEquals("Argument 0 expect Number but got ArrayList ([1])", e.getMessage());
         }
     }
@@ -328,7 +328,7 @@ public class ContextCallTest {
         try {
             FluxonTestUtil.runSilent("env()::function(0)");
             fail("Should throw ArgumentTypeMismatchException");
-        } catch (ArgumentTypeMismatchException e) {
+        } catch (ArgumentTypeMismatchError e) {
             assertEquals("Argument 0 expect String but got Integer (0)", e.getMessage());
         }
     }

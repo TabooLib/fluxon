@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
+import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
@@ -53,7 +53,7 @@ public class FunctionContext<Target> {
         if (Intrinsics.isCompatibleType(type, argument)) {
             return type.cast(argument);
         }
-        throw new ArgumentTypeMismatchException(this, index, type, argument);
+        throw new ArgumentTypeMismatchError(this, index, type, argument);
     }
 
     @NotNull
@@ -62,7 +62,7 @@ public class FunctionContext<Target> {
         if (argument instanceof Number) {
             return ((Number) argument);
         }
-        throw new ArgumentTypeMismatchException(this, index, Number.class, argument);
+        throw new ArgumentTypeMismatchError(this, index, Number.class, argument);
     }
 
     @Nullable

@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -45,12 +45,12 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         // 获取目标表达式的求值器
         Evaluator<ParseResult> targetEval = ctx.getEvaluator(expression.getTarget());
         if (targetEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for target expression");
+            throw new EvaluatorNotFoundError("No evaluator found for target expression");
         }
         // 获取上下文表达式的求值器
         Evaluator<ParseResult> contextEval = ctx.getEvaluator(expression.getContext());
         if (contextEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for context expression");
+            throw new EvaluatorNotFoundError("No evaluator found for context expression");
         }
 
         // 首先保存当前的 target - 调用 this.environment.getTarget()
@@ -63,7 +63,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         // 计算新的目标值
         Type targetType = targetEval.generateBytecode(expression.getTarget(), ctx, mv);
         if (targetType == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for context call target");
+            throw new VoidError("Void type is not allowed for context call target");
         }
 
         // 设置新的 target - 调用 this.environment.setTarget(newTarget)

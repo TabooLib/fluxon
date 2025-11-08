@@ -2,13 +2,13 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.error.ArgumentTypeMismatchException;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundError;
-import org.tabooproject.fluxon.interpreter.error.IndexAccessException;
-import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
+import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
+import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
+import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
+import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -137,7 +137,7 @@ public final class Intrinsics {
         if (isOptional) {
             return null;
         }
-        throw new VariableNotFoundException(name, Arrays.asList(environment.getLocalVariableNames()));
+        throw new VariableNotFoundError(environment, name, Arrays.asList(environment.getLocalVariableNames()));
     }
 
     /**
@@ -331,7 +331,7 @@ public final class Intrinsics {
                 continue;
             }
             if (!isCompatibleType(expect[i], args[i])) {
-                throw new ArgumentTypeMismatchException(context, i, expect[i], args[i]);
+                throw new ArgumentTypeMismatchError(context, i, expect[i], args[i]);
             }
         }
     }
@@ -376,16 +376,16 @@ public final class Intrinsics {
      * @param target 目标对象（列表、映射或数组）
      * @param index  索引对象
      * @param value  要设置的值
-     * @throws IndexAccessException 如果索引无效或目标类型不支持索引设置
+     * @throws IndexAccessError 如果索引无效或目标类型不支持索引设置
      */
     @SuppressWarnings("unchecked")
     public static void setIndex(Object target, Object index, Object value) {
-        if (target == null) throw IndexAccessException.nullTarget(index);
+        if (target == null) throw IndexAccessError.nullTarget(index);
         if (target instanceof List) {
             int idx = ((Number) index).intValue();
             List<Object> list = (List<Object>) target;
             if (idx < 0 || idx >= list.size()) {
-                throw IndexAccessException.outOfBounds(target, index, list.size());
+                throw IndexAccessError.outOfBounds(target, index, list.size());
             }
             list.set(idx, value);
         } else if (target instanceof Map) {
@@ -394,11 +394,11 @@ public final class Intrinsics {
             int idx = ((Number) index).intValue();
             Object[] arr = (Object[]) target;
             if (idx < 0 || idx >= arr.length) {
-                throw IndexAccessException.outOfBounds(target, index, arr.length);
+                throw IndexAccessError.outOfBounds(target, index, arr.length);
             }
             arr[idx] = value;
         } else {
-            throw IndexAccessException.unsupportedSetType(target, index);
+            throw IndexAccessError.unsupportedSetType(target, index);
         }
     }
 
@@ -408,15 +408,15 @@ public final class Intrinsics {
      * @param target 目标对象（列表、映射、字符串或数组）
      * @param index  索引对象（必须是数字）
      * @return 索引对应的值
-     * @throws IndexAccessException 如果索引无效或目标类型不支持索引访问
+     * @throws IndexAccessError 如果索引无效或目标类型不支持索引访问
      */
     public static Object getIndex(Object target, Object index) {
-        if (target == null) throw IndexAccessException.nullTarget(index);
+        if (target == null) throw IndexAccessError.nullTarget(index);
         if (target instanceof List) {
             int idx = ((Number) index).intValue();
             List<?> list = (List<?>) target;
             if (idx < 0 || idx >= list.size()) {
-                throw IndexAccessException.outOfBounds(target, index, list.size());
+                throw IndexAccessError.outOfBounds(target, index, list.size());
             }
             return list.get(idx);
         } else if (target instanceof Map) {
@@ -425,18 +425,18 @@ public final class Intrinsics {
             int idx = ((Number) index).intValue();
             String str = (String) target;
             if (idx < 0 || idx >= str.length()) {
-                throw IndexAccessException.outOfBounds(target, index, str.length());
+                throw IndexAccessError.outOfBounds(target, index, str.length());
             }
             return String.valueOf(str.charAt(idx));
         } else if (target instanceof Object[]) {
             int idx = ((Number) index).intValue();
             Object[] arr = (Object[]) target;
             if (idx < 0 || idx >= arr.length) {
-                throw IndexAccessException.outOfBounds(target, index, arr.length);
+                throw IndexAccessError.outOfBounds(target, index, arr.length);
             }
             return arr[idx];
         } else {
-            throw IndexAccessException.unsupportedType(target, index);
+            throw IndexAccessError.unsupportedType(target, index);
         }
     }
 }

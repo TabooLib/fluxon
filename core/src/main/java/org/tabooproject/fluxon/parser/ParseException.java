@@ -19,12 +19,26 @@ public class ParseException extends RuntimeException {
      *
      * @param reason 错误原因
      * @param token 相关的词法单元
+     * @param results 已解析的结果
      */
     public ParseException(String reason, Token token, List<ParseResult> results) {
         super(String.format("%s at line: %d, column: %d, next: %s", reason, token.getLine(), token.getColumn(), token.getLexeme()));
         this.reason = reason;
         this.token = token;
         this.results = results;
+    }
+
+    /**
+     * 创建解析异常（简化版，用于子类）
+     *
+     * @param message 错误消息
+     * @param token 相关的词法单元
+     */
+    protected ParseException(String message, Token token) {
+        super(message);
+        this.reason = message;
+        this.token = token;
+        this.results = null;
     }
 
     /**

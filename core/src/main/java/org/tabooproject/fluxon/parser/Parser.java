@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+import org.tabooproject.fluxon.parser.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
@@ -36,6 +36,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private List<ParseResult> results;
     // 待解析的函数调用列表
     private List<PendingFunctionCall> pendingCalls;
+    // 错误收集列表
+    private List<ParseException> errors;
 
     /**
      * 执行解析
@@ -60,15 +62,43 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         this.imports = new ArrayList<>(context.getPackageAutoImport());
         this.results = new ArrayList<>();
         this.pendingCalls = new ArrayList<>();
+        this.errors = new ArrayList<>();
+        
         // 解析导入
-        ImportParser.parse(this);
+        try {
+            ImportParser.parse(this);
+        } catch (ParseException ex) {
+            recordError(ex);
+            synchronize();
+        }
+        
         // 解析顶层语句
         while (!isAtEnd()) {
-            results.add(StatementParser.parseTopLevel(this));
+            try {
+                results.add(StatementParser.parseTopLevel(this));
+            } catch (ParseException ex) {
+                recordError(ex);
+                synchronize();
+            }
         }
+        
         // 解析所有待解析的函数调用
         resolvePendingCalls();
+        
+        // 将错误列表存入上下文
+        context.setAttribute("parseErrors", errors);
         context.setAttribute("results", results);
+        
+        // 如果有错误，抛出异常
+        if (!errors.isEmpty()) {
+            if (errors.size() == 1) {
+                // 只有一个错误，直接抛出
+                throw errors.get(0);
+            } else {
+                // 多个错误，抛出多重异常
+                throw new MultipleParseException(errors);
+            }
+        }
         return results;
     }
 
@@ -330,6 +360,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
         return null;
     }
+    
     /**
      * 获取扩展函数信息
      *
@@ -438,16 +469,51 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             
             // 查找函数信息
             FunctionInfo funcInfo = FunctionInfo.lookup(this, name);
-            
             // 如果函数不存在，抛出异常
             if (!funcInfo.isFound()) {
                 // 恢复到调用位置以提供准确的错误信息
-                throw new FunctionNotFoundException(name);
+                throw new FunctionNotFoundException(name, pending.getNameToken());
             }
             
             // 设置函数位置信息
             expr.setPosition(funcInfo.getPosition());
             expr.setExtensionPosition(funcInfo.getExtensionPosition());
+        }
+    }
+    
+    /**
+     * 记录解析错误
+     * 
+     * @param ex 解析异常
+     */
+    private void recordError(ParseException ex) {
+        errors.add(ex);
+    }
+    
+    /**
+     * 同步到下一个语句边界
+     * 用于错误恢复，跳过当前错误语句并找到下一个安全的解析点
+     */
+    private void synchronize() {
+        // 如果当前 Token 已是语句起始或文件结束，直接返回，交给上层处理
+        if (currentToken.getType().isStatementStart() || isAtEnd()) {
+            return;
+        }
+        // 跳过当前出错的 Token
+        if (!isAtEnd()) {
+            advance();
+        }
+        // 向前扫描直至遇到语句起始、分号或文件结束
+        while (!isAtEnd()) {
+            if (previous().getType() == TokenType.SEMICOLON) {
+                return;
+            }
+            TokenType type = currentToken.getType();
+            if (type.isStatementStart() || type == TokenType.EOF) {
+                return;
+            }
+            // 继续寻找语句起始
+            advance();
         }
     }
 }

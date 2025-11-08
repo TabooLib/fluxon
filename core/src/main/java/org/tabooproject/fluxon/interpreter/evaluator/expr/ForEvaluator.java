@@ -8,14 +8,13 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
-import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -86,11 +85,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取评估器注册表
         Evaluator<ParseResult> collectionEval = ctx.getEvaluator(result.getCollection());
         if (collectionEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for collection expression");
+            throw new EvaluatorNotFoundError("No evaluator found for collection expression");
         }
         Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for body expression");
+            throw new EvaluatorNotFoundError("No evaluator found for body expression");
         }
 
         // 分配局部变量存储迭代器和变量Map
@@ -103,7 +102,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 评估集合表达式并创建迭代器
         if (collectionEval.generateBytecode(result.getCollection(), ctx, mv) == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for for loop collection");
+            throw new VoidError("Void type is not allowed for for loop collection");
         }
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);

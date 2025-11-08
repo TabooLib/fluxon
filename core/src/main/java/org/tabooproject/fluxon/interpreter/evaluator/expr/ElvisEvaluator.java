@@ -4,8 +4,8 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -37,7 +37,7 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         Evaluator<ParseResult> alternativeEval = ctx.getEvaluator(result.getAlternative());
         if (conditionEval == null || alternativeEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for operands");
+            throw new EvaluatorNotFoundError("No evaluator found for operands");
         }
         
         // 创建标签用于跳转
@@ -45,7 +45,7 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         // 生成条件表达式的字节码
         Type conditionType = conditionEval.generateBytecode(result.getCondition(), ctx, mv);
         if (conditionType == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for elvis condition");
+            throw new VoidError("Void type is not allowed for elvis condition");
         }
 
         // 检查条件表达式结果是否为 null
@@ -56,7 +56,7 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
         if (alternativeType == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for elvis alternative");
+            throw new VoidError("Void type is not allowed for elvis alternative");
         }
         
         // 结束标签

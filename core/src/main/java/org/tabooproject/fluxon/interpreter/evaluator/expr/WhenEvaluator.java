@@ -4,8 +4,8 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -57,11 +57,11 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
         if (expr.getSubject() != null) {
             Evaluator<ParseResult> subjectEval = ctx.getEvaluator(expr.getSubject());
             if (subjectEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for when expression subject");
+                throw new EvaluatorNotFoundError("No evaluator found for when expression subject");
             }
             Type subjectType = subjectEval.generateBytecode(expr.getSubject(), ctx, mv);
             if (subjectType == VOID) {
-                throw new VoidValueException("Void type is not allowed for when expression subject");
+                throw new VoidError("Void type is not allowed for when expression subject");
             }
         } else {
             mv.visitInsn(ACONST_NULL);
@@ -89,11 +89,11 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             // 评估分支条件
             Evaluator<ParseResult> conditionEval = ctx.getEvaluator(branch.getCondition());
             if (conditionEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for when expression condition");
+                throw new EvaluatorNotFoundError("No evaluator found for when expression condition");
             }
             Type conditionType = conditionEval.generateBytecode(branch.getCondition(), ctx, mv);
             if (conditionType == VOID) {
-                throw new VoidValueException("Void type is not allowed for when expression condition");
+                throw new VoidError("Void type is not allowed for when expression condition");
             }
             // 加载 matchType
             mv.visitFieldInsn(
@@ -120,7 +120,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             mv.visitLabel(branchLabels[i]);
             Evaluator<ParseResult> branchEval = ctx.getEvaluator(branches.get(i).getResult());
             if (branchEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for when expression branch result");
+                throw new EvaluatorNotFoundError("No evaluator found for when expression branch result");
             }
             Type branchType = branchEval.generateBytecode(branches.get(i).getResult(), ctx, mv);
             // 如果分支返回 void，则推送 null 作为返回值

@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -59,10 +59,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             // 评估参数表达式
             Evaluator<ParseResult> argEval = ctx.getEvaluator(arguments[i]);
             if (argEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for argument expression");
+                throw new EvaluatorNotFoundError("No evaluator found for argument expression");
             }
             if (argEval.generateBytecode(arguments[i], ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for function arguments");
+                throw new VoidError("Void type is not allowed for function arguments");
             }
             mv.visitInsn(AASTORE); // 存储到数组
         }

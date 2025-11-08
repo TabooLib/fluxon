@@ -4,7 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -47,21 +47,21 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         if (result.getBody() != null) {
             tryEval = ctx.getEvaluator(result.getBody());
             if (tryEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for try body");
+                throw new EvaluatorNotFoundError("No evaluator found for try body");
             }
         }
         Evaluator<ParseResult> catchEval = null;
         if (result.getCatchBody() != null) {
             catchEval = ctx.getEvaluator(result.getCatchBody());
             if (catchEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for catch body");
+                throw new EvaluatorNotFoundError("No evaluator found for catch body");
             }
         }
         Evaluator<ParseResult> finallyEval = null;
         if (result.getFinallyBody() != null) {
             finallyEval = ctx.getEvaluator(result.getFinallyBody());
             if (finallyEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for finally body");
+                throw new EvaluatorNotFoundError("No evaluator found for finally body");
             }
         }
         

@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.parser.type;
 
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;

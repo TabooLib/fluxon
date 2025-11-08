@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -54,12 +54,12 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
         // 获取 target 的求值器
         Evaluator<ParseResult> targetEval = ctx.getEvaluator(expr.getTarget());
         if (targetEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for index access target");
+            throw new EvaluatorNotFoundError("No evaluator found for index access target");
         }
         // 生成 target 的字节码
         Type targetType = targetEval.generateBytecode(expr.getTarget(), ctx, mv);
         if (targetType == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for index access target");
+            throw new VoidError("Void type is not allowed for index access target");
         }
         List<ParseResult> indices = expr.getIndices();
         // 对每个索引依次调用 Intrinsics.getIndex
@@ -67,12 +67,12 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
             // 获取索引的求值器
             Evaluator<ParseResult> indexEval = ctx.getEvaluator(indexExpr);
             if (indexEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for index expression");
+                throw new EvaluatorNotFoundError("No evaluator found for index expression");
             }
             // 生成索引的字节码
             Type indexType = indexEval.generateBytecode(indexExpr, ctx, mv);
             if (indexType == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for index");
+                throw new VoidError("Void type is not allowed for index");
             }
             // 调用 Intrinsics.getIndex(Object target, Object index)
             mv.visitMethodInsn(

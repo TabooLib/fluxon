@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -46,10 +46,10 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             // 生成元素的字节码
             Evaluator<ParseResult> eval = ctx.getEvaluator(element);
             if (eval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for element");
+                throw new EvaluatorNotFoundError("No evaluator found for element");
             }
             if (eval.generateBytecode(element, ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for list element");
+                throw new VoidError("Void type is not allowed for list element");
             }
             // 调用 ArrayList.add
             mv.visitMethodInsn(INVOKEVIRTUAL, ARRAY_LIST.getPath(), "add", "(" + Type.OBJECT + ")Z", false);

@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.interpreter.error.FunctionNotFoundException;
+import org.tabooproject.fluxon.parser.error.FunctionNotFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

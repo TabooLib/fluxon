@@ -4,7 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -40,15 +40,15 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
         // 获取评估器
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for condition expression");
+            throw new EvaluatorNotFoundError("No evaluator found for condition expression");
         }
         Evaluator<ParseResult> trueExprEval = ctx.getEvaluator(result.getTrueExpr());
         if (trueExprEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for true expression");
+            throw new EvaluatorNotFoundError("No evaluator found for true expression");
         }
         Evaluator<ParseResult> falseExprEval = ctx.getEvaluator(result.getFalseExpr());
         if (falseExprEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for false expression");
+            throw new EvaluatorNotFoundError("No evaluator found for false expression");
         }
 
         // 创建局部变量用于存储结果

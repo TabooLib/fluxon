@@ -1,6 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
-import org.tabooproject.fluxon.interpreter.error.VariableNotFoundException;
+import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
@@ -269,7 +269,7 @@ public class ExpressionParser {
                     // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
                     ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                 } else {
-                    throw new VariableNotFoundException(name, new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()));
+                    throw new VariableNotFoundException(name, new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()), parser.peek());
                 }
             }
             // 引用后可能有后缀操作（[]、()）和上下文调用（::）

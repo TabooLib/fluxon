@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -48,18 +48,18 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
             // 生成 key 的字节码
             Evaluator<ParseResult> keyEval = ctx.getEvaluator(entry.getKey());
             if (keyEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for key");
+                throw new EvaluatorNotFoundError("No evaluator found for key");
             }
             if (keyEval.generateBytecode(entry.getKey(), ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for map key");
+                throw new VoidError("Void type is not allowed for map key");
             }
             // 生成 value 的字节码
             Evaluator<ParseResult> valueEval = ctx.getEvaluator(entry.getValue());
             if (valueEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for value");
+                throw new EvaluatorNotFoundError("No evaluator found for value");
             }
             if (valueEval.generateBytecode(entry.getValue(), ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for map value");
+                throw new VoidError("Void type is not allowed for map value");
             }
             // 调用 put 方法
             mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);

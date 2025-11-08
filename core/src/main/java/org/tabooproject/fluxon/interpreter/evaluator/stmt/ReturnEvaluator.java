@@ -4,7 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -38,7 +38,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             // 有返回值：计算表达式并返回
             Evaluator<ParseResult> valueEval = ctx.getEvaluator(result.getValue());
             if (valueEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for return value expression");
+                throw new EvaluatorNotFoundError("No evaluator found for return value expression");
             }
             // 生成返回值表达式的字节码
             Type valueType = valueEval.generateBytecode(result.getValue(), ctx, mv);

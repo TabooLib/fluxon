@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -116,7 +116,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         ParseResult target = result.getTarget();
         Evaluator<ParseResult> valueEval = ctx.getEvaluator(result.getValue());
         if (valueEval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for value");
+            throw new EvaluatorNotFoundError("No evaluator found for value");
         }
 
         // 变量赋值
@@ -129,7 +129,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 mv.visitVarInsn(ALOAD, 0);             // this
                 mv.visitLdcInsn(name);                 // 变量名
                 if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
-                    throw new VoidValueException("Void type is not allowed for assignment value");
+                    throw new VoidError("Void type is not allowed for assignment value");
                 }
                 // 压入 index 参数
                 mv.visitLdcInsn(result.getPosition());
@@ -162,20 +162,20 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             // 生成 target 的字节码
             Evaluator<ParseResult> targetEval = ctx.getEvaluator(idx.getTarget());
             if (targetEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for index access target");
+                throw new EvaluatorNotFoundError("No evaluator found for index access target");
             }
             if (targetEval.generateBytecode(idx.getTarget(), ctx, mv) == Type.VOID) {
-                throw new VoidValueException("Void type is not allowed for index access target");
+                throw new VoidError("Void type is not allowed for index access target");
             }
 
             // 处理多索引：前 n-1 个索引用于导航到目标容器
             for (int i = 0; i < indices.size() - 1; i++) {
                 Evaluator<ParseResult> indexEval = ctx.getEvaluator(indices.get(i));
                 if (indexEval == null) {
-                    throw new EvaluatorNotFoundException("No evaluator found for index expression");
+                    throw new EvaluatorNotFoundError("No evaluator found for index expression");
                 }
                 if (indexEval.generateBytecode(indices.get(i), ctx, mv) == Type.VOID) {
-                    throw new VoidValueException("Void type is not allowed for index");
+                    throw new VoidError("Void type is not allowed for index");
                 }
                 // 调用 Intrinsics.getIndex 导航到下一层
                 mv.visitMethodInsn(
@@ -191,17 +191,17 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             ParseResult lastIndexExpr = indices.get(indices.size() - 1);
             Evaluator<ParseResult> lastIndexEval = ctx.getEvaluator(lastIndexExpr);
             if (lastIndexEval == null) {
-                throw new EvaluatorNotFoundException("No evaluator found for last index expression");
+                throw new EvaluatorNotFoundError("No evaluator found for last index expression");
             }
 
             // 简单赋值：container[index] = value
             if (operatorType == TokenType.ASSIGN) {
                 if (lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv) == Type.VOID) {
-                    throw new VoidValueException("Void type is not allowed for index");
+                    throw new VoidError("Void type is not allowed for index");
                 }
                 // 栈：container, index
                 if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
-                    throw new VoidValueException("Void type is not allowed for assignment value");
+                    throw new VoidError("Void type is not allowed for assignment value");
                 }
                 // 栈：container, index, value
                 // 调用 Intrinsics.setIndex(container, index, value)
@@ -223,7 +223,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 // 栈：container, container
 
                 if (lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv) == Type.VOID) {
-                    throw new VoidValueException("Void type is not allowed for index");
+                    throw new VoidError("Void type is not allowed for index");
                 }
                 // 栈：container, container, index
 
@@ -275,7 +275,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     ) {
         // 生成新值的字节码
         if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for assignment value");
+            throw new VoidError("Void type is not allowed for assignment value");
         }
         // 执行操作
         String operatorName = OPERATORS.get(operatorType);

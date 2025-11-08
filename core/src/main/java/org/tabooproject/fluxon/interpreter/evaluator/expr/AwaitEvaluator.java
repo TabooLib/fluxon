@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.error.EvaluatorNotFoundException;
-import org.tabooproject.fluxon.interpreter.error.VoidValueException;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -33,11 +33,11 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
         // 获取内部表达式的求值器
         Evaluator<ParseResult> eval = ctx.getEvaluator(result.getExpression());
         if (eval == null) {
-            throw new EvaluatorNotFoundException("No evaluator found for await expression");
+            throw new EvaluatorNotFoundError("No evaluator found for await expression");
         }
         // 生成内部表达式的字节码
         if (eval.generateBytecode(result.getExpression(), ctx, mv) == Type.VOID) {
-            throw new VoidValueException("Void type is not allowed for await expression");
+            throw new VoidError("Void type is not allowed for await expression");
         }
         // 调用 Operations.awaitValue 方法
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
