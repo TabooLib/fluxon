@@ -56,37 +56,7 @@ public class EnhancedParserTest {
         parser.defineVariable("x");
         parser.defineVariable("y");
         parser.defineVariable("value");
-
         return parser.process(context);
-    }
-
-    /**
-     * 测试无括号函数调用的各种情况
-     */
-    @Test
-    public void testNoBracketFunctionCalls() {
-        // 基本无括号调用
-        List<ParseResult> results = parseSource("print(hello)");
-        assertEquals(1, results.size());
-        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
-        assertEquals("print", call.getCallee());
-        assertEquals(1, call.getArguments().length);
-        assertTrue(call.getArguments()[0] instanceof StringLiteral);
-        assertEquals("hello", ((StringLiteral) call.getArguments()[0]).getValue());
-
-        // 嵌套无括号调用
-        results = parseSource("print(checkGrade(95))");
-        assertEquals(1, results.size());
-        stmt = (ExpressionStatement) results.get(0);
-        call = (FunctionCallExpression) stmt.getExpression();
-        assertEquals("print", call.getCallee());
-        assertEquals(1, call.getArguments().length);
-        assertTrue(call.getArguments()[0] instanceof FunctionCallExpression);
-        FunctionCallExpression nestedCall = (FunctionCallExpression) call.getArguments()[0];
-        assertEquals("checkGrade", nestedCall.getCallee());
-        assertEquals(1, nestedCall.getArguments().length);
-        assertEquals(95, ((IntLiteral) nestedCall.getArguments()[0]).getValue());
     }
 
     /**

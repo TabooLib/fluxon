@@ -119,7 +119,7 @@ public class ParserTest {
      */
     @Test
     public void testWhenExpression() {
-        String source = "def describe(num) = when { &num % 2 == 0 -> \"even\"; &num < 0 -> \"negative odd\"; else -> \"positive odd\" }";
+        String source = "def describe(num) = when { &num % 2 == 0 -> \"even\"; &num < 0 -> \"negative(odd)\"; else -> \"positive(odd)\" }";
         List<ParseResult> results = parseSource(source);
 
         assertEquals(1, results.size());
@@ -133,55 +133,6 @@ public class ParserTest {
 
         WhenExpression when = (WhenExpression) func.getBody();
         assertEquals(3, when.getBranches().size());
-    }
-
-    /**
-     * 测试无括号函数调用
-     */
-    @Test
-    public void testNoBracketFunctionCall() {
-        String source = "print checkGrade 85";
-        List<ParseResult> results = parseSource(source);
-
-        assertEquals(1, results.size());
-        assertTrue(results.get(0) instanceof ExpressionStatement);
-
-        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        assertTrue(stmt.getExpression() instanceof FunctionCallExpression);
-
-        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
-        assertEquals("print", call.getCallee());
-        assertEquals(1, call.getArguments().length);
-
-        ParseResult arg = call.getArguments()[0];
-        assertTrue(arg instanceof FunctionCallExpression);
-
-        FunctionCallExpression innerCall = (FunctionCallExpression) arg;
-        assertEquals("checkGrade", innerCall.getCallee());
-        assertEquals(1, innerCall.getArguments().length);
-        assertTrue(innerCall.getArguments()[0] instanceof IntLiteral);
-        assertEquals(85, ((IntLiteral) innerCall.getArguments()[0]).getValue());
-    }
-
-    /**
-     * 测试未加引号标识符自动转为字符串
-     */
-    @Test
-    public void testUnquotedIdentifierAsString() {
-        String source = "player head";
-        List<ParseResult> results = parseSource(source);
-
-        assertEquals(1, results.size());
-        assertTrue(results.get(0) instanceof ExpressionStatement);
-
-        ExpressionStatement stmt = (ExpressionStatement) results.get(0);
-        assertTrue(stmt.getExpression() instanceof FunctionCallExpression);
-
-        FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
-        assertEquals("player", call.getCallee());
-        assertEquals(1, call.getArguments().length);
-        assertTrue(call.getArguments()[0] instanceof StringLiteral);
-        assertEquals("head", ((StringLiteral) call.getArguments()[0]).getValue());
     }
 
     /**

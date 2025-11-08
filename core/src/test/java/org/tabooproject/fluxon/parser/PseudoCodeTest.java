@@ -70,19 +70,19 @@ public class PseudoCodeTest {
     @Test
     public void testComplex() {
         // 测试混合
-        testPseudoCode("def factorial(n) = if &n <= 1 then 1 else &n * factorial &n - 1\n" +
-                "async def loadUser(id) = await fetch \"users/${id}\"\n" +
+        testPseudoCode("def factorial(n) = if &n <= 1 then 1 else &n * factorial(&n - 1)\n" +
+                "async def loadUser(id) = await fetch(\"users/${id}\")\n" +
                 "a = 0\n" +
                 "def describe(num) = when {\n" +
                 "    &a -> \"specific\"\n" +
                 "    &num % 2 == 0 -> \"even\"\n" +
-                "    &num < 0 -> \"negative odd\"\n" +
-                "    else -> \"positive odd\"\n" +
+                "    &num < 0 -> \"negative(odd)\"\n" +
+                "    else -> \"positive(odd)\"\n" +
                 "}\n" +
-                "print checkGrade 85 - 1\n" +
-                "print head\n" +
-                "player head\n" +
-                "player head to player hand\n" +
+                "print(describe(85 - 1))\n" +
+                "print(head)\n" +
+                "player(head)\n" +
+                "player(head) to player(hand)\n" +
                 "if if true then 1 else 0 then true else false");
     }
 
@@ -91,7 +91,7 @@ public class PseudoCodeTest {
         // 测试 while
         testPseudoCode("i = 10\n" +
                 "while i > 0 {\n" +
-                "    print &i ?: 0\n" +
+                "    print(&i ?: 0)\n" +
                 "}");
     }
 

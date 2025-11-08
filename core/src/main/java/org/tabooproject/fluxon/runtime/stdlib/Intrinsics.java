@@ -180,7 +180,10 @@ public final class Intrinsics {
                 try {
                     return finalFunction.call(context);
                 } catch (Throwable ex) {
-                    ex.printStackTrace(); // 打印 async 的异常
+                    // 如果有 @except 注解则打印 async 的异常
+                    if (AnnotationAccess.hasAnnotation(finalFunction, "except")) {
+                        ex.printStackTrace();
+                    }
                     throw ex;
                 }
             });
@@ -190,8 +193,11 @@ public final class Intrinsics {
                 try {
                     future.complete(finalFunction.call(context));
                 } catch (Throwable ex) {
-                    ex.printStackTrace(); // 打印 sync 的异常
-                    throw ex;
+                    // 如果有 @except 注解则打印 async 的异常
+                    if (AnnotationAccess.hasAnnotation(finalFunction, "except")) {
+                        ex.printStackTrace();
+                    }
+                    future.completeExceptionally(ex);
                 }
             });
             return future;

@@ -3,8 +3,11 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.FluxonTestUtil;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.concurrent.CompletableFuture;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class TryTest {
@@ -37,5 +40,14 @@ public class TryTest {
     @Test
     public void testTry4() {
         assertEquals("java.lang.RuntimeException: error", Fluxon.eval("try throw('error') catch (e) &e").toString());
+    }
+
+    @Test
+    public void testAsyncError() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                        "async test() = throw('error')\n" +
+                        "test()");
+        assertInstanceOf(CompletableFuture.class, result.getCompileResult());
+        assertInstanceOf(CompletableFuture.class, result.getCompileResult());
     }
 }
