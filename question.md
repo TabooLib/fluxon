@@ -3,7 +3,7 @@
 
 ## 状态概览
 
-- ⚠️ 错误处理与恢复机制：已具备 panic 模式恢复与多错误聚合，仍待增强诊断与提示质量。
+- ⚠️ 错误处理与恢复机制：已具备 panic 模式恢复、多错误聚合与源码摘录，仍待增强修复建议与语义级诊断。
 - ✅ 解析器结构不完整：核心解析器组件已经补全并通过测试覆盖。
 - ⚠️ 性能与资源管理：词法分析和压力测试已有改进，但深度递归和内存策略仍有风险。
 - ⚠️ 中间表示与优化阶段：字节码生成已上线，但缺少独立 IR 与优化管线。
@@ -14,8 +14,8 @@
 
 ### 1. 错误处理与恢复机制（部分解决）
 - `parser/Parser.java` 现采用 panic-mode `synchronize()`，释放错误后继续解析，并在 `process` 阶段汇总为 `MultipleParseException`。
-- `parser/ParseException.java` 与新建的 `MultipleParseException` 支持多点错误报告，`ErrorRecoveryTest` 系列单元验证常见恢复场景。
-- 仍缺乏面向用户的修复提示、上下文摘录以及语义级恢复策略，复杂语法链路下可能仍终止于首个致命错误。
+- `parser/ParseException.java`、`parser/SourceExcerpt.java` 提供 Rust 风格源码摘录；`MultipleParseException.formatDiagnostics()` 支持批量格式化，`ErrorRecoveryTest` 用例覆盖多种恢复情境。
+- 仍缺乏面向用户的修复提示、跨错误的上下文聚合以及语义级恢复策略，复杂语法链路下可能仍终止于首个致命错误。
 
 ### 2. 解析器结构完整性（已解决）
 - `parser/type/FunctionCallParser.java` 现已完整实现括号调用、延迟函数解析的补偿逻辑。
@@ -41,4 +41,4 @@
 - Unicode/国际化：`lexer/Lexer.java` 支持 `Character.isIdeographic` 与自定义中文字符检测。
 - 语言规范文档：`SYNTAX.md` 提供完整语法说明，配套示例覆盖核心特性。
 
-> 后续建议聚焦于：完善 `MultipleParseException` 诊断信息（位置聚合、修复建议）；构建 AST 访问者/IR 层为后续优化铺路；评估深度解析与内存使用的防护线。
+> 后续建议聚焦于：在源码摘录基础上补充修复建议与跨错误聚合视图；构建 AST 访问者/IR 层为后续优化铺路；评估深度解析与内存使用的防护线。

@@ -13,10 +13,6 @@ public class VariableNotFoundException extends ParseException {
 
     private final List<String> vars;
 
-    public VariableNotFoundException(String message, List<String> vars, Token token) {
-        this(message, vars, token, null);
-    }
-    
     public VariableNotFoundException(String message, List<String> vars, Token token, SourceExcerpt excerpt) {
         super(message + ", LocalVars: " + vars, token, excerpt);
         this.vars = vars;

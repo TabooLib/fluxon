@@ -87,7 +87,7 @@ public class ParseException extends RuntimeException {
      *
      * @return 格式化后的错误信息
      */
-    public String formatWithSource() {
+    public String formatDiagnostic() {
         if (excerpt == null) {
             return getMessage();
         }

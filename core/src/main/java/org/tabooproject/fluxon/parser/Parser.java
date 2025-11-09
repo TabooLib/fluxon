@@ -63,7 +63,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         this.results = new ArrayList<>();
         this.pendingCalls = new ArrayList<>();
         this.errors = new ArrayList<>();
-        
+
         // 解析导入
         try {
             ImportParser.parse(this);
@@ -71,7 +71,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             recordError(ex);
             synchronize();
         }
-        
+
         // 解析顶层语句
         while (!isAtEnd()) {
             try {
@@ -81,14 +81,14 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 synchronize();
             }
         }
-        
+
         // 解析所有待解析的函数调用
         resolvePendingCalls();
-        
+
         // 将错误列表存入上下文
         context.setAttribute("parseErrors", errors);
         context.setAttribute("results", results);
-        
+
         // 如果有错误，抛出异常
         if (!errors.isEmpty()) {
             if (errors.size() == 1) {
@@ -265,7 +265,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 创建带源码摘录的解析异常
      *
      * @param reason 错误原因
-     * @param token 相关的词法单元
+     * @param token  相关的词法单元
      * @return 解析异常
      */
     public ParseException createParseException(String reason, Token token) {
@@ -373,7 +373,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
         return null;
     }
-    
+
     /**
      * 获取扩展函数信息
      *
@@ -463,9 +463,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
 
     /**
      * 注册待解析的函数调用
-     * 
+     *
      * @param expression 函数调用表达式
-     * @param nameToken 函数名 token
+     * @param nameToken  函数名 token
      */
     public void registerPendingCall(FunctionCallExpression expression, Token nameToken) {
         pendingCalls.add(new PendingFunctionCall(expression, nameToken));
@@ -477,9 +477,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     private void resolvePendingCalls() {
         for (PendingFunctionCall pending : pendingCalls) {
-            FunctionCallExpression expr = pending.getExpression();
             String name = pending.getFunctionName();
-            
             // 查找函数信息
             FunctionInfo funcInfo = FunctionInfo.lookup(this, name);
             // 如果函数不存在，抛出异常
@@ -489,58 +487,62 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 SourceExcerpt excerpt = SourceExcerpt.from(context, token);
                 throw new FunctionNotFoundException(name, token, excerpt);
             }
-            
             // 设置函数位置信息
+            FunctionCallExpression expr = pending.getExpression();
             expr.setPosition(funcInfo.getPosition());
             expr.setExtensionPosition(funcInfo.getExtensionPosition());
         }
     }
-    
+
     /**
      * 记录解析错误
-     * 
+     *
      * @param ex 解析异常
      */
     private void recordError(ParseException ex) {
         errors.add(ex);
     }
-    
+
     /**
      * 同步到下一个语句边界
      * 用于错误恢复，跳过当前错误语句并找到下一个安全的解析点
+     * <p>
+     * 采用 panic-mode 恢复策略：
+     * 1. 跟踪大括号深度，确保完整跳过嵌套块
+     * 2. 在深度为 0 时遇到分号或顶层关键字（def/fun/val/var等）立即停止
+     * 3. 使用 lastPosition 哨兵防止无限循环
+     * 4. 在遇到左大括号时增加深度，右大括号时减少深度
+     * 5. 只在大括号平衡后才认为到达安全恢复点
      */
     private void synchronize() {
         if (isAtEnd()) {
             return;
         }
-
         int braceDepth = 0;
         int lastPosition = -1;
-
         while (!isAtEnd()) {
+            // 防止无限循环：如果位置没变化则强制前进
             if (position == lastPosition) {
                 advance();
                 continue;
             }
             lastPosition = position;
-
             TokenType type = currentToken.getType();
-
+            // 遇到分号：语句分隔符，消费后停止
             if (type == TokenType.SEMICOLON) {
                 advance();
                 return;
             }
-
-            if (braceDepth == 0 && isTopLevelRecoveryPoint(type)) {
+            // 在顶层遇到恢复点关键字：停止同步
+            if (braceDepth == 0 && type.isTopLevelRecoveryPoint()) {
                 return;
             }
-
+            // 跟踪大括号深度
             if (type == TokenType.LEFT_BRACE) {
                 braceDepth++;
                 advance();
                 continue;
             }
-
             if (type == TokenType.RIGHT_BRACE) {
                 if (braceDepth > 0) {
                     braceDepth--;
@@ -548,30 +550,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
                 advance();
                 continue;
             }
-
             advance();
-        }
-    }
-
-    private boolean isTopLevelRecoveryPoint(TokenType type) {
-        switch (type) {
-            case DEF:
-            case FUN:
-            case VAL:
-            case VAR:
-            case IMPORT:
-            case SYNC:
-            case ASYNC:
-            case EOF:
-                return true;
-            default:
-                return false;
         }
     }
 
     private Token selectHighlightToken(Token token) {
         if (token == null) {
-            return token;
+            return null;
         }
         if (shouldFallbackToPrevious(token) && position > 0) {
             Token previous = previous();

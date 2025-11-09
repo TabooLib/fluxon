@@ -108,6 +108,7 @@ class SourceExcerptTest {
         assertNotNull(excerpt);
         
         String diagnostic = excerpt.formatDiagnostic("E0001", "Test error message");
+        System.out.println(diagnostic);
         assertNotNull(diagnostic);
         assertTrue(diagnostic.contains("error[E0001]: Test error message"));
         assertTrue(diagnostic.contains("-->"));
@@ -156,10 +157,11 @@ class SourceExcerptTest {
             parser.process(context);
             fail("Should have thrown ParseException");
         } catch (ParseException ex) {
+            System.out.println(ex.formatDiagnostic());
             // 检查异常是否包含源码摘录
             SourceExcerpt excerpt = ex.getExcerpt();
             if (excerpt != null) {
-                String formatted = ex.formatWithSource();
+                String formatted = ex.formatDiagnostic();
                 assertNotNull(formatted);
                 assertTrue(formatted.contains("error:"));
                 assertTrue(formatted.contains("-->"));
@@ -190,7 +192,7 @@ class SourceExcerptTest {
             fail("Should have thrown MultipleParseException");
         } catch (MultipleParseException ex) {
             // 验证多错误格式化
-            String diagnostics = ex.formatDiagnostics();
+            String diagnostics = ex.formatDiagnostic();
             System.out.println(diagnostics);
             assertNotNull(diagnostics);
             assertTrue(diagnostics.contains("Found 2 parse error(s)"));

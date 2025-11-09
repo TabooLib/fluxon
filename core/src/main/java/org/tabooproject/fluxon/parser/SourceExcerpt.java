@@ -103,7 +103,7 @@ public class SourceExcerpt {
         } else {
             spanLength = 1;
         }
-        return new SourceExcerpt(context.getSource(), line, column, contextLines, focusLineIndex, zeroBasedColumn, spanLength);
+        return new SourceExcerpt(context.getFileName(), line, column, contextLines, focusLineIndex, zeroBasedColumn, spanLength);
     }
 
     /**

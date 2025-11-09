@@ -11,6 +11,7 @@ import java.util.Map;
 public class CompilationContext {
 
     private final String source;
+    private final String fileName;
     private final Map<String, Object> attributes = new HashMap<>();
 
     // 语法特性
@@ -25,13 +26,26 @@ public class CompilationContext {
      */
     public CompilationContext(String source) {
         this.source = source;
+        this.fileName = "main";
     }
-    
+
+    public CompilationContext(String source, String fileName) {
+        this.source = source;
+        this.fileName = fileName;
+    }
+
     /**
      * 获取源代码
      */
     public String getSource() {
         return source;
+    }
+
+    /**
+     * 获取文件名
+     */
+    public String getFileName() {
+        return fileName;
     }
     
     /**

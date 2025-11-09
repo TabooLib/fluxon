@@ -151,4 +151,24 @@ public enum TokenType {
                 return false;
         }
     }
+
+    /**
+     * 是否为顶层恢复点（用于错误恢复同步）
+     * 这些关键字标志着新的顶层声明或导入语句的开始
+     */
+    public boolean isTopLevelRecoveryPoint() {
+        switch (this) {
+            case DEF:
+            case FUN:
+            case VAL:
+            case VAR:
+            case IMPORT:
+            case SYNC:
+            case ASYNC:
+            case EOF:
+                return true;
+            default:
+                return false;
+        }
+    }
 }
