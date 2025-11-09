@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.error;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseException;
+import org.tabooproject.fluxon.parser.SourceExcerpt;
 
 import java.util.List;
 
@@ -13,7 +14,11 @@ public class VariableNotFoundException extends ParseException {
     private final List<String> vars;
 
     public VariableNotFoundException(String message, List<String> vars, Token token) {
-        super(message + ", LocalVars: " + vars, token);
+        this(message, vars, token, null);
+    }
+    
+    public VariableNotFoundException(String message, List<String> vars, Token token, SourceExcerpt excerpt) {
+        super(message + ", LocalVars: " + vars, token, excerpt);
         this.vars = vars;
     }
 

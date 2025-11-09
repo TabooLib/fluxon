@@ -258,7 +258,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 抛出异常
      */
     public void error(String error) {
-        throw new ParseException(error, currentToken, results);
+        throw createParseException(error, currentToken);
+    }
+
+    /**
+     * 创建带源码摘录的解析异常
+     *
+     * @param reason 错误原因
+     * @param token 相关的词法单元
+     * @return 解析异常
+     */
+    public ParseException createParseException(String reason, Token token) {
+        Token highlightToken = selectHighlightToken(token);
+        SourceExcerpt excerpt = SourceExcerpt.from(context, highlightToken);
+        return new ParseException(reason, highlightToken, results, excerpt);
     }
 
     /**
@@ -266,7 +279,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public Token consume() {
         if (isAtEnd()) {
-            throw new ParseException("Eof", currentToken, results);
+            throw createParseException("Eof", currentToken);
         }
         advance();
         return previous();
@@ -284,7 +297,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             advance();
             return previous();
         }
-        throw new ParseException(message, currentToken, results);
+        throw createParseException(message, currentToken);
     }
 
     /**
@@ -472,7 +485,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             // 如果函数不存在，抛出异常
             if (!funcInfo.isFound()) {
                 // 恢复到调用位置以提供准确的错误信息
-                throw new FunctionNotFoundException(name, pending.getNameToken());
+                Token token = pending.getNameToken();
+                SourceExcerpt excerpt = SourceExcerpt.from(context, token);
+                throw new FunctionNotFoundException(name, token, excerpt);
             }
             
             // 设置函数位置信息
@@ -495,25 +510,89 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * 用于错误恢复，跳过当前错误语句并找到下一个安全的解析点
      */
     private void synchronize() {
-        // 如果当前 Token 已是语句起始或文件结束，直接返回，交给上层处理
-        if (currentToken.getType().isStatementStart() || isAtEnd()) {
+        if (isAtEnd()) {
             return;
         }
-        // 跳过当前出错的 Token
-        if (!isAtEnd()) {
+
+        int braceDepth = 0;
+        int lastPosition = -1;
+
+        while (!isAtEnd()) {
+            if (position == lastPosition) {
+                advance();
+                continue;
+            }
+            lastPosition = position;
+
+            TokenType type = currentToken.getType();
+
+            if (type == TokenType.SEMICOLON) {
+                advance();
+                return;
+            }
+
+            if (braceDepth == 0 && isTopLevelRecoveryPoint(type)) {
+                return;
+            }
+
+            if (type == TokenType.LEFT_BRACE) {
+                braceDepth++;
+                advance();
+                continue;
+            }
+
+            if (type == TokenType.RIGHT_BRACE) {
+                if (braceDepth > 0) {
+                    braceDepth--;
+                }
+                advance();
+                continue;
+            }
+
             advance();
         }
-        // 向前扫描直至遇到语句起始、分号或文件结束
-        while (!isAtEnd()) {
-            if (previous().getType() == TokenType.SEMICOLON) {
-                return;
+    }
+
+    private boolean isTopLevelRecoveryPoint(TokenType type) {
+        switch (type) {
+            case DEF:
+            case FUN:
+            case VAL:
+            case VAR:
+            case IMPORT:
+            case SYNC:
+            case ASYNC:
+            case EOF:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private Token selectHighlightToken(Token token) {
+        if (token == null) {
+            return token;
+        }
+        if (shouldFallbackToPrevious(token) && position > 0) {
+            Token previous = previous();
+            if (previous != null && previous.getLine() > 0) {
+                return previous;
             }
-            TokenType type = currentToken.getType();
-            if (type.isStatementStart() || type == TokenType.EOF) {
-                return;
-            }
-            // 继续寻找语句起始
-            advance();
+        }
+        return token;
+    }
+
+    private boolean shouldFallbackToPrevious(Token token) {
+        TokenType type = token.getType();
+        switch (type) {
+            case RIGHT_BRACE:
+            case RIGHT_PAREN:
+            case RIGHT_BRACKET:
+            case SEMICOLON:
+            case EOF:
+                return true;
+            default:
+                return token.getLexeme().isEmpty();
         }
     }
 }

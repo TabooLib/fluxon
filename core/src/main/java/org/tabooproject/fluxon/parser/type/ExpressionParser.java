@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
@@ -44,7 +45,7 @@ public class ExpressionParser {
      */
     public static ParseResult parse(Parser parser) {
         if (currentDepth > MAX_RECURSION_DEPTH) {
-            throw new ParseException("Maximum recursion depth exceeded", parser.peek(), parser.getResults());
+            throw parser.createParseException("Maximum recursion depth exceeded", parser.peek());
         }
         currentDepth++;
         try {
@@ -97,7 +98,7 @@ public class ExpressionParser {
                 // 索引访问赋值 map["key"] = value
                 return new AssignExpression(expr, operator, parseAssignment(parser), -1);
             }
-            throw new ParseException("Invalid assignment target: " + expr, operator, parser.getResults());
+            throw parser.createParseException("Invalid assignment target: " + expr, operator);
         }
         return expr;
     }
@@ -269,7 +270,9 @@ public class ExpressionParser {
                     // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
                     ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                 } else {
-                    throw new VariableNotFoundException(name, new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()), parser.peek());
+                    Token token = parser.peek();
+                    SourceExcerpt excerpt = SourceExcerpt.from(parser.getContext(), token);
+                    throw new VariableNotFoundException(name, new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()), token, excerpt);
                 }
             }
             // 引用后可能有后缀操作（[]、()）和上下文调用（::）
@@ -389,9 +392,9 @@ public class ExpressionParser {
             }
             // 文件结束
             case EOF:
-                throw new ParseException("Eof", parser.peek(), parser.getResults());
+                throw parser.createParseException("Eof", parser.peek());
             default:
-                throw new ParseException("Expected expression", parser.peek(), parser.getResults());
+                throw parser.createParseException("Expected expression", parser.peek());
         }
     }
 }

@@ -151,28 +151,4 @@ public enum TokenType {
                 return false;
         }
     }
-
-    /**
-     * 是否为语句起始关键字
-     */
-    public boolean isStatementStart() {
-        switch (this) {
-            case DEF:
-            case FUN:
-            case VAL:
-            case VAR:
-            case SYNC:
-            case ASYNC:
-            case IMPORT:
-            case RETURN:
-            case IF:
-            case FOR:
-            case WHEN:
-            case WHILE:
-            case TRY:
-                return true;
-            default:
-                return false;
-        }
-    }
 }

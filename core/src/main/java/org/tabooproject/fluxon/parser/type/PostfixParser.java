@@ -40,7 +40,7 @@ public class PostfixParser {
                 if (expr instanceof Identifier) {
                     expr = FunctionCallParser.finishCall(parser, (Identifier) expr);
                 } else {
-                    throw new ParseException("Cannot call non-identifier expression", parser.peek(), parser.getResults());
+                    throw parser.createParseException("Cannot call non-identifier expression", parser.peek());
                 }
             }
             else {
@@ -69,7 +69,7 @@ public class PostfixParser {
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after index");
         // 如果索引为空，这是一个错误（因为换行的情况已经在 parsePostfixOperations 中处理了）
         if (indices.isEmpty()) {
-            throw new ParseException("Index access requires at least one index", parser.peek(), parser.getResults());
+            throw parser.createParseException("Index access requires at least one index", parser.peek());
         }
         return new IndexAccessExpression(target, indices, -1);
     }

@@ -13,7 +13,7 @@ public class MultipleParseException extends ParseException {
     private final List<ParseException> exceptions;
 
     public MultipleParseException(List<ParseException> exceptions) {
-        super(buildMessage(exceptions), exceptions.get(0).getToken());
+        super(buildMessage(exceptions), exceptions.get(0).getToken(), exceptions.get(0).getExcerpt());
         this.exceptions = exceptions;
     }
 
@@ -26,6 +26,36 @@ public class MultipleParseException extends ParseException {
                 sb.append("\n");
             }
         }
+        return sb.toString();
+    }
+    
+    /**
+     * 格式化输出所有错误的详细诊断信息（包含源码上下文）
+     *
+     * @return 格式化后的诊断信息
+     */
+    public String formatDiagnostics() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Found ").append(exceptions.size()).append(" parse error(s):\n\n");
+        
+        for (int i = 0; i < exceptions.size(); i++) {
+            ParseException ex = exceptions.get(i);
+            
+            // 如果有源码摘录，使用详细格式
+            if (ex.getExcerpt() != null) {
+                sb.append(ex.formatWithSource());
+            } else {
+                // 否则使用简单格式
+                sb.append("error: ").append(ex.getReason()).append("\n");
+                sb.append("  at line ").append(ex.getToken().getLine())
+                  .append(", column ").append(ex.getToken().getColumn()).append("\n");
+            }
+            
+            if (i < exceptions.size() - 1) {
+                sb.append("\n");
+            }
+        }
+        
         return sb.toString();
     }
 
