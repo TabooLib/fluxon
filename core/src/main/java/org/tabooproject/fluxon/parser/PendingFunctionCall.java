@@ -26,7 +26,7 @@ public class PendingFunctionCall {
     }
     
     public String getFunctionName() {
-        return expression.getCallee();
+        return expression.getFunctionName();
     }
     
     public int getArgumentCount() {

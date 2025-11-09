@@ -59,7 +59,7 @@ public interface Function {
      * @return 注解列表
      */
     List<Annotation> getAnnotations();
-    
+
     /**
      * 执行函数
      *

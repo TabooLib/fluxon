@@ -5,14 +5,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonRuntimeTest;
 import org.tabooproject.fluxon.compiler.CompilationContext;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
-import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
-import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -69,7 +66,7 @@ public class EnhancedParserTest {
         assertEquals(1, results.size());
         ExpressionStatement stmt = (ExpressionStatement) results.get(0);
         FunctionCallExpression call = (FunctionCallExpression) stmt.getExpression();
-        assertEquals("player", call.getCallee());
+        assertEquals("player", call.getFunctionName());
         assertEquals(1, call.getArguments().length);
         assertTrue(call.getArguments()[0] instanceof Identifier);
         assertEquals("head", ((Identifier) call.getArguments()[0]).getValue());
@@ -81,7 +78,7 @@ public class EnhancedParserTest {
         call = (FunctionCallExpression) stmt.getExpression();
         assertEquals(1, call.getArguments().length);
         assertTrue(call.getArguments()[0] instanceof FunctionCallExpression);
-        assertEquals("checkGrade", ((FunctionCallExpression) call.getArguments()[0]).getCallee());
+        assertEquals("checkGrade", ((FunctionCallExpression) call.getArguments()[0]).getFunctionName());
 
         // 多个未知标识符
         results = parseSource("player(head, body, legs)");

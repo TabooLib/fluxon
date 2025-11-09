@@ -11,7 +11,8 @@ import java.util.Arrays;
  * 函数调用
  */
 public class FunctionCallExpression implements Expression {
-    private final String callee;
+
+    private final String functionName;
     private final ParseResult[] arguments;
 
     @Nullable
@@ -19,29 +20,11 @@ public class FunctionCallExpression implements Expression {
     @Nullable
     private ExtensionFunctionPosition extensionPosition;
 
-    public FunctionCallExpression(String callee, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
-        this.callee = callee;
+    public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
+        this.functionName = functionName;
         this.arguments = arguments;
         this.position = pos1;
         this.extensionPosition = pos2;
-    }
-
-    public String getCallee() {
-        return callee;
-    }
-
-    public ParseResult[] getArguments() {
-        return arguments;
-    }
-
-    @Nullable
-    public FunctionPosition getPosition() {
-        return position;
-    }
-
-    @Nullable
-    public ExtensionFunctionPosition getExtensionPosition() {
-        return extensionPosition;
     }
 
     /**
@@ -58,6 +41,53 @@ public class FunctionCallExpression implements Expression {
         this.extensionPosition = extensionPosition;
     }
 
+    /**
+     * 获取函数名
+     */
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    /**
+     * 获取参数
+     */
+    public ParseResult[] getArguments() {
+        return arguments;
+    }
+
+    /**
+     * 获取函数解析时预测的位置
+     */
+    @Nullable
+    public FunctionPosition getPosition() {
+        return position;
+    }
+
+    /**
+     * 获取函数解析时预测的位置索引
+     */
+    public int getPositionIndex() {
+        return position != null ? position.getIndex() : -1;
+    }
+
+    /**
+     * 获取扩展函数解析时预测的位置
+     */
+    @Nullable
+    public ExtensionFunctionPosition getExtensionPosition() {
+        return extensionPosition;
+    }
+
+    /**
+     * 获取扩展函数解析时预测的位置索引
+     */
+    public int getExtensionPositionIndex() {
+        return extensionPosition != null ? extensionPosition.getIndex() : -1;
+    }
+
+    /**
+     * 获取表达式具体类型
+     */
     @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.FUNCTION_CALL;
@@ -65,13 +95,13 @@ public class FunctionCallExpression implements Expression {
 
     @Override
     public String toString() {
-        return "Call(" + callee + ", " + Arrays.toString(arguments) + ")";
+        return "Call(" + functionName + ", " + Arrays.toString(arguments) + ")";
     }
 
     @Override
     public String toPseudoCode() {
         StringBuilder sb = new StringBuilder();
-        sb.append(callee).append("(");
+        sb.append(functionName).append("(");
         for (int i = 0; i < arguments.length; i++) {
             if (i > 0) {
                 sb.append(", ");

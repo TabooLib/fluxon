@@ -331,9 +331,6 @@ public class Environment {
         return "Environment{" +
                 "target=" + target +
                 ", functions=" + functions +
-                ", systemFunctions=" + Arrays.toString(systemFunctions) +
-                ", extensionFunctions=" + extensionFunctions +
-                ", systemExtensionFunctions=" + Arrays.toString(systemExtensionFunctions) +
                 ", rootVariables=" + rootVariables +
                 '}';
     }

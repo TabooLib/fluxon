@@ -15,7 +15,6 @@ import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-
 import static org.objectweb.asm.Opcodes.*;
 
 public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpression> {
@@ -27,7 +26,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     @Override
     public Object evaluate(Interpreter interpreter, FunctionCallExpression result) {
-        // 评估被调用者
         // 评估参数列表
         ParseResult[] expressionArguments = result.getArguments();
         int argumentCount = expressionArguments.length;
@@ -45,10 +43,13 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 }
             }
         }
-        Environment environment = interpreter.getEnvironment();
-        int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
-        int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
-        return Intrinsics.callFunction(environment, result.getCallee(), arguments, pos1, pos2);
+        return Intrinsics.callFunction(
+                interpreter.getEnvironment(),
+                result.getFunctionName(),
+                arguments,
+                result.getPositionIndex(),
+                result.getExtensionPositionIndex()
+        );
     }
 
     @Override
@@ -57,7 +58,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         mv.visitVarInsn(ALOAD, 0); // this (RuntimeScriptBase)
         mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
         // 压入字符串
-        mv.visitLdcInsn(result.getCallee());
+        mv.visitLdcInsn(result.getFunctionName());
 
         // 创建参数数组
         ParseResult[] arguments = result.getArguments();
@@ -78,13 +79,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             }
             mv.visitInsn(AASTORE); // 存储到数组
         }
-
         // 压入位置参数
-        int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
-        int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
-        mv.visitLdcInsn(pos1);
-        mv.visitLdcInsn(pos2);
-
+        mv.visitLdcInsn(result.getPositionIndex());
+        mv.visitLdcInsn(result.getExtensionPositionIndex());
         // 调用 Operations.callFunction 方法
         mv.visitMethodInsn(
                 INVOKESTATIC,
