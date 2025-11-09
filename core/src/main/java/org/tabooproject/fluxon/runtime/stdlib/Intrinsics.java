@@ -2,12 +2,18 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
-import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
-import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
-import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
-import org.tabooproject.fluxon.runtime.*;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.GlobalObject;
+import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
+import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
+import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 
 import java.util.*;
@@ -151,9 +157,15 @@ public final class Intrinsics {
      * @return 函数调用结果
      */
     public static Object callFunction(Environment environment, String name, Object[] arguments, int pos, int exPos) {
-        // 获取调用目标
         Object target = environment.getTarget();
-        // 获取函数
+        Function function = resolveFunction(environment, target, name, arguments, pos, exPos);
+        return invokeResolvedFunction(function, target, arguments, environment);
+    }
+
+    /**
+     * 解析函数引用，若找不到则抛出 FunctionNotFoundError
+     */
+    public static Function resolveFunction(Environment environment, Object target, String name, Object[] arguments, int pos, int exPos) {
         Function function = null;
         // 优先尝试从扩展函数中获取函数
         if (target != null && target != GlobalObject.INSTANCE && exPos != -1) {
@@ -173,9 +185,16 @@ public final class Intrinsics {
         if (function == null) {
             throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
         }
-        final Function finalFunction = function;
+        return function;
+    }
+
+    /**
+     * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
+     */
+    public static Object invokeResolvedFunction(Function function, Object target, Object[] arguments, Environment environment) {
         final FunctionContext<?> context = new FunctionContext<>(function, target, arguments, environment);
         if (function.isAsync()) {
+            final Function finalFunction = function;
             return ThreadPoolManager.getInstance().submitAsync(() -> {
                 try {
                     return finalFunction.call(context);
@@ -188,6 +207,7 @@ public final class Intrinsics {
                 }
             });
         } else if (function.isPrimarySync()) {
+            final Function finalFunction = function;
             CompletableFuture<Object> future = new CompletableFuture<>();
             FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
                 try {

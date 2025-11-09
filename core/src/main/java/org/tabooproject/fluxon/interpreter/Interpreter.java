@@ -119,6 +119,27 @@ public class Interpreter {
     }
 
     /**
+     * 直接评估表达式，跳过 ResultType 分派开销
+     */
+    public Object evaluateExpression(Expression expression) {
+        return expressionVisitor.visitExpression(expression);
+    }
+
+    /**
+     * 直接评估语句
+     */
+    public Object evaluateStatement(Statement statement) {
+        return statementVisitor.visitStatement(statement);
+    }
+
+    /**
+     * 直接评估定义
+     */
+    public Object evaluateDefinition(Definition definition) {
+        return definitionVisitor.visitDefinition(definition);
+    }
+
+    /**
      * 设置当前环境
      */
     public void setEnvironment(@NotNull Environment environment) {

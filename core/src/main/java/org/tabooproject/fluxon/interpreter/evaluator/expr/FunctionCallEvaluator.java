@@ -3,16 +3,18 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
-import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -27,16 +29,26 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Object evaluate(Interpreter interpreter, FunctionCallExpression result) {
         // 评估被调用者
         // 评估参数列表
-        Object[] arguments = new Object[result.getArguments().length];
         ParseResult[] expressionArguments = result.getArguments();
-        for (int i = 0; i < expressionArguments.length; i++) {
-            ParseResult argument = expressionArguments[i];
-            arguments[i] = interpreter.evaluate(argument);
+        int argumentCount = expressionArguments.length;
+        Object[] arguments;
+        if (argumentCount == 0) {
+            arguments = EMPTY_ARGUMENTS;
+        } else {
+            arguments = new Object[argumentCount];
+            for (int i = 0; i < argumentCount; i++) {
+                ParseResult argument = expressionArguments[i];
+                if (argument.getType() == ParseResult.ResultType.EXPRESSION) {
+                    arguments[i] = interpreter.evaluateExpression((Expression) argument);
+                } else {
+                    arguments[i] = interpreter.evaluate(argument);
+                }
+            }
         }
-        // 使用 Operations.callFunction 执行函数调用
+        Environment environment = interpreter.getEnvironment();
         int pos1 = result.getPosition() != null ? result.getPosition().getIndex() : -1;
         int pos2 = result.getExtensionPosition() != null ? result.getExtensionPosition().getIndex() : -1;
-        return Intrinsics.callFunction(interpreter.getEnvironment(), result.getCallee(), arguments, pos1, pos2);
+        return Intrinsics.callFunction(environment, result.getCallee(), arguments, pos1, pos2);
     }
 
     @Override
@@ -85,4 +97,5 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     }
 
     private static final Type OBJECT_ARRAY = new Type(Object.class, 1);
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 }
