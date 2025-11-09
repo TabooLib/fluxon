@@ -8,13 +8,10 @@ import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionConst
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionField;
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMethod;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
+import org.tabooproject.fluxon.util.KV;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
@@ -32,6 +29,13 @@ public class FluxonRuntime {
     private final Map<String, Object> systemVariables = new HashMap<>();
     // 扩展函数
     private final Map<String, Map<Class<?>, Function>> extensionFunctions = new LinkedHashMap<>();
+
+    // 缓存的系统函数数组（避免每次创建环境时都转换）
+    private volatile Function[] cachedSystemFunctions;
+    // 缓存的系统扩展函数数组（避免每次创建环境时都转换）
+    private volatile KV<Class<?>, Function>[][] cachedSystemExtensionFunctions;
+    // 脏标记：当注册新函数时标记为 true，下次创建环境时会重新构建缓存
+    private volatile boolean dirty = false;
 
     // Export 注册中心
     private final ExportRegistry exportRegistry = new ExportRegistry(this);
@@ -77,10 +81,40 @@ public class FluxonRuntime {
     }
 
     /**
+     * 构建缓存的函数和扩展函数数组
+     * 这样每次创建环境时就不需要重新转换了
+     */
+    @SuppressWarnings("unchecked")
+    private void bake() {
+        // 构建系统函数数组
+        cachedSystemFunctions = systemFunctions.values().toArray(new Function[0]);
+        // 构建系统扩展函数数组
+        List<KV<Class<?>, Function>[]> systemExtensionFunctionsList = new ArrayList<>();
+        for (Map.Entry<String, Map<Class<?>, Function>> entry : extensionFunctions.entrySet()) {
+            List<KV<Class<?>, Function>> classFunctionMap = new ArrayList<>();
+            for (Map.Entry<Class<?>, Function> entry2 : entry.getValue().entrySet()) {
+                classFunctionMap.add(new KV<>(entry2.getKey(), entry2.getValue()));
+            }
+            systemExtensionFunctionsList.add(classFunctionMap.toArray(new KV[0]));
+        }
+        cachedSystemExtensionFunctions = systemExtensionFunctionsList.toArray(new KV[0][]);
+        // 重置脏标记
+        dirty = false;
+    }
+
+    /**
      * 初始化解释器环境
      */
     public Environment newEnvironment() {
-        return new Environment(systemFunctions, systemVariables, extensionFunctions);
+        // 如果缓存被标记为脏（有新函数注册），则重新构建缓存
+        if (dirty) {
+            synchronized (this) {
+                if (dirty) {
+                    bake();
+                }
+            }
+        }
+        return new Environment(systemFunctions, cachedSystemFunctions, systemVariables, extensionFunctions, cachedSystemExtensionFunctions);
     }
 
     /**
@@ -102,6 +136,7 @@ public class FluxonRuntime {
      */
     public void registerFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation));
+        dirty = true;
     }
 
     /**
@@ -113,6 +148,7 @@ public class FluxonRuntime {
      */
     public void registerFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation));
+        dirty = true;
     }
 
     /**
@@ -125,6 +161,7 @@ public class FluxonRuntime {
      */
     public void registerFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation));
+        dirty = true;
     }
 
     /**
@@ -137,6 +174,7 @@ public class FluxonRuntime {
      */
     public void registerFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation));
+        dirty = true;
     }
 
     /**
@@ -148,6 +186,7 @@ public class FluxonRuntime {
      */
     public void registerAsyncFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -159,6 +198,7 @@ public class FluxonRuntime {
      */
     public void registerAsyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -171,6 +211,7 @@ public class FluxonRuntime {
      */
     public void registerAsyncFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -183,6 +224,7 @@ public class FluxonRuntime {
      */
     public void registerAsyncFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -194,6 +236,7 @@ public class FluxonRuntime {
      */
     public void registerPrimarySyncFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation, false, true));
+        dirty = true;
     }
 
     /**
@@ -205,6 +248,7 @@ public class FluxonRuntime {
      */
     public void registerPrimarySyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation, false, true));
+        dirty = true;
     }
 
     /**
@@ -217,6 +261,7 @@ public class FluxonRuntime {
      */
     public void registerPrimarySyncFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, false, true));
+        dirty = true;
     }
 
     /**
@@ -229,6 +274,7 @@ public class FluxonRuntime {
      */
     public void registerPrimarySyncFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, false, true));
+        dirty = true;
     }
 
     /**
@@ -250,6 +296,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation));
+        dirty = true;
     }
 
     /**
@@ -257,6 +304,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation));
+        dirty = true;
     }
 
     /**
@@ -264,6 +312,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation));
+        dirty = true;
     }
 
     /**
@@ -271,6 +320,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation));
+        dirty = true;
     }
 
     /**
@@ -278,6 +328,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerAsyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -285,6 +336,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerAsyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, true, false));
+        dirty = true;
     }
 
     /**
@@ -292,6 +344,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerSyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, false, true));
+        dirty = true;
     }
 
     /**
@@ -299,6 +352,7 @@ public class FluxonRuntime {
      */
     public <Target> void registerSyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
         extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, false, true));
+        dirty = true;
     }
 
     /**

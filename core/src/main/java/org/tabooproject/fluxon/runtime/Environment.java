@@ -50,21 +50,17 @@ public class Environment {
     /**
      * 创建顶层环境（全局环境）
      */
-    @SuppressWarnings({"unchecked"})
-    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions) {
+    public Environment(
+            @NotNull Map<String, Function> functions,
+            @NotNull Function[] systemFunctions,
+            @NotNull Map<String, Object> values,
+            @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
+            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
         this.root = this;
         this.functions = new HashMap<>(functions);
-        this.systemFunctions = functions.values().toArray(new Function[0]);
+        this.systemFunctions = systemFunctions;
         this.extensionFunctions = extensionFunctions;
-        List<KV<Class<?>, Function>[]> systemExtensionFunctions = new ArrayList<>();
-        for (Map.Entry<String, Map<Class<?>, Function>> entry : extensionFunctions.entrySet()) {
-            List<KV<Class<?>, Function>> classFunctionMap = new ArrayList<>();
-            for (Map.Entry<Class<?>, Function> entry2 : entry.getValue().entrySet()) {
-                classFunctionMap.add(new KV<>(entry2.getKey(), entry2.getValue()));
-            }
-            systemExtensionFunctions.add(classFunctionMap.toArray(new KV[0]));
-        }
-        this.systemExtensionFunctions = systemExtensionFunctions.toArray(new KV[0][]);
+        this.systemExtensionFunctions = systemExtensionFunctions;
         this.rootVariables = new HashMap<>(values);
         this.localVariables = null;
         this.localVariableNames = null;
