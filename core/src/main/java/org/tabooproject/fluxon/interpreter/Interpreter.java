@@ -3,10 +3,10 @@ package org.tabooproject.fluxon.interpreter;
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
 
@@ -20,16 +20,8 @@ public class Interpreter {
     @NotNull
     private Environment environment;
 
-    // 求值器
-    private final DefinitionVisitor definitionVisitor;
-    private final ExpressionVisitor expressionVisitor;
-    private final StatementVisitor statementVisitor;
-
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
-        this.definitionVisitor = new DefinitionVisitor(this);
-        this.expressionVisitor = new ExpressionVisitor(this);
-        this.statementVisitor = new StatementVisitor(this);
     }
 
     /**
@@ -42,7 +34,7 @@ public class Interpreter {
         // 第一遍：提前注册所有顶层函数定义，支持前向引用
         for (ParseResult result : parseResults) {
             if (result.getType() == ParseResult.ResultType.DEFINITION) {
-                definitionVisitor.visitDefinition((Definition) result);
+                evaluateDefinition((Definition) result);
             }
         }
         // 第二遍：真正执行表达式和语句；定义节点已经处理过，直接跳过即可
@@ -66,27 +58,12 @@ public class Interpreter {
         // 保存当前环境
         Environment previous = this.environment;
         this.environment = env;
-
-        // 更新所有求值器的环境
-        updateEvaluatorsEnvironment(env);
         try {
             return evaluate(result);
         } finally {
             // 恢复环境
             this.environment = previous;
-            updateEvaluatorsEnvironment(previous);
         }
-    }
-
-    /**
-     * 更新所有求值器的环境
-     *
-     * @param env 新环境
-     */
-    private void updateEvaluatorsEnvironment(Environment env) {
-        definitionVisitor.setEnvironment(env);
-        expressionVisitor.setEnvironment(env);
-        statementVisitor.setEnvironment(env);
     }
 
     /**
@@ -98,11 +75,11 @@ public class Interpreter {
     public Object evaluate(ParseResult result) {
         switch (result.getType()) {
             case EXPRESSION:
-                return expressionVisitor.visitExpression((Expression) result);
+                return evaluateExpression((Expression) result);
             case STATEMENT:
-                return statementVisitor.visitStatement((Statement) result);
+                return evaluateStatement((Statement) result);
             case DEFINITION:
-                return definitionVisitor.visitDefinition((Definition) result);
+                return evaluateDefinition((Definition) result);
         }
         return null;
     }
@@ -111,21 +88,29 @@ public class Interpreter {
      * 直接评估表达式，跳过 ResultType 分派开销
      */
     public Object evaluateExpression(Expression expression) {
-        return expressionVisitor.visitExpression(expression);
+        return expression.getExpressionType().evaluator.evaluate(this, expression);
     }
 
     /**
      * 直接评估语句
      */
     public Object evaluateStatement(Statement statement) {
-        return statementVisitor.visitStatement(statement);
+        return statement.getStatementType().evaluator.evaluate(this, statement);
     }
 
     /**
      * 直接评估定义
      */
     public Object evaluateDefinition(Definition definition) {
-        return definitionVisitor.visitDefinition(definition);
+        if (definition instanceof FunctionDefinition) {
+            FunctionDefinition funcDef = (FunctionDefinition) definition;
+            // 创建函数对象，捕获当前环境
+            UserFunction function = new UserFunction(funcDef, this);
+            // 在当前环境中定义函数
+            environment.defineRootFunction(funcDef.getName(), function);
+            return function;
+        }
+        throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
     }
 
     /**
