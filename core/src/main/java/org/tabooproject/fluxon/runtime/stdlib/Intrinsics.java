@@ -259,35 +259,28 @@ public final class Intrinsics {
 
     /**
      * 为函数调用绑定参数到新环境中
-     * 参考 UserFunction 的参数绑定逻辑
      *
      * @param parentEnv      父环境
-     * @param parameters     参数名列表
+     * @param parameters     参数名到slot的映射
      * @param args           参数值数组
      * @param localVariables 局部变量数量
      * @return 绑定了参数的新环境
      */
     @NotNull
     public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, Integer> parameters, @NotNull Object[] args, int localVariables) {
-        // 创建函数环境
         Environment functionEnv = new Environment(parentEnv, localVariables);
-        // 绑定参数
-        if (!parameters.isEmpty() && args != null) {
-            // 绑定实际传递的参数
-            int index = 0;
-            for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
-                if (index < args.length) {
-                    functionEnv.assign(entry.getKey(), args[index], entry.getValue());
-                } else {
-                    functionEnv.assign(entry.getKey(), null, entry.getValue());
-                }
-                index++;
-            }
-        } else if (!parameters.isEmpty()) {
-            // 如果没有参数值，所有参数都设为 null
-            for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
-                functionEnv.assign(entry.getKey(), null, entry.getValue());
-            }
+        // 快速路径：无参数直接返回
+        if (parameters == null || parameters.isEmpty()) {
+            return functionEnv;
+        }
+        // 预取 args 长度，避免多次访问数组长度字段
+        final int len = args.length;
+        // 按 slot 直接从 args 取值并绑定，避免依赖 Map 遍历顺序
+        for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
+            final int slot = entry.getValue();
+            // 使用三元运算符减少分支预测失败
+            final Object value = (slot >= 0 && slot < len) ? args[slot] : null;
+            functionEnv.assign(entry.getKey(), value, slot);
         }
         return functionEnv;
     }
