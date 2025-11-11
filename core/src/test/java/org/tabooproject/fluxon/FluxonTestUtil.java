@@ -214,4 +214,18 @@ public class FluxonTestUtil {
         executeTime = System.currentTimeMillis() - startExecute;
         return new TestResult(interpretResult, interpretEnv, compileResult, compileEnv, interpretTime, compileTime, executeTime);
     }
+
+    /**
+     * 仅解释执行：只执行解释模式，不编译
+     *
+     * @param source Fluxon 源代码
+     * @return 测试结果（仅包含解释执行结果）
+     */
+    public static TestResult interpret(String source) {
+        long startInterpret = System.currentTimeMillis();
+        Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
+        Object interpretResult = Fluxon.eval(source, interpretEnv);
+        long interpretTime = System.currentTimeMillis() - startInterpret;
+        return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
+    }
 }

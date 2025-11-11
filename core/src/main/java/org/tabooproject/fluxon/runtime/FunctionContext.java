@@ -83,6 +83,24 @@ public class FunctionContext<Target> {
     }
 
     @NotNull
+    public Function getFunction(int index) {
+        Object argument = getArgument(index);
+        if (argument instanceof Function) {
+            return (Function) argument;
+        }
+        throw new ArgumentTypeMismatchError(this, index, Function.class, argument);
+    }
+
+    @Nullable
+    public String getFunctionOrNull(int index) {
+        Object argument = getArgument(index);
+        if (argument instanceof Function) {
+            return ((Function) argument).getName();
+        }
+        return null;
+    }
+
+    @NotNull
     public Function getFunction() {
         return function;
     }
