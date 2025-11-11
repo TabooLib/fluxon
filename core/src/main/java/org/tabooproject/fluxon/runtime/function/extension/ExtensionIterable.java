@@ -102,7 +102,7 @@ public class ExtensionIterable {
                 .function("map", 1, (context) -> {
                     List<Object> result = new ArrayList<>();
                     for (Object object : Objects.requireNonNull(context.getTarget())) {
-                        result.add(closureCall(context, object));
+                        result.add(context.closureCall(0, new Object[]{object}));
                     }
                     return result;
                 })
@@ -110,22 +110,12 @@ public class ExtensionIterable {
                 .function("filter", 1, (context) -> {
                     List<Object> result = new ArrayList<>();
                     for (Object object : Objects.requireNonNull(context.getTarget())) {
-                        if (Operations.isTrue(closureCall(context, object))) {
+                        if (Operations.isTrue(context.closureCall(0, new Object[]{object}))) {
                             result.add(object);
                         }
                     }
                     return result;
                 })
         ;
-    }
-
-    private static @Nullable Object closureCall(FunctionContext<?> context, Object object) {
-        return context.getFunction(0).call(
-                new FunctionContext<>(
-                        context.getFunction(),
-                        context.getTarget(),
-                        new Object[]{object},
-                        context.getEnvironment()
-                ));
     }
 }

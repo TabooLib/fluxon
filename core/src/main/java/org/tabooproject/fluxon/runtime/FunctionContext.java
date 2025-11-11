@@ -20,10 +20,11 @@ public class FunctionContext<Target> {
     private final Function function;
     @Nullable
     private final Target target;
-    private final Object[] arguments;
-    private final int argumentCount;
     @NotNull
     private final Environment environment;
+
+    private Object[] arguments;
+    private int argumentCount;
 
     public FunctionContext(@NotNull Function function, @Nullable Target target, Object[] arguments, @NotNull Environment environment) {
         this.function = function;
@@ -33,10 +34,22 @@ public class FunctionContext<Target> {
         this.environment = environment;
     }
 
+    /**
+     * 判断是否存在指定索引的参数
+     *
+     * @param index 参数索引
+     * @return 如果索引有效则返回true，否则返回false
+     */
     public boolean hasArgument(int index) {
         return index < argumentCount;
     }
 
+    /**
+     * 获取指定索引的参数值
+     *
+     * @param index 参数索引
+     * @return 如果索引有效则返回参数值，否则返回null
+     */
     @Nullable
     public Object getArgument(int index) {
         if (index >= argumentCount) {
@@ -45,6 +58,14 @@ public class FunctionContext<Target> {
         return arguments[index];
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为指定类型
+     *
+     * @param index 参数索引
+     * @param type  目标类型
+     * @param <T>   目标类型参数
+     * @return 如果索引有效且参数类型兼容则返回转换后的参数值，否则抛出异常
+     */
     @Nullable
     public <T> T getArgumentByType(int index, @NotNull Class<T> type) {
         Object argument = getArgument(index);
@@ -56,6 +77,12 @@ public class FunctionContext<Target> {
         throw new ArgumentTypeMismatchError(this, index, type, argument);
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 Number 类型
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 Number 值，否则抛出异常
+     */
     @NotNull
     public Number getNumber(int index) {
         Object argument = getArgument(index);
@@ -65,16 +92,34 @@ public class FunctionContext<Target> {
         throw new ArgumentTypeMismatchError(this, index, Number.class, argument);
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 Number 类型，若失败则返回 null
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 Number 值，否则返回 null
+     */
     @Nullable
     public Number getNumberOrNull(int index) {
         return getArgumentByType(index, Number.class);
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 Boolean 类型，若失败则返回 false
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 Boolean 值，否则返回 false
+     */
     public boolean getBoolean(int index) {
         Object argument = getArgument(index);
         return Coerce.asBoolean(argument).orElse(false);
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 String 类型，若失败则返回 null
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 String 值，否则返回 null
+     */
     @Nullable
     public String getString(int index) {
         Object argument = getArgument(index);
@@ -82,6 +127,12 @@ public class FunctionContext<Target> {
         return argument.toString();
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 Function 类型
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 Function 值，否则抛出异常
+     */
     @NotNull
     public Function getFunction(int index) {
         Object argument = getArgument(index);
@@ -91,6 +142,12 @@ public class FunctionContext<Target> {
         throw new ArgumentTypeMismatchError(this, index, Function.class, argument);
     }
 
+    /**
+     * 获取指定索引的参数值，并尝试将其转换为 Function 类型，若失败则返回 null
+     *
+     * @param index 参数索引
+     * @return 如果索引有效且参数类型兼容则返回转换后的 Function 名称，否则返回 null
+     */
     @Nullable
     public String getFunctionOrNull(int index) {
         Object argument = getArgument(index);
@@ -100,27 +157,86 @@ public class FunctionContext<Target> {
         return null;
     }
 
+    /**
+     * 获取当前函数上下文关联的函数实例
+     *
+     * @return 函数实例
+     */
     @NotNull
     public Function getFunction() {
         return function;
     }
 
+    /**
+     * 调用指定索引的函数闭包
+     * 该方法会创建一个新的函数上下文实例，将指定索引的函数作为闭包调用，并传递参数数组
+     *
+     * @param index     函数索引
+     * @param arguments 参数数组
+     * @return 函数调用结果
+     */
+    @Nullable
+    public Object closureCall(int index, Object[] arguments) {
+        return getFunction(index).call(copy(arguments));
+    }
+
+    /**
+     * 获取当前函数上下文关联的目标实例
+     *
+     * @return 目标实例
+     */
     @Nullable
     public Target getTarget() {
         return target;
     }
 
+    /**
+     * 获取当前函数上下文关联的参数数组
+     *
+     * @return 参数数组
+     */
     public Object[] getArguments() {
         return arguments;
     }
 
+    /**
+     * 获取当前函数上下文关联的参数数量
+     *
+     * @return 参数数量
+     */
     public int getArgumentCount() {
         return argumentCount;
     }
 
+    /**
+     * 获取当前函数上下文关联的环境实例
+     *
+     * @return 环境实例
+     */
     @NotNull
     public Environment getEnvironment() {
         return environment;
+    }
+
+    /**
+     * 更新当前函数上下文关联的参数数组和参数数量
+     * 用于在高频调用时避免重复创建函数上下文实例
+     *
+     * @param arguments 参数数组
+     */
+    public void updateArguments(Object[] arguments) {
+        this.arguments = arguments;
+        this.argumentCount = arguments.length;
+    }
+
+    /**
+     * 复制当前函数上下文实例
+     *
+     * @return 新的函数上下文实例
+     */
+    @NotNull
+    public FunctionContext<?> copy(Object[] arguments) {
+        return new FunctionContext<>(function, target, arguments, environment);
     }
 
     @Override
