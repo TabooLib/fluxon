@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 所有定义类型的基础接口
  */
 public interface Definition extends ParseResult {
+
     @Override
     default ResultType getType() {
         return ResultType.DEFINITION;

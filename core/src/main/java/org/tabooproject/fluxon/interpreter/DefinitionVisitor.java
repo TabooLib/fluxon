@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.interpreter;
 
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
-import org.tabooproject.fluxon.runtime.Environment;
 
 /**
  * 定义求值器
@@ -10,8 +9,8 @@ import org.tabooproject.fluxon.runtime.Environment;
  */
 public class DefinitionVisitor extends AbstractVisitor {
 
-    public DefinitionVisitor(Interpreter interpreter, Environment environment) {
-        super(interpreter, environment);
+    public DefinitionVisitor(Interpreter interpreter) {
+        super(interpreter);
     }
 
     @Override

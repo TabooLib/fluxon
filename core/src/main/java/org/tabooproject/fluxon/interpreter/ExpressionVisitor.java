@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.tabooproject.fluxon.parser.expression.Expression;
-import org.tabooproject.fluxon.runtime.Environment;
 
 /**
  * 表达式求值器
@@ -9,8 +8,8 @@ import org.tabooproject.fluxon.runtime.Environment;
  */
 public class ExpressionVisitor extends AbstractVisitor {
 
-    public ExpressionVisitor(Interpreter interpreter, Environment environment) {
-        super(interpreter, environment);
+    public ExpressionVisitor(Interpreter interpreter) {
+        super(interpreter);
     }
 
     @Override

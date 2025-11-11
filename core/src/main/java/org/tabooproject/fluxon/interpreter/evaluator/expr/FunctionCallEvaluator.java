@@ -35,12 +35,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         } else {
             arguments = new Object[argumentCount];
             for (int i = 0; i < argumentCount; i++) {
-                ParseResult argument = expressionArguments[i];
-                if (argument.getType() == ParseResult.ResultType.EXPRESSION) {
-                    arguments[i] = interpreter.evaluateExpression((Expression) argument);
-                } else {
-                    arguments[i] = interpreter.evaluate(argument);
-                }
+                arguments[i] = interpreter.evaluate(expressionArguments[i]);
             }
         }
         return Intrinsics.callFunction(

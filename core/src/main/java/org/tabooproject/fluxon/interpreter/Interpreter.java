@@ -25,18 +25,11 @@ public class Interpreter {
     private final ExpressionVisitor expressionVisitor;
     private final StatementVisitor statementVisitor;
 
-    public Interpreter() {
-        this.environment = FluxonRuntime.getInstance().newEnvironment();
-        this.definitionVisitor = new DefinitionVisitor(this, environment);
-        this.expressionVisitor = new ExpressionVisitor(this, environment);
-        this.statementVisitor = new StatementVisitor(this, environment);
-    }
-
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
-        this.definitionVisitor = new DefinitionVisitor(this, environment);
-        this.expressionVisitor = new ExpressionVisitor(this, environment);
-        this.statementVisitor = new StatementVisitor(this, environment);
+        this.definitionVisitor = new DefinitionVisitor(this);
+        this.expressionVisitor = new ExpressionVisitor(this);
+        this.statementVisitor = new StatementVisitor(this);
     }
 
     /**
@@ -103,19 +96,15 @@ public class Interpreter {
      * @return 执行结果
      */
     public Object evaluate(ParseResult result) {
-        // 根据不同的结果类型分派到不同的求值器
         switch (result.getType()) {
-            case DEFINITION:
-                return definitionVisitor.visitDefinition((Definition) result);
             case EXPRESSION:
                 return expressionVisitor.visitExpression((Expression) result);
             case STATEMENT:
                 return statementVisitor.visitStatement((Statement) result);
-            case ANNOTATION:
-                return null;
-            default:
-                throw new RuntimeException("Unknown parse result type: " + result.getType());
+            case DEFINITION:
+                return definitionVisitor.visitDefinition((Definition) result);
         }
+        return null;
     }
 
     /**

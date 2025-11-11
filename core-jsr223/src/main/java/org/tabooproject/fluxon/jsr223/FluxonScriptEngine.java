@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.jsr223;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 
 import javax.script.*;
@@ -127,7 +128,7 @@ public class FluxonScriptEngine implements ScriptEngine {
      * @return 初始化的解释器
      */
     private Interpreter createInterpreterWithBindings(ScriptContext context) {
-        Interpreter interpreter = new Interpreter();
+        Interpreter interpreter = new Interpreter(FluxonRuntime.getInstance().newEnvironment());
         Environment env = interpreter.getEnvironment();
         // 注入 ENGINE_SCOPE 变量
         Bindings engineBindings = context.getBindings(ScriptContext.ENGINE_SCOPE);

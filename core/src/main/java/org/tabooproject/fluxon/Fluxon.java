@@ -92,7 +92,7 @@ public class Fluxon {
      * @return 执行结果
      */
     public static Object eval(List<ParseResult> parseResults) {
-        Interpreter interpreter = new Interpreter();
+        Interpreter interpreter = new Interpreter(FluxonRuntime.getInstance().newEnvironment());
         try {
             return interpreter.execute(parseResults);
         } catch (ReturnValue ex) {

@@ -16,11 +16,9 @@ public abstract class AbstractVisitor implements Visitor {
     
     /**
      * 构造函数
-     *
      * @param interpreter 解释器实例
-     * @param environment 当前环境
      */
-    public AbstractVisitor(Interpreter interpreter, Environment environment) {
+    public AbstractVisitor(Interpreter interpreter) {
         this.interpreter = interpreter;
     }
     
