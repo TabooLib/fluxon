@@ -168,19 +168,6 @@ public class FunctionContext<Target> {
     }
 
     /**
-     * 调用指定索引的函数闭包
-     * 该方法会创建一个新的函数上下文实例，将指定索引的函数作为闭包调用，并传递参数数组
-     *
-     * @param index     函数索引
-     * @param arguments 参数数组
-     * @return 函数调用结果
-     */
-    @Nullable
-    public Object closureCall(int index, Object[] arguments) {
-        return getFunction(index).call(copy(arguments));
-    }
-
-    /**
      * 获取当前函数上下文关联的目标实例
      *
      * @return 目标实例
@@ -223,10 +210,12 @@ public class FunctionContext<Target> {
      * 用于在高频调用时避免重复创建函数上下文实例
      *
      * @param arguments 参数数组
+     * @return 当前函数上下文实例
      */
-    public void updateArguments(Object[] arguments) {
+    public FunctionContext<Target> updateArguments(Object[] arguments) {
         this.arguments = arguments;
         this.argumentCount = arguments.length;
+        return this;
     }
 
     /**

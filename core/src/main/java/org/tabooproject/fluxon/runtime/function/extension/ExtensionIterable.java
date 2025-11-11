@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
-import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
@@ -98,23 +98,87 @@ public class ExtensionIterable {
                     if (n >= size) return new ArrayList<>();
                     return list.subList(0, size - n);
                 })
-                // Map
+                // 遍历每个元素
+                .function("each", 1, (context) -> {
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        closure.call(ctx.updateArguments(new Object[]{object}));
+                    }
+                    return null;
+                })
+                // 对每个元素应用函数
                 .function("map", 1, (context) -> {
                     List<Object> result = new ArrayList<>();
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
                     for (Object object : Objects.requireNonNull(context.getTarget())) {
-                        result.add(context.closureCall(0, new Object[]{object}));
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        result.add(closure.call(ctx.updateArguments(new Object[]{object})));
                     }
                     return result;
                 })
-                // Filter
+                // 过滤元素
                 .function("filter", 1, (context) -> {
                     List<Object> result = new ArrayList<>();
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
                     for (Object object : Objects.requireNonNull(context.getTarget())) {
-                        if (Operations.isTrue(context.closureCall(0, new Object[]{object}))) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
                             result.add(object);
                         }
                     }
                     return result;
+                })
+                // 检查是否有任意元素满足条件
+                .function("any", 1, (context) -> {
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
+                // 检查是否所有元素都满足条件
+                .function("all", 1, (context) -> {
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        if (!Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
+                // 检查是否没有元素满足条件
+                .function("none", 1, (context) -> {
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                            return false;
+                        }
+                    }
+                    return true;
                 })
         ;
     }
