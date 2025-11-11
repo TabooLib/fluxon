@@ -1,13 +1,9 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.ParseException;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SourceExcerpt;
-import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
 
@@ -265,10 +261,22 @@ public class ExpressionParser {
             if (isOptional) {
                 ref = new ReferenceExpression(new Identifier(name), true, -1);
             } else {
-                // 检查函数或变量是否存在
-                if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
-                    // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
-                    ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
+                boolean allowInvalid = parser.getContext().isAllowInvalidReference();
+                boolean knownFunction = parser.isFunction(name);
+                boolean knownVariable = parser.hasVariable(name);
+                if (allowInvalid || knownFunction || knownVariable) {
+                    int position = -1;
+                    if (knownVariable) {
+                        ReferenceResolution resolution = parser.getSymbolEnvironment().resolveReference(name);
+                        if (resolution.isFound()) {
+                            if (resolution.getKind() == ReferenceResolution.Kind.LOCAL) {
+                                position = resolution.getIndex();
+                            }
+                        } else {
+                            allowInvalid = true;
+                        }
+                    }
+                    ref = new ReferenceExpression(new Identifier(name), allowInvalid, position);
                 } else {
                     Token token = parser.peek();
                     SourceExcerpt excerpt = SourceExcerpt.from(parser.getContext(), token);

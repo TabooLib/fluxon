@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.CapturedVariable;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
@@ -16,28 +17,35 @@ import java.util.List;
 
 /**
  * 闭包函数
- * 表示运行时的 lambda 表达式，捕获定义时的环境
+ * 表示运行时的 lambda 表达式，捕获定义时的变量值
  */
 public class ClosureFunction implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
-    
+
     @NotNull
     private final LambdaExpression definition;
     @NotNull
     private final Interpreter interpreter;
     @NotNull
-    private final Environment capturedEnvironment;
+    private final Object[] capturedValues; // 捕获的变量值快照
+    @NotNull
+    private final List<CapturedVariable> capturedVariables;
 
     public ClosureFunction(
             @NotNull LambdaExpression definition,
             @NotNull Interpreter interpreter,
-            @NotNull Environment capturedEnvironment
+            @NotNull Environment currentEnvironment
     ) {
         this.symbolInfo = new SymbolFunction(null, "<lambda>", definition.getParameters().size());
         this.definition = definition;
         this.interpreter = interpreter;
-        this.capturedEnvironment = capturedEnvironment;
+        this.capturedVariables = definition.getCapturedVariables();
+        this.capturedValues = new Object[capturedVariables.size()];
+        for (int i = 0; i < capturedVariables.size(); i++) {
+            CapturedVariable captured = capturedVariables.get(i);
+            capturedValues[i] = currentEnvironment.get(captured.getName(), captured.getSourceIndex());
+        }
     }
 
     @NotNull
@@ -75,13 +83,18 @@ public class ClosureFunction implements Function, Symbolic {
 
     @Override
     public Object call(@NotNull final FunctionContext<?> context) {
-        // 使用捕获的环境作为父环境，绑定参数
+        // 绑定参数并准备 lambda 局部环境
         Environment functionEnv = Intrinsics.bindFunctionParameters(
-                capturedEnvironment,
+                context.getEnvironment(),
                 definition.getParameters(),
                 context.getArguments(),
                 definition.getLocalVariables().size()
         );
+        // 回填捕获变量
+        for (int i = 0; i < capturedVariables.size(); i++) {
+            CapturedVariable captured = capturedVariables.get(i);
+            functionEnv.assign(captured.getName(), capturedValues[i], captured.getLambdaIndex());
+        }
         try {
             // 执行 lambda 体
             return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
@@ -104,11 +117,6 @@ public class ClosureFunction implements Function, Symbolic {
     @NotNull
     public Interpreter getInterpreter() {
         return interpreter;
-    }
-
-    @NotNull
-    public Environment getCapturedEnvironment() {
-        return capturedEnvironment;
     }
 
     @Override

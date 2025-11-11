@@ -1,6 +1,10 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
+import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import java.util.*;
 
@@ -94,6 +98,35 @@ public class ExtensionIterable {
                     int size = list.size();
                     if (n >= size) return new ArrayList<>();
                     return list.subList(0, size - n);
-                });
+                })
+                // Map
+                .function("map", 1, (context) -> {
+                    List<Object> result = new ArrayList<>();
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        result.add(closureCall(context, object));
+                    }
+                    return result;
+                })
+                // Filter
+                .function("filter", 1, (context) -> {
+                    List<Object> result = new ArrayList<>();
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (Operations.isTrue(closureCall(context, object))) {
+                            result.add(object);
+                        }
+                    }
+                    return result;
+                })
+        ;
+    }
+
+    private static @Nullable Object closureCall(FunctionContext<?> context, Object object) {
+        return context.getFunction(0).call(
+                new FunctionContext<>(
+                        context.getFunction(),
+                        context.getTarget(),
+                        new Object[]{object},
+                        context.getEnvironment()
+                ));
     }
 }

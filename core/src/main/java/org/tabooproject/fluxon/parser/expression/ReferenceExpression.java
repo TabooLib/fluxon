@@ -20,6 +20,10 @@ public class ReferenceExpression implements Expression {
         return identifier;
     }
 
+    public String getVariableName() {
+        return identifier.getValue();
+    }
+
     public boolean isOptional() {
         return isOptional;
     }

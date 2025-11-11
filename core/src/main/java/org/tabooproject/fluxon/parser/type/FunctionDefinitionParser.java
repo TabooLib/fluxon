@@ -40,30 +40,14 @@ public class FunctionDefinitionParser {
         String functionName = nameToken.getLexeme();
         // 创建函数标记
         parser.getSymbolEnvironment().setCurrentFunction(functionName);
-
-        // 解析参数列表
-        LinkedHashMap<String, Integer> parameters = new LinkedHashMap<>();
-
-        // 检查是否有左括号
-        if (parser.match(TokenType.LEFT_PAREN)) {
-            // 有括号的参数列表
-            if (!parser.check(TokenType.RIGHT_PAREN)) {
-                do {
-                    String param = parser.consume(TokenType.IDENTIFIER, "Expected parameter name").getLexeme();
-                    parser.defineVariable(param);
-                    parameters.put(param, parser.getSymbolEnvironment().getLocalVariable(param));
-                } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
-            }
-            parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
-        } else {
-            // 无括号的参数列表
-            while (parser.match(TokenType.IDENTIFIER)) {
-                String name = parser.previous().getLexeme();
-                parser.defineVariable(name);
-                parameters.put(name, parser.getSymbolEnvironment().getLocalVariable(name));
-            }
-        }
-
+        // 解析参数列表（函数定义支持无括号多参数）
+        LinkedHashMap<String, Integer> parameters = ParameterParser.parseParameters(
+                parser,
+                true,  // 函数定义支持无括号多参数
+                TokenType.ASSIGN, TokenType.LEFT_BRACE  // 遇到等号或左大括号停止
+        );
+        // 消费可选的等于号
+        parser.match(TokenType.ASSIGN);
         // 将函数添加到当前作用域
         Callable function = parser.getFunction(functionName);
         if (function != null) {
@@ -77,9 +61,6 @@ public class FunctionDefinitionParser {
             // 函数不存在，创建新条目
             parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, parameters.size()));
         }
-
-        // 消费可选的等于号
-        parser.match(TokenType.ASSIGN);
 
         // 解析函数体
         ParseResult body;

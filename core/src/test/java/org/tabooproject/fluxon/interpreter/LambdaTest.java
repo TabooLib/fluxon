@@ -107,7 +107,7 @@ public class LambdaTest {
                 "nums = [1, 2, 3]; " +
                         "doubled = &nums :: map(lambda (x) -> &x * 2); " +
                         "&doubled");
-        assertEquals("[2, 4, 6]", result.toString());
+        assertEquals("[2, 4, 6]", result.getInterpretResult().toString());
     }
 
     @Test
@@ -117,7 +117,7 @@ public class LambdaTest {
                 "nums = [1, 2, 3, 4, 5]; " +
                         "evens = &nums :: filter(lambda (x) -> &x % 2 == 0); " +
                         "&evens");
-        assertEquals("[2, 4]", result.toString());
+        assertEquals("[2, 4]", result.getInterpretResult().toString());
     }
 
     // ========== Lambda 返回值测试 ==========
