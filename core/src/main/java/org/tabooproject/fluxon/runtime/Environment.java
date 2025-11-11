@@ -46,6 +46,10 @@ public class Environment {
     // 根环境
     @NotNull
     protected final Environment root;
+    
+    // 父环境（用于支持闭包作用域链）
+    @Nullable
+    protected final Environment parent;
 
     /**
      * 创建顶层环境（全局环境）
@@ -57,6 +61,7 @@ public class Environment {
             @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
             @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
         this.root = this;
+        this.parent = null;
         this.functions = new HashMap<>(functions);
         this.systemFunctions = systemFunctions;
         this.extensionFunctions = extensionFunctions;
@@ -73,6 +78,7 @@ public class Environment {
      */
     public Environment(@NotNull Environment parentEnv, int localVariables) {
         this.root = parentEnv.root;
+        this.parent = parentEnv;
         this.functions = null;
         this.systemFunctions = null;
         this.extensionFunctions = null;
@@ -226,13 +232,28 @@ public class Environment {
      * 根据 position 参数决定更新局部变量还是根变量
      *
      * @param name  变量名
-     * @param index 索引（-1 索引表示根变量）
+     * @param index 索引（-1 索引表示根变量或捕获变量）
      * @return 变量值
      */
     @Nullable
     public Object get(@NotNull String name, int index) {
         if (index == -1) {
-            return Objects.requireNonNull(root.rootVariables).get(name);
+            // 先尝试从根变量获取
+            Object rootValue = Objects.requireNonNull(root.rootVariables).get(name);
+            if (rootValue != null || root.rootVariables.containsKey(name)) {
+                return rootValue;
+            }
+            // 如果不是根变量，尝试从父环境的局部变量获取（闭包捕获）
+            if (parent != null && parent.localVariables != null && parent.localVariableNames != null) {
+                for (int i = 0; i < parent.localVariableNames.length; i++) {
+                    if (name.equals(parent.localVariableNames[i])) {
+                        return parent.localVariables[i];
+                    }
+                }
+                // 递归查找更外层的父环境
+                return parent.get(name, -1);
+            }
+            return root.rootVariables.get(name);
         } else {
             return localVariables[index];
         }
@@ -244,11 +265,29 @@ public class Environment {
      *
      * @param name  变量名
      * @param value 新的变量值
-     * @param index 索引（-1 索引表示根变量）
+     * @param index 索引（-1 索引表示根变量或捕获变量）
      */
     public void assign(@NotNull String name, @Nullable Object value, int index) {
         if (index == -1) {
-            Objects.requireNonNull(root.rootVariables).put(name, value);
+            // 先尝试更新根变量
+            if (Objects.requireNonNull(root.rootVariables).containsKey(name)) {
+                root.rootVariables.put(name, value);
+                return;
+            }
+            // 尝试更新父环境的局部变量（闭包捕获）
+            if (parent != null && parent.localVariables != null && parent.localVariableNames != null) {
+                for (int i = 0; i < parent.localVariableNames.length; i++) {
+                    if (name.equals(parent.localVariableNames[i])) {
+                        parent.localVariables[i] = value;
+                        return;
+                    }
+                }
+                // 递归更新更外层的父环境
+                parent.assign(name, value, -1);
+                return;
+            }
+            // 如果都找不到，在根环境创建新变量
+            root.rootVariables.put(name, value);
         } else {
             if (index < localVariables.length) {
                 localVariables[index] = value;

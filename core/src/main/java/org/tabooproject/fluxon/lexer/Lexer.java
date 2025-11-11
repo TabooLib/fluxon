@@ -36,7 +36,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS = new HashMap<>(32);
         KEYWORDS.put("import", TokenType.IMPORT);
         KEYWORDS.put("def", TokenType.DEF);
-        KEYWORDS.put("fun", TokenType.FUN);
+        KEYWORDS.put("lambda", TokenType.LAMBDA);
         KEYWORDS.put("val", TokenType.VAL);
         KEYWORDS.put("var", TokenType.VAR);
         KEYWORDS.put("if", TokenType.IF);

@@ -119,13 +119,13 @@ public class LexerTest {
         @Test
         @DisplayName("测试关键字识别")
         void testKeywords() {
-            String source = "def fun val var if then else when is in async await return try catch finally";
+            String source = "def lambda val var if then else when is in async await return try catch finally";
             List<Token> tokens = getTokens(source);
 
             // 验证所有关键字都被正确识别
             // 使用 index 判定，确保每个关键字在正确的位置上被识别
             assertEquals(TokenType.DEF, tokens.get(0).getType(), "第1个 token 应为 'def' 关键字");
-            assertEquals(TokenType.FUN, tokens.get(1).getType(), "第2个 token 应为 'fun' 关键字");
+            assertEquals(TokenType.LAMBDA, tokens.get(1).getType(), "第2个 token 应为 'lambda' 关键字");
             assertEquals(TokenType.VAL, tokens.get(2).getType(), "第3个 token 应为 'val' 关键字");
             assertEquals(TokenType.VAR, tokens.get(3).getType(), "第4个 token 应为 'var' 关键字");
             assertEquals(TokenType.IF, tokens.get(4).getType(), "第5个 token 应为 'if' 关键字");

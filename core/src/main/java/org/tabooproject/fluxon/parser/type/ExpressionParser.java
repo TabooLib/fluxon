@@ -378,6 +378,12 @@ public class ExpressionParser {
             case TRY:
                 return TryParser.parse(parser);
 
+            // Lambda 表达式
+            case LAMBDA: {
+                parser.consume(); // 消费 lambda 关键字
+                return LambdaParser.parse(parser);
+            }
+
             // 分组表达式
             case LEFT_PAREN: {
                 parser.consume(); // 消费左括号

@@ -12,6 +12,46 @@ import java.util.*;
  */
 public class SymbolEnvironment {
 
+    /**
+     * 函数作用域快照
+     * 用于保存和恢复函数解析上下文
+     */
+    public static class FunctionScopeSnapshot {
+        private final String currentFunction;
+        private final String parentFunction;
+        private final boolean isBreakable;
+        private final boolean isContinuable;
+        private final boolean isContextCall;
+
+        public FunctionScopeSnapshot(String currentFunction, String parentFunction, boolean isBreakable, boolean isContinuable, boolean isContextCall) {
+            this.currentFunction = currentFunction;
+            this.parentFunction = parentFunction;
+            this.isBreakable = isBreakable;
+            this.isContinuable = isContinuable;
+            this.isContextCall = isContextCall;
+        }
+
+        public String getCurrentFunction() {
+            return currentFunction;
+        }
+
+        public String getParentFunction() {
+            return parentFunction;
+        }
+
+        public boolean isBreakable() {
+            return isBreakable;
+        }
+
+        public boolean isContinuable() {
+            return isContinuable;
+        }
+
+        public boolean isContextCall() {
+            return isContextCall;
+        }
+    }
+
     // 用户定义的函数
     private final Map<String, SymbolFunction> userFunctions = new HashMap<>();
 
@@ -23,6 +63,10 @@ public class SymbolEnvironment {
     // 当前函数
     @Nullable
     private String currentFunction;
+    
+    // 父函数（用于支持嵌套作用域）
+    @Nullable
+    private String parentFunction;
 
     // 是否可以应用 break 语句
     private boolean isBreakable = false;
@@ -97,8 +141,21 @@ public class SymbolEnvironment {
      */
     public boolean hasVariable(String name) {
         if (rootVariables.contains(name)) return true;
-        if (currentFunction != null) {
-            return localVariables.containsKey(currentFunction) && localVariables.get(currentFunction).contains(name);
+        
+        // 沿着作用域链向上查找
+        String searchFunction = currentFunction;
+        while (searchFunction != null) {
+            Set<String> locals = localVariables.get(searchFunction);
+            if (locals != null && locals.contains(name)) {
+                return true;
+            }
+            // 查找父作用域
+            if (searchFunction.equals(currentFunction) && parentFunction != null) {
+                searchFunction = parentFunction;
+            } else {
+                // 没有更多父作用域
+                break;
+            }
         }
         return false;
     }
@@ -107,7 +164,7 @@ public class SymbolEnvironment {
      * 获取局部变量的位置
      *
      * @param name 变量名
-     * @return 返回变量索引
+     * @return 返回变量索引，如果是外层作用域的变量返回 -1（表示需要通过捕获访问）
      */
     public int getLocalVariable(String name) {
         if (currentFunction != null) {
@@ -119,6 +176,14 @@ public class SymbolEnvironment {
                         return index;
                     }
                     index++;
+                }
+            }
+            // 检查是否在父作用域中（用于闭包捕获）
+            // 注意：这里返回 -1 表示是捕获的变量，运行时需要从环境链中查找
+            if (parentFunction != null) {
+                Set<String> parentLocals = this.localVariables.get(parentFunction);
+                if (parentLocals != null && parentLocals.contains(name)) {
+                    return -1; // 标记为捕获变量
                 }
             }
         }
@@ -201,6 +266,39 @@ public class SymbolEnvironment {
      */
     public boolean isContextCall() {
         return isContextCall;
+    }
+
+    /**
+     * 创建当前作用域快照
+     * 用于解析嵌套函数（如 lambda）时保存外层上下文
+     */
+    public FunctionScopeSnapshot pushFunctionScope(String functionName) {
+        FunctionScopeSnapshot snapshot = new FunctionScopeSnapshot(
+                currentFunction,
+                parentFunction,
+                isBreakable,
+                isContinuable,
+                isContextCall
+        );
+        // 设置新函数的父作用域为当前函数
+        this.parentFunction = currentFunction;
+        this.currentFunction = functionName;
+        this.isBreakable = false;
+        this.isContinuable = false;
+        this.isContextCall = false;
+        return snapshot;
+    }
+
+    /**
+     * 恢复作用域快照
+     * 在解析完嵌套函数后恢复外层上下文
+     */
+    public void popFunctionScope(FunctionScopeSnapshot snapshot) {
+        this.currentFunction = snapshot.getCurrentFunction();
+        this.parentFunction = snapshot.getParentFunction();
+        this.isBreakable = snapshot.isBreakable();
+        this.isContinuable = snapshot.isContinuable();
+        this.isContextCall = snapshot.isContextCall();
     }
 
     @Override
