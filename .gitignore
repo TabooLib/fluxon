@@ -35,3 +35,5 @@ bin/
 .claude/
 CLAUDE.md
 core/dump
+jfr
+vscode-extension

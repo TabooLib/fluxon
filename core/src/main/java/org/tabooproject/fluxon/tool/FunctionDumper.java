@@ -1,127 +1,129 @@
 package org.tabooproject.fluxon.tool;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 /**
- * 函数导出工具 - 简化版
+ * 将系统与扩展函数导出为 JSON 目录
  */
 public class FunctionDumper {
 
     private final FluxonRuntime runtime;
-    private final StringBuilder output;
 
     public FunctionDumper() {
         this.runtime = FluxonRuntime.getInstance();
-        this.output = new StringBuilder();
     }
 
     public void dumpToFile(String filePath) throws IOException {
-        output.append("# Fluxon 函数列表\n\n");
-        
-        collectSystemFunctions();
-        collectExtensionFunctions();
-        
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            writer.write(output.toString());
+        String json = buildCatalogJson();
+        Path target = Paths.get(filePath);
+        Path parent = target.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
         }
-        
-        System.out.println("Functions dumped to: " + filePath);
+        Files.write(target, json.getBytes(StandardCharsets.UTF_8));
+        System.out.println("Functions dumped to: " + target.toAbsolutePath());
     }
 
-    private void collectSystemFunctions() {
-        Map<String, Function> systemFunctions = runtime.getSystemFunctions();
-        TreeMap<String, Function> sortedFunctions = new TreeMap<>(systemFunctions);
-        
-        output.append("## 系统函数\n");
-        
-        List<String> funcList = new ArrayList<>();
-        for (Map.Entry<String, Function> entry : sortedFunctions.entrySet()) {
-            String name = entry.getKey();
-            Function function = entry.getValue();
-            List<Integer> paramCounts = function.getParameterCounts();
-            
-            if (paramCounts.size() == 1 && paramCounts.get(0) == 0) {
-                funcList.add(name);
-            } else if (paramCounts.size() == 1) {
-                funcList.add(name + "(" + paramCounts.get(0) + ")");
-            } else {
-                funcList.add(name + "(" + paramCounts.stream().map(String::valueOf).collect(Collectors.joining("|")) + ")");
-            }
-        }
-        
-        output.append(String.join(", ", funcList)).append("\n\n");
+    private String buildCatalogJson() {
+        Catalog catalog = new Catalog();
+        catalog.generatedAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+        catalog.system = collectSystemFunctions();
+        catalog.extensions = collectExtensionFunctions();
+        Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+        return gson.toJson(catalog);
     }
 
-    private void collectExtensionFunctions() {
-        Map<String, Map<Class<?>, Function>> extensionFunctions = runtime.getExtensionFunctions();
-        
-        output.append("## 扩展函数\n");
-        
-        // 按类名分组扩展函数
-        TreeMap<String, Map<String, Function>> sortedByClassName = new TreeMap<>();
-        for (Map.Entry<String, Map<Class<?>, Function>> nameEntry : extensionFunctions.entrySet()) {
-            String functionName = nameEntry.getKey();
-            Map<Class<?>, Function> classFunctionMap = nameEntry.getValue();
-            
-            for (Map.Entry<Class<?>, Function> classEntry : classFunctionMap.entrySet()) {
-                String className = classEntry.getKey().getSimpleName();
-                Function function = classEntry.getValue();
-                
-                sortedByClassName.computeIfAbsent(className, k -> new TreeMap<>())
-                    .put(functionName, function);
+    private List<CatalogFunction> collectSystemFunctions() {
+        TreeMap<String, Function> system = new TreeMap<>(runtime.getSystemFunctions());
+        List<CatalogFunction> result = new ArrayList<>(system.size());
+        for (Map.Entry<String, Function> entry : system.entrySet()) {
+            result.add(toCatalogFunction(entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
+
+    private Map<String, List<CatalogFunction>> collectExtensionFunctions() {
+        Map<String, Map<Class<?>, Function>> rawExtensions = runtime.getExtensionFunctions();
+        TreeMap<String, Map<String, Function>> grouped = new TreeMap<>();
+        for (Map.Entry<String, Map<Class<?>, Function>> entry : rawExtensions.entrySet()) {
+            String functionName = entry.getKey();
+            for (Map.Entry<Class<?>, Function> classEntry : entry.getValue().entrySet()) {
+                String owner = classEntry.getKey().getName();
+                grouped.computeIfAbsent(owner, key -> new TreeMap<>())
+                    .put(functionName, classEntry.getValue());
             }
         }
-        
-        for (Map.Entry<String, Map<String, Function>> classEntry : sortedByClassName.entrySet()) {
-            String className = classEntry.getKey();
-            Map<String, Function> methods = classEntry.getValue();
-            
-            List<String> methodList = new ArrayList<>();
-            for (Map.Entry<String, Function> methodEntry : methods.entrySet()) {
-                String methodName = methodEntry.getKey();
-                List<Integer> params = methodEntry.getValue().getParameterCounts();
-                if (params.size() == 1) {
-                    methodList.add(methodName + "(" + params.get(0) + ")");
-                } else {
-                    methodList.add(methodName + "(" + params.stream().map(String::valueOf).collect(Collectors.joining("|")) + ")");
+        Map<String, List<CatalogFunction>> result = new LinkedHashMap<>();
+        grouped.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .forEach(entry -> {
+                List<Map.Entry<String, Function>> sorted = new ArrayList<>(entry.getValue().entrySet());
+                sorted.sort(Comparator.comparing(Map.Entry::getKey));
+                List<CatalogFunction> functions = new ArrayList<>(sorted.size());
+                for (Map.Entry<String, Function> fn : sorted) {
+                    functions.add(toCatalogFunction(fn.getKey(), fn.getValue()));
                 }
-            }
-            
-            output.append("- **").append(className).append("**: ")
-                  .append(String.join(", ", methodList)).append("\n");
-        }
-        
-        output.append("\n");
+                result.put(entry.getKey(), functions);
+            });
+        return result;
     }
 
+    private CatalogFunction toCatalogFunction(String name, Function function) {
+        CatalogFunction catalogFunction = new CatalogFunction();
+        catalogFunction.name = name;
+        catalogFunction.namespace = emptyToNull(function.getNamespace());
+        catalogFunction.params = new ArrayList<>(function.getParameterCounts());
+        catalogFunction.async = function.isAsync();
+        catalogFunction.primarySync = function.isPrimarySync();
+        return catalogFunction;
+    }
 
-    /**
-     * 主程序入口
-     */
+    private String emptyToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
+    }
+
     public static void main(String[] args) {
-        String outputFile = "fluxon_functions.md";
-        
-        if (args.length > 0) {
+        String outputFile = "build/fluxon-functions.json";
+        if (args.length > 0 && args[0] != null && !args[0].isEmpty()) {
             outputFile = args[0];
         }
-        
         FunctionDumper dumper = new FunctionDumper();
         try {
             dumper.dumpToFile(outputFile);
-            System.out.println("Successfully exported functions to: " + outputFile);
         } catch (IOException e) {
             System.err.println("Failed to export functions: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private static class Catalog {
+        String generatedAt;
+        List<CatalogFunction> system;
+        Map<String, List<CatalogFunction>> extensions;
+    }
+
+    private static class CatalogFunction {
+        String name;
+        String namespace;
+        List<Integer> params;
+        boolean async;
+        boolean primarySync;
     }
 }
