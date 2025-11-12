@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.FunctionContext;
 
 import java.util.Map;
 import java.util.Objects;

@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime.function;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.Collection;

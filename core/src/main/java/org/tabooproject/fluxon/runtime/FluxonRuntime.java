@@ -64,16 +64,19 @@ public class FluxonRuntime {
         ExtensionMethod.init(this);
         // Extension
         ExtensionCollection.init(this);
+        ExtensionFile.init(this);
         ExtensionIterable.init(this);
         ExtensionList.init(this);
         ExtensionMap.init(this);
         ExtensionMapEntry.init(this);
         ExtensionObject.init(this);
+        ExtensionPath.init(this);
         ExtensionString.init(this);
         ExtensionThrowable.init(this);
         // Function
         FunctionCrypto.init(this);
         FunctionEnvironment.init(this);
+        FunctionFile.init(this);
         FunctionMath.init(this);
         FunctionSystem.init(this);
         FunctionTime.init(this);

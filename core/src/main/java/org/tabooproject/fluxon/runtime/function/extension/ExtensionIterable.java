@@ -5,7 +5,10 @@ import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
 
 public class ExtensionIterable {
 
@@ -98,6 +101,7 @@ public class ExtensionIterable {
                     if (n >= size) return new ArrayList<>();
                     return list.subList(0, size - n);
                 })
+                // region 集合操作
                 // 遍历每个元素
                 .function("each", 1, (context) -> {
                     Function closure = context.getFunction(0);
@@ -180,6 +184,7 @@ public class ExtensionIterable {
                     }
                     return true;
                 })
+                // endregion
         ;
     }
 }
