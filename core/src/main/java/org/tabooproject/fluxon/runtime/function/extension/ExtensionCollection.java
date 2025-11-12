@@ -1,8 +1,10 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ExtensionCollection {
 
@@ -56,6 +58,13 @@ public class ExtensionCollection {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     list.clear();
                     return null;
+                })
+                // 转换为字符串
+                .function("join", Arrays.asList(0, 1), (context) -> {
+                    // 获取分隔符参数，默认值为 ", "
+                    String delimiter = Coerce.asString(context.getString(0)).orElse(", ");
+                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    return list.stream().map(Object::toString).collect(Collectors.joining(delimiter));
                 })
                 // 随机获取元素
                 .function("random", Arrays.asList(0, 1), (context) -> {

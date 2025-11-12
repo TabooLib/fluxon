@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -361,5 +362,17 @@ public class FunctionCallTest {
                         "isFalse()");
         assertEquals(false, result.getInterpretResult());
         assertEquals(false, result.getCompileResult());
+    }
+
+    @Test
+    public void testFunctionNotFoundError() {
+        try {
+            FluxonTestUtil.runSilent(
+                    "&PI::replace(\"a\", \"b\")"
+            );
+            throw new RuntimeException("Should throw FunctionNotFoundError");
+        } catch (FunctionNotFoundError e) {
+            assertEquals("Double::replace([a, b])", e.getMessage());
+        }
     }
 }

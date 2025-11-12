@@ -16,7 +16,7 @@ public class VariableNotFoundError extends FluxonRuntimeError {
     private final List<String> availableVariables;
 
     public VariableNotFoundError(Environment environment, String variableName, int index, List<String> availableVariables) {
-        super("Variable not found: " + variableName + ", index: " + index + ", available: " + availableVariables);
+        super(variableName + ", index: " + index + ", available: " + availableVariables);
         this.environment = environment;
         this.variableName = variableName;
         this.index = index;

@@ -16,7 +16,7 @@ public class ArgumentTypeMismatchError extends FluxonRuntimeError {
     private final Object actual;
 
     public ArgumentTypeMismatchError(FunctionContext<?> context, int index, @NotNull Class<?> expect, @Nullable Object actual) {
-        super("Argument " + index + " expect " + expect.getSimpleName() + " but got " + (actual == null ? "null" : actual.getClass().getSimpleName()) + " (" + actual + ")");
+        super(index + ", expect " + expect.getSimpleName() + " but got " + (actual == null ? "null" : actual.getClass().getSimpleName()) + " (" + actual + ")");
         this.context = context;
         this.index = index;
         this.expect = expect;
