@@ -15,6 +15,7 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
+import org.tabooproject.fluxon.runtime.index.IndexAccessorRegistry;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -411,6 +412,14 @@ public final class Intrinsics {
             }
             arr[idx] = value;
         } else {
+            // 尝试使用第三方注册的索引访问器
+            IndexAccessorRegistry.AccessResult result = IndexAccessorRegistry.getInstance().trySet(target, index, value);
+            if (result != null) {
+                if (!result.isSuccess()) {
+                    throw new IntrinsicException("Index set failed: " + result.getError().getMessage(), result.getError());
+                }
+                return;
+            }
             throw IndexAccessError.unsupportedSetType(target, index);
         }
     }
@@ -449,6 +458,14 @@ public final class Intrinsics {
             }
             return arr[idx];
         } else {
+            // 尝试使用第三方注册的索引访问器
+            IndexAccessorRegistry.AccessResult result = IndexAccessorRegistry.getInstance().tryGet(target, index);
+            if (result != null) {
+                if (!result.isSuccess()) {
+                    throw new IntrinsicException("Index access failed: " + result.getError().getMessage(), result.getError());
+                }
+                return result.getValue();
+            }
             throw IndexAccessError.unsupportedType(target, index);
         }
     }
