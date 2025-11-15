@@ -1,52 +1,52 @@
-# Fluxon Language Syntax Documentation
+# Fluxon 语言语法文档
 
-## Table of Contents
-1. [Introduction](#introduction)
-2. [Comments](#comments)
-3. [Literals](#literals)
-4. [Variables](#variables)
-5. [Operators](#operators)
-6. [Functions](#functions)
-7. [Control Flow](#control-flow)
-8. [Expressions](#expressions)
-9. [Built-in Functions](#built-in-functions)
-10. [Special Features](#special-features)
+## 目录
+1. [简介](#简介)
+2. [注释](#注释)
+3. [字面量](#字面量)
+4. [变量](#变量)
+5. [运算符](#运算符)
+6. [函数](#函数)
+7. [控制流](#控制流)
+8. [表达式](#表达式)
+9. [内置函数](#内置函数)
+10. [特殊特性](#特殊特性)
 
-## Introduction
+## 简介
 
-Fluxon is a dynamic, expression-oriented scripting language for the JVM. It features dynamic typing, first-class functions, pattern matching, and asynchronous programming support.
+Fluxon 是一门运行在 JVM 上的动态、以表达式为中心的脚本语言。它支持动态类型、一等函数、模式匹配以及异步编程等特性。
 
-## Comments
+## 注释
 
-Fluxon supports single-line comments with `//`:
+Fluxon 使用 `//` 表示单行注释：
 
 ```fluxon
-// This is a comment
-x = 5 // This is an inline comment
+// 这是一条注释
+x = 5 // 这是一条行尾注释
 ```
 
-## Literals
+## 字面量
 
-### Numbers
+### 数字
 
 ```fluxon
-// Integer literals
+// 整数字面量
 42
 -10
 0
 
-// Long literals (suffix L or l)
+// 长整型字面量（后缀 L 或 l）
 0L
 123l
 42L
 9876543210l
 
-// Float literals (suffix f or F)
+// 浮点数字面量（后缀 f 或 F）
 0.5f
 3.14F
 1.0f
 
-// Double literals (no suffix or with d/D)
+// 双精度字面量（无后缀或使用 d/D）
 0.5
 3.14
 1.0
@@ -56,9 +56,9 @@ x = 5 // This is an inline comment
 3e+2
 ```
 
-### Strings
+### 字符串
 
-Strings can use double quotes or single quotes:
+字符串可以使用双引号或单引号：
 
 ```fluxon
 "hello"
@@ -66,51 +66,51 @@ Strings can use double quotes or single quotes:
 'hello'
 'world'
 
-// Escape sequences
-"\\n\\r\\t\\\\\\\"\\\'"
-'\\n\\r\\t\\\\\\\"\\\''
+// 转义序列
+"\\n\\r\\t\\\\\\"\\\'"
+'\\n\\r\\t\\\\\\"\\\''
 
-// Empty strings
+// 空字符串
 ""
 ''
 ```
 
-### Booleans
+### 布尔值
 
 ```fluxon
 true
 false
 ```
 
-### Null
+### 空值
 
 ```fluxon
 null
 ```
 
-### Lists
+### 列表
 
-Lists use square brackets:
+列表使用方括号：
 
 ```fluxon
 [1, 2, 3]
 ["a", "b", "c"]
-[]  // Empty list
-[[1, 2], [3, 4], [5, 6]]  // Nested lists
+[]  // 空列表
+[[1, 2], [3, 4], [5, 6]]  // 嵌套列表
 ```
 
-### Maps
+### 映射
 
-Maps use square brackets with key-value pairs:
+映射使用方括号和键值对：
 
 ```fluxon
 [a: 1, b: 2, c: 3]
 ["key": "value", "another": 42]
 ```
 
-## Variables
+## 变量
 
-### Variable Declaration
+### 变量声明
 
 ```fluxon
 x = 5
@@ -119,200 +119,190 @@ counter = 0
 result = 'fail'
 ```
 
-### Variable References
+### 变量引用
 
-Use `&` to reference a variable:
+使用 `&` 引用变量：
 
 ```fluxon
 x = 10
-y = &x + 5  // Reference x
-result = &result + &i  // Reference both variables
+y = &x + 5  // 引用变量 x
+result = &result + &i  // 同时引用多个变量
 ```
 
-### Assignment
+### 赋值
 
 ```fluxon
-// Basic assignment
+// 基本赋值
 x = 10
 result = 'ok'
 
-// Compound assignment
+// 复合赋值
 result += &i
 counter += 1
 output *= 2
 ```
 
-## Operators
+## 运算符
 
-### Arithmetic Operators
+### 算术运算符
 
 ```fluxon
 + - * / %
 
-// Examples
+// 示例
 &n * factorial(&n - 1)
 &x + &y
 &i % 2
 ```
 
-### Comparison Operators
+### 比较运算符
 
 ```fluxon
 == != > < >= <=
 
-// Examples
+// 示例
 &n <= 1
 &i == 5
 &count >= 5
 &sum > 50
 ```
 
-### Logical Operators
+### 逻辑运算符
 
 ```fluxon
 && || !
 
-// Examples
+// 示例
 &x > 0 && &x < 10
 condition1 || condition2
 !isValid
 ```
 
-### Assignment Operators
+### 赋值运算符
 
 ```fluxon
 = += -= *= /=
 
-// Examples
+// 示例
 result = 0
 result += &i
 count -= 1
 ```
 
-### Special Operators
+### 特殊运算符
 
 ```fluxon
-// Context call (method on object)
+// 上下文调用（在对象上调用方法）
 hash::md5("data")
 base64::encode("text")
 time::now()
 
-// Range operators
-1..10    // Inclusive range
-1..<10   // Exclusive end
+// 区间运算符
+1..10    // 闭区间
+1..<10   // 右开区间
 
-// Elvis operator
+// Elvis 运算符
 x ?: defaultValue
 
-// Reference operator
+// 引用运算符
 &variable
 ```
 
-## Functions
+## 函数
 
-### Function Definition
+### 函数定义
 
 ```fluxon
-// Simple function definition
+// 简单函数定义
 def factorial(n) = &n
 
-// Function with expression body
+// 使用表达式体的函数
 def factorial(n) = if &n <= 1 then 1 else &n * factorial(&n - 1)
 
-// Function with block body
+// 使用代码块作为函数体
 def max(x, y) = { if (&x > &y) &x else &y }
 
-// Async function definition
+// 异步函数定义
 async def test = { return 42 }
 async def loadData = { sleep 10 return 'ok' }
 ```
 
-### Function Calls
+### 函数调用
 
 ```fluxon
-// Regular function call with parentheses
+// 使用括号的普通函数调用
 print("hello")
 max(10, 20)
 factorial(5)
 
-// No-bracket function call
-print "hello"
-print 123
-max 10 20
-msg 嗯嗯啊啊
-
-// Nested no-bracket calls
-print checkGrade 85
-double inc 5
-
-// Method calls with context operator ::
+// 使用 :: 的上下文调用
 hash::md5("Hello")
 base64::encode("Hello, World!")
 hex::decode("48656c6c6f")
 time::formatDateTime(now)
 ```
 
-## Control Flow
+## 控制流
 
-### If-Then-Else Expressions
+### If-Then-Else 表达式
 
 ```fluxon
-// Simple if expression
+// 简单 if 表达式
 if &n <= 1 then 1 else &n * factorial(&n - 1)
 
-// If with complex conditions
+// 带复杂条件的 if
 if &x % 2 == 0 then "even" else "odd"
 
-// Nested if
+// 嵌套 if
 if condition1 then
     if condition2 then result1 else result2
 else
     result3
 ```
 
-### When Expressions
+### When 表达式
 
 ```fluxon
-// When without subject (condition-based)
+// 无主体的 when（基于条件）
 when {
     &num % 2 == 0 -> "even"
     &num < 0 -> "negative odd"
     else -> "positive odd"
 }
 
-// When with subject
+// 带主体的 when
 when x {
     1 -> "one"
     2 -> "two"
     else -> "other"
 }
 
-// When with complex conditions
+// 带复杂条件的 when
 when {
     true -> 1
     false -> 0
 }
 ```
 
-### For Loops
+### For 循环
 
 ```fluxon
-// For loop over list
+// 遍历列表的 for 循环
 for i in [1, 2, 3] {
     result += &i
 }
 
-// For loop over range
+// 遍历区间的 for 循环
 for i in 1..10 {
     print &i
 }
 
-// For loop with destructuring
+// 带解构的 for 循环
 for (key, value) in &map {
     result = &result + &key + &value
 }
 
-// Nested for loops
+// 嵌套 for 循环
 for i in 1..3 {
     for j in 1..3 {
         result += (&i * &j)
@@ -320,16 +310,16 @@ for i in 1..3 {
 }
 ```
 
-### While Loops
+### While 循环
 
 ```fluxon
-// Basic while loop
+// 基本 while 循环
 while &count < 10 {
     count = &count + 1
     output = &output + &count + ','
 }
 
-// Infinite loop with break
+// 使用 break 的无限循环
 while true {
     output = &output + &count + ','
     count = &count + 1
@@ -339,10 +329,10 @@ while true {
 }
 ```
 
-### Break and Continue
+### Break 与 Continue
 
 ```fluxon
-// Break statement
+// break 语句
 for i in 1..10 {
     if &i == 5 {
         result = 'ok'
@@ -351,7 +341,7 @@ for i in 1..10 {
     print &i
 }
 
-// Continue statement
+// continue 语句
 for i in 1..10 {
     if &i % 2 == 0 {
         continue
@@ -360,52 +350,52 @@ for i in 1..10 {
 }
 ```
 
-### Return Statement
+### Return 语句
 
 ```fluxon
-// Return with value
+// 带返回值的 return
 return 42
 return 'ok'
 return &result
 
-// In async function
+// 在异步函数中
 async def test = { sleep 10 return 'ok' }
 ```
 
-## Expressions
+## 表达式
 
-Everything in Fluxon is an expression:
+在 Fluxon 中，一切都是表达式：
 
 ```fluxon
-// Variable declaration returns the value
+// 变量声明会返回该值
 x = 10
 
-// If expression returns a value
+// if 表达式会返回值
 result = if &x > 0 then "positive" else "negative"
 
-// For loop can be used in expression context
+// for 循环可以用在表达式上下文中
 for i in 1..4 { result += &i }; &result
 
-// The last expression in a sequence is returned
+// 序列中最后一个表达式的值会被返回
 result = 0; for i in [1, 2, 3] { result += &i }; &result
 ```
 
-## Built-in Functions
+## 内置函数
 
-### System Functions
+### 系统函数
 
 ```fluxon
-print value        // Print to stdout
-print("hello")     // With parentheses
-print &variable    // Print variable
+print value        // 输出到标准输出
+print("hello")     // 使用括号调用
+print &variable    // 打印变量
 
-error message      // Print to stderr
-sleep milliseconds // Sleep for specified time
-forName className  // Load Java class
-now                // Get current timestamp (0 parameters)
+error message      // 输出到标准错误
+sleep milliseconds // 休眠指定毫秒
+forName className  // 加载 Java 类
+now                // 获取当前时间戳（0 个参数）
 ```
 
-### Math Functions
+### 数学函数
 
 ```fluxon
 min(a, b)
@@ -424,55 +414,55 @@ log(x)
 random()
 ```
 
-### Time Functions
+### 时间函数
 
 ```fluxon
-time                           // Time object
-time::now()                    // Current timestamp
-time::formatDateTime(millis)   // Format timestamp
+time                           // 时间对象
+time::now()                    // 当前时间戳
+time::formatDateTime(millis)   // 格式化时间戳
 ```
 
-### Encoding Functions
+### 编码函数
 
 ```fluxon
-// Hash functions (return hash object, then call methods)
+// 哈希函数（返回哈希对象，再调用其方法）
 hash::md5("Hello")
 hash::sha1("Hello")
 hash::sha256("Hello")
 hash::sha384("Hello")
 hash::sha512("Hello")
 
-// Base64 encoding/decoding
+// Base64 编码/解码
 base64::encode("Hello, World!")
 base64::decode("SGVsbG8sIFdvcmxkIQ==")
 
-// Hex encoding/decoding
+// 十六进制编码/解码
 hex::encode("Hello")
 hex::decode("48656c6c6f")
 
-// Unicode encoding/decoding
+// Unicode 编码/解码
 unicode::encode("Hello 你好")
 unicode::decode("Hello \\u4f60\\u597d")
 ```
 
-## Special Features
+## 特殊特性
 
-### String Concatenation
+### 字符串拼接
 
 ```fluxon
-// Using + operator
+// 使用 + 运算符
 output = &output + &i + ','
 result = &result + &key + &value
 "Hello " + name
 ```
 
-### Semicolon as Statement Separator
+### 分号作为语句分隔符
 
 ```fluxon
-// Multiple statements on one line
+// 一行中写多个语句
 result = 0; for i in [1, 2, 3] { result += &i }; &result
 
-// Semicolons are optional at end of line
+// 行尾分号是可选的
 x = 10
 y = 20
 ```
@@ -480,59 +470,38 @@ y = 20
 ### Async/Await
 
 ```fluxon
-// Define async function
+// 定义异步函数
 async def fetchData = {
     sleep 100
     return "data"
 }
 
-// Await async function
+// 等待异步函数
 await fetchData
 
-// Await non-async value (returns immediately)
+// 对非异步值使用 await（会立即返回）
 await 123
 ```
 
-### Expression Sequences
+### 表达式序列
 
 ```fluxon
-// Multiple expressions separated by newlines or semicolons
+// 多个表达式由换行或分号分隔
 start = now
 end = now + 1000
 diff = &end - &start
 return &diff
 ```
 
-### No-Bracket Function Calls
+## 示例
 
-Functions can be called without parentheses when unambiguous:
-
-```fluxon
-// Single argument
-print "hello"
-print 123
-
-// Multiple arguments  
-max 10 20
-
-// Nested calls
-print max 10 20
-double inc 5
-
-// With expressions
-print &a - &b
-result = double &a + 3
-```
-
-## Examples
-
-### Factorial Function
+### 阶乘函数
 
 ```fluxon
 def factorial(n) = if &n <= 1 then 1 else &n * factorial(&n - 1)
 ```
 
-### String Processing
+### 字符串处理
 
 ```fluxon
 text = "Hello, World!"
@@ -540,7 +509,7 @@ encoded = base64::encode(&text)
 decoded = base64::decode(&encoded)
 ```
 
-### Loop with Break
+### 带 break 的循环
 
 ```fluxon
 result = 'fail'
@@ -553,7 +522,7 @@ for i in 1..10 {
 }
 ```
 
-### Filtering Odd Numbers
+### 过滤奇数
 
 ```fluxon
 output = ''
@@ -565,11 +534,11 @@ for i in 1..10 {
 }
 ```
 
-### Complex Expression
+### 复杂表达式
 
 ```fluxon
 def max(x, y) = { if (&x > &y) &x else &y }
 a = 10
 b = 5
-result = max &a + &b &a * &b  // max(15, 50) = 50
+result = max(&a + &b, &a * &b)  // max(15, 50) = 50
 ```
