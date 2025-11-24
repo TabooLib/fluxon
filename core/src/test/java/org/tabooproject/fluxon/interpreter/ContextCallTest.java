@@ -319,7 +319,7 @@ public class ContextCallTest {
             FluxonTestUtil.runSilent("[1]::get(random(1))");
             fail("Should throw ArgumentTypeMismatchException");
         } catch (ArgumentTypeMismatchError e) {
-            assertEquals("Argument 0 expect Number but got ArrayList ([1])", e.getMessage());
+            assertEquals("0, expect Number but got ArrayList ([1])", e.getMessage());
         }
     }
 
@@ -329,7 +329,7 @@ public class ContextCallTest {
             FluxonTestUtil.runSilent("env()::function(0)");
             fail("Should throw ArgumentTypeMismatchException");
         } catch (ArgumentTypeMismatchError e) {
-            assertEquals("Argument 0 expect String but got Integer (0)", e.getMessage());
+            assertEquals("0, expect String but got Integer (0)", e.getMessage());
         }
     }
 
