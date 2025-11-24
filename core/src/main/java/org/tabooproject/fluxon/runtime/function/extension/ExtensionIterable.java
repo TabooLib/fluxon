@@ -5,10 +5,7 @@ import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class ExtensionIterable {
 
@@ -139,6 +136,20 @@ public class ExtensionIterable {
                         if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
                             result.add(object);
                         }
+                    }
+                    return result;
+                })
+                // 分组元素
+                .function("groupBy", 1, (context) -> {
+                    Function closure = context.getFunction(0);
+                    FunctionContext<?> ctx = null;
+                    Map<Object, List<Object>> result = new HashMap<>();
+                    for (Object object : Objects.requireNonNull(context.getTarget())) {
+                        if (ctx == null) {
+                            ctx = context.copy(new Object[0]);
+                        }
+                        Object key = closure.call(ctx.updateArguments(new Object[]{object}));
+                        result.computeIfAbsent(key, k -> new ArrayList<>()).add(object);
                     }
                     return result;
                 })
