@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
@@ -54,4 +55,9 @@ public interface BytecodeGenerator {
      * 获取已生成的定义列表
      */
     List<Definition> getDefinitions();
+
+     /**
+      * 获取已生成的 Lambda 函数定义列表
+      */
+    List<LambdaFunctionDefinition> getLambdaDefinitions();
 }

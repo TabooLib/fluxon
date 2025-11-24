@@ -377,6 +377,9 @@ public class ExpressionParser {
                 return WhileParser.parse(parser);
             case TRY:
                 return TryParser.parse(parser);
+            case PIPE:
+            case OR:
+                return LambdaParser.parse(parser);
 
             // 分组表达式
             case LEFT_PAREN: {

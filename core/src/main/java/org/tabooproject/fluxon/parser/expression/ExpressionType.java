@@ -54,7 +54,9 @@ public enum ExpressionType {
     TERNARY(new TernaryEvaluator()),
     ELVIS(new ElvisEvaluator()),
     GROUPING(new GroupingEvaluator()),
-    CONTEXT_CALL(new ContextCallEvaluator());
+    CONTEXT_CALL(new ContextCallEvaluator()),
+    // Lambda
+    LAMBDA(new LambdaEvaluator());
 
     public final Evaluator<ParseResult> evaluator;
 

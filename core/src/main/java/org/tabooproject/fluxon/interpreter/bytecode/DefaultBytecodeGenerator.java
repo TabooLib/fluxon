@@ -5,6 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
@@ -24,6 +25,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private final List<Statement> statements = new ArrayList<>();
     // 存储用户函数定义
     private final List<Definition> definitions = new ArrayList<>();
+    // 收集到的 lambda 定义
+    private List<LambdaFunctionDefinition> lastLambdaDefinitions = new ArrayList<>();
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
@@ -53,8 +56,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<byte[]> generateClassBytecode(String className, String superClassName, ClassLoader classLoader) {
         CodeContext ctx = new CodeContext(className, superClassName);
-        ctx.addDefinitions(definitions);
         List<byte[]> byteList = new ArrayList<>();
+        List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
 
         // 生成主类
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
@@ -64,6 +67,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
+                if (!funcDef.isRegisterToRoot()) {
+                    continue;
+                }
                 String functionClassName = className + funcDef.getName();
                 // 添加静态常量字段: public static final FunctionType functionName = new FunctionType();
                 cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, funcDef.getName(), "L" + functionClassName + ";", null, null);
@@ -83,7 +89,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitEnd();
 
         // 生成 eval 函数
-        generateEvalMethod(cw, ctx);
+        generateEvalMethod(cw, ctx, lambdaDefinitions);
         // 生成 clone 函数
         generateCloneMethod(cw, ctx.getClassName());
         // 主类生成结束
@@ -93,16 +99,21 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 为每个用户函数生成继承 Function 的内部类
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
-                byteList.add(generateFunctionClass((FunctionDefinition) definition, className, classLoader));
+                byteList.add(generateFunctionClass((FunctionDefinition) definition, className, classLoader, lambdaDefinitions));
             }
         }
+        for (int i = 0; i < lambdaDefinitions.size(); i++) {
+            LambdaFunctionDefinition lambdaDef = lambdaDefinitions.get(i);
+            byteList.add(generateFunctionClass(lambdaDef, lambdaDef.getOwnerClassName(), classLoader, lambdaDefinitions));
+        }
+        this.lastLambdaDefinitions = lambdaDefinitions;
         return byteList;
     }
 
     /**
      * 生成脚本主体函数
      */
-    private void generateEvalMethod(ClassWriter cw, CodeContext ctx) {
+    private void generateEvalMethod(ClassWriter cw, CodeContext ctx, List<LambdaFunctionDefinition> lambdaDefinitions) {
         // 继承 Object eval(Environment env) 函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "eval", "(" + Environment.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();
@@ -113,7 +124,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 注册用户定义的函数到 environment
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
-                generatorUserFunctionRegister((FunctionDefinition) definition, mv, ctx);
+                FunctionDefinition funcDef = (FunctionDefinition) definition;
+                if (funcDef.isRegisterToRoot()) {
+                    generatorUserFunctionRegister(funcDef, mv, ctx);
+                }
             }
         }
         // 生成脚本主体代码
@@ -132,6 +146,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitInsn(ARETURN);
         mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
         mv.visitEnd();
+        lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
     }
 
     /**
@@ -169,6 +184,9 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
+                if (!funcDef.isRegisterToRoot()) {
+                    continue;
+                }
                 String functionClassName = ctx.getClassName() + funcDef.getName();
 
                 // 创建函数实例: new FunctionClassName()
@@ -206,7 +224,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成继承 RuntimeScriptBase 并实现 Function 的独立函数类
      */
-    private byte[] generateFunctionClass(FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader) {
+    private byte[] generateFunctionClass(FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader, List<LambdaFunctionDefinition> lambdaDefinitions) {
         String functionClassName = parentClassName + funcDef.getName();
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
@@ -228,7 +246,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitEnd();
 
         // 实现 Function 接口的方法
-        generateFunctionInterfaceMethods(funcDef, cw, functionClassName);
+        generateFunctionInterfaceMethods(funcDef, cw, functionClassName, lambdaDefinitions);
 
         // 生成静态初始化块来初始化 parameters
         generateStaticInitializationBlock(funcDef, cw, functionClassName);
@@ -290,7 +308,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成 Function 接口的实现方法
      */
-    private void generateFunctionInterfaceMethods(FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
+    private void generateFunctionInterfaceMethods(FunctionDefinition funcDef, ClassWriter cw, String functionClassName, List<LambdaFunctionDefinition> lambdaDefinitions) {
         // 实现 getName() 方法
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getName", "()" + STRING, null, null);
         mv.visitCode();
@@ -397,6 +415,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitInsn(ARETURN);
         mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 2);
         mv.visitEnd();
+        lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
     }
 
     @Override
@@ -407,6 +426,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<Definition> getDefinitions() {
         return definitions;
+    }
+
+    @Override
+    public List<LambdaFunctionDefinition> getLambdaDefinitions() {
+        return lastLambdaDefinitions;
     }
 
     private static final Type MAP = new Type(Map.class);

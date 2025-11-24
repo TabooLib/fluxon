@@ -4,6 +4,7 @@ import org.objectweb.asm.Label;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
@@ -20,6 +21,7 @@ public class CodeContext {
 
     // 用户定义
     private final List<Definition> definitions = new ArrayList<>();
+    private final List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
 
     // 局部变量表
     private int localVarIndex = 0;
@@ -66,6 +68,14 @@ public class CodeContext {
 
     public void addDefinitions(List<Definition> definitions) {
         this.definitions.addAll(definitions);
+    }
+
+    public void addLambdaDefinition(LambdaFunctionDefinition definition) {
+        lambdaDefinitions.add(definition);
+    }
+
+    public List<LambdaFunctionDefinition> getLambdaDefinitions() {
+        return lambdaDefinitions;
     }
 
     public String getClassName() {

@@ -19,6 +19,7 @@ public class FunctionDefinition implements Definition {
     private final boolean isPrimarySync;
     private final List<Annotation> annotations;
     private final Set<String> localVariables;
+    private final boolean registerToRoot;
 
     public FunctionDefinition(
             String name,
@@ -29,6 +30,19 @@ public class FunctionDefinition implements Definition {
             @NotNull List<Annotation> annotations,
             @NotNull Set<String> localVariables
     ) {
+        this(name, parameters, body, isAsync, isPrimarySync, annotations, localVariables, true);
+    }
+
+    public FunctionDefinition(
+            String name,
+            @NotNull LinkedHashMap<String, Integer> parameters,
+            @NotNull ParseResult body,
+            boolean isAsync,
+            boolean isPrimarySync,
+            @NotNull List<Annotation> annotations,
+            @NotNull Set<String> localVariables,
+            boolean registerToRoot
+    ) {
         this.name = name;
         this.parameters = parameters;
         this.body = body;
@@ -36,6 +50,7 @@ public class FunctionDefinition implements Definition {
         this.isPrimarySync = isPrimarySync;
         this.annotations = annotations;
         this.localVariables = localVariables;
+        this.registerToRoot = registerToRoot;
     }
 
     public String getName() {
@@ -66,6 +81,10 @@ public class FunctionDefinition implements Definition {
         return localVariables;
     }
 
+    public boolean isRegisterToRoot() {
+        return registerToRoot;
+    }
+
     @Override
     public String toString() {
         return "FunctionDefinition{" +
@@ -76,6 +95,7 @@ public class FunctionDefinition implements Definition {
                 ", isPrimarySync=" + isPrimarySync +
                 ", annotations=" + annotations +
                 ", localVariables=" + localVariables +
+                ", registerToRoot=" + registerToRoot +
                 '}';
     }
 

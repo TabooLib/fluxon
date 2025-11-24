@@ -4,11 +4,15 @@ import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 
+/**
+ * 编译结果，封装主类与内部函数类的字节码
+ */
 public class CompileResult {
 
     private final String source;
@@ -17,12 +21,10 @@ public class CompileResult {
     private final byte[] mainClass;
     private final List<byte[]> innerClasses;
 
-    public CompileResult(
-            String source,
-            String className,
-            BytecodeGenerator generator,
-            List<byte[]> bytecode
-    ) {
+    public CompileResult(String source,
+                         String className,
+                         BytecodeGenerator generator,
+                         List<byte[]> bytecode) {
         this.source = source;
         this.className = className;
         this.generator = generator;
@@ -31,16 +33,13 @@ public class CompileResult {
     }
 
     /**
-     * 定义编译结果的类
-     * 主类将被定义为指定的类名，用户函数类将被定义为 className + 函数名
+     * 将编译结果定义到指定的类加载器中
      *
      * @param loader 类加载器
-     * @return 脚本类
+     * @return 主脚本类
      */
     public Class<?> defineClass(FluxonClassLoader loader) {
-        // 定义主类
         Class<?> scriptClass = loader.defineClass(className, getMainClass());
-        // 定义用户函数类
         int i = 0;
         for (Definition definition : generator.getDefinitions()) {
             if (definition instanceof FunctionDefinition) {
@@ -52,14 +51,18 @@ public class CompileResult {
                 }
             }
         }
+        for (LambdaFunctionDefinition lambdaDef : generator.getLambdaDefinitions()) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            if (i < innerClasses.size()) {
+                loader.defineClass(lambdaClassName, innerClasses.get(i));
+                i++;
+            }
+        }
         return scriptClass;
     }
 
     /**
-     * 输出编译结果到文件
-     * 主类将输出到指定文件，用户函数类将输出到与主类相同的目录下
-     *
-     * @param file 输出文件
+     * 将字节码写入文件，便于调试
      */
     public void dump(File file) throws Exception {
         if (!file.getParentFile().exists()) {
@@ -77,6 +80,15 @@ public class CompileResult {
                     Files.write(compiled.toPath(), innerClasses.get(i));
                     i++;
                 }
+            }
+        }
+        for (LambdaFunctionDefinition lambdaDef : generator.getLambdaDefinitions()) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            if (i < innerClasses.size()) {
+                File compiled = new File(file.getParentFile(), lambdaClassName + ".class");
+                compiled.createNewFile();
+                Files.write(compiled.toPath(), innerClasses.get(i));
+                i++;
             }
         }
     }
@@ -101,3 +113,4 @@ public class CompileResult {
         return innerClasses;
     }
 }
+

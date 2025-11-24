@@ -85,6 +85,7 @@ public enum TokenType {
     QUESTION_COLON("?:"),      // Elvis 操作符
     AMPERSAND("&"),            // 变量引用前缀
     CONTEXT_CALL("::"),        // 上下文调用操作符
+    PIPE("|"),                 // 管道符，用于 lambda 参数分隔
     AT("@"),                   // 注解符号
 
     // 其他
