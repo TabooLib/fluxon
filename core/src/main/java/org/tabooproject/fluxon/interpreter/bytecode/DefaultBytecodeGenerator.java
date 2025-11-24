@@ -76,9 +76,6 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             }
         }
 
-        // 生成静态初始化块
-        generateStaticInitializationBlock(cw, ctx);
-
         // 生成空的构造函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
@@ -88,8 +85,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
-        // 生成 eval 函数
+        // 生成 eval 函数（会收集 lambda）
         generateEvalMethod(cw, ctx, lambdaDefinitions);
+        // 为当前类拥有的 lambda 创建静态字段（在收集后）
+        List<LambdaFunctionDefinition> ownedMainLambdas = getOwnedLambdas(ctx.getClassName(), lambdaDefinitions);
+        for (LambdaFunctionDefinition lambdaDef : ownedMainLambdas) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, lambdaDef.getName(), "L" + lambdaClassName + ";", null, null);
+        }
+        // 生成静态初始化块
+        generateStaticInitializationBlock(cw, ctx, ownedMainLambdas);
         // 生成 clone 函数
         generateCloneMethod(cw, ctx.getClassName());
         // 主类生成结束
@@ -176,7 +181,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     /**
      * 生成静态初始化块
      */
-    private void generateStaticInitializationBlock(ClassWriter cw, CodeContext ctx) {
+    private void generateStaticInitializationBlock(ClassWriter cw, CodeContext ctx, List<LambdaFunctionDefinition> lambdaDefinitions) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
 
@@ -196,6 +201,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 // 存储到静态常量字段
                 mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
             }
+        }
+        // 初始化当前类的 lambda 单例
+        for (LambdaFunctionDefinition lambdaDef : getOwnedLambdas(ctx.getClassName(), lambdaDefinitions)) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            mv.visitTypeInsn(NEW, lambdaClassName);
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESPECIAL, lambdaClassName, "<init>", "()V", false);
+            mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), lambdaDef.getName(), "L" + lambdaClassName + ";");
         }
 
         mv.visitInsn(RETURN);
@@ -226,6 +239,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
      */
     private byte[] generateFunctionClass(FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader, List<LambdaFunctionDefinition> lambdaDefinitions) {
         String functionClassName = parentClassName + funcDef.getName();
+        List<LambdaFunctionDefinition> functionLambdaDefs = new ArrayList<>();
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
@@ -246,21 +260,28 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitEnd();
 
         // 实现 Function 接口的方法
-        generateFunctionInterfaceMethods(funcDef, cw, functionClassName, lambdaDefinitions);
+        generateFunctionInterfaceMethods(funcDef, cw, functionClassName, functionLambdaDefs);
+
+        // 为此函数类的 lambda 创建静态字段
+        for (LambdaFunctionDefinition lambdaDef : functionLambdaDefs) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, lambdaDef.getName(), "L" + lambdaClassName + ";", null, null);
+        }
 
         // 生成静态初始化块来初始化 parameters
-        generateStaticInitializationBlock(funcDef, cw, functionClassName);
+        generateStaticInitializationBlock(funcDef, cw, functionClassName, functionLambdaDefs);
 
         // 实现 clone 函数
         generateCloneMethod(cw, functionClassName);
         cw.visitEnd();
+        lambdaDefinitions.addAll(functionLambdaDefs);
         return cw.toByteArray();
     }
 
     /**
      * 生成静态初始化块来初始化 parameters 和 annotations 字段
      */
-    private void generateStaticInitializationBlock(FunctionDefinition funcDef, ClassWriter cw, String functionClassName) {
+    private void generateStaticInitializationBlock(FunctionDefinition funcDef, ClassWriter cw, String functionClassName, List<LambdaFunctionDefinition> lambdaDefinitions) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
         // 将 funcDef.getParameters() 转换为 Map
@@ -270,6 +291,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
         // 初始化注解列表
         generateAnnotationsInitialization(mv, funcDef, functionClassName);
+        // 初始化当前函数类拥有的 lambda 单例
+        for (LambdaFunctionDefinition lambdaDef : getOwnedLambdas(functionClassName, lambdaDefinitions)) {
+            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
+            mv.visitTypeInsn(NEW, lambdaClassName);
+            mv.visitInsn(DUP);
+            mv.visitMethodInsn(INVOKESPECIAL, lambdaClassName, "<init>", "()V", false);
+            mv.visitFieldInsn(PUTSTATIC, functionClassName, lambdaDef.getName(), "L" + lambdaClassName + ";");
+        }
         
         mv.visitInsn(RETURN);
         mv.visitMaxs(1, 0);
@@ -431,6 +460,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<LambdaFunctionDefinition> getLambdaDefinitions() {
         return lastLambdaDefinitions;
+    }
+
+    private List<LambdaFunctionDefinition> getOwnedLambdas(String ownerClassName, List<LambdaFunctionDefinition> all) {
+        List<LambdaFunctionDefinition> owned = new ArrayList<>();
+        for (LambdaFunctionDefinition def : all) {
+            if (ownerClassName.equals(def.getOwnerClassName())) {
+                owned.add(def);
+            }
+        }
+        return owned;
     }
 
     private static final Type MAP = new Type(Map.class);
