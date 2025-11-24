@@ -38,6 +38,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private List<PendingFunctionCall> pendingCalls;
     // 错误收集列表
     private List<ParseException> errors;
+    // 捕获外部变量的栈
+    private final Deque<Map<String, Integer>> captureStack = new ArrayDeque<>();
 
     /**
      * 执行解析
@@ -233,6 +235,29 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public void rollback(int mark) {
         position = mark;
         currentToken = tokens.get(position);
+    }
+
+    public void pushCapture(Map<String, Integer> captures) {
+        captureStack.push(captures);
+    }
+
+    public void popCapture() {
+        if (!captureStack.isEmpty()) {
+            captureStack.pop();
+        }
+    }
+
+    @Nullable
+    public Integer getCapturedIndex(String name) {
+        if (captureStack.isEmpty()) {
+            return null;
+        }
+        for (Map<String, Integer> map : captureStack) {
+            if (map.containsKey(name)) {
+                return map.get(name);
+            }
+        }
+        return null;
     }
 
     /**

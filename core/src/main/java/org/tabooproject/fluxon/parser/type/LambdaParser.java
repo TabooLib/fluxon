@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -26,6 +27,19 @@ public class LambdaParser {
         String previousFunction = parser.getSymbolEnvironment().getCurrentFunction();
         String lambdaName = "__lambda$" + COUNTER.getAndIncrement();
         parser.getSymbolEnvironment().setCurrentFunction(lambdaName);
+
+        // 捕获父函数的局部变量索引
+        Map<String, Integer> parentCaptures = new LinkedHashMap<>();
+        if (previousFunction != null) {
+            Set<String> parentLocals = parser.getSymbolEnvironment().getLocalVariables().get(previousFunction);
+            if (parentLocals != null) {
+                int idx = 0;
+                for (String name : parentLocals) {
+                    parentCaptures.put(name, idx++);
+                }
+            }
+        }
+        parser.pushCapture(parentCaptures);
 
         LinkedHashMap<String, Integer> parameters = new LinkedHashMap<>();
         // 解析参数列表，直到遇到结束的 |
@@ -53,7 +67,7 @@ public class LambdaParser {
             locals.addAll(defined);
         }
         parser.getSymbolEnvironment().setCurrentFunction(previousFunction);
-
+        parser.popCapture();
         return new LambdaExpression(lambdaName, parameters, body, locals);
     }
 }

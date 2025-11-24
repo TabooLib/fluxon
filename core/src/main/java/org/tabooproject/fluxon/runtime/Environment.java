@@ -46,6 +46,8 @@ public class Environment {
     // 根环境
     @NotNull
     protected final Environment root;
+    @Nullable
+    protected final Environment parent;
 
     /**
      * 创建顶层环境（全局环境）
@@ -57,6 +59,7 @@ public class Environment {
             @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
             @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
         this.root = this;
+        this.parent = null;
         this.functions = new HashMap<>(functions);
         this.systemFunctions = systemFunctions;
         this.extensionFunctions = extensionFunctions;
@@ -73,6 +76,7 @@ public class Environment {
      */
     public Environment(@NotNull Environment parentEnv, int localVariables) {
         this.root = parentEnv.root;
+        this.parent = parentEnv;
         this.functions = null;
         this.systemFunctions = null;
         this.extensionFunctions = null;
@@ -217,7 +221,13 @@ public class Environment {
         if (index == -1) {
             return Objects.requireNonNull(root.rootVariables).containsKey(name);
         } else {
-            return true;
+            if (localVariables != null && index < localVariables.length) {
+                return true;
+            }
+            if (parent != null) {
+                return parent.has(name, index);
+            }
+            return false;
         }
     }
 
@@ -234,7 +244,13 @@ public class Environment {
         if (index == -1) {
             return Objects.requireNonNull(root.rootVariables).get(name);
         } else {
-            return localVariables[index];
+            if (localVariables != null && index < localVariables.length) {
+                return localVariables[index];
+            }
+            if (parent != null) {
+                return parent.get(name, index);
+            }
+            return null;
         }
     }
 
@@ -250,9 +266,11 @@ public class Environment {
         if (index == -1) {
             Objects.requireNonNull(root.rootVariables).put(name, value);
         } else {
-            if (index < localVariables.length) {
+            if (localVariables != null && index < localVariables.length) {
                 localVariables[index] = value;
                 localVariableNames[index] = name;
+            } else if (parent != null) {
+                parent.assign(name, value, index);
             } else {
                 throw new VariableNotFoundError(this, name, index, Arrays.asList(localVariableNames));
             }

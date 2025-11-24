@@ -84,11 +84,13 @@ public class ExpressionParser {
             // 赋值操作符可以对 Identifier 或 IndexAccessExpression 使用
             if (expr instanceof Identifier) {
                 String name = ((Identifier) expr).getValue();
-                // 获取局部变量的位置
-                // 先获取一次是因为可能是全局变量，此时 position 为 -1
                 int position = parser.getSymbolEnvironment().getLocalVariable(name);
-                // 只有 ASSIGN 才会将变量添加到当前作用域
-                if (match == TokenType.ASSIGN && !parser.getSymbolEnvironment().hasVariable(name)) {
+                Integer captured = parser.getCapturedIndex(name);
+                if (captured != null) {
+                    position = captured;
+                }
+                // 只有 ASSIGN 才会将变量添加到当前作用域（非捕获）
+                if (match == TokenType.ASSIGN && captured == null && !parser.getSymbolEnvironment().hasVariable(name)) {
                     parser.defineVariable(name);
                     // 更新位置
                     position = parser.getSymbolEnvironment().getLocalVariable(name);
@@ -256,18 +258,19 @@ public class ExpressionParser {
      *
      * @return 引用表达式解析结果
      */
-    public static ParseResult parseReference(Parser parser) {
+        public static ParseResult parseReference(Parser parser) {
         if (parser.peek().getType() == TokenType.AMPERSAND) {
-            parser.consume();                                      // 消费 &
-            boolean isOptional = parser.match(TokenType.QUESTION); // 如果后面跟一个问号，则不进行合法性检查
+            parser.consume();
+            boolean isOptional = parser.match(TokenType.QUESTION);
             String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
             ParseResult ref;
             if (isOptional) {
                 ref = new ReferenceExpression(new Identifier(name), true, -1);
             } else {
-                // 检查函数或变量是否存在
-                if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
-                    // 如果 isAllowInvalidReference 为真，默认启用 isOptional，避免运行时报 VariableNotFoundException
+                Integer captured = parser.getCapturedIndex(name);
+                if (captured != null) {
+                    ref = new ReferenceExpression(new Identifier(name), false, captured);
+                } else if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
                     ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(), parser.getSymbolEnvironment().getLocalVariable(name));
                 } else {
                     Token token = parser.peek();
