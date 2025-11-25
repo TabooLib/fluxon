@@ -39,3 +39,4 @@ core/dump
 jfr
 vscode-extension
 mintlify-docs
+.gradle-local

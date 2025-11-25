@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.IndexAccessError;
@@ -187,38 +188,76 @@ public final class Intrinsics {
      * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
      */
     public static Object invokeResolvedFunction(Function function, Object target, Object[] arguments, Environment environment) {
-        final FunctionContext<?> context = new FunctionContext<>(function, target, arguments, environment);
+        final FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, target, arguments, environment);
+        final FunctionContext<?> context = lease.get();
+        // 异步任务
         if (function.isAsync()) {
-            final Function finalFunction = function;
-            return ThreadPoolManager.getInstance().submitAsync(() -> {
-                try {
-                    return finalFunction.call(context);
-                } catch (Throwable ex) {
-                    // 如果有 @except 注解则打印 async 的异常
-                    if (AnnotationAccess.hasAnnotation(finalFunction, "except")) {
-                        ex.printStackTrace();
-                    }
-                    throw ex;
-                }
-            });
-        } else if (function.isPrimarySync()) {
-            final Function finalFunction = function;
-            CompletableFuture<Object> future = new CompletableFuture<>();
+            return submitAsyncWithLease(function, context, lease);
+        }
+        // 主线程同步任务
+        else if (function.isPrimarySync()) {
+            return executePrimarySyncWithLease(function, context, lease);
+        }
+        try (FunctionContextPool.Lease ignored = lease) {
+            return function.call(context);
+        }
+    }
+
+    /**
+     * 执行函数调用
+     */
+    private static Object callWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
+        try {
+            return function.call(context);
+        } catch (Throwable ex) {
+            // 如果函数有 except 注解，则打印异常栈
+            if (AnnotationAccess.hasAnnotation(function, "except")) {
+                ex.printStackTrace();
+            }
+            throw ex;
+        } finally {
+            lease.close();
+        }
+    }
+
+    /**
+     * 提交异步任务
+     */
+    private static Object submitAsyncWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
+        try {
+            return ThreadPoolManager.getInstance().submitAsync(() -> callWithLease(function, context, lease));
+        } catch (Throwable ex) {
+            // 此处为提交异步任务时的异常处理
+            lease.close();
+            throw ex;
+        }
+    }
+
+    /**
+     * 执行主线程同步任务
+     */
+    private static CompletableFuture<Object> executePrimarySyncWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        try {
             FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
                 try {
-                    future.complete(finalFunction.call(context));
+                    future.complete(function.call(context));
                 } catch (Throwable ex) {
-                    // 如果有 @except 注解则打印 async 的异常
-                    if (AnnotationAccess.hasAnnotation(finalFunction, "except")) {
+                    // 如果函数有 except 注解，则打印异常栈
+                    if (AnnotationAccess.hasAnnotation(function, "except")) {
                         ex.printStackTrace();
                     }
                     future.completeExceptionally(ex);
+                } finally {
+                    lease.close();
                 }
             });
-            return future;
-        } else {
-            return function.call(context);
+        } catch (Throwable ex) {
+            // 此处为提交异步任务时的异常处理
+            lease.close();
+            throw ex;
         }
+        return future;
     }
 
     /**

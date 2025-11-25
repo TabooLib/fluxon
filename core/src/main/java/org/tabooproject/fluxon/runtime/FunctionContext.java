@@ -17,14 +17,16 @@ public class FunctionContext<Target> {
     public static final Type TYPE = new Type(FunctionContext.class);
 
     @NotNull
-    private final Function function;
+    private Function function;
     @Nullable
-    private final Target target;
+    private Target target;
     @NotNull
-    private final Environment environment;
+    private Environment environment;
 
     private Object[] arguments;
     private int argumentCount;
+
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
     public FunctionContext(@NotNull Function function, @Nullable Target target, Object[] arguments, @NotNull Environment environment) {
         this.function = function;
@@ -226,6 +228,26 @@ public class FunctionContext<Target> {
     @NotNull
     public FunctionContext<?> copy(Object[] arguments) {
         return new FunctionContext<>(function, target, arguments, environment);
+    }
+
+    /**
+     * 仅供内部池化使用的重置方法，用于避免重复创建 FunctionContext 实例
+     */
+    @SuppressWarnings("unchecked")
+    void reset(@NotNull Function function, @Nullable Object target, Object[] arguments, @NotNull Environment environment) {
+        this.function = function;
+        this.target = (Target) target;
+        this.arguments = arguments;
+        this.argumentCount = arguments.length;
+        this.environment = environment;
+    }
+
+    /**
+     * 释放对当前实参数组的引用，方便被池化对象尽快释放大型数组
+     */
+    void clearArguments() {
+        this.arguments = EMPTY_ARGUMENTS;
+        this.argumentCount = 0;
     }
 
     @Override

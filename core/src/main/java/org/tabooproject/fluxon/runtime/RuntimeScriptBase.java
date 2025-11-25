@@ -32,8 +32,9 @@ public abstract class RuntimeScriptBase {
     // 调用运行时函数
     public Object callFunction(String name, Object target, Object[] args) {
         Function function = environment.getFunction(name);
-        final FunctionContext<?> context = new FunctionContext<>(function, target, args, environment);
-        return function.call(context);
+        try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, target, args, environment)) {
+            return function.call(lease.get());
+        }
     }
 
     // 获取运行时环境

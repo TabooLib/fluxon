@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime.function;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,10 +58,14 @@ public class FunctionSystem {
             }
             // 调用函数
             if (func instanceof Function) {
-                return ((Function) func).call(new FunctionContext<>(context.getFunction(), context.getTarget(), parameters, context.getEnvironment()));
+                try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment())) {
+                    return ((Function) func).call(lease.get());
+                }
             } else {
                 Function function = context.getEnvironment().getFunction(func.toString());
-                return function.call(new FunctionContext<>(context.getFunction(), context.getTarget(), parameters, context.getEnvironment()));
+                try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment())) {
+                    return function.call(lease.get());
+                }
             }
         });
         runtime.registerFunction("throw", 1, (context) -> {
