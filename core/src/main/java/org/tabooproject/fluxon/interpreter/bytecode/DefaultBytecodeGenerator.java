@@ -346,6 +346,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
+        // 实现 getNamespace() 方法
+        mv = cw.visitMethod(ACC_PUBLIC, "getNamespace", "()" + STRING, null, null);
+        mv.visitCode();
+        mv.visitInsn(ACONST_NULL);
+        mv.visitInsn(ARETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
         // 实现 getParameterCounts() 方法
         mv = cw.visitMethod(ACC_PUBLIC, "getParameterCounts", "()" + LIST, null, null);
         mv.visitCode();

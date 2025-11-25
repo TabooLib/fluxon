@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.function.*;
 import org.tabooproject.fluxon.runtime.function.extension.*;
@@ -8,8 +9,11 @@ import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionConst
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionField;
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMethod;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
+import org.tabooproject.fluxon.runtime.library.LibraryLoader;
+import org.tabooproject.fluxon.runtime.library.LibraryLoader.LibraryLoadResult;
 import org.tabooproject.fluxon.util.KV;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -128,6 +132,16 @@ public class FluxonRuntime {
      */
     public void registerVariable(String name, Object value) {
         systemVariables.put(name, value);
+    }
+
+    /**
+     * 注册已有的函数实例
+     *
+     * @param function 函数实例
+     */
+    public void registerFunction(@NotNull Function function) {
+        systemFunctions.put(function.getName(), function);
+        dirty = true;
     }
 
     /**
@@ -398,5 +412,15 @@ public class FluxonRuntime {
      */
     public void setPrimaryThreadExecutor(Executor primaryThreadExecutor) {
         this.primaryThreadExecutor = primaryThreadExecutor;
+    }
+
+    /**
+     * 编译并加载库文件，将其中的 @api 函数注册到运行时
+     *
+     * @param path 库文件路径
+     * @return 加载结果
+     */
+    public LibraryLoadResult loadLibrary(Path path) {
+        return new LibraryLoader(this).load(path);
     }
 }
