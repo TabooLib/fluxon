@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime.function;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 
 import java.util.Arrays;

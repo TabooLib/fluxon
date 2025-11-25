@@ -65,7 +65,7 @@ public class MultipleParseException extends ParseException {
         StringBuilder sb = new StringBuilder();
         sb.append("Found ").append(exceptions.size()).append(" parse error(s):\n");
         for (int i = 0; i < exceptions.size(); i++) {
-            sb.append("  ").append(i + 1).append(". ").append(exceptions.get(i).getMessage());
+            sb.append("  ").append(i + 1).append(". ").append(exceptions.get(i));
             if (i < exceptions.size() - 1) {
                 sb.append("\n");
             }

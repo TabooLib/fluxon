@@ -342,6 +342,7 @@ public class Environment {
      */
     public void setTarget(@Nullable Object target) {
         this.target = target;
+        defineRootVariable("this", target);
     }
 
     @Override

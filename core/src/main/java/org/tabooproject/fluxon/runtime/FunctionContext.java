@@ -253,10 +253,9 @@ public class FunctionContext<Target> {
     @Override
     public String toString() {
         return "FunctionContext{" +
-                "function=" + function +
+                "function=" + function.getName() +
                 ", target=" + target +
-                ", arguments=" + Arrays.toString(arguments) +
-                ", environment=" + environment +
+                ", arguments=" + arguments.length +
                 '}';
     }
 }

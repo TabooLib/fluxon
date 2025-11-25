@@ -317,6 +317,14 @@ public class FluxonRuntime {
     }
 
     /**
+     * 注册扩展函数，直接使用已有 Function 实例
+     */
+    public <Target> void registerExtensionFunction(Class<Target> extensionClass, Function function) {
+        extensionFunctions.computeIfAbsent(function.getName(), k -> new HashMap<>()).put(extensionClass, function);
+        dirty = true;
+    }
+
+    /**
      * 注册扩展函数
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {

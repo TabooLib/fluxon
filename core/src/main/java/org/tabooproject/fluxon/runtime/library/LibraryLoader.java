@@ -64,6 +64,13 @@ public class LibraryLoader {
         }
     }
 
+    /**
+     * 从编译结果中提取 @api 函数并注册到运行时。
+     *
+     * @param compileResult 编译结果
+     * @param scriptClass   脚本类
+     * @return 导出的函数列表
+     */
     private List<Function> registerApiFunctions(CompileResult compileResult, Class<?> scriptClass) throws Exception {
         List<Function> exported = new ArrayList<>();
         for (Definition definition : compileResult.getGenerator().getDefinitions()) {
@@ -71,17 +78,36 @@ public class LibraryLoader {
                 continue;
             }
             FunctionDefinition functionDefinition = (FunctionDefinition) definition;
-            if (!hasApiAnnotation(functionDefinition)) {
+            Annotation apiAnnotation = findApiAnnotation(functionDefinition);
+            if (apiAnnotation == null) {
                 continue;
             }
             Function function = getFunction(scriptClass, functionDefinition);
-            runtime.registerFunction(function);
+            String bindTarget = getBindTarget(apiAnnotation);
+            if (bindTarget != null) {
+                Class<?> targetClass;
+                try {
+                    targetClass = Class.forName(bindTarget, true, parentClassLoader);
+                } catch (ClassNotFoundException e) {
+                    throw new IllegalStateException("Failed to load bind target class: " + bindTarget, e);
+                }
+                runtime.registerExtensionFunction((Class<?>) targetClass, function);
+            } else {
+                runtime.registerFunction(function);
+            }
             exported.add(function);
         }
         return Collections.unmodifiableList(exported);
     }
 
-    private static @NotNull Function getFunction(Class<?> scriptClass, FunctionDefinition functionDefinition) throws NoSuchFieldException, IllegalAccessException {
+    /**
+     * 从脚本类中获取函数实例。
+     *
+     * @param scriptClass        脚本类
+     * @param functionDefinition 函数定义
+     * @return 函数实例
+     */
+    private @NotNull Function getFunction(Class<?> scriptClass, FunctionDefinition functionDefinition) throws NoSuchFieldException, IllegalAccessException {
         if (!functionDefinition.isRegisterToRoot()) {
             throw new IllegalStateException("Function " + functionDefinition.getName() + " is marked with @api but not registered to root");
         }
@@ -93,15 +119,40 @@ public class LibraryLoader {
         return (Function) value;
     }
 
-    private boolean hasApiAnnotation(FunctionDefinition definition) {
+    /**
+     * 从函数定义中提取 @api 注解。
+     *
+     * @param definition 函数定义
+     * @return @api 注解实例，若不存在则返回 null
+     */
+    private Annotation findApiAnnotation(FunctionDefinition definition) {
         for (Annotation annotation : definition.getAnnotations()) {
             if ("api".equalsIgnoreCase(annotation.getName())) {
-                return true;
+                return annotation;
             }
         }
-        return false;
+        return null;
     }
 
+    /**
+     * 从 @api 注解中提取绑定目标。
+     *
+     * @param apiAnnotation @api 注解实例
+     * @return 绑定目标字符串，若不存在则返回 null
+     */
+    private String getBindTarget(Annotation apiAnnotation) {
+        Object bind = apiAnnotation.getAttributes().get("bind");
+        if (bind instanceof String) {
+            String target = ((String) bind).trim();
+            return target.isEmpty() ? null : target;
+        }
+        return null;
+    }
+
+    /**
+     * 从库文件路径中提取类名。
+     * 例如: "src/test/fs/library.fs" -> "library"
+     */
     private String deriveClassName(Path path) {
         String name = path.getFileName().toString();
         int idx = name.lastIndexOf('.');
