@@ -17,7 +17,8 @@ public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
 
     @Override
     public Object evaluate(Interpreter interpreter, LongLiteral expr) {
-        return expr.getValue();
+        // 返回缓存的装箱值，避免 Long.valueOf 分配
+        return expr.getBoxedValue();
     }
 
     @Override

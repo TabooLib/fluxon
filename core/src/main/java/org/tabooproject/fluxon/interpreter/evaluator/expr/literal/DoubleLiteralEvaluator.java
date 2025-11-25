@@ -17,7 +17,8 @@ public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
 
     @Override
     public Object evaluate(Interpreter interpreter, DoubleLiteral expr) {
-        return expr.getValue();
+        // 返回预装箱的数值以避免频繁 Double.valueOf 分配
+        return expr.getBoxedValue();
     }
 
     @Override

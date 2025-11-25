@@ -7,18 +7,24 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
  */
 public class LongLiteral extends Literal {
     private final long value;
+    private final Long boxedValue;
 
     public LongLiteral(long value) {
         this.value = value;
+        this.boxedValue = value;
     }
 
     public long getValue() {
         return value;
     }
 
+    public Long getBoxedValue() {
+        return boxedValue;
+    }
+
     @Override
     public Object getSourceValue() {
-        return value;
+        return boxedValue;
     }
 
     @Override

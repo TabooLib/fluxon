@@ -7,18 +7,24 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
  */
 public class FloatLiteral extends Literal {
     private final float value;
+    private final Float boxedValue;
 
     public FloatLiteral(float value) {
         this.value = value;
+        this.boxedValue = value;
     }
 
     public float getValue() {
         return value;
     }
 
+    public Float getBoxedValue() {
+        return boxedValue;
+    }
+
     @Override
     public Object getSourceValue() {
-        return value;
+        return boxedValue;
     }
 
     @Override

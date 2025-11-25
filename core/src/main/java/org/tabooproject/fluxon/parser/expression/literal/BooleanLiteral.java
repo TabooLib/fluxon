@@ -7,18 +7,24 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
  */
 public class BooleanLiteral extends Literal {
     private final boolean value;
+    private final Boolean boxedValue;
 
     public BooleanLiteral(boolean value) {
         this.value = value;
+        this.boxedValue = value;
     }
 
     public boolean getValue() {
         return value;
     }
 
+    public Boolean getBoxedValue() {
+        return boxedValue;
+    }
+
     @Override
     public Object getSourceValue() {
-        return value;
+        return boxedValue;
     }
 
     @Override
