@@ -17,12 +17,14 @@ public class ListParser {
     public static ParseResult parse(Parser parser) {
         // 空列表 []
         if (parser.match(TokenType.RIGHT_BRACKET)) {
-            return new ListExpression(new ArrayList<>());
+            boolean immutable = parser.match(TokenType.NOT);
+            return new ListExpression(new ArrayList<>(), immutable);
         }
         // 空 Map [:]
         if (parser.match(TokenType.COLON)) {
             parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after empty map");
-            return new MapExpression(new ArrayList<>());
+            boolean immutable = parser.match(TokenType.NOT);
+            return new MapExpression(new ArrayList<>(), immutable);
         }
         // 检查是否是字典字面量
         boolean isDictionary = false;
@@ -52,7 +54,8 @@ public class ListParser {
             } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_BRACKET));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after list elements");
-        return new ListExpression(elements);
+        boolean immutable = parser.match(TokenType.NOT);
+        return new ListExpression(elements, immutable);
     }
 
     /**
@@ -76,6 +79,7 @@ public class ListParser {
             } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_BRACKET));
         }
         parser.consume(TokenType.RIGHT_BRACKET, "Expected ']' after map entries");
-        return new MapExpression(entries);
+        boolean immutable = parser.match(TokenType.NOT);
+        return new MapExpression(entries, immutable);
     }
 }

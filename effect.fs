@@ -10,7 +10,7 @@ def createComplete3DShape(center, radius, height, segments) = {
           yPos = &center::y() + &y
 
           loc = location(&x, &yPos, &z)
-          &particles::add(["REDSTONE", &loc])
+          &particles::add(["REDSTONE", &loc]!)
       }
   }
 
@@ -26,7 +26,7 @@ def createComplete3DShape(center, radius, height, segments) = {
           y = &center::y() + &height + &sphereRadius * cos(&p)
 
           loc = location(&x, &y, &z)
-          &particles::add(["REDSTONE", &loc])
+          &particles::add(["REDSTONE", &loc]!)
       }
   }
 
@@ -42,7 +42,7 @@ def createComplete3DShape(center, radius, height, segments) = {
           y = &leftBallCenter::y() + &radius*0.8 * cos(&p)
 
           loc = location(&x, &y, &z)
-          &particles::add(["REDSTONE", &loc])
+          &particles::add(["REDSTONE", &loc]!)
       }
   }
 
@@ -58,7 +58,7 @@ def createComplete3DShape(center, radius, height, segments) = {
           y = &rightBallCenter::y() + &radius*0.8 * cos(&p)
 
           loc = location(&x, &y, &z)
-          &particles::add(["REDSTONE", &loc])
+          &particles::add(["REDSTONE", &loc]!)
       }
   }
 

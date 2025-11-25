@@ -9,13 +9,23 @@ import java.util.List;
  */
 public class MapExpression implements Expression {
     private final List<MapEntry> entries;
+    private final boolean immutable;
 
     public MapExpression(List<MapEntry> entries) {
+        this(entries, false);
+    }
+
+    public MapExpression(List<MapEntry> entries, boolean immutable) {
         this.entries = entries;
+        this.immutable = immutable;
     }
 
     public List<MapEntry> getEntries() {
         return entries;
+    }
+
+    public boolean isImmutable() {
+        return immutable;
     }
 
     @Override
@@ -31,7 +41,7 @@ public class MapExpression implements Expression {
     @Override
     public String toPseudoCode() {
         if (entries.isEmpty()) {
-            return "[:]";
+            return "[:]"+(immutable ? "!" : "");
         }
 
         StringBuilder sb = new StringBuilder();
@@ -45,6 +55,9 @@ public class MapExpression implements Expression {
         }
 
         sb.append("]");
+        if (immutable) {
+            sb.append("!");
+        }
         return sb.toString();
     }
 

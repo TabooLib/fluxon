@@ -9,13 +9,23 @@ import java.util.List;
  */
 public class ListExpression implements Expression {
     private final List<ParseResult> elements;
+    private final boolean immutable;
 
     public ListExpression(List<ParseResult> elements) {
+        this(elements, false);
+    }
+
+    public ListExpression(List<ParseResult> elements, boolean immutable) {
         this.elements = elements;
+        this.immutable = immutable;
     }
 
     public List<ParseResult> getElements() {
         return elements;
+    }
+
+    public boolean isImmutable() {
+        return immutable;
     }
 
     @Override
@@ -40,6 +50,9 @@ public class ListExpression implements Expression {
             sb.append(elements.get(i).toPseudoCode());
         }
         sb.append("]");
+        if (immutable) {
+            sb.append("!");
+        }
         return sb.toString();
     }
 }
