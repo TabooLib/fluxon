@@ -58,10 +58,12 @@ public final class FunctionContextPool {
 
         private FunctionContextPool owner;
         private FunctionContext<?> context;
+        private final Thread ownerThread;
 
         private Lease(FunctionContextPool owner, FunctionContext<?> context) {
             this.owner = owner;
             this.context = context;
+            this.ownerThread = Thread.currentThread();
         }
 
         public FunctionContext<?> get() {
@@ -71,6 +73,12 @@ public final class FunctionContextPool {
         @Override
         public void close() {
             if (context == null || owner == null) {
+                return;
+            }
+            if (ownerThread != Thread.currentThread()) {
+                // 避免跨线程归还引起竞态，直接丢弃由 GC 回收
+                context = null;
+                owner = null;
                 return;
             }
             owner.release(context);

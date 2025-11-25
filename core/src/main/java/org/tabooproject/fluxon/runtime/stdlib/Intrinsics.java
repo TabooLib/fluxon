@@ -155,7 +155,7 @@ public final class Intrinsics {
     public static Object callFunction(Environment environment, String name, Object[] arguments, int pos, int exPos) {
         Object target = environment.getTarget();
         Function function = resolveFunction(environment, target, name, arguments, pos, exPos);
-        return invokeResolvedFunction(function, target, arguments, environment);
+        return callResolvedFunction(function, target, arguments, environment);
     }
 
     /**
@@ -187,76 +187,48 @@ public final class Intrinsics {
     /**
      * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
      */
-    public static Object invokeResolvedFunction(Function function, Object target, Object[] arguments, Environment environment) {
-        final FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, target, arguments, environment);
-        final FunctionContext<?> context = lease.get();
-        // 异步任务
+    public static Object callResolvedFunction(Function function, Object target, Object[] arguments, Environment environment) {
         if (function.isAsync()) {
-            return submitAsyncWithLease(function, context, lease);
+            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(function, target, arguments, environment));
+        } else if (function.isPrimarySync()) {
+            return callPrimarySync(function, target, arguments, environment);
         }
-        // 主线程同步任务
-        else if (function.isPrimarySync()) {
-            return executePrimarySyncWithLease(function, context, lease);
-        }
-        try (FunctionContextPool.Lease ignored = lease) {
-            return function.call(context);
-        }
+        return callSynchronously(function, target, arguments, environment);
     }
 
     /**
-     * 执行函数调用
+     * 执行函数调用并在当前线程池化上下文
      */
-    private static Object callWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
-        try {
-            return function.call(context);
-        } catch (Throwable ex) {
-            // 如果函数有 except 注解，则打印异常栈
-            if (AnnotationAccess.hasAnnotation(function, "except")) {
-                ex.printStackTrace();
-            }
-            throw ex;
-        } finally {
-            lease.close();
-        }
-    }
-
-    /**
-     * 提交异步任务
-     */
-    private static Object submitAsyncWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
-        try {
-            return ThreadPoolManager.getInstance().submitAsync(() -> callWithLease(function, context, lease));
-        } catch (Throwable ex) {
-            // 此处为提交异步任务时的异常处理
-            lease.close();
-            throw ex;
-        }
-    }
-
-    /**
-     * 执行主线程同步任务
-     */
-    private static CompletableFuture<Object> executePrimarySyncWithLease(Function function, FunctionContext<?> context, FunctionContextPool.Lease lease) {
-        CompletableFuture<Object> future = new CompletableFuture<>();
-        try {
-            FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
-                try {
-                    future.complete(function.call(context));
-                } catch (Throwable ex) {
-                    // 如果函数有 except 注解，则打印异常栈
-                    if (AnnotationAccess.hasAnnotation(function, "except")) {
-                        ex.printStackTrace();
-                    }
-                    future.completeExceptionally(ex);
-                } finally {
-                    lease.close();
+    private static Object callSynchronously(Function function, Object target, Object[] arguments, Environment environment) {
+        try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, target, arguments, environment)) {
+            try {
+                return function.call(lease.get());
+            } catch (Throwable ex) {
+                // 如果函数有 except 注解，则打印异常栈
+                if (AnnotationAccess.hasAnnotation(function, "except")) {
+                    ex.printStackTrace();
                 }
-            });
-        } catch (Throwable ex) {
-            // 此处为提交异步任务时的异常处理
-            lease.close();
-            throw ex;
+                throw ex;
+            }
         }
+    }
+
+    /**
+     * 调用主线程同步函数
+     */
+    private static CompletableFuture<Object> callPrimarySync(Function function, Object target, Object[] arguments, Environment environment) {
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
+            try {
+                future.complete(callSynchronously(function, target, arguments, environment));
+            } catch (Throwable ex) {
+                // 如果函数有 except 注解，则打印异常栈
+                if (AnnotationAccess.hasAnnotation(function, "except")) {
+                    ex.printStackTrace();
+                }
+                future.completeExceptionally(ex);
+            }
+        });
         return future;
     }
 
