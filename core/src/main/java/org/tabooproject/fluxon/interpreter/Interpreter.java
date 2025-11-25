@@ -5,10 +5,13 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fluxon 解释器
@@ -19,6 +22,8 @@ public class Interpreter {
     // 当前环境
     @NotNull
     private Environment environment;
+    // 缓存 lambda -> UserFunction，避免循环中重复创建实例
+    private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
@@ -111,6 +116,14 @@ public class Interpreter {
             return function;
         }
         throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
+    }
+
+    /**
+     * 获取或创建 lambda 对应的 UserFunction，重复求值时复用实例
+     */
+    @NotNull
+    public UserFunction getOrCreateLambda(@NotNull LambdaExpression expr) {
+        return lambdaCache.computeIfAbsent(expr, e -> new UserFunction(e.toFunctionDefinition("main"), this));
     }
 
     /**

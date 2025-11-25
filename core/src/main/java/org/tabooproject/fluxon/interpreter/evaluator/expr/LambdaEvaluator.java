@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.UserFunction;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
@@ -25,7 +24,7 @@ public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, LambdaExpression expr) {
-        return new UserFunction(expr.toFunctionDefinition("main"), interpreter);
+        return interpreter.getOrCreateLambda(expr);
     }
 
     @Override
