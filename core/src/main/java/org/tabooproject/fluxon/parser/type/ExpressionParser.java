@@ -440,18 +440,18 @@ public class ExpressionParser {
             }
 
             case IF:
-                return Trampoline.more(() -> continuation.apply(IfParser.parse(parser)));
+                return IfParser.parse(parser, continuation);
             case FOR:
-                return Trampoline.more(() -> continuation.apply(ForParser.parse(parser)));
-            case WHEN:
-                return Trampoline.more(() -> continuation.apply(WhenParser.parse(parser)));
-            case WHILE:
-                return Trampoline.more(() -> continuation.apply(WhileParser.parse(parser)));
+                return ForParser.parse(parser, continuation);
             case TRY:
-                return Trampoline.more(() -> continuation.apply(TryParser.parse(parser)));
-            case PIPE:
+                return TryParser.parse(parser, continuation);
+            case WHEN:
+                return WhenParser.parse(parser, continuation);
+            case WHILE:
+                return WhileParser.parse(parser, continuation);
             case OR:
-                return Trampoline.more(() -> continuation.apply(LambdaParser.parse(parser)));
+            case PIPE:
+                return LambdaParser.parse(parser, continuation);
 
             case LEFT_PAREN: {
                 parser.consume();

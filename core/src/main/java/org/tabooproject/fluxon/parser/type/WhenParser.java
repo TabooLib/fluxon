@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 
 import java.util.ArrayList;
@@ -12,63 +13,72 @@ import java.util.List;
 public class WhenParser {
 
     /**
-     * 解析 When 表达式
-     *
-     * @return When 表达式解析结果
+     * CPS 解析入口，保持在单一 trampoline 链。
      */
-    public static ParseResult parse(Parser parser) {
-        // 消费 WHEN 标记
+    public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         parser.consume(TokenType.WHEN, "Expected 'when' before when expression");
+        return parseCondition(parser, condition -> parseBranches(parser, condition, continuation));
+    }
 
-        // 则解析条件表达式
-        ParseResult condition = null;
+    private static Trampoline<ParseResult> parseCondition(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         if (!parser.check(TokenType.LEFT_BRACE)) {
-            condition = ExpressionParser.parse(parser);
+            return ExpressionParser.parse(parser, expr -> {
+                parser.match(TokenType.LEFT_BRACE); // 条件之后可选 '{'
+                return continuation.apply(expr);
+            });
         }
-        // 消费左花括号，如果存在的话
         parser.match(TokenType.LEFT_BRACE);
+        return continuation.apply(null);
+    }
 
-        // 如果当前是 EOF，直接返回空的 when 表达式
+    /**
+     * 解析分支列表：空则直接返回空 when。
+     */
+    private static Trampoline<ParseResult> parseBranches(Parser parser, ParseResult condition, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.isAtEnd()) {
-            return new WhenExpression(condition, new ArrayList<>());
+            return Trampoline.more(() -> continuation.apply(new WhenExpression(condition, new ArrayList<>())));
         }
-
-        // 解析分支
         List<WhenExpression.WhenBranch> branches = new ArrayList<>();
-        while (!parser.check(TokenType.RIGHT_BRACE) && !parser.isAtEnd()) {
-            // 解析匹配方式
-            Token peek = parser.peek();
-            WhenExpression.MatchType matchType;
-            if (peek.getType() == TokenType.IN) {
-                parser.advance();
-                matchType = WhenExpression.MatchType.CONTAINS;
-            } else if (peek.getType() == TokenType.NOT) {
-                parser.advance();
-                if (parser.peek(1).getType() == TokenType.IN) {
-                    parser.advance();
-                    matchType = WhenExpression.MatchType.NOT_CONTAINS;
-                } else {
-                    throw new RuntimeException("Expected 'in' after 'not'");
-                }
-            } else {
-                matchType = WhenExpression.MatchType.EQUAL;
-            }
+        return Trampoline.more(() -> parseBranch(parser, condition, branches, continuation));
+    }
 
-            // 解析非 else 分支条件
-            ParseResult branchCondition = null;
-            if (!parser.match(TokenType.ELSE)) {
-                branchCondition = ExpressionParser.parse(parser);
-            }
-            // 消费箭头操作符
-            parser.consume(TokenType.ARROW, "Expected '->' after else");
-            // 解析分支结果
-            branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, ExpressionParser.parse(parser)));
-            // 可选的分支结束符
-            parser.match(TokenType.SEMICOLON);
+    private static Trampoline<ParseResult> parseBranch(Parser parser, ParseResult condition, List<WhenExpression.WhenBranch> branches, Trampoline.Continuation<ParseResult> continuation) {
+        if (parser.check(TokenType.RIGHT_BRACE) || parser.isAtEnd()) {
+            parser.match(TokenType.RIGHT_BRACE);
+            return continuation.apply(new WhenExpression(condition, branches));
         }
 
-        // 消费右花括号，如果存在的话
-        parser.match(TokenType.RIGHT_BRACE);
-        return new WhenExpression(condition, branches);
+        // 解析匹配类型：in / not in / equal
+        Token peek = parser.peek();
+        WhenExpression.MatchType matchType;
+        if (peek.getType() == TokenType.IN) {
+            parser.advance();
+            matchType = WhenExpression.MatchType.CONTAINS;
+        } else if (peek.getType() == TokenType.NOT) {
+            parser.advance();
+            if (parser.peek(1).getType() == TokenType.IN) {
+                parser.advance();
+                matchType = WhenExpression.MatchType.NOT_CONTAINS;
+            } else {
+                throw new RuntimeException("Expected 'in' after 'not'");
+            }
+        } else {
+            matchType = WhenExpression.MatchType.EQUAL;
+        }
+
+        // 解析分支条件与结果，递归构建分支列表
+        Trampoline.Continuation<ParseResult> addBranch = branchCondition -> {
+            parser.consume(TokenType.ARROW, "Expected '->' after else");
+            return ExpressionParser.parse(parser, branchResult -> {
+                branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, branchResult));
+                parser.match(TokenType.SEMICOLON);
+                return parseBranch(parser, condition, branches, continuation);
+            });
+        };
+
+        if (parser.match(TokenType.ELSE)) {
+            return addBranch.apply(null);
+        }
+        return ExpressionParser.parse(parser, addBranch);
     }
 }

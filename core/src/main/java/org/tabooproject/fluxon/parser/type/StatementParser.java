@@ -12,7 +12,6 @@ import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 public class StatementParser {
 
@@ -66,7 +65,7 @@ public class StatementParser {
     /**
      * CPS 形式的子语句解析，方便与 Block/表达式 trampoline 串联。
      */
-    public static <T> Trampoline<T> parseSub(Parser parser, Function<ParseResult, Trampoline<T>> continuation) {
+    public static Trampoline<ParseResult> parseSub(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         // 检查特殊语法
         TokenType match = parser.match(TokenType.RETURN, TokenType.BREAK, TokenType.CONTINUE);
         if (match != null) {
@@ -78,9 +77,10 @@ public class StatementParser {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
                         return continuation.apply(new ReturnStatement(null));
                     }
-                    ParseResult returnValue = ExpressionParser.parse(parser);
-                    parser.match(TokenType.SEMICOLON); // 可选的分号
-                    return continuation.apply(new ReturnStatement(returnValue));
+                    return ExpressionParser.parse(parser, returnValue -> {
+                        parser.match(TokenType.SEMICOLON); // 可选的分号
+                        return continuation.apply(new ReturnStatement(returnValue));
+                    });
                 }
                 // 跳出循环
                 case BREAK: {
@@ -104,8 +104,9 @@ public class StatementParser {
             }
         }
         // 解析表达式语句
-        ParseResult expr = ExpressionParser.parse(parser);
-        parser.match(TokenType.SEMICOLON); // 可选的分号
-        return continuation.apply(new ExpressionStatement(expr));
+        return ExpressionParser.parse(parser, expr -> {
+            parser.match(TokenType.SEMICOLON); // 可选的分号
+            return continuation.apply(new ExpressionStatement(expr));
+        });
     }
 }

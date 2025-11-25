@@ -14,6 +14,7 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Fluxon解析器
@@ -40,6 +41,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     private List<ParseException> errors;
     // 捕获外部变量的栈
     private final Deque<Map<String, Integer>> captureStack = new ArrayDeque<>();
+    // Lambda 表达式计数器
+    private final AtomicInteger lambdaCounter = new AtomicInteger(0);
 
     /**
      * 执行解析
@@ -484,6 +487,13 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public List<ParseResult> getResults() {
         return results;
+    }
+
+    /**
+     * 获取当前 Lambda 表达式计数器
+     */
+    public AtomicInteger getLambdaCounter() {
+        return lambdaCounter;
     }
 
     /**

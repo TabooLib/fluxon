@@ -35,9 +35,9 @@ public class BlockParser {
             parser.consume(TokenType.RIGHT_BRACE, "Expected '}' after block");
             return continuation.apply(new Block(null, statements.toArray(new ParseResult[0])));
         }
-        return StatementParser.parseSub(parser, stmt -> {
+        return StatementParser.parseSub(parser, stmt -> Trampoline.more(() -> {
             statements.add(stmt);
             return parseBody(parser, statements, continuation);
-        });
+        }));
     }
 }
