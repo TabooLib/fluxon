@@ -92,6 +92,23 @@ public class EnhancedParserTest {
         assertEquals("legs", ((Identifier) call.getArguments()[2]).getValue());
     }
 
+    @Test
+    public void testDeeplyNestedParenthesesDoesNotOverflow() {
+        int depth = 5000;
+        StringBuilder source = new StringBuilder();
+        for (int i = 0; i < depth; i++) {
+            source.append('(');
+        }
+        source.append('1');
+        for (int i = 0; i < depth; i++) {
+            source.append(')');
+        }
+
+        List<ParseResult> results = assertDoesNotThrow(() -> parseSource(source.toString()));
+        assertEquals(1, results.size());
+        assertTrue(((ExpressionStatement) results.get(0)).getExpression() instanceof GroupingExpression);
+    }
+
     /**
      * 测试嵌套表达式和复杂语法结构
      */

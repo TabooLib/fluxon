@@ -47,7 +47,17 @@ public class FunctionCallParser {
         return getFunctionCallExpression(parser, callee, new ParseResult[0]);
     }
 
-    private static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, ParseResult[] arguments) {
+    /**
+     * 创建函数调用表达式
+     * <p>
+     * 按左结合构造 FunctionCallExpression，并保持错误消息一致。
+     *
+     * @param parser    解析器实例
+     * @param callee    函数调用的标识符
+     * @param arguments 函数调用的参数列表
+     * @return 函数调用表达式实例
+     */
+    public static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, ParseResult[] arguments) {
         String name = callee.getValue();
         // 先尝试查找函数信息（普通函数和扩展函数）
         FunctionInfo funcInfo = FunctionInfo.lookup(parser, name);
