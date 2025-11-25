@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.statement.BreakStatement;
 import org.tabooproject.fluxon.parser.statement.ContinueStatement;
@@ -11,6 +12,7 @@ import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class StatementParser {
 
@@ -61,7 +63,10 @@ public class StatementParser {
         return new ExpressionStatement(expr);
     }
 
-    public static ParseResult parseSub(Parser parser) {
+    /**
+     * CPS 形式的子语句解析，方便与 Block/表达式 trampoline 串联。
+     */
+    public static <T> Trampoline<T> parseSub(Parser parser, Function<ParseResult, Trampoline<T>> continuation) {
         // 检查特殊语法
         TokenType match = parser.match(TokenType.RETURN, TokenType.BREAK, TokenType.CONTINUE);
         if (match != null) {
@@ -71,18 +76,18 @@ public class StatementParser {
                     // 检查是否有返回值
                     if (parser.isEndOfExpression()) {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return new ReturnStatement(null);
+                        return continuation.apply(new ReturnStatement(null));
                     }
                     ParseResult returnValue = ExpressionParser.parse(parser);
                     parser.match(TokenType.SEMICOLON); // 可选的分号
-                    return new ReturnStatement(returnValue);
+                    return continuation.apply(new ReturnStatement(returnValue));
                 }
                 // 跳出循环
                 case BREAK: {
                     // 是否允许跳出循环
                     if (parser.getSymbolEnvironment().isBreakable()) {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return new BreakStatement();
+                        return continuation.apply(new BreakStatement());
                     }
                     throw new RuntimeException("Break outside of loop");
                 }
@@ -91,7 +96,7 @@ public class StatementParser {
                     // 是否允许继续循环
                     if (parser.getSymbolEnvironment().isContinuable()) {
                         parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return new ContinueStatement();
+                        return continuation.apply(new ContinueStatement());
                     }
                     throw new RuntimeException("Continue outside of loop");
                 }
@@ -101,6 +106,6 @@ public class StatementParser {
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
         parser.match(TokenType.SEMICOLON); // 可选的分号
-        return new ExpressionStatement(expr);
+        return continuation.apply(new ExpressionStatement(expr));
     }
 }

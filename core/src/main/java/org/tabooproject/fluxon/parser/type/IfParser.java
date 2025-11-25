@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 
 import java.util.Collections;
@@ -16,34 +17,36 @@ public class IfParser {
      */
     @SuppressWarnings("DuplicatedCode")
     public static ParseResult parse(Parser parser) {
+        return Trampoline.run(parse(parser, Trampoline::done));
+    }
+
+    @SuppressWarnings("DuplicatedCode")
+    public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         // 消费 IF 标记
         parser.consume(TokenType.IF, "Expected 'if' before if expression");
+        return ExpressionParser.parse(parser, condition -> parseThenBranch(parser, condition, continuation));
+    }
 
-        // 解析条件
-        ParseResult condition = ExpressionParser.parse(parser);
-
-        // 尝试消费 then 标记，没有就不管
+    private static Trampoline<ParseResult> parseThenBranch(Parser parser, ParseResult condition, Trampoline.Continuation<ParseResult> continuation) {
         parser.match(TokenType.THEN);
+        return parseBranch(parser, thenBranch -> parseElseBranch(parser, condition, thenBranch, continuation));
+    }
 
-        // 解析 then 分支
-        ParseResult thenBranch;
-        // 如果是大括号，解析为代码块
-        if (parser.match(TokenType.LEFT_BRACE)) {
-            thenBranch = BlockParser.parse(parser);
-        } else {
-            thenBranch = ExpressionParser.parse(parser);
-        }
-
-        // 解析 else 分支
-        ParseResult elseBranch = null;
-        // 如果是大括号，解析为代码块
+    private static Trampoline<ParseResult> parseElseBranch(Parser parser, ParseResult condition, ParseResult thenBranch, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.ELSE)) {
             if (parser.match(TokenType.LEFT_BRACE)) {
-                elseBranch = BlockParser.parse(parser);
+                return BlockParser.parse(parser, elseBranch -> continuation.apply(new IfExpression(condition, thenBranch, elseBranch)));
             } else {
-                elseBranch = ExpressionParser.parse(parser);
+                return ExpressionParser.parse(parser, elseBranch -> continuation.apply(new IfExpression(condition, thenBranch, elseBranch)));
             }
         }
-        return new IfExpression(condition, thenBranch, elseBranch);
+        return Trampoline.more(() -> continuation.apply(new IfExpression(condition, thenBranch, null)));
+    }
+
+    private static Trampoline<ParseResult> parseBranch(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        if (parser.match(TokenType.LEFT_BRACE)) {
+            return BlockParser.parse(parser, continuation);
+        }
+        return ExpressionParser.parse(parser, continuation);
     }
 }

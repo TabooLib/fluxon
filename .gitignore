@@ -33,6 +33,7 @@ bin/
 .DS_Store
 
 .claude/
+AGENTS.md
 CLAUDE.md
 core/dump
 jfr

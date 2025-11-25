@@ -62,4 +62,12 @@ public interface Trampoline<T> {
         }
         return current.get();
     }
+
+    interface Continuation<R> {
+
+        /**
+         * 继续执行解析链，将已有部分结果 value 交给后续 trampoline。
+         */
+        Trampoline<R> apply(R value);
+    }
 }

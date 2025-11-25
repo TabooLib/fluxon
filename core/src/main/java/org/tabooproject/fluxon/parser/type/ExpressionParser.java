@@ -63,14 +63,14 @@ public class ExpressionParser {
      * @return 解析结果
      */
     public static ParseResult parse(Parser parser) {
-        return Trampoline.run(parseExpression(parser, Trampoline::done));
+        return Trampoline.run(parse(parser, Trampoline::done));
     }
 
     public static ParseResult parsePrimary(Parser parser) {
         return Trampoline.run(parsePrimary(parser, Trampoline::done));
     }
 
-    private static Trampoline<ParseResult> parseExpression(Parser parser, TrampolineContinuation continuation) {
+    public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return parseAssignment(parser, continuation);
     }
 
@@ -86,7 +86,7 @@ public class ExpressionParser {
      *
      * @return 赋值表达式解析结果
      */
-    private static Trampoline<ParseResult> parseAssignment(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseAssignment(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseElvis(parser, left -> {
             TokenType match = parser.match(
                     TokenType.ASSIGN,
@@ -111,7 +111,7 @@ public class ExpressionParser {
      *
      * @return 三元运算符表达式解析结果
      */
-    private static Trampoline<ParseResult> parseTernary(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseTernary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseLogicalOr(parser, condition -> {
             if (parser.match(TokenType.QUESTION)) {
                 return parseTernary(parser, trueExpr -> {
@@ -129,7 +129,7 @@ public class ExpressionParser {
      *
      * @return Elvis 操作符表达式解析结果
      */
-    private static Trampoline<ParseResult> parseElvis(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseElvis(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseTernary(parser, expr -> {
             if (parser.match(TokenType.QUESTION_COLON)) {
                 return parseElvis(parser, right -> continuation.apply(new ElvisExpression(expr, right)));
@@ -145,11 +145,11 @@ public class ExpressionParser {
      *
      * @return 逻辑或表达式解析结果
      */
-    private static Trampoline<ParseResult> parseLogicalOr(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseLogicalOr(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseLogicalAnd(parser, left -> parseLogicalOrRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseLogicalOrRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseLogicalOrRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.OR)) {
             Token operator = parser.previous();
             return parseLogicalAnd(parser, right -> parseLogicalOrRest(parser, new LogicalExpression(left, operator, right), continuation));
@@ -164,11 +164,11 @@ public class ExpressionParser {
      *
      * @return 逻辑与表达式解析结果
      */
-    private static Trampoline<ParseResult> parseLogicalAnd(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseLogicalAnd(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseRange(parser, left -> parseLogicalAndRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseLogicalAndRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseLogicalAndRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.AND)) {
             Token operator = parser.previous();
             return parseRange(parser, right -> parseLogicalAndRest(parser, new LogicalExpression(left, operator, right), continuation));
@@ -185,7 +185,7 @@ public class ExpressionParser {
      *
      * @return 范围表达式解析结果
      */
-    private static Trampoline<ParseResult> parseRange(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseRange(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseEquality(parser, left -> {
             TokenType match = parser.match(TokenType.RANGE, TokenType.RANGE_EXCLUSIVE);
             if (match != null) {
@@ -202,11 +202,11 @@ public class ExpressionParser {
      *
      * @return 相等性表达式解析结果
      */
-    private static Trampoline<ParseResult> parseEquality(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseEquality(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseComparison(parser, left -> parseEqualityRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseEqualityRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseEqualityRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         TokenType match = parser.match(TokenType.EQUAL, TokenType.NOT_EQUAL);
         if (match != null) {
             Token operator = parser.previous();
@@ -222,11 +222,11 @@ public class ExpressionParser {
      *
      * @return 比较表达式解析结果
      */
-    private static Trampoline<ParseResult> parseComparison(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseComparison(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseTerm(parser, left -> parseComparisonRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseComparisonRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseComparisonRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         TokenType match = parser.match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL);
         if (match != null) {
             Token operator = parser.previous();
@@ -242,11 +242,11 @@ public class ExpressionParser {
      *
      * @return 项表达式解析结果
      */
-    private static Trampoline<ParseResult> parseTerm(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseTerm(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseFactor(parser, left -> parseTermRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseTermRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseTermRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         TokenType match = parser.match(TokenType.PLUS, TokenType.MINUS);
         if (match != null) {
             Token operator = parser.previous();
@@ -262,11 +262,11 @@ public class ExpressionParser {
      *
      * @return 因子表达式解析结果
      */
-    private static Trampoline<ParseResult> parseFactor(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseFactor(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseUnary(parser, left -> parseFactorRest(parser, left, continuation)));
     }
 
-    private static Trampoline<ParseResult> parseFactorRest(Parser parser, ParseResult left, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseFactorRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         TokenType match = parser.match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO);
         if (match != null) {
             Token operator = parser.previous();
@@ -282,7 +282,7 @@ public class ExpressionParser {
      *
      * @return 一元表达式解析结果
      */
-    private static Trampoline<ParseResult> parseUnary(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseUnary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         switch (parser.peek().getType()) {
             case NOT:
             case MINUS: {
@@ -304,7 +304,7 @@ public class ExpressionParser {
      *
      * @return 引用表达式解析结果
      */
-    private static Trampoline<ParseResult> parseReference(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseReference(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.peek().getType() == TokenType.AMPERSAND) {
             parser.consume();
             boolean isOptional = parser.match(TokenType.QUESTION);
@@ -337,7 +337,7 @@ public class ExpressionParser {
      * @param expr   已解析的表达式
      * @return 应用了调用操作的表达式
      */
-    private static Trampoline<ParseResult> parseCallExpression(Parser parser, ParseResult expr, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseCallExpression(Parser parser, ParseResult expr, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.CONTEXT_CALL)) {
             return handleContextCall(parser, expr, continuation);
         }
@@ -347,13 +347,16 @@ public class ExpressionParser {
     /**
      * 处理 :: 上下文调用链，保持原有符号环境切换与错误行为。
      */
-    private static Trampoline<ParseResult> handleContextCall(Parser parser, ParseResult expr, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> handleContextCall(Parser parser, ParseResult expr, Trampoline.Continuation<ParseResult> continuation) {
         ParseResult context;
         if (parser.match(TokenType.LEFT_BRACE)) {
             boolean isContextCall = parser.getSymbolEnvironment().isContextCall();
             parser.getSymbolEnvironment().setContextCall(true);
-            context = BlockParser.parse(parser);
-            parser.getSymbolEnvironment().setContextCall(isContextCall);
+            return BlockParser.parse(parser, block -> {
+                parser.getSymbolEnvironment().setContextCall(isContextCall);
+                ParseResult combined = new ContextCallExpression(expr, block);
+                return parseCallExpression(parser, combined, continuation);
+            });
         } else {
             SymbolEnvironment env = parser.getSymbolEnvironment();
             boolean isContextCall = env.isContextCall();
@@ -369,7 +372,7 @@ public class ExpressionParser {
      * 解析可调用的 primary：仅对标识符尝试函数调用/顶层 context 调用，其余直接透传。
      * 这样避免再进入 FunctionCallParser 再 trampoline 进入 parsePrimary，减小堆栈链。
      */
-    private static Trampoline<ParseResult> parseCallablePrimary(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parseCallablePrimary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return parsePrimary(parser, primary -> {
             ParseResult expr = primary;
             if (expr instanceof Identifier) {
@@ -404,7 +407,7 @@ public class ExpressionParser {
      *
      * @return 基本表达式解析结果
      */
-    private static Trampoline<ParseResult> parsePrimary(Parser parser, TrampolineContinuation continuation) {
+    private static Trampoline<ParseResult> parsePrimary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         switch (parser.peek().getType()) {
             case IDENTIFIER:
                 return Trampoline.more(() -> continuation.apply(new Identifier(parser.consume().getLexeme())));
@@ -452,14 +455,14 @@ public class ExpressionParser {
 
             case LEFT_PAREN: {
                 parser.consume();
-                return parseExpression(parser, expr -> {
+                return parse(parser, expr -> {
                     parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
                     return continuation.apply(new GroupingExpression(expr));
                 });
             }
             case LEFT_BRACE: {
                 parser.consume();
-                return Trampoline.more(() -> continuation.apply(BlockParser.parse(parser)));
+                return BlockParser.parse(parser, continuation);
             }
             case EOF:
                 throw parser.createParseException("Eof", parser.peek());
