@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.*;
 import org.tabooproject.fluxon.parser.expression.literal.*;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 
 import java.util.ArrayList;
 
@@ -132,10 +133,23 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parseElvis(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseTernary(parser, expr -> {
             if (parser.match(TokenType.QUESTION_COLON)) {
-                return parseElvis(parser, right -> continuation.apply(new ElvisExpression(expr, right)));
+                return parseElvisAlternative(parser, right -> continuation.apply(new ElvisExpression(expr, right)));
             }
             return continuation.apply(expr);
         }));
+    }
+
+    /**
+     * 解析 Elvis 操作符的右侧：重用子语句解析逻辑，使其能力与 if-then 分支一致（块或表达式/控制流）。
+     */
+    private static Trampoline<ParseResult> parseElvisAlternative(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        return StatementParser.parseSub(parser, arm -> {
+            ParseResult normalized = arm;
+            if (arm instanceof ExpressionStatement) {
+                normalized = ((ExpressionStatement) arm).getExpression();
+            }
+            return continuation.apply(normalized);
+        });
     }
 
     /**

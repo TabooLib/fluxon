@@ -85,6 +85,53 @@ public class BreakContinueTest {
     }
 
     @Test
+    public void testElvisBreak() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..3 {\n" +
+                "    null ?: break\n" +
+                "    output = 'should-not-run'\n" +
+                "}\n" +
+                "&output");
+        assertEquals("", testResult.getInterpretResult());
+        assertEquals("", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testElvisContinue() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..3 {\n" +
+                "    null ?: continue\n" +
+                "    output = &output + 'x'\n" +
+                "}\n" +
+                "&output");
+        assertEquals("", testResult.getInterpretResult());
+        assertEquals("", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testElvisBreakBlock() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..3 {\n" +
+                "    null ?: { output = 'block'; break }\n" +
+                "    output = 'should-not-run'\n" +
+                "}\n" +
+                "&output");
+        assertEquals("block", testResult.getInterpretResult());
+        assertEquals("block", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testElvisReturn() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("def foo() = {\n" +
+                "    null ?: return 'ok'\n" +
+                "    return 'fail'\n" +
+                "}\n" +
+                "foo()");
+        assertEquals("ok", testResult.getInterpretResult());
+        assertEquals("ok", testResult.getCompileResult());
+    }
+
+    @Test
     public void testBreakWithCondition() {
         FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("result = 'continue'\n" +
                 "sum = 0\n" +

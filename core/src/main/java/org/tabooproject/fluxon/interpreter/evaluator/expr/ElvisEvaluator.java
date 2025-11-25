@@ -56,7 +56,9 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
         if (alternativeType == Type.VOID) {
-            throw new VoidError("Void type is not allowed for elvis alternative");
+            // 若分支不返回值，则压入 null 以保持栈平衡；对 break/continue/return 等跳转分支则不会执行到此处
+            mv.visitInsn(ACONST_NULL);
+            alternativeType = Type.OBJECT;
         }
         
         // 结束标签
