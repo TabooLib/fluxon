@@ -63,11 +63,12 @@ public class FunctionCallParser {
         FunctionInfo funcInfo = FunctionInfo.lookup(parser, name);
         // 如果找到了函数，直接返回
         if (funcInfo.isFound()) {
-            return new FunctionCallExpression(name, arguments, funcInfo.getPosition(), funcInfo.getExtensionPosition());
+            return parser.copySource(new FunctionCallExpression(name, arguments, funcInfo.getPosition(), funcInfo.getExtensionPosition()), callee);
         }
         // 如果函数不存在，创建未解析的调用表达式并注册到待解析列表
         // 这样可以支持前向引用（函数定义在调用之后）
         FunctionCallExpression expression = new FunctionCallExpression(name, arguments, null, null);
+        parser.copySource(expression, callee);
         parser.registerPendingCall(expression, parser.previous());
         return expression;
     }

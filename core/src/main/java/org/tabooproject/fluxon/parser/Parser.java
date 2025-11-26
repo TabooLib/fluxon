@@ -139,6 +139,29 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 为解析结果附加源信息
+     */
+    public <T extends ParseResult> T attachSource(T result, Token token) {
+        if (result == null || token == null) {
+            return result;
+        }
+        SourceExcerpt excerpt = SourceExcerpt.from(context, selectHighlightToken(token));
+        SourceTrace.attach(result, excerpt);
+        return result;
+    }
+
+    /**
+     * 从另一个解析结果复制源信息
+     */
+    public <T extends ParseResult> T copySource(T result, ParseResult from) {
+        if (result == null || from == null) {
+            return result;
+        }
+        SourceTrace.copy(result, from);
+        return result;
+    }
+
+    /**
      * 检查当前 token 是否在语句边界
      * 通过以下条件判断：
      * 1. 当前 token 在新行（行号大于前一个 token）

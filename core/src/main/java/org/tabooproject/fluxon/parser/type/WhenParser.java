@@ -16,14 +16,14 @@ public class WhenParser {
      * CPS 解析入口，保持在单一 trampoline 链。
      */
     public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
-        parser.consume(TokenType.WHEN, "Expected 'when' before when expression");
-        return parseCondition(parser, condition -> parseBranches(parser, condition, continuation));
+        Token whenToken = parser.consume(TokenType.WHEN, "Expected 'when' before when expression");
+        return parseCondition(parser, condition -> parseBranches(parser, condition, continuation, whenToken));
     }
 
     private static Trampoline<ParseResult> parseCondition(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         if (!parser.check(TokenType.LEFT_BRACE)) {
             return ExpressionParser.parse(parser, expr -> {
-                parser.match(TokenType.LEFT_BRACE); // 条件之后可选 '{'
+                parser.match(TokenType.LEFT_BRACE);
                 return continuation.apply(expr);
             });
         }
@@ -31,24 +31,20 @@ public class WhenParser {
         return continuation.apply(null);
     }
 
-    /**
-     * 解析分支列表：空则直接返回空 when。
-     */
-    private static Trampoline<ParseResult> parseBranches(Parser parser, ParseResult condition, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parseBranches(Parser parser, ParseResult condition, Trampoline.Continuation<ParseResult> continuation, Token whenToken) {
         if (parser.isAtEnd()) {
-            return Trampoline.more(() -> continuation.apply(new WhenExpression(condition, new ArrayList<>())));
+            return Trampoline.more(() -> continuation.apply(parser.attachSource(new WhenExpression(condition, new ArrayList<>()), whenToken)));
         }
         List<WhenExpression.WhenBranch> branches = new ArrayList<>();
-        return Trampoline.more(() -> parseBranch(parser, condition, branches, continuation));
+        return Trampoline.more(() -> parseBranch(parser, condition, branches, continuation, whenToken));
     }
 
-    private static Trampoline<ParseResult> parseBranch(Parser parser, ParseResult condition, List<WhenExpression.WhenBranch> branches, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parseBranch(Parser parser, ParseResult condition, List<WhenExpression.WhenBranch> branches, Trampoline.Continuation<ParseResult> continuation, Token whenToken) {
         if (parser.check(TokenType.RIGHT_BRACE) || parser.isAtEnd()) {
             parser.match(TokenType.RIGHT_BRACE);
-            return continuation.apply(new WhenExpression(condition, branches));
+            return continuation.apply(parser.attachSource(new WhenExpression(condition, branches), whenToken));
         }
 
-        // 解析匹配类型：in / not in / equal
         Token peek = parser.peek();
         WhenExpression.MatchType matchType;
         if (peek.getType() == TokenType.IN) {
@@ -72,7 +68,7 @@ public class WhenParser {
             return ExpressionParser.parse(parser, branchResult -> {
                 branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, branchResult));
                 parser.match(TokenType.SEMICOLON);
-                return parseBranch(parser, condition, branches, continuation);
+                return parseBranch(parser, condition, branches, continuation, whenToken);
             });
         };
 

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
@@ -10,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 public class LambdaParser {
@@ -20,9 +20,12 @@ public class LambdaParser {
      */
     public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         // | 或 OR 都可作为起始
+        Token lambdaStart;
         boolean usedOrToken = parser.match(TokenType.OR);
-        if (!usedOrToken) {
-            parser.consume(TokenType.PIPE, "Expected '|' to start lambda expression");
+        if (usedOrToken) {
+            lambdaStart = parser.previous();
+        } else {
+            lambdaStart = parser.consume(TokenType.PIPE, "Expected '|' to start lambda expression");
         }
         // 切换当前函数名，便于记录局部变量和捕获
         String previousFunction = parser.getSymbolEnvironment().getCurrentFunction();
@@ -31,7 +34,7 @@ public class LambdaParser {
         // 捕获父函数局部变量索引，支持闭包
         Map<String, Integer> parentCaptures = captureParentLocals(parser, previousFunction);
         parser.pushCapture(parentCaptures);
-        return parseParameters(parser, usedOrToken, parameters -> parseLambdaBody(parser, lambdaName, previousFunction, parameters, continuation));
+        return parseParameters(parser, usedOrToken, parameters -> parseLambdaBody(parser, lambdaName, previousFunction, parameters, continuation, lambdaStart));
     }
 
     /**
@@ -85,9 +88,9 @@ public class LambdaParser {
             String lambdaName,
             String previousFunction,
             LinkedHashMap<String, Integer> parameters,
-            Trampoline.Continuation<ParseResult> continuation
+            Trampoline.Continuation<ParseResult> continuation,
+            Token lambdaStart
     ) {
-        // 完成 lambda：收集局部变量，恢复父函数上下文与捕获栈
         Trampoline.Continuation<ParseResult> finish = body -> {
             Set<String> locals = new LinkedHashSet<>();
             Set<String> defined = parser.getSymbolEnvironment().getLocalVariables().get(lambdaName);
@@ -96,7 +99,7 @@ public class LambdaParser {
             }
             parser.getSymbolEnvironment().setCurrentFunction(previousFunction);
             parser.popCapture();
-            return continuation.apply(new LambdaExpression(lambdaName, parameters, body, locals));
+            return continuation.apply(parser.attachSource(new LambdaExpression(lambdaName, parameters, body, locals), lambdaStart));
         };
         if (parser.match(TokenType.LEFT_BRACE)) {
             return BlockParser.parse(parser, finish);

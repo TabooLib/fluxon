@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
@@ -24,15 +25,16 @@ public class StatementParser {
         // 检查顶层关键字
         TokenType match = parser.match(TokenType.SYNC, TokenType.ASYNC, TokenType.DEF, TokenType.RETURN);
         if (match != null) {
+            Token matchedToken = parser.previous();
             switch (match) {
                 // 同步函数定义
                 case SYNC: {
-                    parser.match(TokenType.DEF); // 消费 DEF
+                    parser.match(TokenType.DEF);
                     return FunctionDefinitionParser.parse(parser, false, true, annotations);
                 }
                 // 异步函数定义
                 case ASYNC: {
-                    parser.match(TokenType.DEF); // 消费 DEF
+                    parser.match(TokenType.DEF);
                     return FunctionDefinitionParser.parse(parser, true, false, annotations);
                 }
                 // 普通函数定义
@@ -42,12 +44,12 @@ public class StatementParser {
                 case RETURN: {
                     // 检查是否有返回值
                     if (parser.isEndOfExpression()) {
-                        parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return new ReturnStatement(null);
+                        parser.match(TokenType.SEMICOLON);
+                        return parser.attachSource(new ReturnStatement(null), matchedToken);
                     }
                     ParseResult returnValue = ExpressionParser.parse(parser);
-                    parser.match(TokenType.SEMICOLON); // 可选的分号
-                    return new ReturnStatement(returnValue);
+                    parser.match(TokenType.SEMICOLON);
+                    return parser.attachSource(new ReturnStatement(returnValue), matchedToken);
                 }
                 default:
             }
@@ -58,8 +60,8 @@ public class StatementParser {
         }
         // 解析表达式语句
         ParseResult expr = ExpressionParser.parse(parser);
-        parser.match(TokenType.SEMICOLON); // 可选的分号
-        return new ExpressionStatement(expr);
+        parser.match(TokenType.SEMICOLON);
+        return parser.copySource(new ExpressionStatement(expr), expr);
     }
 
     /**
@@ -69,25 +71,26 @@ public class StatementParser {
         // 检查特殊语法
         TokenType match = parser.match(TokenType.RETURN, TokenType.BREAK, TokenType.CONTINUE);
         if (match != null) {
+            Token matchedToken = parser.previous();
             switch (match) {
                 // 返回值
                 case RETURN: {
                     // 检查是否有返回值
                     if (parser.isEndOfExpression()) {
-                        parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return continuation.apply(new ReturnStatement(null));
+                        parser.match(TokenType.SEMICOLON);
+                        return continuation.apply(parser.attachSource(new ReturnStatement(null), matchedToken));
                     }
                     return ExpressionParser.parse(parser, returnValue -> {
-                        parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return continuation.apply(new ReturnStatement(returnValue));
+                        parser.match(TokenType.SEMICOLON);
+                        return continuation.apply(parser.attachSource(new ReturnStatement(returnValue), matchedToken));
                     });
                 }
                 // 跳出循环
                 case BREAK: {
                     // 是否允许跳出循环
                     if (parser.getSymbolEnvironment().isBreakable()) {
-                        parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return continuation.apply(new BreakStatement());
+                        parser.match(TokenType.SEMICOLON);
+                        return continuation.apply(parser.attachSource(new BreakStatement(), matchedToken));
                     }
                     throw new RuntimeException("Break outside of loop");
                 }
@@ -95,8 +98,8 @@ public class StatementParser {
                 case CONTINUE: {
                     // 是否允许继续循环
                     if (parser.getSymbolEnvironment().isContinuable()) {
-                        parser.match(TokenType.SEMICOLON); // 可选的分号
-                        return continuation.apply(new ContinueStatement());
+                        parser.match(TokenType.SEMICOLON);
+                        return continuation.apply(parser.attachSource(new ContinueStatement(), matchedToken));
                     }
                     throw new RuntimeException("Continue outside of loop");
                 }
@@ -105,8 +108,8 @@ public class StatementParser {
         }
         // 解析表达式语句
         return ExpressionParser.parse(parser, expr -> {
-            parser.match(TokenType.SEMICOLON); // 可选的分号
-            return continuation.apply(new ExpressionStatement(expr));
+            parser.match(TokenType.SEMICOLON);
+            return continuation.apply(parser.copySource(new ExpressionStatement(expr), expr));
         });
     }
 }

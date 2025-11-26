@@ -161,10 +161,12 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(String source, String className, Environment env, ClassLoader classLoader) {
+        CompilationContext context = new CompilationContext(source);
         // 创建字节码生成器
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
+        generator.setSourceContext(context.getSource(), context.getFileName());
         // 解析源代码
-        for (ParseResult result : parse(source, env)) {
+        for (ParseResult result : parse(env, context)) {
             if (result instanceof Statement) {
                 generator.addScriptBody((Statement) result);
             } else if (result instanceof Definition) {

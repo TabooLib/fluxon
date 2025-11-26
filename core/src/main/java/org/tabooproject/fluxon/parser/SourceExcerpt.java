@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.lexer.Token;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -21,13 +22,15 @@ public class SourceExcerpt {
     private final int spanStart;
     private final int spanLength;
 
-    private SourceExcerpt(String filename,
-                          int line,
-                          int column,
-                          List<String> contextLines,
-                          int focusLineIndex,
-                          int spanStart,
-                          int spanLength) {
+    private SourceExcerpt(
+            String filename,
+            int line,
+            int column,
+            List<String> contextLines,
+            int focusLineIndex,
+            int spanStart,
+            int spanLength
+    ) {
         this.filename = filename;
         this.line = line;
         this.column = column;
@@ -35,6 +38,37 @@ public class SourceExcerpt {
         this.focusLineIndex = focusLineIndex;
         this.spanStart = spanStart;
         this.spanLength = spanLength;
+    }
+
+    /**
+     * 从文件名、源码、行号和列号创建源码摘录
+     *
+     * @param filename 文件名
+     * @param source   源码
+     * @param line     行号（从 1 开始）
+     * @param column   列号（从 1 开始）
+     * @return 源码摘录，如果参数无效则返回 null
+     */
+    public static SourceExcerpt from(String filename, String source, int line, int column) {
+        if (source == null || source.isEmpty() || line <= 0) {
+            return null;
+        }
+        String[] lines = source.split("\n", -1);
+        if (line > lines.length) {
+            return null;
+        }
+        String focusLine = lines[line - 1];
+        int spanStart = Math.max(0, Math.min(column - 1, focusLine.length()));
+        int spanLength = Math.min(Math.max(focusLine.length() - spanStart, 1), Math.max(focusLine.length(), 1));
+        return new SourceExcerpt(
+                filename,
+                line,
+                column,
+                Collections.singletonList(focusLine),
+                0,
+                spanStart,
+                spanLength
+        );
     }
 
     /**
@@ -95,7 +129,7 @@ public class SourceExcerpt {
 
         // 计算 span 长度（token 的长度）
         int spanLength = token.getLexeme() != null ? token.getLexeme().length() : 1;
-        if (spanLength <= 0) {
+        if (spanLength == 0) {
             spanLength = 1;
         }
         if (focusLineLength > 0) {
@@ -115,21 +149,16 @@ public class SourceExcerpt {
         if (contextLines.isEmpty()) {
             return "";
         }
-
         StringBuilder sb = new StringBuilder();
-
         // 计算行号的最大宽度
         int maxLineNum = line - focusLineIndex + contextLines.size() - 1;
         int lineNumWidth = String.valueOf(maxLineNum).length();
-
         // 渲染每一行
         for (int i = 0; i < contextLines.size(); i++) {
             int currentLine = line - focusLineIndex + i;
             String lineContent = contextLines.get(i);
-
             // 展开制表符
             String expandedLine = expandTabs(lineContent);
-
             // 行号前缀
             sb.append(String.format(" %" + lineNumWidth + "d | ", currentLine));
             sb.append(expandedLine);
@@ -142,15 +171,12 @@ public class SourceExcerpt {
                     sb.append(" ");
                 }
                 sb.append(" | ");
-
                 // 计算展开后的列位置（列号从1开始，需要转换为0-based）
                 int expandedColumn = calculateExpandedColumn(lineContent, spanStart);
-
                 // 添加前导空格
                 for (int j = 0; j < expandedColumn; j++) {
                     sb.append(" ");
                 }
-
                 // 添加指示符
                 sb.append("^");
                 for (int j = 1; j < spanLength; j++) {
@@ -159,7 +185,6 @@ public class SourceExcerpt {
                 sb.append("\n");
             }
         }
-
         return sb.toString();
     }
 

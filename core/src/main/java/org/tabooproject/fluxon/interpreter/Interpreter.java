@@ -2,12 +2,14 @@ package org.tabooproject.fluxon.interpreter;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceTrace;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntimeError;
 
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -36,7 +38,6 @@ public class Interpreter {
      * @return 最后一个表达式的执行结果
      */
     public Object execute(List<ParseResult> parseResults) {
-        // 第一遍：提前注册所有顶层函数定义，支持前向引用
         for (ParseResult result : parseResults) {
             if (result.getType() == ParseResult.ResultType.DEFINITION) {
                 evaluateDefinition((Definition) result);
@@ -60,13 +61,11 @@ public class Interpreter {
      * @return 执行结果
      */
     public Object executeWithEnvironment(ParseResult result, Environment env) {
-        // 保存当前环境
         Environment previous = this.environment;
         this.environment = env;
         try {
             return evaluate(result);
         } finally {
-            // 恢复环境
             this.environment = previous;
         }
     }
@@ -78,44 +77,63 @@ public class Interpreter {
      * @return 执行结果
      */
     public Object evaluate(ParseResult result) {
-        switch (result.getType()) {
-            case EXPRESSION:
-                return evaluateExpression((Expression) result);
-            case STATEMENT:
-                return evaluateStatement((Statement) result);
-            case DEFINITION:
-                return evaluateDefinition((Definition) result);
+        try {
+            switch (result.getType()) {
+                case EXPRESSION:
+                    return evaluateExpression((Expression) result);
+                case STATEMENT:
+                    return evaluateStatement((Statement) result);
+                case DEFINITION:
+                    return evaluateDefinition((Definition) result);
+                default:
+                    return null;
+            }
+        } catch (FluxonRuntimeError ex) {
+            attachSource(ex, result);
+            throw ex;
         }
-        return null;
     }
 
     /**
      * 直接评估表达式，跳过 ResultType 分派开销
      */
     public Object evaluateExpression(Expression expression) {
-        return expression.getExpressionType().evaluator.evaluate(this, expression);
+        try {
+            return expression.getExpressionType().evaluator.evaluate(this, expression);
+        } catch (FluxonRuntimeError ex) {
+            attachSource(ex, expression);
+            throw ex;
+        }
     }
 
     /**
      * 直接评估语句
      */
     public Object evaluateStatement(Statement statement) {
-        return statement.getStatementType().evaluator.evaluate(this, statement);
+        try {
+            return statement.getStatementType().evaluator.evaluate(this, statement);
+        } catch (FluxonRuntimeError ex) {
+            attachSource(ex, statement);
+            throw ex;
+        }
     }
 
     /**
      * 直接评估定义
      */
     public Object evaluateDefinition(Definition definition) {
-        if (definition instanceof FunctionDefinition) {
-            FunctionDefinition funcDef = (FunctionDefinition) definition;
-            // 创建函数对象，捕获当前环境
-            UserFunction function = new UserFunction(funcDef, this);
-            // 在当前环境中定义函数
-            environment.defineRootFunction(funcDef.getName(), function);
-            return function;
+        try {
+            if (definition instanceof FunctionDefinition) {
+                FunctionDefinition funcDef = (FunctionDefinition) definition;
+                UserFunction function = new UserFunction(funcDef, this);
+                environment.defineRootFunction(funcDef.getName(), function);
+                return function;
+            }
+            throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
+        } catch (FluxonRuntimeError ex) {
+            attachSource(ex, definition);
+            throw ex;
         }
-        throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
     }
 
     /**
@@ -139,5 +157,11 @@ public class Interpreter {
     @NotNull
     public Environment getEnvironment() {
         return environment;
+    }
+
+    private void attachSource(FluxonRuntimeError error, ParseResult result) {
+        if (error.getSourceExcerpt() == null) {
+            error.attachSource(SourceTrace.get(result));
+        }
     }
 }

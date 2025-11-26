@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -8,6 +9,9 @@ import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.parser.SourceExcerpt;
+import org.tabooproject.fluxon.parser.SourceTrace;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
@@ -27,6 +31,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private final List<Definition> definitions = new ArrayList<>();
     // 收集到的 lambda 定义
     private List<LambdaFunctionDefinition> lastLambdaDefinitions = new ArrayList<>();
+    // 脚本源上下文
+    private String source = "";
+    // 脚本文件名
+    private String fileName = "main";
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
@@ -49,6 +57,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     }
 
     @Override
+    public void setSourceContext(String source, String fileName) {
+        if (source != null) {
+            this.source = source;
+        }
+        if (fileName != null && !fileName.isEmpty()) {
+            this.fileName = fileName;
+        }
+    }
+
+    @Override
     public List<byte[]> generateClassBytecode(String className, ClassLoader classLoader) {
         return generateClassBytecode(className, RuntimeScriptBase.TYPE.getPath(), classLoader);
     }
@@ -62,6 +80,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 生成主类
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         cw.visit(V1_8, ACC_PUBLIC, className, null, superClassName, null);
+        cw.visitSource(fileName, null);
+        declareSourceMetadata(cw);
 
         // 为每个用户函数生成静态常量字段
         for (Definition definition : definitions) {
@@ -122,6 +142,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 继承 Object eval(Environment env) 函数
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "eval", "(" + Environment.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();
+        Label start = new Label();
+        Label end = new Label();
+        Label handler = new Label();
+        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitLabel(start);
         // 设置 environment 参数
         mv.visitVarInsn(ALOAD, 0);  // 加载 this
         mv.visitVarInsn(ALOAD, 1);  // 加载 environment 参数
@@ -138,6 +163,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 生成脚本主体代码
         Type last = null;
         for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
+            emitLineNumber(statements.get(i), mv);
             last = generateStatementBytecode(statements.get(i), ctx, mv);
             // 如果不是最后一条语句，并且有返回值，则丢弃它
             if (i < statementsSize - 1 && last != VOID) {
@@ -148,8 +174,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         if (last == null || last == VOID) {
             mv.visitInsn(ACONST_NULL);
         }
+        mv.visitLabel(end);
         mv.visitInsn(ARETURN);
-        mv.visitMaxs(9, ctx.getLocalVarIndex() + 1);
+        mv.visitLabel(handler);
+        mv.visitVarInsn(ASTORE, 2);
+        mv.visitVarInsn(ALOAD, 2);
+        loadSourceMetadata(mv, ctx.getClassName());
+        mv.visitLdcInsn(externalName(ctx.getClassName()));
+        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
+        mv.visitInsn(ATHROW);
+        mv.visitMaxs(9, ctx.getLocalVarIndex() + 3);
         mv.visitEnd();
         lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
     }
@@ -243,6 +277,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
         // 继承 RuntimeScriptBase 并实现 Function 接口
         cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
+        cw.visitSource(fileName, null);
+        declareSourceMetadata(cw);
         // 添加 parameters 字段来保存函数参数（static 字段，所有实例共享）
         cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "parameters", MAP.getDescriptor(), null, null);
         // 添加 annotations 字段来保存函数注解（static 字段，所有实例共享）
@@ -440,16 +476,31 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         CodeContext funcCtx = new CodeContext(functionClassName, RuntimeScriptBase.TYPE.getPath());
         // 生成函数体字节码
         Type returnType;
+        Label start = new Label();
+        Label end = new Label();
+        Label handler = new Label();
+        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitLabel(start);
         if (funcDef.getBody() instanceof Statement) {
+            emitLineNumber(funcDef.getBody(), mv);
             returnType = generateStatementBytecode((Statement) funcDef.getBody(), funcCtx, mv);
         } else {
+            emitLineNumber((Expression) funcDef.getBody(), mv);
             returnType = generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
         }
         // 如果函数体返回 void，则返回 null
         if (returnType == VOID) {
             mv.visitInsn(ACONST_NULL);
         }
+        mv.visitLabel(end);
         mv.visitInsn(ARETURN);
+        mv.visitLabel(handler);
+        mv.visitVarInsn(ASTORE, 2);
+        mv.visitVarInsn(ALOAD, 2);
+        loadSourceMetadata(mv, functionClassName);
+        mv.visitLdcInsn(externalName(functionClassName));
+        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
+        mv.visitInsn(ATHROW);
         mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 2);
         mv.visitEnd();
         lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
@@ -468,6 +519,33 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<LambdaFunctionDefinition> getLambdaDefinitions() {
         return lastLambdaDefinitions;
+    }
+
+    private void declareSourceMetadata(ClassWriter cw) {
+        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "__source", STRING.getDescriptor(), null, source);
+        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "__filename", STRING.getDescriptor(), null, fileName);
+    }
+
+    private void loadSourceMetadata(MethodVisitor mv, String ownerInternalName) {
+        mv.visitFieldInsn(GETSTATIC, ownerInternalName, "__source", STRING.getDescriptor());
+        mv.visitFieldInsn(GETSTATIC, ownerInternalName, "__filename", STRING.getDescriptor());
+    }
+
+    private String externalName(String internalName) {
+        return internalName.replace('/', '.');
+    }
+
+    private void emitLineNumber(ParseResult node, MethodVisitor mv) {
+        if (node == null) {
+            return;
+        }
+        SourceExcerpt excerpt = SourceTrace.get(node);
+        if (excerpt == null) {
+            return;
+        }
+        Label label = new Label();
+        mv.visitLabel(label);
+        mv.visitLineNumber(excerpt.getLine(), label);
     }
 
     private List<LambdaFunctionDefinition> getOwnedLambdas(String ownerClassName, List<LambdaFunctionDefinition> all) {

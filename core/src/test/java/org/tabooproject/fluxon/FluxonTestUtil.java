@@ -228,4 +228,33 @@ public class FluxonTestUtil {
         long interpretTime = System.currentTimeMillis() - startInterpret;
         return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
     }
+
+    /**
+     * 仅编译执行：只执行编译模式，不解释
+     */
+    public static TestResult compile(String source, String className) {
+        // 2. 编译
+        long startCompile = System.currentTimeMillis();
+        CompileResult compileResultObj = Fluxon.compile(source, className);
+        long compileTime = System.currentTimeMillis() - startCompile;
+        // 输出编译字节码
+        try {
+            compileResultObj.dump(new File("dump/TestScript.class"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        // 3. 执行
+        long startExecute = System.currentTimeMillis();
+        Class<?> scriptClass = compileResultObj.defineClass(new FluxonClassLoader());
+        RuntimeScriptBase base;
+        try {
+            base = (RuntimeScriptBase) scriptClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
+        Object compileResult = base.eval(compileEnv);
+        long executeTime = System.currentTimeMillis() - startExecute;
+        return new TestResult(null, null, compileResult, compileEnv, 0, compileTime, executeTime);
+    }
 }

@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 上下文调用功能测试
@@ -319,7 +320,7 @@ public class ContextCallTest {
             FluxonTestUtil.runSilent("[1]::get(random(1))");
             fail("Should throw ArgumentTypeMismatchException");
         } catch (ArgumentTypeMismatchError e) {
-            assertEquals("0, expect Number but got ArrayList ([1])", e.getMessage());
+            assertTrue(e.getMessage().contains("0, expect Number but got ArrayList ([1])"));
         }
     }
 
@@ -329,7 +330,7 @@ public class ContextCallTest {
             FluxonTestUtil.runSilent("env()::function(0)");
             fail("Should throw ArgumentTypeMismatchException");
         } catch (ArgumentTypeMismatchError e) {
-            assertEquals("0, expect String but got Integer (0)", e.getMessage());
+            assertTrue(e.getMessage().contains("0, expect String but got Integer (0)"));
         }
     }
 

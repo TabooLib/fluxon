@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.tabooproject.fluxon.parser.SourceExcerpt;
+
 /**
  * 运行时脚本的基类
  */
@@ -40,5 +42,25 @@ public abstract class RuntimeScriptBase {
     // 获取运行时环境
     public Environment getEnvironment() {
         return environment;
+    }
+
+    /**
+     * 为运行时错误添加源代码信息
+     */
+    public static FluxonRuntimeError attachRuntimeError(FluxonRuntimeError ex, String source, String filename, String className) {
+        if (ex.getSourceExcerpt() != null) {
+            return ex;
+        }
+        String normalizedClassName = className == null ? null : className.replace('/', '.');
+        for (StackTraceElement element : ex.getStackTrace()) {
+            if (element.getLineNumber() > 0 && element.getClassName().equals(normalizedClassName)) {
+                SourceExcerpt excerpt = SourceExcerpt.from(filename, source, element.getLineNumber(), 1);
+                if (excerpt != null) {
+                    ex.attachSource(excerpt);
+                }
+                break;
+            }
+        }
+        return ex;
     }
 }

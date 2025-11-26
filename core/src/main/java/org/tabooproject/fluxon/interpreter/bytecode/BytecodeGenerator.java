@@ -36,6 +36,11 @@ public interface BytecodeGenerator {
     void addScriptDefinition(Definition... definitions);
 
     /**
+     * 传入源代码与文件名，便于生成行号与错误修饰
+     */
+    void setSourceContext(String source, String fileName);
+
+    /**
      * 生成完整的类字节码
      */
     List<byte[]> generateClassBytecode(String className, ClassLoader classLoader);

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
@@ -7,7 +8,8 @@ import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 
 public class ForParser {
 
@@ -27,7 +29,7 @@ public class ForParser {
     @SuppressWarnings("DuplicatedCode")
     public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         // 消费 FOR 标记
-        parser.consume(TokenType.FOR, "Expected 'for' before for expression");
+        Token forToken = parser.consume(TokenType.FOR, "Expected 'for' before for expression");
         SymbolEnvironment env = parser.getSymbolEnvironment();
         // 之前的状态
         boolean isBreakable = env.isBreakable();
@@ -54,7 +56,7 @@ public class ForParser {
         parser.consume(TokenType.IN, "Expected 'in' after identifier in for expression");
 
         // 解析集合表达式
-        return ExpressionParser.parse(parser, collection -> parseBody(parser, env, isBreakable, isContinuable, variables, collection, continuation));
+        return ExpressionParser.parse(parser, collection -> parseBody(parser, env, isBreakable, isContinuable, variables, collection, continuation, forToken));
     }
 
     /**
@@ -81,22 +83,34 @@ public class ForParser {
         return variables;
     }
 
-    private static Trampoline<ParseResult> parseBody(Parser parser, SymbolEnvironment env, boolean oldBreakable, boolean oldContinuable, LinkedHashMap<String, Integer> variables, ParseResult collection, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parseBody(
+            Parser parser,
+            SymbolEnvironment env,
+            boolean oldBreakable,
+            boolean oldContinuable,
+            LinkedHashMap<String, Integer> variables,
+            ParseResult collection,
+            Trampoline.Continuation<ParseResult> continuation,
+            Token forToken
+    ) {
+        int localVariableCount = env.getLocalVariables()
+                .getOrDefault(env.getCurrentFunction(), Collections.emptySet())
+                .size();
         return parseLoopBody(parser, body -> {
             // 恢复状态
             env.setBreakable(oldBreakable);
             env.setContinuable(oldContinuable);
-            return continuation.apply(new ForExpression(variables, collection, body, variables.size()));
+            return continuation.apply(parser.attachSource(new ForExpression(variables, collection, body, localVariableCount), forToken));
         });
     }
 
     private static Trampoline<ParseResult> parseLoopBody(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         // 尝试消费 THEN 标记，如果存在
         parser.match(TokenType.THEN);
+        // 解析循环体
         if (parser.match(TokenType.LEFT_BRACE)) {
             return BlockParser.parse(parser, continuation);
-        } else {
-            return ExpressionParser.parse(parser, continuation);
         }
+        return ExpressionParser.parse(parser, continuation);
     }
 }

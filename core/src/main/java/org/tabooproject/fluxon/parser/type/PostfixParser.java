@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseException;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -34,16 +35,14 @@ public class PostfixParser {
                 parser.advance(); // 消费 [
                 // 索引访问
                 expr = finishIndexAccess(parser, expr);
-            }
-            else if (parser.match(TokenType.LEFT_PAREN)) {
+            } else if (parser.match(TokenType.LEFT_PAREN)) {
                 // 后缀函数调用
                 if (expr instanceof Identifier) {
                     expr = FunctionCallParser.finishCall(parser, (Identifier) expr);
                 } else {
                     throw parser.createParseException("Cannot call non-identifier expression", parser.peek());
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -58,8 +57,9 @@ public class PostfixParser {
      * @return IndexAccessExpression
      */
     private static ParseResult finishIndexAccess(Parser parser, ParseResult target) {
-        List<ParseResult> indices = new ArrayList<>();
+        Token leftBracket = parser.previous();
         // 解析索引参数（支持多个，用逗号分隔）
+        List<ParseResult> indices = new ArrayList<>();
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
             do {
                 indices.add(ExpressionParser.parse(parser));
@@ -71,7 +71,6 @@ public class PostfixParser {
         if (indices.isEmpty()) {
             throw parser.createParseException("Index access requires at least one index", parser.peek());
         }
-        return new IndexAccessExpression(target, indices, -1);
+        return parser.attachSource(new IndexAccessExpression(target, indices, -1), leftBracket);
     }
 }
-

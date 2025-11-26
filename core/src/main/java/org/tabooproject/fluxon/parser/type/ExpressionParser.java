@@ -34,6 +34,10 @@ import java.util.ArrayList;
  */
 public class ExpressionParser {
 
+    private static <T extends ParseResult> T attach(Parser parser, T result, Token token) {
+        return parser.attachSource(result, token);
+    }
+
     /**
      * 赋值目标
      */
@@ -100,7 +104,7 @@ public class ExpressionParser {
             if (match != null) {
                 Token operator = parser.previous();
                 AssignmentTarget target = prepareAssignmentTarget(parser, match, left, operator);
-                return parseAssignment(parser, right -> continuation.apply(new AssignExpression(target.expression(), operator, right, target.position())));
+                return parseAssignment(parser, right -> continuation.apply(attach(parser, new AssignExpression(target.expression(), operator, right, target.position()), operator)));
             }
             return continuation.apply(left);
         }));
@@ -115,9 +119,10 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parseTernary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseLogicalOr(parser, condition -> {
             if (parser.match(TokenType.QUESTION)) {
+                Token question = parser.previous();
                 return parseTernary(parser, trueExpr -> {
                     parser.consume(TokenType.COLON, "Expected ':' after ternary true expression");
-                    return parseTernary(parser, falseExpr -> continuation.apply(new TernaryExpression(condition, trueExpr, falseExpr)));
+                    return parseTernary(parser, falseExpr -> continuation.apply(attach(parser, new TernaryExpression(condition, trueExpr, falseExpr), question)));
                 });
             }
             return continuation.apply(condition);
@@ -133,7 +138,8 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parseElvis(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         return Trampoline.more(() -> parseTernary(parser, expr -> {
             if (parser.match(TokenType.QUESTION_COLON)) {
-                return parseElvisAlternative(parser, right -> continuation.apply(new ElvisExpression(expr, right)));
+                Token operator = parser.previous();
+                return parseElvisAlternative(parser, right -> continuation.apply(attach(parser, new ElvisExpression(expr, right), operator)));
             }
             return continuation.apply(expr);
         }));
@@ -166,7 +172,7 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parseLogicalOrRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.OR)) {
             Token operator = parser.previous();
-            return parseLogicalAnd(parser, right -> parseLogicalOrRest(parser, new LogicalExpression(left, operator, right), continuation));
+            return parseLogicalAnd(parser, right -> parseLogicalOrRest(parser, attach(parser, new LogicalExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -185,7 +191,7 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parseLogicalAndRest(Parser parser, ParseResult left, Trampoline.Continuation<ParseResult> continuation) {
         if (parser.match(TokenType.AND)) {
             Token operator = parser.previous();
-            return parseRange(parser, right -> parseLogicalAndRest(parser, new LogicalExpression(left, operator, right), continuation));
+            return parseRange(parser, right -> parseLogicalAndRest(parser, attach(parser, new LogicalExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -203,7 +209,8 @@ public class ExpressionParser {
         return Trampoline.more(() -> parseEquality(parser, left -> {
             TokenType match = parser.match(TokenType.RANGE, TokenType.RANGE_EXCLUSIVE);
             if (match != null) {
-                return parseEquality(parser, right -> continuation.apply(new RangeExpression(left, right, match == TokenType.RANGE)));
+                Token operator = parser.previous();
+                return parseEquality(parser, right -> continuation.apply(attach(parser, new RangeExpression(left, right, match == TokenType.RANGE), operator)));
             }
             return continuation.apply(left);
         }));
@@ -224,7 +231,7 @@ public class ExpressionParser {
         TokenType match = parser.match(TokenType.EQUAL, TokenType.NOT_EQUAL);
         if (match != null) {
             Token operator = parser.previous();
-            return parseComparison(parser, right -> parseEqualityRest(parser, new BinaryExpression(left, operator, right), continuation));
+            return parseComparison(parser, right -> parseEqualityRest(parser, attach(parser, new BinaryExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -244,7 +251,7 @@ public class ExpressionParser {
         TokenType match = parser.match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL);
         if (match != null) {
             Token operator = parser.previous();
-            return parseTerm(parser, right -> parseComparisonRest(parser, new BinaryExpression(left, operator, right), continuation));
+            return parseTerm(parser, right -> parseComparisonRest(parser, attach(parser, new BinaryExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -264,7 +271,7 @@ public class ExpressionParser {
         TokenType match = parser.match(TokenType.PLUS, TokenType.MINUS);
         if (match != null) {
             Token operator = parser.previous();
-            return parseFactor(parser, right -> parseTermRest(parser, new BinaryExpression(left, operator, right), continuation));
+            return parseFactor(parser, right -> parseTermRest(parser, attach(parser, new BinaryExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -284,7 +291,7 @@ public class ExpressionParser {
         TokenType match = parser.match(TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.MODULO);
         if (match != null) {
             Token operator = parser.previous();
-            return parseUnary(parser, right -> parseFactorRest(parser, new BinaryExpression(left, operator, right), continuation));
+            return parseUnary(parser, right -> parseFactorRest(parser, attach(parser, new BinaryExpression(left, operator, right), operator), continuation));
         }
         return continuation.apply(left);
     }
@@ -301,11 +308,11 @@ public class ExpressionParser {
             case NOT:
             case MINUS: {
                 Token operator = parser.consume();
-                return parseUnary(parser, expr -> continuation.apply(new UnaryExpression(operator, expr)));
+                return parseUnary(parser, expr -> continuation.apply(attach(parser, new UnaryExpression(operator, expr), operator)));
             }
             case AWAIT: {
-                parser.consume();
-                return parseUnary(parser, expr -> continuation.apply(new AwaitExpression(expr)));
+                Token awaitToken = parser.consume();
+                return parseUnary(parser, expr -> continuation.apply(attach(parser, new AwaitExpression(expr), awaitToken)));
             }
             default:
                 return parseReference(parser, continuation);
@@ -362,13 +369,14 @@ public class ExpressionParser {
      * 处理 :: 上下文调用链，保持原有符号环境切换与错误行为。
      */
     private static Trampoline<ParseResult> handleContextCall(Parser parser, ParseResult expr, Trampoline.Continuation<ParseResult> continuation) {
+        Token contextCallToken = parser.previous();
         ParseResult context;
         if (parser.match(TokenType.LEFT_BRACE)) {
             boolean isContextCall = parser.getSymbolEnvironment().isContextCall();
             parser.getSymbolEnvironment().setContextCall(true);
             return BlockParser.parse(parser, block -> {
                 parser.getSymbolEnvironment().setContextCall(isContextCall);
-                ParseResult combined = new ContextCallExpression(expr, block);
+                ParseResult combined = attach(parser, new ContextCallExpression(expr, block), contextCallToken);
                 return parseCallExpression(parser, combined, continuation);
             });
         } else {
@@ -378,7 +386,7 @@ public class ExpressionParser {
             context = FunctionCallParser.parse(parser);
             env.setContextCall(isContextCall);
         }
-        ParseResult combined = new ContextCallExpression(expr, context);
+        ParseResult combined = attach(parser, new ContextCallExpression(expr, context), contextCallToken);
         return parseCallExpression(parser, combined, continuation);
     }
 
@@ -424,33 +432,52 @@ public class ExpressionParser {
     private static Trampoline<ParseResult> parsePrimary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         switch (parser.peek().getType()) {
             case IDENTIFIER:
-                return Trampoline.more(() -> continuation.apply(new Identifier(parser.consume().getLexeme())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new Identifier(token.getLexeme()), token));
+                });
 
             case STRING:
-                return Trampoline.more(() -> continuation.apply(new StringLiteral(parser.consume().getLexeme())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new StringLiteral(token.getLexeme()), token));
+                });
             case INTEGER:
-                return Trampoline.more(() -> continuation.apply(new IntLiteral((int) parser.consume().getValue())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new IntLiteral((int) token.getValue()), token));
+                });
             case LONG:
-                return Trampoline.more(() -> continuation.apply(new LongLiteral((long) parser.consume().getValue())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new LongLiteral((long) token.getValue()), token));
+                });
             case FLOAT:
-                return Trampoline.more(() -> continuation.apply(new FloatLiteral((float) parser.consume().getValue())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new FloatLiteral((float) token.getValue()), token));
+                });
             case DOUBLE:
-                return Trampoline.more(() -> continuation.apply(new DoubleLiteral((double) parser.consume().getValue())));
+                return Trampoline.more(() -> {
+                    Token token = parser.consume();
+                    return continuation.apply(attach(parser, new DoubleLiteral((double) token.getValue()), token));
+                });
             case TRUE: {
-                parser.consume();
-                return Trampoline.more(() -> continuation.apply(new BooleanLiteral(true)));
+                Token token = parser.consume();
+                return Trampoline.more(() -> continuation.apply(attach(parser, new BooleanLiteral(true), token)));
             }
             case FALSE: {
-                parser.consume();
-                return Trampoline.more(() -> continuation.apply(new BooleanLiteral(false)));
+                Token token = parser.consume();
+                return Trampoline.more(() -> continuation.apply(attach(parser, new BooleanLiteral(false), token)));
             }
-            case NULL:
-                parser.consume();
-                return Trampoline.more(() -> continuation.apply(new NullLiteral()));
+            case NULL: {
+                Token token = parser.consume();
+                return Trampoline.more(() -> continuation.apply(attach(parser, new NullLiteral(), token)));
+            }
 
             case LEFT_BRACKET: {
-                parser.consume();
-                return Trampoline.more(() -> continuation.apply(ListParser.parse(parser)));
+                Token token = parser.consume();
+                return Trampoline.more(() -> continuation.apply(attach(parser, ListParser.parse(parser), token)));
             }
 
             case IF:
@@ -468,15 +495,15 @@ public class ExpressionParser {
                 return LambdaParser.parse(parser, continuation);
 
             case LEFT_PAREN: {
-                parser.consume();
+                Token leftParen = parser.consume();
                 return parse(parser, expr -> {
                     parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
-                    return continuation.apply(new GroupingExpression(expr));
+                    return continuation.apply(attach(parser, new GroupingExpression(expr), leftParen));
                 });
             }
             case LEFT_BRACE: {
-                parser.consume();
-                return BlockParser.parse(parser, continuation);
+                Token leftBrace = parser.consume();
+                return BlockParser.parse(parser, expr -> continuation.apply(attach(parser, expr, leftBrace)));
             }
             case EOF:
                 throw parser.createParseException("Eof", parser.peek());

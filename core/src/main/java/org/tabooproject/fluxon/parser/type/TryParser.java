@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.type;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
@@ -20,8 +21,8 @@ public class TryParser {
     }
 
     public static Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
-        parser.consume(TokenType.TRY, "Expected 'try' before try expression");
-        return parseTryBody(parser, tryBody -> parseCatch(parser, tryBody, continuation));
+        Token tryToken = parser.consume(TokenType.TRY, "Expected 'try' before try expression");
+        return parseTryBody(parser, tryBody -> parseCatch(parser, tryBody, continuation, tryToken));
     }
 
     private static Trampoline<ParseResult> parseTryBody(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
@@ -31,11 +32,10 @@ public class TryParser {
         return ExpressionParser.parse(parser, continuation);
     }
 
-    private static Trampoline<ParseResult> parseCatch(Parser parser, ParseResult tryBody, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parseCatch(Parser parser, ParseResult tryBody, Trampoline.Continuation<ParseResult> continuation, Token tryToken) {
         if (!parser.match(TokenType.CATCH)) {
-            return parseFinally(parser, tryBody, null, -1, null, continuation);
+            return parseFinally(parser, tryBody, null, -1, null, continuation, tryToken);
         }
-        // 可选的 catch 块
         String catchVarName;
         int position;
         if (parser.match(TokenType.LEFT_PAREN)) {
@@ -49,21 +49,20 @@ public class TryParser {
             catchVarName = null;
         }
         // 可选的 finally 块
-        Trampoline.Continuation<ParseResult> catchContinuation = catchBody -> parseFinally(parser, tryBody, catchVarName, position, catchBody, continuation);
+        Trampoline.Continuation<ParseResult> catchContinuation = catchBody -> parseFinally(parser, tryBody, catchVarName, position, catchBody, continuation, tryToken);
         if (parser.match(TokenType.LEFT_BRACE)) {
             return BlockParser.parse(parser, catchContinuation);
         }
         return ExpressionParser.parse(parser, catchContinuation);
     }
 
-    private static Trampoline<ParseResult> parseFinally(Parser parser, ParseResult tryBody, String catchVarName, int position, ParseResult catchBody, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parseFinally(Parser parser, ParseResult tryBody, String catchVarName, int position, ParseResult catchBody, Trampoline.Continuation<ParseResult> continuation, Token tryToken) {
         if (!parser.match(TokenType.FINALLY)) {
-            return Trampoline.more(() -> continuation.apply(new TryExpression(tryBody, catchVarName, position, catchBody, null)));
+            return Trampoline.more(() -> continuation.apply(parser.attachSource(new TryExpression(tryBody, catchVarName, position, catchBody, null), tryToken)));
         }
         if (parser.match(TokenType.LEFT_BRACE)) {
-            return BlockParser.parse(parser, finallyBody -> continuation.apply(new TryExpression(tryBody, catchVarName, position, catchBody, finallyBody)));
+            return BlockParser.parse(parser, finallyBody -> continuation.apply(parser.attachSource(new TryExpression(tryBody, catchVarName, position, catchBody, finallyBody), tryToken)));
         }
-        return ExpressionParser.parse(parser, finallyBody -> continuation.apply(new TryExpression(tryBody, catchVarName, position, catchBody, finallyBody)));
+        return ExpressionParser.parse(parser, finallyBody -> continuation.apply(parser.attachSource(new TryExpression(tryBody, catchVarName, position, catchBody, finallyBody), tryToken)));
     }
 }
-
