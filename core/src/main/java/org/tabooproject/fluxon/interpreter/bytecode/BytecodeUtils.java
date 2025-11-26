@@ -4,6 +4,9 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Annotation;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceExcerpt;
+import org.tabooproject.fluxon.parser.SourceTrace;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -246,6 +249,22 @@ public class BytecodeUtils {
             // 其他类型直接使用 LDC
             mv.visitLdcInsn(value);
         }
+    }
+
+    /**
+     * 根据 SourceTrace 向字节码发射行号信息，方便运行时错误定位。
+     */
+    public static void emitLineNumber(ParseResult node, MethodVisitor mv) {
+        if (node == null) {
+            return;
+        }
+        SourceExcerpt excerpt = SourceTrace.get(node);
+        if (excerpt == null) {
+            return;
+        }
+        Label label = new Label();
+        mv.visitLabel(label);
+        mv.visitLineNumber(excerpt.getLine(), label);
     }
 
     private static final Type MAP = new Type(Map.class);

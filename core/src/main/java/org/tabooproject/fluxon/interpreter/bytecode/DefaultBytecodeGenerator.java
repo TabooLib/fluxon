@@ -9,8 +9,6 @@ import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
-import org.tabooproject.fluxon.parser.SourceExcerpt;
-import org.tabooproject.fluxon.parser.SourceTrace;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -163,7 +161,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 生成脚本主体代码
         Type last = null;
         for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
-            emitLineNumber(statements.get(i), mv);
+            BytecodeUtils.emitLineNumber(statements.get(i), mv);
             last = generateStatementBytecode(statements.get(i), ctx, mv);
             // 如果不是最后一条语句，并且有返回值，则丢弃它
             if (i < statementsSize - 1 && last != VOID) {
@@ -482,10 +480,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
         if (funcDef.getBody() instanceof Statement) {
-            emitLineNumber(funcDef.getBody(), mv);
+            BytecodeUtils.emitLineNumber(funcDef.getBody(), mv);
             returnType = generateStatementBytecode((Statement) funcDef.getBody(), funcCtx, mv);
         } else {
-            emitLineNumber((Expression) funcDef.getBody(), mv);
+            BytecodeUtils.emitLineNumber((Expression) funcDef.getBody(), mv);
             returnType = generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
         }
         // 如果函数体返回 void，则返回 null
@@ -533,19 +531,6 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     private String externalName(String internalName) {
         return internalName.replace('/', '.');
-    }
-
-    private void emitLineNumber(ParseResult node, MethodVisitor mv) {
-        if (node == null) {
-            return;
-        }
-        SourceExcerpt excerpt = SourceTrace.get(node);
-        if (excerpt == null) {
-            return;
-        }
-        Label label = new Label();
-        mv.visitLabel(label);
-        mv.visitLineNumber(excerpt.getLine(), label);
     }
 
     private List<LambdaFunctionDefinition> getOwnedLambdas(String ownerClassName, List<LambdaFunctionDefinition> all) {

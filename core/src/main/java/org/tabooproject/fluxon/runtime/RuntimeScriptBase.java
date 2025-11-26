@@ -53,14 +53,48 @@ public abstract class RuntimeScriptBase {
         }
         String normalizedClassName = className == null ? null : className.replace('/', '.');
         for (StackTraceElement element : ex.getStackTrace()) {
-            if (element.getLineNumber() > 0 && element.getClassName().equals(normalizedClassName)) {
+            if (element.getLineNumber() <= 0) {
+                continue;
+            }
+            if (element.getClassName().equals(normalizedClassName)) {
                 SourceExcerpt excerpt = SourceExcerpt.from(filename, source, element.getLineNumber(), 1);
                 if (excerpt != null) {
                     ex.attachSource(excerpt);
                 }
                 break;
             }
+            attachFromOwner(ex, element);
+            if (ex.getSourceExcerpt() != null) {
+                break;
+            }
         }
         return ex;
+    }
+
+    private static void attachFromOwner(FluxonRuntimeError ex, StackTraceElement element) {
+        try {
+            Class<?> owner = Class.forName(element.getClassName(), false, Thread.currentThread().getContextClassLoader());
+            String ownerSource = getStaticString(owner, "__source");
+            String ownerFilename = getStaticString(owner, "__filename");
+            if (ownerSource != null && ownerFilename != null) {
+                SourceExcerpt excerpt = SourceExcerpt.from(ownerFilename, ownerSource, element.getLineNumber(), 1);
+                if (excerpt != null) {
+                    ex.attachSource(excerpt);
+                }
+            }
+        } catch (Throwable ignore) {
+            // ignore reflective lookup failures
+        }
+    }
+
+    private static String getStaticString(Class<?> owner, String field) {
+        try {
+            java.lang.reflect.Field f = owner.getDeclaredField(field);
+            f.setAccessible(true);
+            Object value = f.get(null);
+            return value instanceof String ? (String) value : null;
+        } catch (Throwable ignore) {
+            return null;
+        }
     }
 }
