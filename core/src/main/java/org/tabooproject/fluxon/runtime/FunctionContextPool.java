@@ -13,7 +13,9 @@ public final class FunctionContextPool {
     private static final ThreadLocal<FunctionContextPool> LOCAL = ThreadLocal.withInitial(FunctionContextPool::new);
 
     private final FunctionContext<?>[] pool = new FunctionContext<?>[MAX_POOL_SIZE];
+    private final Lease[] leasePool = new Lease[MAX_POOL_SIZE];
     private int size;
+    private int leaseSize;
 
     private FunctionContextPool() {
     }
@@ -37,18 +39,33 @@ public final class FunctionContextPool {
         } else {
             context = new FunctionContext<>(function, target, arguments, environment);
         }
-        return new Lease(this, context);
+        Lease lease;
+        if (leaseSize > 0) {
+            lease = leasePool[--leaseSize];
+            leasePool[leaseSize] = null;
+        } else {
+            lease = new Lease();
+        }
+        lease.reset(this, context);
+        return lease;
     }
 
     /**
      * 归还一个 FunctionContext 实例到线程本地池
      */
     private void release(FunctionContext<?> context) {
-        context.clearArguments();
+        context.clearForPooling();
         if (size >= MAX_POOL_SIZE) {
             return;
         }
         pool[size++] = context;
+    }
+
+    private void recycle(Lease lease) {
+        if (leaseSize >= MAX_POOL_SIZE) {
+            return;
+        }
+        leasePool[leaseSize++] = lease;
     }
 
     /**
@@ -58,9 +75,12 @@ public final class FunctionContextPool {
 
         private FunctionContextPool owner;
         private FunctionContext<?> context;
-        private final Thread ownerThread;
+        private Thread ownerThread;
 
-        private Lease(FunctionContextPool owner, FunctionContext<?> context) {
+        private Lease() {
+        }
+
+        private void reset(FunctionContextPool owner, FunctionContext<?> context) {
             this.owner = owner;
             this.context = context;
             this.ownerThread = Thread.currentThread();
@@ -72,18 +92,24 @@ public final class FunctionContextPool {
 
         @Override
         public void close() {
-            if (context == null || owner == null) {
+            FunctionContextPool currentOwner = owner;
+            FunctionContext<?> currentContext = context;
+            Thread expectedThread = ownerThread;
+            if (currentContext == null || currentOwner == null) {
                 return;
             }
-            if (ownerThread != Thread.currentThread()) {
+            if (expectedThread != Thread.currentThread()) {
                 // 避免跨线程归还引起竞态，直接丢弃由 GC 回收
                 context = null;
                 owner = null;
+                ownerThread = null;
                 return;
             }
-            owner.release(context);
+            currentOwner.release(currentContext);
             context = null;
             owner = null;
+            ownerThread = null;
+            currentOwner.recycle(this);
         }
     }
 }

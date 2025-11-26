@@ -250,6 +250,17 @@ public class FunctionContext<Target> {
         this.argumentCount = 0;
     }
 
+    /**
+     * 池化归还时清理对参数、目标和环境的引用，便于 GC 及时回收
+     */
+    @SuppressWarnings("DataFlowIssue")
+    void clearForPooling() {
+        this.arguments = EMPTY_ARGUMENTS;
+        this.argumentCount = 0;
+        this.target = null;
+        this.environment = null;
+    }
+
     @Override
     public String toString() {
         return "FunctionContext{" +
