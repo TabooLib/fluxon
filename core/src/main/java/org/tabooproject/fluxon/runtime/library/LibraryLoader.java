@@ -27,7 +27,7 @@ import java.util.List;
 public class LibraryLoader {
 
     private final FluxonRuntime runtime;
-    private final ClassLoader parentClassLoader;
+    private final FluxonClassLoader classLoader;
 
     public LibraryLoader(FluxonRuntime runtime) {
         this(runtime, FluxonRuntime.class.getClassLoader());
@@ -35,7 +35,7 @@ public class LibraryLoader {
 
     public LibraryLoader(FluxonRuntime runtime, ClassLoader parentClassLoader) {
         this.runtime = runtime;
-        this.parentClassLoader = parentClassLoader;
+        this.classLoader = new FluxonClassLoader(parentClassLoader);
     }
 
     /**
@@ -50,10 +50,8 @@ public class LibraryLoader {
             String className = deriveClassName(path);
             // 编译库文件
             Environment env = runtime.newEnvironment();
-            CompileResult compileResult = Fluxon.compile(source, className, env, parentClassLoader);
-            // 使用新的类加载器隔离库
-            FluxonClassLoader loader = new FluxonClassLoader(parentClassLoader);
-            Class<?> scriptClass = compileResult.defineClass(loader);
+            CompileResult compileResult = Fluxon.compile(source, className, env, classLoader.getParent());
+            Class<?> scriptClass = compileResult.defineClass(classLoader);
             // 触发 <clinit>，确保函数单例被创建
             RuntimeScriptBase scriptInstance = (RuntimeScriptBase) scriptClass.getDeclaredConstructor().newInstance();
             // 从静态字段中提取 @api 函数并注册
@@ -87,7 +85,7 @@ public class LibraryLoader {
             if (bindTarget != null) {
                 Class<?> targetClass;
                 try {
-                    targetClass = Class.forName(bindTarget, true, parentClassLoader);
+                    targetClass = Class.forName(bindTarget, false, classLoader.getParent());
                 } catch (ClassNotFoundException e) {
                     throw new IllegalStateException("Failed to load bind target class: " + bindTarget, e);
                 }

@@ -62,6 +62,18 @@ public class CompileResult {
     }
 
     /**
+     * 创建主脚本类的实例
+     *
+     * @param loader 类加载器
+     * @return 主脚本类实例
+     * @throws Exception 若实例化失败
+     */
+    public Object createInstance(FluxonClassLoader loader) throws Exception {
+        Class<?> scriptClass = defineClass(loader);
+        return scriptClass.getDeclaredConstructor().newInstance();
+    }
+
+    /**
      * 将字节码写入文件，便于调试
      */
     public void dump(File file) throws Exception {
