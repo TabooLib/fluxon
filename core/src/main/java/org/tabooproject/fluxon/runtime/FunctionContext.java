@@ -37,6 +37,18 @@ public class FunctionContext<Target> {
     }
 
     /**
+     * 判断指定索引的参数是否为指定类型
+     *
+     * @param index 参数索引
+     * @param type  目标类型
+     * @return 如果索引有效且参数类型兼容则返回true，否则返回false
+     */
+    public boolean isType(int index, @NotNull Class<?> type) {
+        Object argument = getArgument(index);
+        return argument != null && Intrinsics.isCompatibleType(type, argument);
+    }
+
+    /**
      * 判断是否存在指定索引的参数
      *
      * @param index 参数索引
