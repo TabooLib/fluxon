@@ -29,15 +29,22 @@ public class FunctionContextPoolTest {
         FunctionContextPool pool = currentThreadPool();
         int beforeBorrow = getPoolSize(pool);
 
-        FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, null, new Object[0], environment);
+        FunctionContext<?> context = pool.borrow(function, null, new Object[0], environment);
         int afterBorrow = getPoolSize(pool);
 
-        Thread t = new Thread(lease::close);
+        Thread t = new Thread(() -> pool.release(context));
         t.start();
         t.join();
 
         assertEquals(afterBorrow, getPoolSize(pool),
-                "Cross-thread close should not mutate the borrower thread's pool (size before borrow=" + beforeBorrow + ")");
+                "Cross-thread release should not mutate the borrower thread's pool (size before borrow=" + beforeBorrow + ")");
+
+        pool.release(context);
+        int afterOwnerRelease = getPoolSize(pool);
+        assertTrue(afterOwnerRelease >= afterBorrow,
+                "Owner-thread release should not shrink the pool (size before borrow=" + beforeBorrow + ")");
+        assertTrue(afterOwnerRelease <= afterBorrow + 1,
+                "Owner-thread release should only add one context back");
     }
 
     @Test

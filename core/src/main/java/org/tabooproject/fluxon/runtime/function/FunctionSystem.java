@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime.function;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 
 import java.util.Arrays;
@@ -58,13 +59,21 @@ public class FunctionSystem {
             }
             // 调用函数
             if (func instanceof Function) {
-                try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment())) {
-                    return ((Function) func).call(lease.get());
+                FunctionContextPool pool = FunctionContextPool.local();
+                FunctionContext<?> borrowed = pool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
+                try {
+                    return ((Function) func).call(borrowed);
+                } finally {
+                    pool.release(borrowed);
                 }
             } else {
                 Function function = context.getEnvironment().getFunction(func.toString());
-                try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment())) {
-                    return function.call(lease.get());
+                FunctionContextPool pool = FunctionContextPool.local();
+                FunctionContext<?> borrowed = pool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
+                try {
+                    return function.call(borrowed);
+                } finally {
+                    pool.release(borrowed);
                 }
             }
         });

@@ -200,16 +200,18 @@ public final class Intrinsics {
      * 执行函数调用并在当前线程池化上下文
      */
     private static Object callSynchronously(Function function, Object target, Object[] arguments, Environment environment) {
-        try (FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, target, arguments, environment)) {
-            try {
-                return function.call(lease.get());
-            } catch (Throwable ex) {
-                // 如果函数有 except 注解，则打印异常栈
-                if (AnnotationAccess.hasAnnotation(function, "except")) {
-                    ex.printStackTrace();
-                }
-                throw ex;
+        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContext<?> context = pool.borrow(function, target, arguments, environment);
+        try {
+            return function.call(context);
+        } catch (Throwable ex) {
+            // 如果函数有 except 注解，则打印异常栈
+            if (AnnotationAccess.hasAnnotation(function, "except")) {
+                ex.printStackTrace();
             }
+            throw ex;
+        } finally {
+            pool.release(context);
         }
     }
 
