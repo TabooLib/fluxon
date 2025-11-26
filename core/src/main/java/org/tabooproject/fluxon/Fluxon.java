@@ -14,6 +14,7 @@ import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.EnvironmentPool;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +35,9 @@ public class Fluxon {
      * @return 解析结果列表
      */
     public static List<ParseResult> parse(String source) {
-        return parse(source, FluxonRuntime.getInstance().newEnvironment());
+        try (EnvironmentPool.Lease lease = FluxonRuntime.getInstance().borrowEnvironment()) {
+            return parse(source, lease.get());
+        }
     }
 
     /**
@@ -92,11 +95,13 @@ public class Fluxon {
      * @return 执行结果
      */
     public static Object eval(List<ParseResult> parseResults) {
-        Interpreter interpreter = new Interpreter(FluxonRuntime.getInstance().newEnvironment());
-        try {
-            return interpreter.execute(parseResults);
-        } catch (ReturnValue ex) {
-            return ex.getValue();
+        try (EnvironmentPool.Lease lease = FluxonRuntime.getInstance().borrowEnvironment()) {
+            Interpreter interpreter = new Interpreter(lease.get());
+            try {
+                return interpreter.execute(parseResults);
+            } catch (ReturnValue ex) {
+                return ex.getValue();
+            }
         }
     }
 
@@ -136,7 +141,9 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(String source, String className) {
-        return compile(source, className, FluxonRuntime.getInstance().newEnvironment());
+        try (EnvironmentPool.Lease lease = FluxonRuntime.getInstance().borrowEnvironment()) {
+            return compile(source, className, lease.get());
+        }
     }
 
     /**

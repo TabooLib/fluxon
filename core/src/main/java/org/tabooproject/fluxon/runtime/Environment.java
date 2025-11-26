@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.util.KV;
 
+import java.util.Arrays;
 import java.util.*;
 
 /**
@@ -20,34 +21,34 @@ public class Environment {
 
     // 函数
     @Nullable
-    protected final Map<String, Function> functions;
+    protected Map<String, Function> functions;
     @Nullable
-    protected final Function[] systemFunctions;
+    protected Function[] systemFunctions;
 
     // 扩展函数
     @Nullable
-    protected final Map<String, Map<Class<?>, Function>> extensionFunctions;
+    protected Map<String, Map<Class<?>, Function>> extensionFunctions;
     @Nullable
-    protected final KV<Class<?>, Function>[][] systemExtensionFunctions;
+    protected KV<Class<?>, Function>[][] systemExtensionFunctions;
 
     // 根变量
     @Nullable
-    protected final Map<String, Object> rootVariables;
+    protected Map<String, Object> rootVariables;
     // 局部变量
     @Nullable
-    protected final Object[] localVariables;
+    protected Object[] localVariables;
     // 局部变量对照表
     @Nullable
-    protected final String[] localVariableNames;
+    protected String[] localVariableNames;
     // 上下文目标
     @Nullable
     protected Object target;
 
     // 根环境
     @NotNull
-    protected final Environment root;
+    protected Environment root;
     @Nullable
-    protected final Environment parent;
+    protected Environment parent;
 
     /**
      * 创建顶层环境（全局环境）
@@ -58,15 +59,7 @@ public class Environment {
             @NotNull Map<String, Object> values,
             @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
             @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
-        this.root = this;
-        this.parent = null;
-        this.functions = new HashMap<>(functions);
-        this.systemFunctions = systemFunctions;
-        this.extensionFunctions = extensionFunctions;
-        this.systemExtensionFunctions = systemExtensionFunctions;
-        this.rootVariables = new HashMap<>(values);
-        this.localVariables = null;
-        this.localVariableNames = null;
+        resetRoot(functions, systemFunctions, values, extensionFunctions, systemExtensionFunctions);
     }
 
     /**
@@ -75,6 +68,45 @@ public class Environment {
      * @param parentEnv 父环境
      */
     public Environment(@NotNull Environment parentEnv, int localVariables) {
+        resetChild(parentEnv, localVariables);
+    }
+
+    /**
+     * 供池化复用时重置根环境
+     */
+    @SuppressWarnings("unchecked")
+    void resetRoot(
+            @NotNull Map<String, Function> functions,
+            @NotNull Function[] systemFunctions,
+            @NotNull Map<String, Object> values,
+            @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
+            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
+        this.root = this;
+        this.parent = null;
+        if (this.functions == null) {
+            this.functions = new HashMap<>(functions);
+        } else {
+            this.functions.clear();
+            this.functions.putAll(functions);
+        }
+        this.systemFunctions = systemFunctions;
+        this.extensionFunctions = extensionFunctions;
+        this.systemExtensionFunctions = systemExtensionFunctions;
+        if (this.rootVariables == null) {
+            this.rootVariables = new HashMap<>(values);
+        } else {
+            this.rootVariables.clear();
+            this.rootVariables.putAll(values);
+        }
+        this.localVariables = null;
+        this.localVariableNames = null;
+        this.target = null;
+    }
+
+    /**
+     * 供池化复用时重置子环境
+     */
+    void resetChild(@NotNull Environment parentEnv, int localVariables) {
         this.root = parentEnv.root;
         this.parent = parentEnv;
         this.functions = null;
@@ -82,8 +114,39 @@ public class Environment {
         this.extensionFunctions = null;
         this.systemExtensionFunctions = null;
         this.rootVariables = null;
-        this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
-        this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+        if (localVariables > 0) {
+            if (this.localVariables == null || this.localVariables.length < localVariables) {
+                this.localVariables = new Object[localVariables];
+                this.localVariableNames = new String[localVariables];
+            } else {
+                Arrays.fill(this.localVariables, null);
+                Arrays.fill(this.localVariableNames, null);
+            }
+        } else {
+            this.localVariables = null;
+            this.localVariableNames = null;
+        }
+        this.target = null;
+    }
+
+    /**
+     * 池化归还时清理引用，避免长期持有对象
+     */
+    void clearForPooling() {
+        if (functions != null) {
+            functions.clear();
+        }
+        if (rootVariables != null) {
+            rootVariables.clear();
+        }
+        root = this;
+        parent = null;
+        target = null;
+        localVariables = null;
+        localVariableNames = null;
+        systemFunctions = null;
+        extensionFunctions = null;
+        systemExtensionFunctions = null;
     }
 
     /**

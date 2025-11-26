@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+import org.tabooproject.fluxon.util.ThreadLocalObjectPool;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class FunctionContextPoolTest {
         Function function = new NativeFunction<>(new SymbolFunction(null, "poolGuard", 0), ctx -> null);
 
         FunctionContextPool pool = currentThreadPool();
+        resetPoolCounters(pool);
         int beforeBorrow = getPoolSize(pool);
 
         FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, null, new Object[0], environment);
@@ -38,6 +40,48 @@ public class FunctionContextPoolTest {
 
         assertEquals(afterBorrow, getPoolSize(pool),
                 "Cross-thread close should not mutate the borrower thread's pool (size before borrow=" + beforeBorrow + ")");
+    }
+
+    @Test
+    public void leaseAndContextAreReusedAndReset() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Environment environment = runtime.newEnvironment();
+        Function fn1 = new NativeFunction<>(new SymbolFunction(null, "fn1", 0), ctx -> ctx.getFunction().getName());
+        Function fn2 = new NativeFunction<>(new SymbolFunction(null, "fn2", 0), ctx -> ctx.getFunction().getName());
+
+        FunctionContextPool pool = currentThreadPool();
+        resetPoolCounters(pool);
+
+        FunctionContextPool.Lease lease1 = FunctionContextPool.borrow(fn1, "t1", new Object[]{"a"}, environment);
+        FunctionContext<?> ctx1 = lease1.get();
+        assertSame(fn1, ctx1.getFunction());
+        assertArrayEquals(new Object[]{"a"}, ctx1.getArguments());
+        lease1.close();
+
+        FunctionContextPool.Lease lease2 = FunctionContextPool.borrow(fn2, "t2", new Object[]{"b"}, environment);
+        FunctionContext<?> ctx2 = lease2.get();
+        assertSame(lease1, lease2, "Lease should be recycled");
+        assertSame(fn2, ctx2.getFunction(), "Context should be reset with new function");
+        assertArrayEquals(new Object[]{"b"}, ctx2.getArguments(), "Context should be reset with new arguments");
+        lease2.close();
+    }
+
+    @Test
+    public void detachSkipsReturnToPool() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Environment environment = runtime.newEnvironment();
+        Function function = new NativeFunction<>(new SymbolFunction(null, "poolDetach", 0), ctx -> null);
+
+        FunctionContextPool pool = currentThreadPool();
+        resetPoolCounters(pool);
+        int before = getPoolSize(pool);
+
+        FunctionContextPool.Lease lease = FunctionContextPool.borrow(function, null, new Object[]{"x"}, environment);
+        FunctionContext<?> ctx = lease.detach();
+        assertNotNull(ctx);
+        lease.close();
+
+        assertEquals(before, getPoolSize(pool), "Detached context should not be returned to pool");
     }
 
     @Test
@@ -99,8 +143,17 @@ public class FunctionContextPoolTest {
     }
 
     private static int getPoolSize(FunctionContextPool pool) throws Exception {
-        Field sizeField = FunctionContextPool.class.getDeclaredField("size");
+        Field sizeField = ThreadLocalObjectPool.class.getDeclaredField("size");
         sizeField.setAccessible(true);
         return sizeField.getInt(pool);
+    }
+
+    private static void resetPoolCounters(FunctionContextPool pool) throws Exception {
+        Field sizeField = ThreadLocalObjectPool.class.getDeclaredField("size");
+        Field leaseSizeField = ThreadLocalObjectPool.class.getDeclaredField("leaseSize");
+        sizeField.setAccessible(true);
+        leaseSizeField.setAccessible(true);
+        sizeField.setInt(pool, 0);
+        leaseSizeField.setInt(pool, 0);
     }
 }

@@ -125,6 +125,21 @@ public class FluxonRuntime {
     }
 
     /**
+     * 池化版本的环境借用，适合在高频创建/销毁环境的场景下减少分配。
+     * 调用方需使用 try-with-resources 或显式 close 归还。
+     */
+    public EnvironmentPool.Lease borrowEnvironment() {
+        if (dirty) {
+            synchronized (this) {
+                if (dirty) {
+                    bake();
+                }
+            }
+        }
+        return EnvironmentPool.borrow(systemFunctions, cachedSystemFunctions, systemVariables, extensionFunctions, cachedSystemExtensionFunctions);
+    }
+
+    /**
      * 注册变量
      *
      * @param name  变量名

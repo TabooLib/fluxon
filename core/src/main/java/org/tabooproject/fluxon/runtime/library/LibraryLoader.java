@@ -11,6 +11,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.EnvironmentPool;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -49,8 +50,10 @@ public class LibraryLoader {
             String source = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
             String className = deriveClassName(path);
             // 编译库文件
-            Environment env = runtime.newEnvironment();
-            CompileResult compileResult = Fluxon.compile(source, className, env, parentClassLoader);
+            CompileResult compileResult;
+            try (EnvironmentPool.Lease lease = runtime.borrowEnvironment()) {
+                compileResult = Fluxon.compile(source, className, lease.get(), parentClassLoader);
+            }
             // 使用新的类加载器隔离库
             FluxonClassLoader loader = new FluxonClassLoader(parentClassLoader);
             Class<?> scriptClass = compileResult.defineClass(loader);
