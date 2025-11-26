@@ -1,8 +1,10 @@
 package org.tabooproject.fluxon.runtime.function;
 
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
+import org.tabooproject.fluxon.runtime.error.RuntimeError;
 
 import java.util.Arrays;
 import java.util.List;
@@ -67,12 +69,21 @@ public class FunctionSystem {
                 }
             }
         });
+        runtime.registerFunction("this", 0, (context) -> {
+            Environment environment = context.getEnvironment();
+            Object target = context.getEnvironment().getTarget();
+            while (target == null && environment.getParent() != null) {
+                environment = environment.getParent();
+                target = environment.getTarget();
+            }
+            return target;
+        });
         runtime.registerFunction("throw", 1, (context) -> {
             Object o = context.getArgument(0);
             if (o instanceof Error) {
                 throw (Error) o;
             } else {
-                throw new RuntimeException(o.toString());
+                throw new RuntimeError(o.toString());
             }
         });
     }

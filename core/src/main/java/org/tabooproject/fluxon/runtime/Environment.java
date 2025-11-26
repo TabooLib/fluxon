@@ -96,6 +96,15 @@ public class Environment {
         return root;
     }
 
+     /**
+     * 获取父环境
+     */
+    @Export
+    @Nullable
+    public Environment getParent() {
+        return parent;
+    }
+
     /**
      * 在根环境中定义函数
      *
@@ -342,15 +351,14 @@ public class Environment {
      */
     public void setTarget(@Nullable Object target) {
         this.target = target;
-        defineRootVariable("this", target);
     }
 
     @Override
     public String toString() {
         return "Environment{" +
-                "target=" + target +
-                ", functions=" + functions +
-                ", rootVariables=" + rootVariables +
+                "rootVariables=" + rootVariables +
+                ", target=" + target +
+                ", parent=" + parent +
                 '}';
     }
 }
