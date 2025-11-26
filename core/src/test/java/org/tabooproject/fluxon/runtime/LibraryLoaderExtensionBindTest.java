@@ -16,17 +16,18 @@ class LibraryLoaderExtensionBindTest {
     @Test
     void registersApiFunctionsAsExtensionsUsingEnvTarget() {
         LibraryLoader loader = new LibraryLoader(runtime);
-        loader.load(Paths.get("src/test/fs/library_bind.fs"));
+        try (LibraryLoader.LibraryLoadResult ignored = loader.load(Paths.get("src/test/fs/library_bind.fs"))) {
 
-        Map<String, Map<Class<?>, Function>> extensionFunctions = runtime.getExtensionFunctions();
-        assertTrue(extensionFunctions.containsKey("extConcat"));
-        assertTrue(extensionFunctions.containsKey("extTimes"));
+            Map<String, Map<Class<?>, Function>> extensionFunctions = runtime.getExtensionFunctions();
+            assertTrue(extensionFunctions.containsKey("extConcat"));
+            assertTrue(extensionFunctions.containsKey("extTimes"));
 
-        Object concat = Fluxon.eval("\"Flux\" :: extConcat(\"on\")");
-        assertEquals("Fluxon", concat);
+            Object concat = Fluxon.eval("\"Flux\" :: extConcat(\"on\")");
+            assertEquals("Fluxon", concat);
 
-        Object multiplied = Fluxon.eval("2 :: extTimes(4)");
-        assertEquals(8, multiplied);
+            Object multiplied = Fluxon.eval("2 :: extTimes(4)");
+            assertEquals(8, multiplied);
+        }
     }
 
     @Test

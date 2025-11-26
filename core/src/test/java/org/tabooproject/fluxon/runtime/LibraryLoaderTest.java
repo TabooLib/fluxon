@@ -16,26 +16,27 @@ class LibraryLoaderTest {
     @Test
     void loadsApiFunctionsIntoRuntime() {
         LibraryLoader loader = new LibraryLoader(runtime);
-        LibraryLoader.LibraryLoadResult result = loader.load(Paths.get("src/test/fs/library.fs"));
+        try (LibraryLoader.LibraryLoadResult result = loader.load(Paths.get("src/test/fs/library.fs"))) {
 
-        // @api 函数已注册
-        assertTrue(runtime.getSystemFunctions().containsKey("libHello"));
-        assertTrue(runtime.getSystemFunctions().containsKey("libAdd"));
-        // 未标记为 @api 的函数不会注册
-        assertFalse(runtime.getSystemFunctions().containsKey("hiddenHelper"));
+            // @api 函数已注册
+            assertTrue(runtime.getSystemFunctions().containsKey("libHello"));
+            assertTrue(runtime.getSystemFunctions().containsKey("libAdd"));
+            // 未标记为 @api 的函数不会注册
+            assertFalse(runtime.getSystemFunctions().containsKey("hiddenHelper"));
 
-        List<?> exported = result.getExportedFunctions();
-        assertEquals(2, exported.size());
+            List<?> exported = result.getExportedFunctions();
+            assertEquals(2, exported.size());
 
-        Function libHello = runtime.getSystemFunctions().get("libHello");
-        Environment env = runtime.newEnvironment();
-        Object direct = libHello.call(new FunctionContext<>(libHello, null, new Object[]{"Fluxon"}, env));
-        assertEquals("Hello, Fluxon", direct);
+            Function libHello = runtime.getSystemFunctions().get("libHello");
+            Environment env = runtime.newEnvironment();
+            Object direct = libHello.call(new FunctionContext<>(libHello, null, new Object[]{"Fluxon"}, env));
+            assertEquals("Hello, Fluxon", direct);
 
-        // 通过运行时调用导出的函数
-        Object greeting = Fluxon.eval("libHello(\"Fluxon\")");
-        assertEquals("Hello, Fluxon", greeting);
-        Object sum = Fluxon.eval("libAdd(1, 2)");
-        assertEquals(3, sum);
+            // 通过运行时调用导出的函数
+            Object greeting = Fluxon.eval("libHello(\"Fluxon\")");
+            assertEquals("Hello, Fluxon", greeting);
+            Object sum = Fluxon.eval("libAdd(1, 2)");
+            assertEquals(3, sum);
+        }
     }
 }

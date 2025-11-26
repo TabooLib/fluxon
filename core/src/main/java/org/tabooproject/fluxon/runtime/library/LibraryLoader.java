@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 负责编译并加载 Fluxon 库文件，
@@ -27,7 +28,8 @@ import java.util.List;
 public class LibraryLoader {
 
     private final FluxonRuntime runtime;
-    private final FluxonClassLoader classLoader;
+    private final ClassLoader parentClassLoader;
+    private final List<LibraryLoadResult> managedResults = Collections.synchronizedList(new ArrayList<>());
 
     public LibraryLoader(FluxonRuntime runtime) {
         this(runtime, FluxonRuntime.class.getClassLoader());
@@ -35,7 +37,7 @@ public class LibraryLoader {
 
     public LibraryLoader(FluxonRuntime runtime, ClassLoader parentClassLoader) {
         this.runtime = runtime;
-        this.classLoader = new FluxonClassLoader(parentClassLoader);
+        this.parentClassLoader = parentClassLoader;
     }
 
     /**
@@ -46,19 +48,58 @@ public class LibraryLoader {
      */
     public LibraryLoadResult load(Path path) {
         try {
+            FluxonClassLoader classLoader = new FluxonClassLoader(parentClassLoader);
             String source = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
             String className = deriveClassName(path);
             // 编译库文件
             Environment env = runtime.newEnvironment();
-            CompileResult compileResult = Fluxon.compile(source, className, env, classLoader.getParent());
+            CompileResult compileResult = Fluxon.compile(source, className, env, parentClassLoader);
             Class<?> scriptClass = compileResult.defineClass(classLoader);
             // 触发 <clinit>，确保函数单例被创建
             RuntimeScriptBase scriptInstance = (RuntimeScriptBase) scriptClass.getDeclaredConstructor().newInstance();
             // 从静态字段中提取 @api 函数并注册
-            List<Function> exportedFunctions = registerApiFunctions(compileResult, scriptClass);
-            return new LibraryLoadResult(path, scriptInstance, exportedFunctions);
+            List<ExportedFunction> exportedFunctions = registerApiFunctions(compileResult, scriptClass, classLoader);
+            LibraryLoadResult result = new LibraryLoadResult(runtime, path, scriptInstance, exportedFunctions, this::untrackResult);
+            trackResult(result);
+            return result;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to load library: " + path, e);
+        }
+    }
+
+    /**
+     * 重新加载库：先卸载旧结果，再加载新版本。
+     *
+     * @param path     库文件路径
+     * @param previous 之前的加载结果（可为空）
+     * @return 新的加载结果
+     */
+    public LibraryLoadResult reload(Path path, LibraryLoadResult previous) {
+        if (previous != null) {
+            previous.unload();
+        }
+        return load(path);
+    }
+
+    /**
+     * 卸载并清理当前记录的所有加载结果。
+     */
+    public void unloadManagedResults() {
+        List<LibraryLoadResult> snapshot;
+        synchronized (managedResults) {
+            snapshot = new ArrayList<>(managedResults);
+        }
+        for (LibraryLoadResult result : snapshot) {
+            result.unload();
+        }
+    }
+
+    /**
+     * 返回当前记录的加载结果快照。
+     */
+    public List<LibraryLoadResult> getManagedResults() {
+        synchronized (managedResults) {
+            return Collections.unmodifiableList(new ArrayList<>(managedResults));
         }
     }
 
@@ -69,8 +110,8 @@ public class LibraryLoader {
      * @param scriptClass   脚本类
      * @return 导出的函数列表
      */
-    private List<Function> registerApiFunctions(CompileResult compileResult, Class<?> scriptClass) throws Exception {
-        List<Function> exported = new ArrayList<>();
+    private List<ExportedFunction> registerApiFunctions(CompileResult compileResult, Class<?> scriptClass, ClassLoader bindClassLoader) throws Exception {
+        List<ExportedFunction> exported = new ArrayList<>();
         for (Definition definition : compileResult.getGenerator().getDefinitions()) {
             if (!(definition instanceof FunctionDefinition)) {
                 continue;
@@ -85,15 +126,16 @@ public class LibraryLoader {
             if (bindTarget != null) {
                 Class<?> targetClass;
                 try {
-                    targetClass = Class.forName(bindTarget, false, classLoader.getParent());
+                    targetClass = Class.forName(bindTarget, false, bindClassLoader);
                 } catch (ClassNotFoundException e) {
                     throw new IllegalStateException("Failed to load bind target class: " + bindTarget, e);
                 }
                 runtime.registerExtensionFunction((Class<?>) targetClass, function);
+                exported.add(new ExportedFunction(function, targetClass));
             } else {
                 runtime.registerFunction(function);
+                exported.add(new ExportedFunction(function, null));
             }
-            exported.add(function);
         }
         return Collections.unmodifiableList(exported);
     }
@@ -165,18 +207,38 @@ public class LibraryLoader {
         return name;
     }
 
+    private void trackResult(LibraryLoadResult result) {
+        managedResults.add(result);
+    }
+
+    private void untrackResult(LibraryLoadResult result) {
+        managedResults.remove(result);
+    }
+
     /**
      * 描述一次库加载的结果。
      */
-    public static class LibraryLoadResult {
+    public static class LibraryLoadResult implements AutoCloseable {
+
+        private final FluxonRuntime runtime;
         private final Path sourcePath;
         private final RuntimeScriptBase scriptInstance;
-        private final List<Function> exportedFunctions;
+        private final List<ExportedFunction> exportedFunctions;
+        private final List<Function> exportedFunctionView;
+        private final Consumer<LibraryLoadResult> onUnload;
+        private boolean unloaded;
 
-        public LibraryLoadResult(Path sourcePath, RuntimeScriptBase scriptInstance, List<Function> exportedFunctions) {
+        public LibraryLoadResult(FluxonRuntime runtime, Path sourcePath, RuntimeScriptBase scriptInstance, List<ExportedFunction> exportedFunctions, Consumer<LibraryLoadResult> onUnload) {
+            this.runtime = runtime;
             this.sourcePath = sourcePath;
             this.scriptInstance = scriptInstance;
             this.exportedFunctions = exportedFunctions;
+            this.onUnload = onUnload;
+            List<Function> view = new ArrayList<>(exportedFunctions.size());
+            for (ExportedFunction exportedFunction : exportedFunctions) {
+                view.add(exportedFunction.function);
+            }
+            this.exportedFunctionView = Collections.unmodifiableList(view);
         }
 
         public Path getSourcePath() {
@@ -188,7 +250,54 @@ public class LibraryLoader {
         }
 
         public List<Function> getExportedFunctions() {
-            return exportedFunctions;
+            return exportedFunctionView;
+        }
+
+        /**
+         * 卸载本次加载注册的函数，释放运行时引用，便于 GC 回收相关类加载器。
+         * 可重复调用，后续调用将被忽略。
+         */
+        public void unload() {
+            if (unloaded) {
+                return;
+            }
+            for (ExportedFunction exportedFunction : exportedFunctions) {
+                if (exportedFunction.bindTarget != null) {
+                    runtime.unregisterExtensionFunction(exportedFunction.bindTarget, exportedFunction.function.getName(), exportedFunction.function);
+                } else {
+                    runtime.unregisterFunction(exportedFunction.function);
+                }
+            }
+            unloaded = true;
+            if (onUnload != null) {
+                onUnload.accept(this);
+            }
+        }
+
+        @Override
+        public void close() {
+            unload();
+        }
+    }
+
+    /**
+     * 描述一个导出的函数，包含函数实例和绑定目标（若有）。
+     */
+    public static final class ExportedFunction {
+        private final Function function;
+        private final Class<?> bindTarget;
+
+        private ExportedFunction(Function function, Class<?> bindTarget) {
+            this.function = function;
+            this.bindTarget = bindTarget;
+        }
+
+        public Function getFunction() {
+            return function;
+        }
+
+        public Class<?> getBindTarget() {
+            return bindTarget;
         }
     }
 }

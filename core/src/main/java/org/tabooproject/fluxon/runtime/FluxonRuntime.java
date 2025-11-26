@@ -381,6 +381,47 @@ public class FluxonRuntime {
     }
 
     /**
+     * 卸载已注册的系统函数（仅当映射中仍指向同一实例时）
+     *
+     * @param function 待卸载的函数实例
+     * @return 是否成功卸载
+     */
+    public boolean unregisterFunction(@NotNull Function function) {
+        Function current = systemFunctions.get(function.getName());
+        if (current != function) {
+            return false;
+        }
+        systemFunctions.remove(function.getName());
+        dirty = true;
+        return true;
+    }
+
+    /**
+     * 卸载已注册的扩展函数（仅当映射中仍指向同一实例时）
+     *
+     * @param extensionClass 扩展目标类型
+     * @param name           函数名称
+     * @param function       待卸载的函数实例
+     * @return 是否成功卸载
+     */
+    public boolean unregisterExtensionFunction(@NotNull Class<?> extensionClass, @NotNull String name, @NotNull Function function) {
+        Map<Class<?>, Function> classFunctions = extensionFunctions.get(name);
+        if (classFunctions == null) {
+            return false;
+        }
+        Function current = classFunctions.get(extensionClass);
+        if (current != function) {
+            return false;
+        }
+        classFunctions.remove(extensionClass);
+        if (classFunctions.isEmpty()) {
+            extensionFunctions.remove(name);
+        }
+        dirty = true;
+        return true;
+    }
+
+    /**
      * 获取所有函数信息
      */
     public Map<String, Function> getSystemFunctions() {
