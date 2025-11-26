@@ -4,7 +4,6 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
-import org.tabooproject.fluxon.runtime.error.RuntimeError;
 
 import java.util.Arrays;
 import java.util.List;
@@ -83,7 +82,7 @@ public class FunctionSystem {
             if (o instanceof Error) {
                 throw (Error) o;
             } else {
-                throw new RuntimeError(o.toString());
+                throw new RuntimeException(o.toString());
             }
         });
     }

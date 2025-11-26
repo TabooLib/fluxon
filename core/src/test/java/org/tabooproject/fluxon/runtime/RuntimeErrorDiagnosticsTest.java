@@ -11,7 +11,7 @@ class RuntimeErrorDiagnosticsTest {
     void indexErrorShowsSourceExcerpt1() {
         FluxonRuntimeError error = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.interpret("[1][1]"));
         String message = error.getMessage();
-        error.printStackTrace();
+        // error.printStackTrace();
         assertTrue(message.contains("Index out of bounds"), "should keep original error message");
         assertTrue(message.contains("main:1"), "should include filename and position");
         assertTrue(message.contains("^"), "should render caret marker");
@@ -22,7 +22,7 @@ class RuntimeErrorDiagnosticsTest {
     void indexErrorShowsSourceExcerpt2() {
         FluxonRuntimeError error = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.compile("[1][1]", "TestScript"));
         String message = error.getMessage();
-        error.printStackTrace();
+        // error.printStackTrace();
         assertTrue(message.contains("Index out of bounds"), "should keep original error message");
         assertTrue(message.contains("main:1"), "should include filename and position");
         assertTrue(message.contains("^"), "should render caret marker");
@@ -33,7 +33,7 @@ class RuntimeErrorDiagnosticsTest {
     void lambdaErrorShowsExcerptInterpret() {
         FluxonRuntimeError error = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.interpret("[1] :: map(|x| [1][1])"));
         String message = error.getMessage();
-        error.printStackTrace();
+        // error.printStackTrace();
         assertTrue(message.contains("Index out of bounds"), "should keep original error message");
         assertTrue(message.contains("main:1"), "should include filename and position");
         assertTrue(message.contains("^"), "should render caret marker");
@@ -44,7 +44,7 @@ class RuntimeErrorDiagnosticsTest {
     void lambdaErrorShowsExcerptCompile() {
         FluxonRuntimeError error = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.compile("[1] :: map(|x| [1][1])", "TestScript"));
         String message = error.getMessage();
-        error.printStackTrace();
+        // error.printStackTrace();
         assertTrue(message.contains("Index out of bounds"), "should keep original error message");
         assertTrue(message.contains("main:1"), "should include filename and position");
         assertTrue(message.contains("^"), "should render caret marker");
@@ -64,8 +64,8 @@ class RuntimeErrorDiagnosticsTest {
         FluxonRuntimeError error2 = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.compile(script, "TestScript"));
         String msg1 = error1.getMessage();
         String msg2 = error2.getMessage();
-        error1.printStackTrace();
-        error2.printStackTrace();
+        // error1.printStackTrace();
+        // error2.printStackTrace();
         assertTrue(msg1.contains("main:3"), "interpretation should point to lambda body line");
         assertTrue(msg1.contains("[1][1]"), "interpretation should render offending code");
         assertTrue(msg2.contains("main:3"), "compiled should point to lambda body line");

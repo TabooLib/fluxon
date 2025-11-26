@@ -32,7 +32,7 @@ class LibraryLoaderExtensionBindTest {
 
     @Test
     void thisFunctionReturnsCurrentTarget() {
-        Object self = Fluxon.eval("\"hello\" :: { &?this }");
+        Object self = Fluxon.eval("\"hello\" :: { this() }");
         assertEquals("hello", self);
     }
 }
