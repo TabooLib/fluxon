@@ -8,9 +8,7 @@ public enum TokenType {
     // 关键字
     IMPORT("import"),
     DEF("def"),
-    FUN("fun"),
     VAL("val"),
-    VAR("var"),
     IF("if"),
     THEN("then"),
     ELSE("else"),
@@ -160,9 +158,6 @@ public enum TokenType {
     public boolean isTopLevelRecoveryPoint() {
         switch (this) {
             case DEF:
-            case FUN:
-            case VAL:
-            case VAR:
             case IMPORT:
             case SYNC:
             case ASYNC:

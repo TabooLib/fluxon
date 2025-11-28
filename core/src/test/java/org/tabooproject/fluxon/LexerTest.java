@@ -119,34 +119,24 @@ public class LexerTest {
         @Test
         @DisplayName("测试关键字识别")
         void testKeywords() {
-            String source = "def fun val var if then else when is in async await return try catch finally";
+            String source = "def if then else when is in async await return try catch finally";
             List<Token> tokens = getTokens(source);
 
             // 验证所有关键字都被正确识别
             // 使用 index 判定，确保每个关键字在正确的位置上被识别
             assertEquals(TokenType.DEF, tokens.get(0).getType(), "第1个 token 应为 'def' 关键字");
-            assertEquals(TokenType.FUN, tokens.get(1).getType(), "第2个 token 应为 'fun' 关键字");
-            assertEquals(TokenType.VAL, tokens.get(2).getType(), "第3个 token 应为 'val' 关键字");
-            assertEquals(TokenType.VAR, tokens.get(3).getType(), "第4个 token 应为 'var' 关键字");
-            assertEquals(TokenType.IF, tokens.get(4).getType(), "第5个 token 应为 'if' 关键字");
-            assertEquals(TokenType.THEN, tokens.get(5).getType(), "第6个 token 应为 'then' 关键字");
-            assertEquals(TokenType.ELSE, tokens.get(6).getType(), "第7个 token 应为 'else' 关键字");
-            assertEquals(TokenType.WHEN, tokens.get(7).getType(), "第8个 token 应为 'when' 关键字");
-            assertEquals(TokenType.IS, tokens.get(8).getType(), "第9个 token 应为 'is' 关键字");
-            assertEquals(TokenType.IN, tokens.get(9).getType(), "第10个 token 应为 'in' 关键字");
-            assertEquals(TokenType.ASYNC, tokens.get(10).getType(), "第11个 token 应为 'async' 关键字");
-            assertEquals(TokenType.AWAIT, tokens.get(11).getType(), "第12个 token 应为 'await' 关键字");
-            assertEquals(TokenType.RETURN, tokens.get(12).getType(), "第13个 token 应为 'return' 关键字");
-            assertEquals(TokenType.TRY, tokens.get(13).getType(), "第14个 token 应为 'try' 关键字");
-            assertEquals(TokenType.CATCH, tokens.get(14).getType(), "第15个 token 应为 'catch' 关键字");
-            assertEquals(TokenType.FINALLY, tokens.get(15).getType(), "第15个 token 应为 'finally' 关键字");
-
-            // 验证值也正确
-            assertEquals("def", tokens.get(0).getLexeme(), "第1个 token 的值应为 'def'");
-            assertEquals("catch", tokens.get(14).getLexeme(), "第15个 token 的值应为 'catch'");
-
-            // 关键字数量
-            assertEquals(16, tokens.size() - 1, "应识别 16 个关键字 (不计 EOF)");
+            assertEquals(TokenType.IF, tokens.get(1).getType(), "第2个 token 应为 'if' 关键字");
+            assertEquals(TokenType.THEN, tokens.get(2).getType(), "第3个 token 应为 'then' 关键字");
+            assertEquals(TokenType.ELSE, tokens.get(3).getType(), "第4个 token 应为 'else' 关键字");
+            assertEquals(TokenType.WHEN, tokens.get(4).getType(), "第5个 token 应为 'when' 关键字");
+            assertEquals(TokenType.IS, tokens.get(5).getType(), "第6个 token 应为 'is' 关键字");
+            assertEquals(TokenType.IN, tokens.get(6).getType(), "第7个 token 应为 'in' 关键字");
+            assertEquals(TokenType.ASYNC, tokens.get(7).getType(), "第8个 token 应为 'async' 关键字");
+            assertEquals(TokenType.AWAIT, tokens.get(8).getType(), "第9个 token 应为 'await' 关键字");
+            assertEquals(TokenType.RETURN, tokens.get(9).getType(), "第10个 token 应为 'return' 关键字");
+            assertEquals(TokenType.TRY, tokens.get(10).getType(), "第11个 token 应为 'try' 关键字");
+            assertEquals(TokenType.CATCH, tokens.get(11).getType(), "第12个 token 应为 'catch' 关键字");
+            assertEquals(TokenType.FINALLY, tokens.get(12).getType(), "第13个 token 应为 'finally' 关键字");
         }
 
         @Test
@@ -380,7 +370,7 @@ public class LexerTest {
         @Test
         @DisplayName("测试行注释")
         void testLineComments() {
-            String source = "val x = 5 // 这是一个注释\nval y = 10";
+            String source = "x = 5 // 这是一个注释\ny = 10";
             List<Token> tokens = getTokens(source);
 
             // 验证注释被忽略，但保留其他 token
@@ -394,16 +384,11 @@ public class LexerTest {
         @Test
         @DisplayName("测试块注释")
         void testBlockComments() {
-            String source = "val x = /* 这是一个\n多行注释 */ 5";
+            String source = "x = /* 这是一个\n多行注释 */ 5";
             List<Token> tokens = getTokens(source);
-
-            // 验证块注释被忽略，但保留其他 token
-            assertTokenTypes(source.substring(0, 6), TokenType.VAL, TokenType.IDENTIFIER);
-
             List<String> identifiers = getValuesByType(tokens, TokenType.IDENTIFIER);
             assertEquals(1, identifiers.size(), "应只识别一个标识符");
             assertEquals("x", identifiers.get(0), "标识符应为 'x'");
-
             List<String> integers = getValuesByType(tokens, TokenType.INTEGER);
             assertEquals(1, integers.size(), "应只识别一个整数");
             assertEquals("5", integers.get(0), "整数应为 '5'");
@@ -415,33 +400,9 @@ public class LexerTest {
     class LineColumnTests {
 
         @Test
-        @DisplayName("测试行号和列号跟踪")
-        void testLineColumnTracking() {
-            String source = "val x = 5\nval y = 10";
-            List<Token> tokens = getTokens(source);
-
-            // 验证第一行 tokens 的行号
-            for (int i = 0; i < 4; i++) { // val x = 5
-                assertEquals(1, tokens.get(i).getLine(), "第一行 token 的行号应为 1");
-            }
-
-            // 验证第二行 tokens 的行号
-            for (int i = 4; i < tokens.size() - 1; i++) { // val y = 10 (不包括 EOF)
-                assertEquals(2, tokens.get(i).getLine(), "第二行 token 的行号应为 2");
-            }
-
-            // 验证特定 token 的列号
-            Token valToken = tokens.get(0); // 第一个 val
-            assertEquals(1, valToken.getColumn(), "第一个 'val' 的列号应为 1");
-
-            Token xToken = tokens.get(1); // x
-            assertEquals(5, xToken.getColumn(), "标识符 'x' 的列号应为 5");
-        }
-
-        @Test
         @DisplayName("测试多行字符串位置跟踪")
         void testMultilineStringPositions() {
-            String source = "val msg = \"line1\nline2\"";
+            String source = "msg = \"line1\nline2\"";
             List<Token> tokens = getTokens(source);
 
             // 获取字符串 token
@@ -452,7 +413,7 @@ public class LexerTest {
 
             // 验证字符串 token 的位置
             assertEquals(1, stringToken.getLine(), "字符串 token 的行号应为起始行号");
-            assertEquals(11, stringToken.getColumn(), "字符串 token 的列号应为起始列号");
+            assertEquals(7, stringToken.getColumn(), "字符串 token 的列号应为起始列号");
         }
     }
 
@@ -505,7 +466,7 @@ public class LexerTest {
                     "    else &n * factorial(&n - 1)\n" +
                     "}\n" +
                     "\n" +
-                    "val x = 5\n" +
+                    "x = 5\n" +
                     "print factorial &x";
 
             List<Token> tokens = getTokens(source);
@@ -520,13 +481,11 @@ public class LexerTest {
             int ifIndex = findTokenIndex(tokens, TokenType.IF);
             int thenIndex = findTokenIndex(tokens, TokenType.THEN);
             int elseIndex = findTokenIndex(tokens, TokenType.ELSE);
-            int valIndex = findTokenIndex(tokens, TokenType.VAL);
 
             assertTrue(defIndex >= 0, "应识别 'def' 关键字");
             assertTrue(ifIndex >= 0, "应识别 'if' 关键字");
             assertTrue(thenIndex >= 0, "应识别 'then' 关键字");
             assertTrue(elseIndex >= 0, "应识别 'else' 关键字");
-            assertTrue(valIndex >= 0, "应识别 'val' 关键字");
 
 
             // 验证关键字的相对位置

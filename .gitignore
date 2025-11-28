@@ -37,6 +37,7 @@ AGENTS.md
 CLAUDE.md
 core/dump
 jfr
+ts-port
 vscode-extension
 mintlify-docs
 .gradle-local
