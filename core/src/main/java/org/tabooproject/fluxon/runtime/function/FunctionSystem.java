@@ -6,28 +6,33 @@ import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class FunctionSystem {
+
+    private static volatile PrintStream out = System.out;
+    private static volatile PrintStream err = System.err;
 
     @SuppressWarnings({"DataFlowIssue"})
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("print", 1, (context) -> {
             Object[] args = context.getArguments();
             if (args.length > 0) {
-                System.out.println(args[0]);
+                out.println(args[0]);
             } else {
-                System.out.println();
+                out.println();
             }
             return null;
         });
         runtime.registerFunction("error", 1, (context) -> {
             Object[] args = context.getArguments();
             if (args.length > 0) {
-                System.err.println(args[0]);
+                err.println(args[0]);
             } else {
-                System.err.println();
+                err.println();
             }
             return null;
         });
@@ -94,5 +99,21 @@ public class FunctionSystem {
                 throw new RuntimeException(o.toString());
             }
         });
+    }
+
+    public static PrintStream getOut() {
+        return out;
+    }
+
+    public static void setOut(PrintStream out) {
+        FunctionSystem.out = Objects.requireNonNull(out, "out");
+    }
+
+    public static PrintStream getErr() {
+        return err;
+    }
+
+    public static void setErr(PrintStream err) {
+        FunctionSystem.err = Objects.requireNonNull(err, "err");
     }
 }
