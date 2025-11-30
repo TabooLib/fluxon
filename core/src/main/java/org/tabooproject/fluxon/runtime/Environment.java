@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.util.KV;
 
+import java.io.PrintStream;
 import java.util.*;
 
 /**
@@ -42,6 +43,11 @@ public class Environment {
     // 上下文目标
     @Nullable
     protected Object target;
+    // 输出流
+    @Nullable
+    protected PrintStream out;
+    @Nullable
+    protected PrintStream err;
 
     // 根环境
     @NotNull
@@ -67,6 +73,8 @@ public class Environment {
         this.rootVariables = new HashMap<>(values);
         this.localVariables = null;
         this.localVariableNames = null;
+        this.out = System.out;
+        this.err = System.err;
     }
 
     /**
@@ -84,6 +92,8 @@ public class Environment {
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+        this.out = null;
+        this.err = null;
     }
 
     /**
@@ -351,6 +361,34 @@ public class Environment {
      */
     public void setTarget(@Nullable Object target) {
         this.target = target;
+    }
+
+    /**
+     * 获取输出流（来自根环境）
+     */
+    public PrintStream getOut() {
+        return root.out;
+    }
+
+    /**
+     * 设置输出流（写入根环境）
+     */
+    public void setOut(@NotNull PrintStream out) {
+        root.out = Objects.requireNonNull(out, "out");
+    }
+
+    /**
+     * 获取错误输出流（来自根环境）
+     */
+    public PrintStream getErr() {
+        return root.err;
+    }
+
+    /**
+     * 设置错误输出流（写入根环境）
+     */
+    public void setErr(@NotNull PrintStream err) {
+        root.err = Objects.requireNonNull(err, "err");
     }
 
     @Override
