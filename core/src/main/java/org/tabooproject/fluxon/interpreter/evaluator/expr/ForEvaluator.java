@@ -40,10 +40,14 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
         Object last = null;
+        boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
         // 迭代集合元素
         while (iterator.hasNext()) {
             // 使用解构器注册表执行解构
             DestructuringRegistry.getInstance().destructure(interpreter.getEnvironment(), variables, iterator.next());
+            if (!bodyIsStatement) {
+                interpreter.consumeCostStep();
+            }
             // 执行循环体
             try {
                 last = interpreter.evaluate(result.getBody());

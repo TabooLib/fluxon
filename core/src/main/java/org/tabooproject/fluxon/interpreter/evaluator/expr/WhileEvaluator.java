@@ -27,8 +27,12 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, WhileExpression result) {
+        boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
         Object last = null;
         while (isTrue(interpreter.evaluate(result.getCondition()))) {
+            if (!bodyIsStatement) {
+                interpreter.consumeCostStep();
+            }
             try {
                 last = interpreter.evaluate(result.getBody());
             } catch (ContinueException ignored) {
