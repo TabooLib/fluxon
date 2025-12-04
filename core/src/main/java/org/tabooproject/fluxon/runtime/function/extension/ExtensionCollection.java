@@ -66,6 +66,12 @@ public class ExtensionCollection {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     return list.stream().map(Object::toString).collect(Collectors.joining(delimiter));
                 })
+                // 打乱列表
+                .function("shuffle", 0, (context) -> {
+                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    Collections.shuffle((List<Object>) list);
+                    return list;
+                })
                 // 随机获取元素
                 .function("random", Arrays.asList(0, 1), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());

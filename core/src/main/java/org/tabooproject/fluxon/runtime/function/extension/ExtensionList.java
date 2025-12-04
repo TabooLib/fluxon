@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,7 +31,7 @@ public class ExtensionList {
                 })
                 // 移除指定索引的元素
                 .function("removeAt", 1, (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    List<Object> list = Objects.requireNonNull(context.getTarget());
                     int index = context.getNumber(0).intValue();
                     return list.remove(index);
                 })
