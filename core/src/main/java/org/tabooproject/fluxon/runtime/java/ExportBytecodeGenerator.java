@@ -71,6 +71,18 @@ public class ExportBytecodeGenerator {
     // 动态类加载器
     private static final FluxonClassLoader fluxonClassLoader = new FluxonClassLoader(ExportBytecodeGenerator.class.getClassLoader());
 
+    private static class NamedMethod {
+        public final String name;
+        public final Method method;
+        public final Label label;
+
+        public NamedMethod(String name, Method method) {
+            this.name = name;
+            this.method = method;
+            this.label = new Label();
+        }
+    }
+
     /**
      * 为指定的类生成优化的类桥接器
      *
@@ -120,7 +132,7 @@ public class ExportBytecodeGenerator {
         // 生成 getParameterTypes 方法
         generateBridgeMethodWithDispatch(cw,
                 "getParameterTypes",
-                "(Ljava/lang/String;)[Ljava/lang/Class;",
+                "(Ljava/lang/String;Ljava/lang/Object;[Ljava/lang/Object;)[Ljava/lang/Class;",
                 targetClass,
                 exportMethods,
                 ExportBytecodeGenerator::generateSingleMethodParameterTypes);
@@ -131,8 +143,8 @@ public class ExportBytecodeGenerator {
         byte[] bytecode = cw.toByteArray();
         Class<? extends ClassBridge> bridgeClass = (Class<? extends ClassBridge>) fluxonClassLoader.defineClass(className.replace('/', '.'), bytecode);
 
-        // 输出测试文件
-        // Files.write(new File("out" + classCounter.get() + ".class").toPath(), bytecode);
+//        // 输出测试文件
+//        Files.write(new File("out" + classCounter.get() + ".class").toPath(), bytecode);
 
         // 创建方法名数组（使用转换后的方法名）
         String[] methodNames = StringUtils.transformMethodNames(exportMethods);
@@ -186,7 +198,7 @@ public class ExportBytecodeGenerator {
             mv.visitInsn(ATHROW);
         } else {
             // 生成方法名的 switch-case 分发
-            generateDispatchLogic(mv, targetClass, exportMethods, methodHandler);
+            generateDispatchLogic(mv, exportMethods, methodHandler);
         }
 
         mv.visitMaxs(10, 4);
@@ -197,24 +209,50 @@ public class ExportBytecodeGenerator {
      * 生成通用的方法分发逻辑
      *
      * @param mv            MethodVisitor
-     * @param targetClass   目标类
      * @param exportMethods 导出方法数组
      * @param methodHandler 方法处理器，用于生成具体的方法体
      */
-    private static void generateDispatchLogic(MethodVisitor mv, Class<?> targetClass, Method[] exportMethods, MethodHandler methodHandler) {
-        Map<String, Method> uniqueMethods = buildUniqueMethodsMap(targetClass, exportMethods);
-        Map<String, Label> methodLabels = createMethodLabels(uniqueMethods);
+    private static void generateDispatchLogic(MethodVisitor mv, Method[] exportMethods, MethodHandler methodHandler) {
+        Map<String, List<NamedMethod>> allMethods = buildMethodsMap(exportMethods); // 所有的方法按照名称分组
+        List<NamedMethod> uniqueMethods = new LinkedList<>(); // 唯一方法（无重载）
+        Map<String, List<NamedMethod>> overrideMethods = new LinkedHashMap<>(); // 重载方法
+
+        // 初始化 uniqueMethods 和 overrideMethods
+        for (Map.Entry<String, List<NamedMethod>> entry : allMethods.entrySet()) {
+            List<NamedMethod> methodList = entry.getValue();
+            boolean hasOverloads = methodList.size() > 1; // 重载判断
+            for (NamedMethod method : methodList) {
+                if (hasOverloads) {
+                    overrideMethods.put(entry.getKey(), methodList);
+                } else {
+                    uniqueMethods.add(method);
+                }
+            }
+        }
+
         Label defaultLabel = new Label();
         Label endLabel = new Label();
 
-        // 使用 switch 语句进行高效的字符串分发
-        generateSwitchDispatch(mv, uniqueMethods, methodLabels, defaultLabel);
+        // 处理重载方法
+        if (!overrideMethods.isEmpty()) {
+            generateOverridesChain(mv, overrideMethods, defaultLabel);
+        }
+
+        // 方法数量较少时，仍使用 if-else 链（避免 switch 的额外开销）
+        if (uniqueMethods.size() <= 3) {
+            generateIfElseChain(mv, uniqueMethods, defaultLabel);
+        } else {
+            // 使用 switch 语句进行高效的字符串分发
+            generateSwitchDispatch(mv, uniqueMethods, defaultLabel);
+        }
 
         // 为每个方法名生成具体的处理代码
-        for (String methodName : uniqueMethods.keySet()) {
-            mv.visitLabel(methodLabels.get(methodName));
-            methodHandler.handle(mv, uniqueMethods.get(methodName));
-            mv.visitJumpInsn(GOTO, endLabel);
+        for (Collection<NamedMethod> methodList : allMethods.values()) {
+            for (NamedMethod namedMethod : methodList) {
+                mv.visitLabel(namedMethod.label);
+                methodHandler.handle(mv, namedMethod.method);
+                mv.visitJumpInsn(GOTO, endLabel);
+            }
         }
 
         // 默认处理：抛出异常
@@ -274,20 +312,13 @@ public class ExportBytecodeGenerator {
      * 生成 switch 语句进行字符串分发
      * 使用哈希码优化的方式，比 if-else 链更高效
      */
-    private static void generateSwitchDispatch(MethodVisitor mv, Map<String, Method> uniqueMethods, Map<String, Label> methodLabels, Label defaultLabel) {
-        String[] methodNames = uniqueMethods.keySet().toArray(new String[0]);
-
-        if (methodNames.length <= 3) {
-            // 方法数量较少时，仍使用 if-else 链（避免 switch 的额外开销）
-            generateIfElseChain(mv, uniqueMethods, methodLabels, defaultLabel);
-            return;
-        }
+    private static void generateSwitchDispatch(MethodVisitor mv, List<NamedMethod> uniqueMethods, Label defaultLabel) {
 
         // 按哈希码分组
-        Map<Integer, List<String>> hashGroups = new LinkedHashMap<>();
-        for (String methodName : methodNames) {
-            int hash = methodName.hashCode();
-            hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(methodName);
+        Map<Integer, List<NamedMethod>> hashGroups = new LinkedHashMap<>();
+        for (NamedMethod method : uniqueMethods) {
+            int hash = method.name.hashCode();
+            hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(method);
         }
 
         // 生成 switch 语句
@@ -315,23 +346,23 @@ public class ExportBytecodeGenerator {
             mv.visitLabel(switchLabels[i]);
 
             Integer hash = sortedHashes.get(i);
-            List<String> methods = hashGroups.get(hash);
+            List<NamedMethod> methods = hashGroups.get(hash);
 
             if (methods.size() == 1) {
                 // 只有一个方法，直接比较字符串
-                String methodName = methods.get(0);
+                NamedMethod method = methods.get(0);
                 mv.visitVarInsn(ALOAD, 1); // methodName 参数
-                mv.visitLdcInsn(methodName);
+                mv.visitLdcInsn(method.name);
                 mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
-                mv.visitJumpInsn(IFNE, methodLabels.get(methodName));
+                mv.visitJumpInsn(IFNE, method.label);
                 mv.visitJumpInsn(GOTO, defaultLabel);
             } else {
                 // 多个方法有相同哈希码，需要进一步比较
-                for (String methodName : methods) {
+                for (NamedMethod method : methods) {
                     mv.visitVarInsn(ALOAD, 1); // methodName 参数
-                    mv.visitLdcInsn(methodName);
+                    mv.visitLdcInsn(method.name);
                     mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
-                    mv.visitJumpInsn(IFNE, methodLabels.get(methodName));
+                    mv.visitJumpInsn(IFNE, method.label);
                 }
                 mv.visitJumpInsn(GOTO, defaultLabel);
             }
@@ -341,54 +372,90 @@ public class ExportBytecodeGenerator {
     /**
      * 生成传统的 if-else 链（用于方法数量较少的情况）
      */
-    private static void generateIfElseChain(MethodVisitor mv, Map<String, Method> uniqueMethods, Map<String, Label> methodLabels, Label defaultLabel) {
-        for (String methodName : uniqueMethods.keySet()) {
+    private static void generateIfElseChain(MethodVisitor mv, List<NamedMethod> uniqueMethods, Label defaultLabel) {
+        for (NamedMethod method : uniqueMethods) {
             // 比较方法名: if (methodName.equals("methodName"))
             mv.visitVarInsn(ALOAD, 1);         // methodName 参数
-            mv.visitLdcInsn(methodName);       // 目标方法名
+            mv.visitLdcInsn(method.name);       // 目标方法名
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
-            mv.visitJumpInsn(IFNE, methodLabels.get(methodName)); // 如果相等，跳转到对应方法
+            mv.visitJumpInsn(IFNE, method.label); // 如果相等，跳转到对应方法
         }
 
         // 没有匹配的方法，跳转到默认处理
         mv.visitJumpInsn(GOTO, defaultLabel);
     }
 
+    private static void generateOverridesChain(MethodVisitor mv, Map<String, List<NamedMethod>> overrideMethods, Label defaultLabel) {
+        for (Map.Entry<String, List<NamedMethod>> entry : overrideMethods.entrySet()) {
+            Label nextGroup = new Label();
+
+            // 判断这一组的方法名: if (methodName.equals("methodName"))
+            mv.visitVarInsn(ALOAD, 1);         // methodName 参数
+            mv.visitLdcInsn(entry.getKey());       // 目标方法名
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
+            mv.visitJumpInsn(IFEQ, nextGroup); // 如果不相等，跳到下一组
+
+            // 进行参判断
+            List<NamedMethod> methodList = entry.getValue();
+            methodList.sort(Comparator.comparingInt(m -> m.method.getParameterCount())); // 升序排序
+            for (NamedMethod namedMethod : methodList) {
+                Label nextMethod = new Label();
+                Class<?>[] paramTypes = namedMethod.method.getParameterTypes();
+
+                // 长度检查
+                mv.visitVarInsn(ALOAD, 3); // args 数组
+                mv.visitInsn(ARRAYLENGTH);
+                mv.visitIntInsn(BIPUSH, paramTypes.length);
+                mv.visitJumpInsn(IF_ICMPNE, nextMethod);
+
+                // 参数检查
+                for (int i = 0; i < paramTypes.length; i++) {
+                    Class<?> paramType = paramTypes[i];
+                    String paramTypeName;
+                    if (paramType.isPrimitive()) {
+                        paramTypeName = BytecodeUtils.getWrapperClassName(paramType);  // 基本类型：使用包装类的 TYPE 字段
+                    } else {
+                        paramTypeName = Type.getInternalName(paramType); // 引用类型
+                    }
+
+                    mv.visitVarInsn(ALOAD, 3); // args 数组
+                    mv.visitIntInsn(BIPUSH, i); // 索引
+                    mv.visitInsn(AALOAD); // 获取数组对应索引的元素
+                    mv.visitTypeInsn(INSTANCEOF, paramTypeName); // instanceof 检查
+                    mv.visitJumpInsn(IFEQ, nextMethod);
+                }
+
+                mv.visitJumpInsn(GOTO, namedMethod.label);
+
+                mv.visitLabel(nextMethod);
+            }
+            // 未匹配到任何重载，继续检查下一组
+            mv.visitLabel(nextGroup);
+        }
+    }
+
     /**
-     * 构建唯一方法映射表
-     * 检查方法名重复，不允许重载
+     * 构建方法映射表 (方法名称 -> 同名的多个方法)
      */
-    private static Map<String, Method> buildUniqueMethodsMap(Class<?> targetClass, Method[] exportMethods) {
-        Set<String> methodNames = new HashSet<>();
-        Map<String, Method> uniqueMethods = new LinkedHashMap<>();
+    private static Map<String, List<NamedMethod>> buildMethodsMap(Method[] exportMethods) {
+        Map<String, List<NamedMethod>> methodsMap = new LinkedHashMap<>();
 
         // 获取原始方法名
         Set<String> originalNames = Arrays.stream(exportMethods).map(Method::getName).collect(Collectors.toSet());
 
-        // 输出唯一方法名
+        // 输出方法名
         for (Method method : exportMethods) {
             String name = StringUtils.transformMethodName(method.getName());
+            // 如果转换后的名称与其他原始方法名冲突，则使用原始名称
             if (originalNames.contains(name)) {
                 name = method.getName();
             }
-            if (!methodNames.add(name)) {
-                throw new IllegalArgumentException("类 " + targetClass.getName() + " 中存在重复的 @Export 方法名: " + name + "，不支持方法重载");
-            }
-            uniqueMethods.put(name, method);
+            NamedMethod namedMethod = new NamedMethod(name, method);
+            // 添加方法
+            methodsMap.computeIfAbsent(name, k -> new LinkedList<>()).add(namedMethod);
         }
 
-        return uniqueMethods;
-    }
-
-    /**
-     * 为每个方法名创建标签
-     */
-    private static Map<String, Label> createMethodLabels(Map<String, Method> uniqueMethods) {
-        Map<String, Label> methodLabels = new HashMap<>();
-        for (String methodName : uniqueMethods.keySet()) {
-            methodLabels.put(methodName, new Label());
-        }
-        return methodLabels;
+        return methodsMap;
     }
 
     /**

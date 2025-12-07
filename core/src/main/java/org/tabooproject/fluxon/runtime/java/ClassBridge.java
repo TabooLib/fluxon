@@ -33,7 +33,7 @@ public abstract class ClassBridge {
      * @param methodName 方法名
      * @return 参数类型数组
      */
-    public abstract Class<?>[] getParameterTypes(String methodName);
+    public abstract Class<?>[] getParameterTypes(String methodName, Object instance, Object... args);
 
     /**
      * 获取支持的方法列表

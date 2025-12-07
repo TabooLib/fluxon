@@ -57,7 +57,7 @@ public class ExportRegistry {
         if (methods.length == 0) {
             throw new IllegalStateException("类 " + clazz.getName() + " 没有 @Export 方法");
         }
-        
+
         // 转换为 ExportMethod 数组
         ExportMethod[] exportMethods = convertToExportMethods(methods);
         return registerClassMethods(clazz, namespace, exportMethods);
@@ -76,20 +76,20 @@ public class ExportRegistry {
         Method[] methods = Arrays.stream(exportMethods)
                 .map(ExportMethod::getMethod)
                 .toArray(Method[]::new);
-        
+
         // 为整个类生成或获取桥接器
         ClassBridge bridge = ExportBytecodeGenerator.generateClassBridge(clazz, methods, clazz.getClassLoader());
         // 注册该类的所有导出方法
         registerClassMethods(clazz, namespace, exportMethods, bridge);
         return bridge;
     }
-    
+
     /**
      * 兼容旧接口的重载方法
-     * 
-     * @param namespace     命名空间
-     * @param clazz         要注册的类
-     * @param methods       要注册的方法（原始方法数组）
+     *
+     * @param namespace 命名空间
+     * @param clazz     要注册的类
+     * @param methods   要注册的方法（原始方法数组）
      * @return ClassBridge
      */
     public <T> ClassBridge registerClassMethods(Class<T> clazz, String namespace, Method[] methods) {
@@ -104,7 +104,7 @@ public class ExportRegistry {
         ExportMethod[] exportMethods = convertToExportMethods(methods);
         registerClassMethods(clazz, namespace, exportMethods, bridge);
     }
-    
+
     /**
      * 注册类的所有方法到运行时
      */
@@ -114,14 +114,15 @@ public class ExportRegistry {
             String methodName = exportMethod.getTransformedName();
             NativeFunction.NativeCallable<T> callable = context -> {
                 Object[] args = context.getArguments();
+                Object target = context.getTarget();
                 // 检查参数类型是否匹配
-                Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName), args);
-                return bridge.invoke(methodName, context.getTarget(), args);
+                Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
+                return bridge.invoke(methodName, target, args);
             };
-            
+
             // 分析方法参数，获取支持的参数数量列表
             List<Integer> supportedCounts = analyzeMethodParameterCounts(method);
-            
+
             // 注册扩展函数，传入支持的参数数量列表
             // 根据 exportMethod.isAsync() 和 exportMethod.isSync() 来处理不同类型的函数
             if (exportMethod.isAsync()) {
@@ -159,10 +160,10 @@ public class ExportRegistry {
         }
         return counts;
     }
-    
+
     /**
      * 将 Method 数组转换为 ExportMethod 数组
-     * 
+     *
      * @param methods 原始方法数组
      * @return ExportMethod 数组
      */
@@ -170,19 +171,20 @@ public class ExportRegistry {
         Set<String> originalNames = Arrays.stream(methods)
                 .map(Method::getName)
                 .collect(Collectors.toSet());
-        
+
         ExportMethod[] exportMethods = new ExportMethod[methods.length];
         for (int i = 0; i < methods.length; i++) {
             Method method = methods[i];
             String transformedName = StringUtils.transformMethodName(method.getName());
-            
+
             // 如果转换后的名称与其他原始方法名冲突，则使用原始名称
             if (originalNames.contains(transformedName) && !transformedName.equals(method.getName())) {
                 transformedName = method.getName();
             }
-            
+
             exportMethods[i] = new ExportMethod(method, transformedName);
         }
         return exportMethods;
     }
+
 }
