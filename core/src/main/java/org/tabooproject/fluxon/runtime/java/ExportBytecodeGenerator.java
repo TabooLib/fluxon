@@ -7,6 +7,7 @@ import org.objectweb.asm.Type;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassWriter;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.util.StringUtils;
 
 import java.lang.reflect.Method;
@@ -380,7 +381,6 @@ public class ExportBytecodeGenerator {
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
             mv.visitJumpInsn(IFNE, method.label); // 如果相等，跳转到对应方法
         }
-
         // 没有匹配的方法，跳转到默认处理
         mv.visitJumpInsn(GOTO, defaultLabel);
     }
@@ -395,9 +395,12 @@ public class ExportBytecodeGenerator {
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false);
             mv.visitJumpInsn(IFEQ, nextGroup); // 如果不相等，跳到下一组
 
-            // 进行参判断
+            // 进行参数判断
             List<NamedMethod> methodList = entry.getValue();
-            methodList.sort(Comparator.comparingInt(m -> m.method.getParameterCount())); // 升序排序
+            // 排序策略：参数数量升序，相同数量时按类型特异性降序（更具体的类型优先）
+            methodList.sort(Comparator
+                    .comparingInt((NamedMethod m) -> m.method.getParameterCount())
+                    .thenComparing((NamedMethod m) -> -calculateMethodSpecificity(m.method)));
             for (NamedMethod namedMethod : methodList) {
                 Label nextMethod = new Label();
                 Class<?>[] paramTypes = namedMethod.method.getParameterTypes();
@@ -408,25 +411,33 @@ public class ExportBytecodeGenerator {
                 mv.visitIntInsn(BIPUSH, paramTypes.length);
                 mv.visitJumpInsn(IF_ICMPNE, nextMethod);
 
-                // 参数检查
+                // 参数类型兼容性检查（使用 Intrinsics.isCompatibleType 支持基本类型/包装类型互转、继承关系、null 处理）
                 for (int i = 0; i < paramTypes.length; i++) {
                     Class<?> paramType = paramTypes[i];
-                    String paramTypeName;
+
+                    // 加载期望的 Class 对象
                     if (paramType.isPrimitive()) {
-                        paramTypeName = BytecodeUtils.getWrapperClassName(paramType);  // 基本类型：使用包装类的 TYPE 字段
+                        // 基本类型：使用包装类的 TYPE 字段获取原始类型 Class
+                        mv.visitFieldInsn(GETSTATIC, BytecodeUtils.getWrapperClassName(paramType), "TYPE", "Ljava/lang/Class;");
                     } else {
-                        paramTypeName = Type.getInternalName(paramType); // 引用类型
+                        // 引用类型：使用 LDC 指令直接加载 Class 常量
+                        mv.visitLdcInsn(Type.getType(paramType));
                     }
 
+                    // 加载 args[i]
                     mv.visitVarInsn(ALOAD, 3); // args 数组
                     mv.visitIntInsn(BIPUSH, i); // 索引
                     mv.visitInsn(AALOAD); // 获取数组对应索引的元素
-                    mv.visitTypeInsn(INSTANCEOF, paramTypeName); // instanceof 检查
+
+                    // 调用 Intrinsics.isCompatibleType(Class<?> expectedType, Object value)
+                    mv.visitMethodInsn(INVOKESTATIC,
+                            Intrinsics.TYPE.getDescriptor(),
+                            "isCompatibleType",
+                            "(Ljava/lang/Class;Ljava/lang/Object;)Z",
+                            false);
                     mv.visitJumpInsn(IFEQ, nextMethod);
                 }
-
                 mv.visitJumpInsn(GOTO, namedMethod.label);
-
                 mv.visitLabel(nextMethod);
             }
             // 未匹配到任何重载，继续检查下一组
@@ -435,14 +446,24 @@ public class ExportBytecodeGenerator {
     }
 
     /**
+     * 计算方法参数类型的总特异性分数
+     * 分数越高表示参数类型越具体，在重载解析时应优先匹配
+     */
+    private static int calculateMethodSpecificity(Method method) {
+        int score = 0;
+        for (Class<?> paramType : method.getParameterTypes()) {
+            score += BytecodeUtils.getTypeSpecificity(paramType);
+        }
+        return score;
+    }
+
+    /**
      * 构建方法映射表 (方法名称 -> 同名的多个方法)
      */
     private static Map<String, List<NamedMethod>> buildMethodsMap(Method[] exportMethods) {
         Map<String, List<NamedMethod>> methodsMap = new LinkedHashMap<>();
-
         // 获取原始方法名
         Set<String> originalNames = Arrays.stream(exportMethods).map(Method::getName).collect(Collectors.toSet());
-
         // 输出方法名
         for (Method method : exportMethods) {
             String name = StringUtils.transformMethodName(method.getName());
@@ -454,7 +475,6 @@ public class ExportBytecodeGenerator {
             // 添加方法
             methodsMap.computeIfAbsent(name, k -> new LinkedList<>()).add(namedMethod);
         }
-
         return methodsMap;
     }
 
@@ -495,7 +515,6 @@ public class ExportBytecodeGenerator {
             // 基本类型装箱
             BytecodeUtils.generateBoxing(mv, returnType);
         }
-
         mv.visitInsn(ARETURN);
     }
 

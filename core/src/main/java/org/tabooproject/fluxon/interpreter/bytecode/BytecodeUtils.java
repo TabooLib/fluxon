@@ -267,6 +267,39 @@ public class BytecodeUtils {
         mv.visitLineNumber(excerpt.getLine(), label);
     }
 
+    /**
+     * 计算类型的特异性分数（继承深度）
+     * 分数越高表示类型越具体，用于重载解析时的优先级排序
+     * <p>
+     * 分数规则：
+     * - null/Object: 0
+     * - 接口: 1（最通用的引用类型）
+     * - 具体类: 10 + 继承深度（确保比接口更具体）
+     * - 基本类型: 100（最具体）
+     *
+     * @param type 要计算特异性的类型
+     * @return 特异性分数
+     */
+    public static int getTypeSpecificity(Class<?> type) {
+        if (type == null || type == Object.class) {
+            return 0;
+        }
+        if (type.isPrimitive()) {
+            return 100;
+        }
+        if (type.isInterface()) {
+            return 1;
+        }
+        // 计算到 Object 的继承深度，基础分 10 确保比接口高
+        int depth = 10;
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            depth++;
+            current = current.getSuperclass();
+        }
+        return depth;
+    }
+
     private static final Type MAP = new Type(Map.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
 }
