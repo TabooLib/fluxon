@@ -431,7 +431,7 @@ public class ExportBytecodeGenerator {
 
                     // 调用 Intrinsics.isCompatibleType(Class<?> expectedType, Object value)
                     mv.visitMethodInsn(INVOKESTATIC,
-                            Intrinsics.TYPE.getDescriptor(),
+                            Intrinsics.TYPE.getPath(),
                             "isCompatibleType",
                             "(Ljava/lang/Class;Ljava/lang/Object;)Z",
                             false);
