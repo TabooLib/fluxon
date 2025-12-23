@@ -57,9 +57,13 @@ public enum ExpressionType {
     TERNARY(new TernaryEvaluator()),
     ELVIS(new ElvisEvaluator()),
     GROUPING(new GroupingEvaluator()),
+
+    // 上下文调用
     CONTEXT_CALL(new ContextCallEvaluator()),
     // Lambda
-    LAMBDA(new LambdaEvaluator());
+    LAMBDA(new LambdaEvaluator()),
+    // Command (自定义语法扩展)
+    COMMAND(new CommandEvaluator());
 
     public final Evaluator<ParseResult> evaluator;
 

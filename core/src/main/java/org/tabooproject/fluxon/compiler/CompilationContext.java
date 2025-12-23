@@ -1,5 +1,8 @@
 package org.tabooproject.fluxon.compiler;
 
+import org.jetbrains.annotations.NotNull;
+import org.tabooproject.fluxon.parser.CommandRegistry;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,9 @@ public class CompilationContext {
 
     private final List<String> packageAutoImport = FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT;
     private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
+
+    // Command 注册表
+    private CommandRegistry commandRegistry = CommandRegistry.primary();
 
     /**
      * 创建编译上下文
@@ -47,7 +53,7 @@ public class CompilationContext {
     public String getFileName() {
         return fileName;
     }
-    
+
     /**
      * 是否允许无效引用
      */
@@ -92,17 +98,17 @@ public class CompilationContext {
 
     /**
      * 设置属性
-     * 
-     * @param key 属性键
+     *
+     * @param key   属性键
      * @param value 属性值
      */
     public void setAttribute(String key, Object value) {
         attributes.put(key, value);
     }
-    
+
     /**
      * 获取属性
-     * 
+     *
      * @param key 属性键
      * @param <T> 属性类型
      * @return 属性值
@@ -117,5 +123,22 @@ public class CompilationContext {
      */
     public Map<String, Object> getAttributes() {
         return attributes;
+    }
+
+    /**
+     * 获取 Command 注册表
+     * 默认返回 {@link CommandRegistry#primary()}，除非通过 {@link #setCommandRegistry(CommandRegistry)} 设置了自定义注册表。
+     */
+    @NotNull
+    public CommandRegistry getCommandRegistry() {
+        return commandRegistry;
+    }
+
+    /**
+     * 设置自定义 Command 注册表
+     * 用于需要隔离 command 集合的场景，如沙箱环境或多租户系统。
+     */
+    public void setCommandRegistry(@NotNull CommandRegistry commandRegistry) {
+        this.commandRegistry = commandRegistry;
     }
 }

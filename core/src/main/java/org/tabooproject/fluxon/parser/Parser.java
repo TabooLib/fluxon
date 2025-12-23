@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.error.FunctionNotFoundException;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.type.ExpressionParser;
 import org.tabooproject.fluxon.parser.type.FunctionInfo;
 import org.tabooproject.fluxon.parser.type.ImportParser;
 import org.tabooproject.fluxon.parser.type.StatementParser;
@@ -107,76 +108,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         return results;
     }
 
-    /**
-     * 将解析结果转换为伪代码
-     *
-     * @return 伪代码字符串
-     */
-    public String toPseudoCode() {
-        if (results == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (ParseResult result : results) {
-            sb.append(result.toPseudoCode());
-            sb.append(";");
-        }
-        return sb.toString();
-    }
-
-    /**
-     * 检查当前标记是否为表达式结束标记
-     */
-    public boolean isEndOfExpression() {
-        return currentToken.getType().isEndOfExpression();
-    }
-
-    /**
-     * 检查当前标记是否为操作符
-     */
-    public boolean isOperator() {
-        return currentToken.getType().isOperator();
-    }
-
-    /**
-     * 为解析结果附加源信息
-     */
-    public <T extends ParseResult> T attachSource(T result, Token token) {
-        if (result == null || token == null) {
-            return result;
-        }
-        SourceExcerpt excerpt = SourceExcerpt.from(context, selectHighlightToken(token));
-        SourceTrace.attach(result, excerpt);
-        return result;
-    }
-
-    /**
-     * 从另一个解析结果复制源信息
-     */
-    public <T extends ParseResult> T copySource(T result, ParseResult from) {
-        if (result == null || from == null) {
-            return result;
-        }
-        SourceTrace.copy(result, from);
-        return result;
-    }
-
-    /**
-     * 检查当前 token 是否在语句边界
-     * 通过以下条件判断：
-     * 1. 当前 token 在新行（行号大于前一个 token）
-     * 2. 前一个 token 是分号
-     *
-     * @return 是否在语句边界
-     */
-    public boolean isStatementBoundary() {
-        // 检查是否在新行
-        if (currentToken.getLine() > previous().getLine()) {
-            return true;
-        }
-        // 检查前一个 token 是否是分号
-        return previous().getType() == TokenType.SEMICOLON;
-    }
+    // region =========== 标记处理 ===========
 
     /**
      * 消费当前标记并前进
@@ -240,6 +172,30 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 检查当前标记是否为表达式结束标记
+     */
+    public boolean isEndOfExpression() {
+        return currentToken.getType().isEndOfExpression();
+    }
+
+    /**
+     * 检查当前 token 是否在语句边界
+     * 通过以下条件判断：
+     * 1. 当前 token 在新行（行号大于前一个 token）
+     * 2. 前一个 token 是分号
+     *
+     * @return 是否在语句边界
+     */
+    public boolean isStatementBoundary() {
+        // 检查是否在新行
+        if (currentToken.getLine() > previous().getLine()) {
+            return true;
+        }
+        // 检查前一个 token 是否是分号
+        return previous().getType() == TokenType.SEMICOLON;
+    }
+
+    /**
      * 获取前一个标记
      *
      * @return 前一个标记
@@ -263,29 +219,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         currentToken = tokens.get(position);
     }
 
-    public void pushCapture(Map<String, Integer> captures) {
-        captureStack.push(captures);
-    }
-
-    public void popCapture() {
-        if (!captureStack.isEmpty()) {
-            captureStack.pop();
-        }
-    }
-
-    @Nullable
-    public Integer getCapturedIndex(String name) {
-        if (captureStack.isEmpty()) {
-            return null;
-        }
-        for (Map<String, Integer> map : captureStack) {
-            if (map.containsKey(name)) {
-                return map.get(name);
-            }
-        }
-        return null;
-    }
-
     /**
      * 获取当前标记
      *
@@ -303,26 +236,6 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      */
     public Token peek(int n) {
         return position + n < tokens.size() ? tokens.get(position + n) : tokens.get(tokens.size() - 1);
-    }
-
-    /**
-     * 抛出异常
-     */
-    public void error(String error) {
-        throw createParseException(error, currentToken);
-    }
-
-    /**
-     * 创建带源码摘录的解析异常
-     *
-     * @param reason 错误原因
-     * @param token  相关的词法单元
-     * @return 解析异常
-     */
-    public ParseException createParseException(String reason, Token token) {
-        Token highlightToken = selectHighlightToken(token);
-        SourceExcerpt excerpt = SourceExcerpt.from(context, highlightToken);
-        return new ParseException(reason, highlightToken, results, excerpt);
     }
 
     /**
@@ -350,6 +263,144 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         }
         throw createParseException(message, currentToken);
     }
+
+    // endregion
+
+    // region =========== 错误处理 ===========
+
+    /**
+     * 为解析结果附加源信息
+     */
+    public <T extends ParseResult> T attachSource(T result, Token token) {
+        if (result == null || token == null) {
+            return result;
+        }
+        SourceExcerpt excerpt = SourceExcerpt.from(context, selectHighlightToken(token));
+        SourceTrace.attach(result, excerpt);
+        return result;
+    }
+
+    /**
+     * 从另一个解析结果复制源信息
+     */
+    public <T extends ParseResult> T copySource(T result, ParseResult from) {
+        if (result == null || from == null) {
+            return result;
+        }
+        SourceTrace.copy(result, from);
+        return result;
+    }
+
+    /**
+     * 抛出异常
+     */
+    public void error(String error) {
+        throw createParseException(error, currentToken);
+    }
+
+    /**
+     * 创建带源码摘录的解析异常
+     *
+     * @param reason 错误原因
+     * @param token  相关的词法单元
+     * @return 解析异常
+     */
+    public ParseException createParseException(String reason, Token token) {
+        Token highlightToken = selectHighlightToken(token);
+        SourceExcerpt excerpt = SourceExcerpt.from(context, highlightToken);
+        return new ParseException(reason, highlightToken, results, excerpt);
+    }
+
+    /**
+     * 记录解析错误
+     *
+     * @param ex 解析异常
+     */
+    private void recordError(ParseException ex) {
+        errors.add(ex);
+    }
+
+    /**
+     * 同步到下一个语句边界
+     * 用于错误恢复，跳过当前错误语句并找到下一个安全的解析点
+     * <p>
+     * 采用 panic-mode 恢复策略：
+     * 1. 跟踪大括号深度，确保完整跳过嵌套块
+     * 2. 在深度为 0 时遇到分号或顶层关键字（def/fun/val/var等）立即停止
+     * 3. 使用 lastPosition 哨兵防止无限循环
+     * 4. 在遇到左大括号时增加深度，右大括号时减少深度
+     * 5. 只在大括号平衡后才认为到达安全恢复点
+     */
+    private void synchronize() {
+        if (isAtEnd()) {
+            return;
+        }
+        int braceDepth = 0;
+        int lastPosition = -1;
+        while (!isAtEnd()) {
+            // 防止无限循环：如果位置没变化则强制前进
+            if (position == lastPosition) {
+                advance();
+                continue;
+            }
+            lastPosition = position;
+            TokenType type = currentToken.getType();
+            // 遇到分号：语句分隔符，消费后停止
+            if (type == TokenType.SEMICOLON) {
+                advance();
+                return;
+            }
+            // 在顶层遇到恢复点关键字：停止同步
+            if (braceDepth == 0 && type.isTopLevelRecoveryPoint()) {
+                return;
+            }
+            // 跟踪大括号深度
+            if (type == TokenType.LEFT_BRACE) {
+                braceDepth++;
+                advance();
+                continue;
+            }
+            if (type == TokenType.RIGHT_BRACE) {
+                if (braceDepth > 0) {
+                    braceDepth--;
+                }
+                advance();
+                continue;
+            }
+            advance();
+        }
+    }
+
+    private Token selectHighlightToken(Token token) {
+        if (token == null) {
+            return null;
+        }
+        if (shouldFallbackToPrevious(token) && position > 0) {
+            Token previous = previous();
+            if (previous != null && previous.getLine() > 0) {
+                return previous;
+            }
+        }
+        return token;
+    }
+
+    private boolean shouldFallbackToPrevious(Token token) {
+        TokenType type = token.getType();
+        switch (type) {
+            case RIGHT_BRACE:
+            case RIGHT_PAREN:
+            case RIGHT_BRACKET:
+            case SEMICOLON:
+            case EOF:
+                return true;
+            default:
+                return token.getLexeme().isEmpty();
+        }
+    }
+
+    // endregion
+
+    // region =========== 符号环境操作 ===========
 
     /**
      * 定义用户函数
@@ -491,26 +542,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         return symbolEnvironment;
     }
 
-    /**
-     * 获取当前上下文
-     */
-    public CompilationContext getContext() {
-        return context;
-    }
+    // endregion
 
-    /**
-     * 获取当前导入列表
-     */
-    public List<String> getImports() {
-        return imports;
-    }
-
-    /**
-     * 获取当前解析结果
-     */
-    public List<ParseResult> getResults() {
-        return results;
-    }
+    // region =========== Lambda 操作 ===========
 
     /**
      * 获取当前 Lambda 表达式计数器
@@ -518,6 +552,48 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     public AtomicInteger getLambdaCounter() {
         return lambdaCounter;
     }
+
+    /**
+     * 将捕获的外部变量映射压入栈
+     * 用于在解析 Lambda 表达式时保存当前作用域的变量捕获信息
+     *
+     * @param captures 变量名到索引的映射
+     */
+    public void pushCapture(Map<String, Integer> captures) {
+        captureStack.push(captures);
+    }
+
+    /**
+     * 从栈中弹出捕获的外部变量映射
+     * 用于在 Lambda 表达式解析完成后恢复上层作用域
+     */
+    public void popCapture() {
+        if (!captureStack.isEmpty()) {
+            captureStack.pop();
+        }
+    }
+
+    /**
+     * 获取捕获变量的索引
+     * 从当前到最外层依次查找变量名对应的索引
+     *
+     * @param name 变量名
+     * @return 变量索引，如果未找到则返回 null
+     */
+    @Nullable
+    public Integer getCapturedIndex(String name) {
+        if (captureStack.isEmpty()) {
+            return null;
+        }
+        for (Map<String, Integer> map : captureStack) {
+            if (map.containsKey(name)) {
+                return map.get(name);
+            }
+        }
+        return null;
+    }
+
+    // endregion
 
     /**
      * 注册待解析的函数调用
@@ -553,89 +629,51 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 记录解析错误
+     * 解析表达式
+     * 此方法供 CommandParser 使用，允许在自定义 command 中解析 Fluxon 表达式。
      *
-     * @param ex 解析异常
+     * @return 解析的表达式结果
+     * @throws ParseException 当表达式解析失败时
      */
-    private void recordError(ParseException ex) {
-        errors.add(ex);
+    public ParseResult parseExpression() throws ParseException {
+        return ExpressionParser.parse(this);
     }
 
     /**
-     * 同步到下一个语句边界
-     * 用于错误恢复，跳过当前错误语句并找到下一个安全的解析点
-     * <p>
-     * 采用 panic-mode 恢复策略：
-     * 1. 跟踪大括号深度，确保完整跳过嵌套块
-     * 2. 在深度为 0 时遇到分号或顶层关键字（def/fun/val/var等）立即停止
-     * 3. 使用 lastPosition 哨兵防止无限循环
-     * 4. 在遇到左大括号时增加深度，右大括号时减少深度
-     * 5. 只在大括号平衡后才认为到达安全恢复点
+     * 获取当前导入列表
      */
-    private void synchronize() {
-        if (isAtEnd()) {
-            return;
-        }
-        int braceDepth = 0;
-        int lastPosition = -1;
-        while (!isAtEnd()) {
-            // 防止无限循环：如果位置没变化则强制前进
-            if (position == lastPosition) {
-                advance();
-                continue;
-            }
-            lastPosition = position;
-            TokenType type = currentToken.getType();
-            // 遇到分号：语句分隔符，消费后停止
-            if (type == TokenType.SEMICOLON) {
-                advance();
-                return;
-            }
-            // 在顶层遇到恢复点关键字：停止同步
-            if (braceDepth == 0 && type.isTopLevelRecoveryPoint()) {
-                return;
-            }
-            // 跟踪大括号深度
-            if (type == TokenType.LEFT_BRACE) {
-                braceDepth++;
-                advance();
-                continue;
-            }
-            if (type == TokenType.RIGHT_BRACE) {
-                if (braceDepth > 0) {
-                    braceDepth--;
-                }
-                advance();
-                continue;
-            }
-            advance();
-        }
+    public List<String> getImports() {
+        return imports;
     }
 
-    private Token selectHighlightToken(Token token) {
-        if (token == null) {
-            return null;
-        }
-        if (shouldFallbackToPrevious(token) && position > 0) {
-            Token previous = previous();
-            if (previous != null && previous.getLine() > 0) {
-                return previous;
-            }
-        }
-        return token;
+    /**
+     * 获取当前上下文
+     */
+    public CompilationContext getContext() {
+        return context;
     }
 
-    private boolean shouldFallbackToPrevious(Token token) {
-        TokenType type = token.getType();
-        switch (type) {
-            case RIGHT_BRACE:
-            case RIGHT_PAREN:
-            case RIGHT_BRACKET:
-            case SEMICOLON:
-            case EOF:
-                return true;
-            default:
-                return token.getLexeme().isEmpty();
+    /**
+     * 获取当前解析结果
+     */
+    public List<ParseResult> getResults() {
+        return results;
+    }
+
+    /**
+     * 将解析结果转换为伪代码
+     *
+     * @return 伪代码字符串
+     */
+    public String toPseudoCode() {
+        if (results == null) {
+            return "";
         }
+        StringBuilder sb = new StringBuilder();
+        for (ParseResult result : results) {
+            sb.append(result.toPseudoCode());
+            sb.append(";");
+        }
+        return sb.toString();
     }
 }

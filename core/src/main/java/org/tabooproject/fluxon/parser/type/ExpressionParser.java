@@ -11,6 +11,7 @@ import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 
 /**
  * 表达式解析器 - 递归下降解析
@@ -34,32 +35,11 @@ import java.util.LinkedHashMap;
  * 为消除深度嵌套导致的调用栈溢出，解析流程改为 CPS + trampoline：每个阶段接受 continuation，将后续工作封装为惰性 Trampoline
  * 再由 Trampoline.run 以循环驱动，这样保持原有优先级与错误路径，同时不会递归消耗 JVM 栈。
  */
+@SuppressWarnings("unchecked")
 public class ExpressionParser {
 
     private static <T extends ParseResult> T attach(Parser parser, T result, Token token) {
         return parser.attachSource(result, token);
-    }
-
-    /**
-     * 赋值目标
-     */
-    private static final class AssignmentTarget {
-
-        private final ParseResult expression;
-        private final int position;
-
-        private AssignmentTarget(ParseResult expression, int position) {
-            this.expression = expression;
-            this.position = position;
-        }
-
-        public ParseResult expression() {
-            return expression;
-        }
-
-        public int position() {
-            return position;
-        }
     }
 
     /**
@@ -113,25 +93,6 @@ public class ExpressionParser {
     }
 
     /**
-     * 解析三元运算符表达式
-     * 三元运算符 condition ? true_expr : false_expr
-     *
-     * @return 三元运算符表达式解析结果
-     */
-    private static Trampoline<ParseResult> parseTernary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
-        return Trampoline.more(() -> parseLogicalOr(parser, condition -> {
-            if (parser.match(TokenType.QUESTION)) {
-                Token question = parser.previous();
-                return parseTernary(parser, trueExpr -> {
-                    parser.consume(TokenType.COLON, "Expected ':' after ternary true expression");
-                    return parseTernary(parser, falseExpr -> continuation.apply(attach(parser, new TernaryExpression(condition, trueExpr, falseExpr), question)));
-                });
-            }
-            return continuation.apply(condition);
-        }));
-    }
-
-    /**
      * 解析 Elvis 操作符表达式
      * Elvis 操作符 ?: 用于提供默认值，例如：a ?: b 表示如果 a 为 null 则返回 b，否则返回 a
      *
@@ -158,6 +119,25 @@ public class ExpressionParser {
             }
             return continuation.apply(normalized);
         });
+    }
+
+    /**
+     * 解析三元运算符表达式
+     * 三元运算符 condition ? true_expr : false_expr
+     *
+     * @return 三元运算符表达式解析结果
+     */
+    private static Trampoline<ParseResult> parseTernary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        return Trampoline.more(() -> parseLogicalOr(parser, condition -> {
+            if (parser.match(TokenType.QUESTION)) {
+                Token question = parser.previous();
+                return parseTernary(parser, trueExpr -> {
+                    parser.consume(TokenType.COLON, "Expected ':' after ternary true expression");
+                    return parseTernary(parser, falseExpr -> continuation.apply(attach(parser, new TernaryExpression(condition, trueExpr, falseExpr), question)));
+                });
+            }
+            return continuation.apply(condition);
+        }));
     }
 
     /**
@@ -413,17 +393,26 @@ public class ExpressionParser {
     }
 
     /**
-     * 解析圆括号内的参数列表，保持与旧实现相同的消费顺序与错误信息。
+     * 解析 command 表达式
+     * 使用 CommandParser 解析参数，捕获 CommandExecutor 到 AST 节点中。
      */
-    private static ParseResult[] parseCallArguments(Parser parser) {
-        ArrayList<ParseResult> arguments = new ArrayList<>();
-        if (!parser.check(TokenType.RIGHT_PAREN)) {
-            do {
-                arguments.add(ExpressionParser.parse(parser));
-            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
+    private static Trampoline<ParseResult> parseCommand(Parser parser, String name, Token token, Trampoline.Continuation<ParseResult> continuation) {
+        CommandRegistry registry = parser.getContext().getCommandRegistry();
+        CommandHandler<?> handler = registry.get(name);
+        try {
+            // 调用 CommandParser 解析参数
+            CommandParser<Object> commandParser = (CommandParser<Object>) Objects.requireNonNull(handler).getParser();
+            Object parsedData = commandParser.parse(parser, token);
+            // 捕获 CommandExecutor 到 AST 节点
+            CommandExecutor<Object> commandExecutor = (CommandExecutor<Object>) handler.getExecutor();
+            return continuation.apply(attach(parser, new CommandExpression(name, parsedData, commandExecutor), token));
+        } catch (ParseException ex) {
+            // 重新抛出，让 Parser 统一处理
+            throw ex;
+        } catch (Exception ex) {
+            // 包装为 RuntimeException
+            throw new RuntimeException("Error parsing command '" + name + "': " + ex.getMessage(), ex);
         }
-        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return arguments.toArray(new ParseResult[0]);
     }
 
     /**
@@ -435,7 +424,16 @@ public class ExpressionParser {
         switch (parser.peek().getType()) {
             case IDENTIFIER:
                 return Trampoline.more(() -> {
-                    Token token = parser.consume();
+                    Token token = parser.peek();
+                    String name = token.getLexeme();
+                    // 优先检查是否为 command
+                    CommandRegistry registry = parser.getContext().getCommandRegistry();
+                    if (registry.hasCommand(name)) {
+                        parser.consume(); // 消费 command token
+                        return parseCommand(parser, name, token, continuation);
+                    }
+                    // 否则作为普通标识符处理
+                    parser.consume();
                     return continuation.apply(attach(parser, new Identifier(token.getLexeme()), token));
                 });
 
@@ -521,6 +519,36 @@ public class ExpressionParser {
     }
 
     /**
+     * 解析解构赋值表达式
+     * 语法: (var1, var2, ...) = expression
+     *
+     * @param parser       解析器
+     * @param leftParen    左括号 token
+     * @param continuation 继续函数
+     * @return 解析结果
+     */
+    private static Trampoline<ParseResult> parseDestructuringAssignment(Parser parser, Token leftParen, Trampoline.Continuation<ParseResult> continuation) {
+        LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
+        SymbolEnvironment env = parser.getSymbolEnvironment();
+        // 解析第一个变量
+        String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring assignment").getLexeme();
+        parser.defineVariable(first);
+        variables.put(first, env.getLocalVariable(first));
+        // 解析其余变量（以逗号分隔）
+        while (parser.match(TokenType.COMMA)) {
+            String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring assignment").getLexeme();
+            parser.defineVariable(name);
+            variables.put(name, env.getLocalVariable(name));
+        }
+        // 消费右括号
+        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after destructuring variables");
+        // 消费赋值操作符
+        parser.consume(TokenType.ASSIGN, "Expected '=' after destructuring variables");
+        // 解析右侧表达式
+        return parse(parser, value -> continuation.apply(attach(parser, new DestructuringAssignExpression(variables, value), leftParen)));
+    }
+
+    /**
      * 构建赋值目标信息，保持变量定义/捕获/非法目标的原有行为和错误消息。
      */
     private static AssignmentTarget prepareAssignmentTarget(Parser parser, TokenType match, ParseResult expr, Token operator) {
@@ -547,36 +575,16 @@ public class ExpressionParser {
     }
 
     /**
-     * 解析解构赋值表达式
-     * 语法: (var1, var2, ...) = expression
-     *
-     * @param parser       解析器
-     * @param leftParen    左括号 token
-     * @param continuation 继续函数
-     * @return 解析结果
+     * 解析圆括号内的参数列表，保持与旧实现相同的消费顺序与错误信息。
      */
-    private static Trampoline<ParseResult> parseDestructuringAssignment(
-            Parser parser,
-            Token leftParen,
-            Trampoline.Continuation<ParseResult> continuation
-    ) {
-        LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
-        SymbolEnvironment env = parser.getSymbolEnvironment();
-        // 解析第一个变量
-        String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring assignment").getLexeme();
-        parser.defineVariable(first);
-        variables.put(first, env.getLocalVariable(first));
-        // 解析其余变量（以逗号分隔）
-        while (parser.match(TokenType.COMMA)) {
-            String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring assignment").getLexeme();
-            parser.defineVariable(name);
-            variables.put(name, env.getLocalVariable(name));
+    private static ParseResult[] parseCallArguments(Parser parser) {
+        ArrayList<ParseResult> arguments = new ArrayList<>();
+        if (!parser.check(TokenType.RIGHT_PAREN)) {
+            do {
+                arguments.add(ExpressionParser.parse(parser));
+            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
         }
-        // 消费右括号
-        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after destructuring variables");
-        // 消费赋值操作符
-        parser.consume(TokenType.ASSIGN, "Expected '=' after destructuring variables");
-        // 解析右侧表达式
-        return parse(parser, value -> continuation.apply(attach(parser, new DestructuringAssignExpression(variables, value), leftParen)));
+        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
+        return arguments.toArray(new ParseResult[0]);
     }
 }
