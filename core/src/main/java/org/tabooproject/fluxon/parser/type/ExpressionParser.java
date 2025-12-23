@@ -5,10 +5,12 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.*;
+import org.tabooproject.fluxon.parser.expression.DestructuringAssignExpression;
 import org.tabooproject.fluxon.parser.expression.literal.*;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 /**
  * 表达式解析器 - 递归下降解析
@@ -496,6 +498,12 @@ public class ExpressionParser {
 
             case LEFT_PAREN: {
                 Token leftParen = parser.consume();
+                // 检查是否是解构赋值模式: (id, id, ...) = expr
+                // 条件: 下一个是 IDENTIFIER 且再下一个是 COMMA
+                if (parser.check(TokenType.IDENTIFIER) && parser.peek(1).getType() == TokenType.COMMA) {
+                    return parseDestructuringAssignment(parser, leftParen, continuation);
+                }
+                // 普通括号表达式
                 return parse(parser, expr -> {
                     parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression");
                     return continuation.apply(attach(parser, new GroupingExpression(expr), leftParen));
@@ -536,5 +544,39 @@ public class ExpressionParser {
             return new AssignmentTarget(target, -1);
         }
         throw parser.createParseException("Invalid assignment target: " + target, operator);
+    }
+
+    /**
+     * 解析解构赋值表达式
+     * 语法: (var1, var2, ...) = expression
+     *
+     * @param parser       解析器
+     * @param leftParen    左括号 token
+     * @param continuation 继续函数
+     * @return 解析结果
+     */
+    private static Trampoline<ParseResult> parseDestructuringAssignment(
+            Parser parser,
+            Token leftParen,
+            Trampoline.Continuation<ParseResult> continuation
+    ) {
+        LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
+        SymbolEnvironment env = parser.getSymbolEnvironment();
+        // 解析第一个变量
+        String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring assignment").getLexeme();
+        parser.defineVariable(first);
+        variables.put(first, env.getLocalVariable(first));
+        // 解析其余变量（以逗号分隔）
+        while (parser.match(TokenType.COMMA)) {
+            String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring assignment").getLexeme();
+            parser.defineVariable(name);
+            variables.put(name, env.getLocalVariable(name));
+        }
+        // 消费右括号
+        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after destructuring variables");
+        // 消费赋值操作符
+        parser.consume(TokenType.ASSIGN, "Expected '=' after destructuring variables");
+        // 解析右侧表达式
+        return parse(parser, value -> continuation.apply(attach(parser, new DestructuringAssignExpression(variables, value), leftParen)));
     }
 }

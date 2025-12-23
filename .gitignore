@@ -33,6 +33,8 @@ bin/
 .DS_Store
 
 .claude/
+.opencode/
+openspec
 AGENTS.md
 CLAUDE.md
 core/dump

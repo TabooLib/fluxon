@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.DestructuringAssignmentEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
 
@@ -44,6 +45,8 @@ public enum ExpressionType {
 
     // 赋值表达式
     ASSIGNMENT(new AssignmentEvaluator()),
+    // 解构赋值表达式
+    DESTRUCTURING_ASSIGNMENT(new DestructuringAssignmentEvaluator()),
     // 函数调用
     FUNCTION_CALL(new FunctionCallEvaluator()),
     // 索引访问

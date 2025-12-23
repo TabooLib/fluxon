@@ -47,6 +47,7 @@ public class DestructuringRegistry {
      */
     private void registerBuiltInDestructurers() {
         // 注册顺序很重要，越具体的解构器应该越靠前
+        destructurers.add(new MapDestructurer());
         destructurers.add(new MapEntryDestructurer());
         destructurers.add(new ListDestructurer());
         destructurers.add(new ArrayDestructurer());
