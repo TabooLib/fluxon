@@ -45,12 +45,10 @@ public class StatementMacroRegistry {
     private static void registerBuiltinMacros(StatementMacroRegistry registry) {
         // 函数定义 (priority: 200) - 顶层
         registry.register(new FunctionDefinitionMacro());
-
         // 控制流语句 (priority: 100)
         registry.register(new ReturnStatementMacro());
         registry.register(new BreakStatementMacro());
         registry.register(new ContinueStatementMacro());
-
         // 表达式语句 (priority: 0) - 兜底
         registry.register(new ExpressionStatementMacro());
     }

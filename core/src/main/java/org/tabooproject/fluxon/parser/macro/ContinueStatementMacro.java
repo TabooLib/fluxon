@@ -29,9 +29,4 @@ public class ContinueStatementMacro implements StatementMacro {
         parser.match(TokenType.SEMICOLON);
         return continuation.apply(parser.attachSource(new ContinueStatement(), continueToken));
     }
-
-    @Override
-    public int priority() {
-        return 100;
-    }
 }

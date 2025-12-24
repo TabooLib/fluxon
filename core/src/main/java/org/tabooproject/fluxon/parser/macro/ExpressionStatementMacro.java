@@ -32,10 +32,7 @@ public class ExpressionStatementMacro implements StatementMacro {
     }
 
     @Override
-    public ParseResult parseTopLevel(Parser parser, List<Annotation> annotations) {
-        if (!annotations.isEmpty()) {
-            throw new RuntimeException("Annotations can only be applied to function definitions");
-        }
+    public ParseResult parseTopLevel(Parser parser) {
         ParseResult expr = ExpressionParser.parse(parser);
         parser.match(TokenType.SEMICOLON);
         return parser.copySource(new ExpressionStatement(expr), expr);

@@ -1,9 +1,5 @@
 package org.tabooproject.fluxon.parser;
 
-import org.tabooproject.fluxon.parser.definition.Annotation;
-
-import java.util.List;
-
 /**
  * 语句宏接口
  * <p>
@@ -52,10 +48,9 @@ public interface StatementMacro {
      * 解析顶层语句
      *
      * @param parser      解析器
-     * @param annotations 已解析的注解列表
      * @return 解析结果
      */
-    default ParseResult parseTopLevel(Parser parser, List<Annotation> annotations) {
+    default ParseResult parseTopLevel(Parser parser) {
         throw new UnsupportedOperationException("This macro does not support top-level statements");
     }
 

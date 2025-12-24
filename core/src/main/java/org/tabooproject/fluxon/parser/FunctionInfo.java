@@ -1,10 +1,6 @@
-package org.tabooproject.fluxon.parser.type;
+package org.tabooproject.fluxon.parser;
 
 import org.jetbrains.annotations.Nullable;
-import org.tabooproject.fluxon.parser.Callable;
-import org.tabooproject.fluxon.parser.ExtensionFunctionPosition;
-import org.tabooproject.fluxon.parser.FunctionPosition;
-import org.tabooproject.fluxon.parser.Parser;
 
 /**
  * 函数信息持有者

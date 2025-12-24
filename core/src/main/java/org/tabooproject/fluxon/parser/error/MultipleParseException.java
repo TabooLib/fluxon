@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.parser;
+package org.tabooproject.fluxon.parser.error;
 
 import java.util.List;
 

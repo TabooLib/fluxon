@@ -6,11 +6,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.StatementMacro;
 import org.tabooproject.fluxon.parser.Trampoline;
-import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
-
-import java.util.List;
 
 /**
  * Return 语句宏
@@ -30,10 +27,7 @@ public class ReturnStatementMacro implements StatementMacro {
     }
 
     @Override
-    public ParseResult parseTopLevel(Parser parser, List<Annotation> annotations) {
-        if (!annotations.isEmpty()) {
-            throw new RuntimeException("Annotations cannot be applied to return statements");
-        }
+    public ParseResult parseTopLevel(Parser parser) {
         Token returnToken = parser.consume(TokenType.RETURN, "Expected 'return'");
         if (parser.isEndOfExpression()) {
             parser.match(TokenType.SEMICOLON);
@@ -55,10 +49,5 @@ public class ReturnStatementMacro implements StatementMacro {
             parser.match(TokenType.SEMICOLON);
             return continuation.apply(parser.attachSource(new ReturnStatement(returnValue), returnToken));
         });
-    }
-
-    @Override
-    public int priority() {
-        return 100;
     }
 }

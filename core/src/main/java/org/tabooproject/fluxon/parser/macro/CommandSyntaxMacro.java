@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.macro;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
+import org.tabooproject.fluxon.parser.error.ParseException;
 import org.tabooproject.fluxon.parser.expression.CommandExpression;
 
 import java.util.Objects;

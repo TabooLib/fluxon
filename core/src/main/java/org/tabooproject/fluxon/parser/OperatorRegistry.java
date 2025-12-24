@@ -88,31 +88,22 @@ public class OperatorRegistry {
 
         // Assignment (10) - 右结合
         registry.registerInfix(new AssignmentInfixOperator());
-
         // Elvis (20) - 右结合
         registry.registerInfix(new ElvisInfixOperator());
-
         // Ternary (30) - 右结合
         registry.registerInfix(new TernaryInfixOperator());
-
         // LogicalOr (40) - 左结合
         registry.registerInfix(new LogicalOrInfixOperator());
-
         // LogicalAnd (50) - 左结合
         registry.registerInfix(new LogicalAndInfixOperator());
-
         // Range (60) - 非结合
         registry.registerInfix(new RangeInfixOperator());
-
         // Equality (70) - 左结合
         registry.registerInfix(new EqualityInfixOperator());
-
         // Comparison (80) - 左结合
         registry.registerInfix(new ComparisonInfixOperator());
-
         // Term (90) - 左结合
         registry.registerInfix(new TermInfixOperator());
-
         // Factor (100) - 左结合
         registry.registerInfix(new FactorInfixOperator());
 
@@ -120,10 +111,8 @@ public class OperatorRegistry {
 
         // Reference (100) - &, &?
         registry.registerPrefix(new ReferencePrefixOperator());
-
         // Unary (50) - !, -
         registry.registerPrefix(new UnaryPrefixOperator());
-
         // Await (50)
         registry.registerPrefix(new AwaitPrefixOperator());
     }

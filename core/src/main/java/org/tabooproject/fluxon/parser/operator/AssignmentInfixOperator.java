@@ -35,14 +35,11 @@ public class AssignmentInfixOperator implements InfixOperator {
     }
 
     @Override
-    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator,
-                                         Trampoline.Continuation<ParseResult> continuation) {
+    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator, Trampoline.Continuation<ParseResult> continuation) {
         AssignmentTarget target = prepareAssignmentTarget(parser, operator.getType(), left, operator);
         // 右结合：使用相同绑定力
         return PrattParser.parseExpression(parser, bindingPower(), right ->
-                continuation.apply(parser.attachSource(
-                        new AssignExpression(target.expression(), operator, right, target.position()),
-                        operator)));
+                continuation.apply(parser.attachSource(new AssignExpression(target.expression(), operator, right, target.position()), operator)));
     }
 
     /**
@@ -69,5 +66,27 @@ public class AssignmentInfixOperator implements InfixOperator {
             return new AssignmentTarget(target, -1);
         }
         throw parser.createParseException("Invalid assignment target: " + target, operator);
+    }
+
+    /**
+     * 赋值目标
+     */
+    static class AssignmentTarget {
+
+        private final ParseResult expression;
+        private final int position;
+
+        public AssignmentTarget(ParseResult expression, int position) {
+            this.expression = expression;
+            this.position = position;
+        }
+
+        public ParseResult expression() {
+            return expression;
+        }
+
+        public int position() {
+            return position;
+        }
     }
 }

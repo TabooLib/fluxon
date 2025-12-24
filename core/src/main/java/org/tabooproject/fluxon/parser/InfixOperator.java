@@ -1,9 +1,6 @@
-package org.tabooproject.fluxon.parser.operator;
+package org.tabooproject.fluxon.parser;
 
 import org.tabooproject.fluxon.lexer.Token;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.Trampoline;
 
 /**
  * 中缀运算符接口

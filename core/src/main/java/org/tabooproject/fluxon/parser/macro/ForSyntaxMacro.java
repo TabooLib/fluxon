@@ -1,11 +1,18 @@
 package org.tabooproject.fluxon.parser.macro;
 
+import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.SyntaxMacro;
 import org.tabooproject.fluxon.parser.Trampoline;
-import org.tabooproject.fluxon.parser.type.ForParser;
+import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.type.BlockParser;
+import org.tabooproject.fluxon.parser.type.ExpressionParser;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
 
 /**
  * For 表达式语法宏
@@ -19,6 +26,99 @@ public class ForSyntaxMacro implements SyntaxMacro {
 
     @Override
     public Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
-        return ForParser.parse(parser, continuation);
+        return parseFor(parser, continuation);
+    }
+
+    /**
+     * 解析 For 表达式
+     * 语法规范：
+     * - 单变量形式：for <identifier> in <expression> then <...>
+     * - 解构形式：for (<identifier>, <identifier>, ...) in <expression> then <...>
+     *
+     * @return For 表达式解析结果
+     */
+    @SuppressWarnings("DuplicatedCode")
+    private Trampoline<ParseResult> parseFor(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        // 消费 FOR 标记
+        Token forToken = parser.consume(TokenType.FOR, "Expected 'for' before for expression");
+        SymbolEnvironment env = parser.getSymbolEnvironment();
+        // 之前的状态
+        boolean isBreakable = env.isBreakable();
+        boolean isContinuable = env.isContinuable();
+        // 设置新的状态
+        env.setBreakable(true);
+        env.setContinuable(true);
+
+        // 解析变量部分
+        LinkedHashMap<String, Integer> variables;
+
+        // 检查是否是解构形式 (变量1, 变量2, ...)
+        if (parser.match(TokenType.LEFT_PAREN)) {
+            variables = parseDestructuringVariables(parser);
+        } else {
+            // 单变量形式
+            String variable = parser.consume(TokenType.IDENTIFIER, "Expected identifier after 'for'").getLexeme();
+            parser.defineVariable(variable);
+            variables = new LinkedHashMap<>();
+            variables.put(variable, env.getLocalVariable(variable));
+        }
+
+        // 消费 IN 标记
+        parser.consume(TokenType.IN, "Expected 'in' after identifier in for expression");
+        // 解析集合表达式
+        return ExpressionParser.parse(parser, collection -> parseBody(parser, env, isBreakable, isContinuable, variables, collection, continuation, forToken));
+    }
+
+    /**
+     * 解析解构变量列表
+     * 格式：(变量1, 变量2, ...)
+     *
+     * @param parser 解析器
+     * @return 变量名列表
+     */
+    private LinkedHashMap<String, Integer> parseDestructuringVariables(Parser parser) {
+        LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
+        // 解析第一个变量
+        String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring declaration").getLexeme();
+        parser.defineVariable(first);
+        variables.put(first, parser.getSymbolEnvironment().getLocalVariable(first));
+        // 解析其余变量（以逗号分隔）
+        while (parser.match(TokenType.COMMA)) {
+            String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring declaration").getLexeme();
+            parser.defineVariable(name);
+            variables.put(name, parser.getSymbolEnvironment().getLocalVariable(name));
+        }
+        // 消费右括号
+        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after destructuring variables");
+        return variables;
+    }
+
+    private Trampoline<ParseResult> parseBody(
+            Parser parser,
+            SymbolEnvironment env,
+            boolean oldBreakable,
+            boolean oldContinuable,
+            LinkedHashMap<String, Integer> variables,
+            ParseResult collection,
+            Trampoline.Continuation<ParseResult> continuation,
+            Token forToken
+    ) {
+        int localVariableCount = env.getLocalVariables().getOrDefault(env.getCurrentFunction(), Collections.emptySet()).size();
+        return parseLoopBody(parser, body -> {
+            // 恢复状态
+            env.setBreakable(oldBreakable);
+            env.setContinuable(oldContinuable);
+            return continuation.apply(parser.attachSource(new ForExpression(variables, collection, body, localVariableCount), forToken));
+        });
+    }
+
+    private Trampoline<ParseResult> parseLoopBody(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        // 尝试消费 THEN 标记，如果存在
+        parser.match(TokenType.THEN);
+        // 解析循环体
+        if (parser.match(TokenType.LEFT_BRACE)) {
+            return BlockParser.parse(parser, continuation);
+        }
+        return ExpressionParser.parse(parser, continuation);
     }
 }

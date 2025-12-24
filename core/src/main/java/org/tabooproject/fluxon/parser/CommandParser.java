@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser;
 
 import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.parser.error.ParseException;
 
 /**
  * Command 解析器接口

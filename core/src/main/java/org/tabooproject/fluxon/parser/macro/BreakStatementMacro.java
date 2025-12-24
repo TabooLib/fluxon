@@ -29,9 +29,4 @@ public class BreakStatementMacro implements StatementMacro {
         parser.match(TokenType.SEMICOLON);
         return continuation.apply(parser.attachSource(new BreakStatement(), breakToken));
     }
-
-    @Override
-    public int priority() {
-        return 100;
-    }
 }

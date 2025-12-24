@@ -1,8 +1,4 @@
-package org.tabooproject.fluxon.parser.operator;
-
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.Trampoline;
+package org.tabooproject.fluxon.parser;
 
 /**
  * 前缀运算符接口

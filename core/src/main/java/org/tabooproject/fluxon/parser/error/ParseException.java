@@ -1,6 +1,8 @@
-package org.tabooproject.fluxon.parser;
+package org.tabooproject.fluxon.parser.error;
 
 import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceExcerpt;
 
 import java.util.List;
 

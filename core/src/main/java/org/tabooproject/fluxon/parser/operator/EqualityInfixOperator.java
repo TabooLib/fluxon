@@ -2,10 +2,7 @@ package org.tabooproject.fluxon.parser.operator;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.PrattParser;
-import org.tabooproject.fluxon.parser.Trampoline;
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 
 /**
@@ -31,8 +28,7 @@ public class EqualityInfixOperator implements InfixOperator {
     }
 
     @Override
-    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator,
-                                         Trampoline.Continuation<ParseResult> continuation) {
+    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator, Trampoline.Continuation<ParseResult> continuation) {
         return PrattParser.parseExpression(parser, bindingPower() + 1, right ->
                 continuation.apply(parser.attachSource(new BinaryExpression(left, operator, right), operator)));
     }

@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.operator;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.InfixOperator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.Trampoline;
@@ -28,15 +29,8 @@ public class ElvisInfixOperator implements InfixOperator {
     }
 
     @Override
-    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator,
-                                         Trampoline.Continuation<ParseResult> continuation) {
+    public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator, Trampoline.Continuation<ParseResult> continuation) {
         // 右侧支持子语句（块或表达式）
-        return StatementParser.parseSub(parser, arm -> {
-            ParseResult normalized = arm;
-            if (arm instanceof ExpressionStatement) {
-                normalized = ((ExpressionStatement) arm).getExpression();
-            }
-            return continuation.apply(parser.attachSource(new ElvisExpression(left, normalized), operator));
-        });
+        return StatementParser.parseSubToExpr(parser, normalized -> continuation.apply(parser.attachSource(new ElvisExpression(left, normalized), operator)));
     }
 }
