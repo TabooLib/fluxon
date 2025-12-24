@@ -50,9 +50,9 @@ public class ReferencePrefixOperator implements PrefixOperator {
                         new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()), token, excerpt);
             }
         }
-        // 处理后缀操作
+        // 处理后缀操作（函数调用、数组访问等）
         ref = PostfixParser.parsePostfixOperations(parser, ref);
-        // 继续解析调用表达式
-        return PrattParser.parseCallExpression(parser, ref, continuation);
+        // 中缀运算符（包括 ::）会在 parseInfixLoop 中自动处理
+        return continuation.apply(ref);
     }
 }

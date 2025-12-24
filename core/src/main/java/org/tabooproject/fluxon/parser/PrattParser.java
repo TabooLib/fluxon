@@ -2,13 +2,7 @@ package org.tabooproject.fluxon.parser;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.expression.ContextCallExpression;
-import org.tabooproject.fluxon.parser.expression.literal.Identifier;
-import org.tabooproject.fluxon.parser.type.BlockParser;
-import org.tabooproject.fluxon.parser.type.FunctionCallParser;
 import org.tabooproject.fluxon.parser.type.PostfixParser;
-
-import java.util.ArrayList;
 
 /**
  * Pratt Parser 核心实现
@@ -47,16 +41,19 @@ public class PrattParser {
     /**
      * 解析前缀表达式
      * <p>
-     * 先检查前缀运算符，没有则解析 primary 和调用表达式。
+     * 先检查前缀运算符，没有则解析 primary 和后缀操作。
      */
-    public static Trampoline<ParseResult> parsePrefix(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+    private static Trampoline<ParseResult> parsePrefix(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         OperatorRegistry registry = parser.getContext().getOperatorRegistry();
         PrefixOperator prefixOp = registry.findPrefixMatch(parser);
         if (prefixOp != null) {
             return prefixOp.parse(parser, continuation);
         }
-        // 没有前缀运算符，解析 primary 然后处理调用
-        return parseCallablePrimary(parser, expr -> parseCallExpression(parser, expr, continuation));
+        // 没有前缀运算符，解析 primary 然后处理后缀操作
+        return parsePrimary(parser, primary -> {
+            ParseResult expr = PostfixParser.parsePostfixOperations(parser, primary);
+            return Trampoline.more(() -> continuation.apply(expr)); // 使用 Trampoline.more 包装，避免栈溢出
+        });
     }
 
     /**
@@ -70,25 +67,6 @@ public class PrattParser {
         }
         Token operator = parser.consume();
         return infixOp.parse(parser, left, operator, newLeft -> parseInfixLoop(parser, newLeft, minBindingPower, continuation));
-    }
-
-    /**
-     * 解析可调用的 primary
-     */
-    private static Trampoline<ParseResult> parseCallablePrimary(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
-        return parsePrimary(parser, primary -> {
-            ParseResult expr = primary;
-            if (expr instanceof Identifier) {
-                Identifier callee = (Identifier) expr;
-                if (parser.match(TokenType.LEFT_PAREN)) {
-                    expr = FunctionCallParser.getFunctionCallExpression(parser, callee, parseCallArguments(parser));
-                } else if (parser.check(TokenType.CONTEXT_CALL)) {
-                    expr = FunctionCallParser.getFunctionCallExpression(parser, callee, new ParseResult[0]);
-                }
-            }
-            expr = PostfixParser.parsePostfixOperations(parser, expr);
-            return continuation.apply(expr);
-        });
     }
 
     /**
@@ -112,54 +90,5 @@ public class PrattParser {
             throw parser.createParseException("Eof", token);
         }
         throw parser.createParseException("Expected expression", token);
-    }
-
-    /**
-     * 解析调用表达式（处理 :: 上下文调用）
-     */
-    public static Trampoline<ParseResult> parseCallExpression(Parser parser, ParseResult expr, Trampoline.Continuation<ParseResult> continuation) {
-        if (parser.match(TokenType.CONTEXT_CALL)) {
-            return handleContextCall(parser, expr, continuation);
-        }
-        return Trampoline.more(() -> continuation.apply(PostfixParser.parsePostfixOperations(parser, expr)));
-    }
-
-    /**
-     * 处理 :: 上下文调用链
-     */
-    private static Trampoline<ParseResult> handleContextCall(Parser parser, ParseResult expr, Trampoline.Continuation<ParseResult> continuation) {
-        Token contextCallToken = parser.previous();
-        ParseResult context;
-        if (parser.match(TokenType.LEFT_BRACE)) {
-            boolean isContextCall = parser.getSymbolEnvironment().isContextCall();
-            parser.getSymbolEnvironment().setContextCall(true);
-            return BlockParser.parse(parser, block -> {
-                parser.getSymbolEnvironment().setContextCall(isContextCall);
-                ParseResult combined = parser.attachSource(new ContextCallExpression(expr, block), contextCallToken);
-                return parseCallExpression(parser, combined, continuation);
-            });
-        } else {
-            SymbolEnvironment env = parser.getSymbolEnvironment();
-            boolean isContextCall = env.isContextCall();
-            env.setContextCall(true);
-            context = FunctionCallParser.parse(parser);
-            env.setContextCall(isContextCall);
-        }
-        ParseResult combined = parser.attachSource(new ContextCallExpression(expr, context), contextCallToken);
-        return parseCallExpression(parser, combined, continuation);
-    }
-
-    /**
-     * 解析函数调用参数列表
-     */
-    private static ParseResult[] parseCallArguments(Parser parser) {
-        ArrayList<ParseResult> arguments = new ArrayList<>();
-        if (!parser.check(TokenType.RIGHT_PAREN)) {
-            do {
-                arguments.add(parse(parser));
-            } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
-        }
-        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return arguments.toArray(new ParseResult[0]);
     }
 }

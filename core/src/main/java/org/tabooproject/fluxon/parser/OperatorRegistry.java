@@ -106,14 +106,16 @@ public class OperatorRegistry {
         registry.registerInfix(new TermInfixOperator());
         // Factor (100) - 左结合
         registry.registerInfix(new FactorInfixOperator());
+        // ContextCall (110) - 左结合
+        registry.registerInfix(new ContextCallInfixOperator());
 
         // === 前缀运算符 ===
 
         // Reference (100) - &, &?
         registry.registerPrefix(new ReferencePrefixOperator());
-        // Unary (50) - !, -
+        // Unary (105) - !, -
         registry.registerPrefix(new UnaryPrefixOperator());
-        // Await (50)
+        // Await (105)
         registry.registerPrefix(new AwaitPrefixOperator());
     }
 
