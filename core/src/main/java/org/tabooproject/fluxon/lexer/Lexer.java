@@ -171,9 +171,6 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 -
                 advance(); // 消费 >
                 tokens.add(new Token(TokenType.ARROW, "->", startLine, startColumn));
-            } else if (c == '-' && next >= '0' && next <= '9') {
-                // 处理负数 - 直接解析为数字的一部分
-                tokens.add(consumeNumber());
             } else if (c == '/' && next == '/') {
                 // 行注释 - 快速消费
                 consumeLineComment();

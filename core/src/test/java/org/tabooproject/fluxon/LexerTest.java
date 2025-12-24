@@ -325,6 +325,21 @@ public class LexerTest {
         }
 
         @Test
+        @DisplayName("测试紧贴减号按操作符处理")
+        void testMinusBetweenNumbers() {
+            String source = "1-2";
+            List<Token> tokens = getTokens(source);
+
+            assertEquals(4, tokens.size(), "应包含 3 个 token 加上 EOF");
+            assertEquals(TokenType.INTEGER, tokens.get(0).getType(), "第1个 token 应为整数");
+            assertEquals("1", tokens.get(0).getLexeme(), "第1个整数应为 '1'");
+            assertEquals(TokenType.MINUS, tokens.get(1).getType(), "第2个 token 应为 '-' 操作符");
+            assertEquals(TokenType.INTEGER, tokens.get(2).getType(), "第3个 token 应为整数");
+            assertEquals("2", tokens.get(2).getLexeme(), "第2个整数应为 '2'");
+            assertEquals(TokenType.EOF, tokens.get(3).getType(), "最后一个 token 应为 EOF");
+        }
+
+        @Test
         @DisplayName("测试比较操作符")
         void testComparisonOperators() {
             String source = "== != > < >= <=";
