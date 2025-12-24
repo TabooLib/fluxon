@@ -163,6 +163,22 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 检查当前标记是否为指定类型之一
+     *
+     * @param types 要检查的类型数组
+     * @return 是否匹配任一类型
+     */
+    public boolean checkAny(TokenType... types) {
+        if (isAtEnd()) return false;
+        for (TokenType type : types) {
+            if (currentToken.is(type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 检查是否已到达标记序列末尾
      *
      * @return 是否到达末尾

@@ -2,6 +2,9 @@ package org.tabooproject.fluxon.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.CommandRegistry;
+import org.tabooproject.fluxon.parser.StatementMacroRegistry;
+import org.tabooproject.fluxon.parser.SyntaxMacroRegistry;
+import org.tabooproject.fluxon.parser.OperatorRegistry;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +29,12 @@ public class CompilationContext {
 
     // Command 注册表
     private CommandRegistry commandRegistry = CommandRegistry.primary();
+    // 语法宏注册表
+    private SyntaxMacroRegistry syntaxMacroRegistry = SyntaxMacroRegistry.primary();
+    // 运算符注册表
+    private OperatorRegistry operatorRegistry = OperatorRegistry.primary();
+    // 语句宏注册表
+    private StatementMacroRegistry statementMacroRegistry = StatementMacroRegistry.primary();
 
     /**
      * 创建编译上下文
@@ -140,5 +149,56 @@ public class CompilationContext {
      */
     public void setCommandRegistry(@NotNull CommandRegistry commandRegistry) {
         this.commandRegistry = commandRegistry;
+    }
+
+    /**
+     * 获取语法宏注册表
+     * 默认返回 {@link SyntaxMacroRegistry#primary()}，除非通过 {@link #setSyntaxMacroRegistry(SyntaxMacroRegistry)} 设置了自定义注册表。
+     */
+    @NotNull
+    public SyntaxMacroRegistry getSyntaxMacroRegistry() {
+        return syntaxMacroRegistry;
+    }
+
+    /**
+     * 设置自定义语法宏注册表
+     * 用于需要自定义语法集合的场景，如沙箱环境或领域特定语言。
+     */
+    public void setSyntaxMacroRegistry(@NotNull SyntaxMacroRegistry syntaxMacroRegistry) {
+        this.syntaxMacroRegistry = syntaxMacroRegistry;
+    }
+
+    /**
+     * 获取运算符注册表
+     * 默认返回 {@link OperatorRegistry#primary()}，除非通过 {@link #setOperatorRegistry(OperatorRegistry)} 设置了自定义注册表。
+     */
+    @NotNull
+    public OperatorRegistry getOperatorRegistry() {
+        return operatorRegistry;
+    }
+
+    /**
+     * 设置自定义运算符注册表
+     * 用于需要自定义运算符集合的场景，如沙箱环境或领域特定语言。
+     */
+    public void setOperatorRegistry(@NotNull OperatorRegistry operatorRegistry) {
+        this.operatorRegistry = operatorRegistry;
+    }
+
+    /**
+     * 获取语句宏注册表
+     * 默认返回 {@link StatementMacroRegistry#primary()}，除非通过 {@link #setStatementMacroRegistry(StatementMacroRegistry)} 设置了自定义注册表。
+     */
+    @NotNull
+    public StatementMacroRegistry getStatementMacroRegistry() {
+        return statementMacroRegistry;
+    }
+
+    /**
+     * 设置自定义语句宏注册表
+     * 用于需要自定义语句集合的场景，如沙箱环境或领域特定语言。
+     */
+    public void setStatementMacroRegistry(@NotNull StatementMacroRegistry statementMacroRegistry) {
+        this.statementMacroRegistry = statementMacroRegistry;
     }
 }

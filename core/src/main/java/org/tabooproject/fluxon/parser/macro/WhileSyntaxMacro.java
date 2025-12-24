@@ -1,0 +1,24 @@
+package org.tabooproject.fluxon.parser.macro;
+
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.parser.SyntaxMacro;
+import org.tabooproject.fluxon.parser.Trampoline;
+import org.tabooproject.fluxon.parser.type.WhileParser;
+
+/**
+ * While 表达式语法宏
+ */
+public class WhileSyntaxMacro implements SyntaxMacro {
+
+    @Override
+    public boolean matches(Parser parser) {
+        return parser.check(TokenType.WHILE);
+    }
+
+    @Override
+    public Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
+        return WhileParser.parse(parser, continuation);
+    }
+}

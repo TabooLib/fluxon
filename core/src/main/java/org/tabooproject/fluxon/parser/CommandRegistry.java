@@ -88,6 +88,20 @@ public class CommandRegistry {
     }
 
     /**
+     * 创建一个包含主注册表所有 command 的新注册表实例
+     * <p>
+     * 用于在主注册表的基础上创建隔离的注册表副本。
+     * </p>
+     *
+     * @return 主注册表命令的副本
+     */
+    public static CommandRegistry withDefaults() {
+        CommandRegistry registry = new CommandRegistry();
+        registry.commands.putAll(primary().commands);
+        return registry;
+    }
+
+    /**
      * 创建新的独立 CommandRegistry 实例
      */
     public CommandRegistry() {
