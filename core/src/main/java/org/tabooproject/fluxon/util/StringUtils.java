@@ -14,20 +14,6 @@ import java.util.stream.Collectors;
 public class StringUtils {
 
     /**
-     * 生成指定数量的缩进空格
-     *
-     * @param indent 缩进级别
-     * @return 缩进字符串
-     */
-    public static String getIndent(int indent) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < indent; i++) {
-            sb.append("    ");
-        }
-        return sb.toString();
-    }
-
-    /**
      * 计算哈希值
      */
     public static String hash(String input, String algorithm) {
@@ -173,5 +159,18 @@ public class StringUtils {
                     }
                     return transformedName;
                 }).toArray(String[]::new);
+    }
+
+    /**
+     * 首字母大写
+     *
+     * @param str 输入字符串
+     * @return 首字母大写后的字符串
+     */
+    public static String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
     }
 }

@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime.reflection;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.runtime.error.MemberAccessError;
 import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
+import org.tabooproject.fluxon.util.StringUtils;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -13,20 +14,49 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.lang.reflect.Array.*;
+
 /**
  * 反射缓存
  * 使用 MethodHandle 缓存反射访问，提供高性能的成员访问能力
  */
 public class ReflectionHelper {
 
-    // 字段 Getter 缓存
-    private static final ConcurrentHashMap<FieldKey, MethodHandle> FIELD_CACHE = new ConcurrentHashMap<>();
-    // 方法缓存（按实际调用参数类型缓存）
-    private static final ConcurrentHashMap<MethodKey, MethodHandle> METHOD_CACHE = new ConcurrentHashMap<>();
+    // ==================== 缓存结构 ====================
+
+    // 字段 Getter 缓存：Class -> fieldName -> MethodHandle
+    private static final ConcurrentHashMap<Class<?>, ConcurrentHashMap<String, MethodHandle>> FIELD_CACHE = new ConcurrentHashMap<>();
+    // 方法缓存：Class -> methodName -> argCount -> [argTypes -> MethodHandle]
+    private static final ConcurrentHashMap<Class<?>, ConcurrentHashMap<String, ArityCache>> METHOD_CACHE = new ConcurrentHashMap<>();
     // 方法索引（按方法名快速查找所有重载）
     private static final ConcurrentHashMap<Class<?>, Map<String, List<Method>>> METHOD_INDEX = new ConcurrentHashMap<>();
     // Lookup 实例（可访问 public 成员）
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
+
+    // ==================== 预缓存常量 ====================
+
+    // 数值类型等级映射（使用 IdentityHashMap 实现 O(1) 查找）
+    private static final IdentityHashMap<Class<?>, Integer> NUMERIC_RANK = new IdentityHashMap<>(16);
+
+    static {
+        // 初始化数值类型等级
+        NUMERIC_RANK.put(byte.class, 1);
+        NUMERIC_RANK.put(Byte.class, 1);
+        NUMERIC_RANK.put(short.class, 2);
+        NUMERIC_RANK.put(Short.class, 2);
+        NUMERIC_RANK.put(char.class, 2);
+        NUMERIC_RANK.put(Character.class, 2);
+        NUMERIC_RANK.put(int.class, 3);
+        NUMERIC_RANK.put(Integer.class, 3);
+        NUMERIC_RANK.put(long.class, 4);
+        NUMERIC_RANK.put(Long.class, 4);
+        NUMERIC_RANK.put(float.class, 5);
+        NUMERIC_RANK.put(Float.class, 5);
+        NUMERIC_RANK.put(double.class, 6);
+        NUMERIC_RANK.put(Double.class, 6);
+    }
+
+    // ==================== 公共 API ====================
 
     /**
      * 获取字段值（优先 MethodHandle）
@@ -36,29 +66,16 @@ public class ReflectionHelper {
             throw new NullPointerException("Cannot access field '" + fieldName + "' on null object");
         }
         Class<?> clazz = target.getClass();
-        FieldKey key = new FieldKey(clazz, fieldName);
-        // 先检查是否为静态字段（如接口常量）
-        // 静态字段直接获取，不需要实例
-        Field field = findField(clazz, fieldName);
-        if (field != null && Modifier.isStatic(field.getModifiers())) {
-            return field.get(null);
-        }
-        MethodHandle getter = FIELD_CACHE.computeIfAbsent(key, k -> {
-            try {
-                // 1. 尝试直接字段访问（非静态）
-                if (field != null) {
-                    return LOOKUP.unreflectGetter(field);
-                }
-                // 2. 降级：尝试无参方法 (getField, field, isField)
-                return findGetterMethod(clazz, fieldName);
-            } catch (IllegalAccessException e) {
-                throw new MemberAccessError("Cannot access field: " + fieldName, e);
+        // 1. 快速路径：检查缓存（避免创建 Key 对象）
+        ConcurrentHashMap<String, MethodHandle> classCache = FIELD_CACHE.get(clazz);
+        if (classCache != null) {
+            MethodHandle cached = classCache.get(fieldName);
+            if (cached != null) {
+                return cached.invoke(target);
             }
-        });
-        if (getter == null) {
-            throw new MemberNotFoundError(clazz, fieldName);
         }
-        return getter.invoke(target);
+        // 2. 慢路径：查找并缓存
+        return getFieldSlow(target, clazz, fieldName);
     }
 
     /**
@@ -69,14 +86,61 @@ public class ReflectionHelper {
             throw new NullPointerException("Cannot invoke method '" + methodName + "' on null object");
         }
         Class<?> clazz = target.getClass();
-        Class<?>[] argTypes = getArgTypes(args);
-        MethodKey exactKey = new MethodKey(clazz, methodName, argTypes);
-        // 1. 精确缓存命中
-        MethodHandle cached = METHOD_CACHE.get(exactKey);
-        if (cached != null) {
-            return invokeHandle(cached, target, args);
+        int argCount = args.length;
+        // 1. 快速路径：多级缓存查找（避免创建 MethodKey 对象）
+        ConcurrentHashMap<String, ArityCache> classCache = METHOD_CACHE.get(clazz);
+        if (classCache != null) {
+            ArityCache arityCache = classCache.get(methodName);
+            if (arityCache != null) {
+                Class<?>[] argTypes = getArgTypes(args);
+                MethodHandle cached = arityCache.get(argCount, argTypes);
+                if (cached != null) {
+                    // 使用 invoke 而非 invokeWithArguments（更快）
+                    return invokeSpread(cached, target, args);
+                }
+            }
         }
-        // 2. 缓存未命中：查找方法
+        // 2. 慢路径：查找并缓存
+        return invokeMethodSlow(target, clazz, methodName, args);
+    }
+
+    // ==================== 慢路径实现 ====================
+
+    /**
+     * 字段访问慢路径
+     */
+    private static Object getFieldSlow(Object target, Class<?> clazz, String fieldName) throws Throwable {
+        // 检查是否为静态字段
+        Field field = findField(clazz, fieldName);
+        if (field != null && Modifier.isStatic(field.getModifiers())) {
+            return field.get(null);
+        }
+        // 创建 MethodHandle
+        MethodHandle getter;
+        try {
+            if (field != null) {
+                getter = LOOKUP.unreflectGetter(field);
+            } else {
+                getter = findGetterMethod(clazz, fieldName);
+            }
+        } catch (IllegalAccessException e) {
+            throw new MemberAccessError("Cannot access field: " + fieldName, e);
+        }
+        if (getter == null) {
+            throw new MemberNotFoundError(clazz, fieldName);
+        }
+        // 缓存
+        FIELD_CACHE.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>()).put(fieldName, getter);
+        return getter.invoke(target);
+    }
+
+    /**
+     * 方法调用慢路径
+     */
+    private static Object invokeMethodSlow(Object target, Class<?> clazz, String methodName, Object[] args) throws Throwable {
+        Class<?>[] argTypes = getArgTypes(args);
+        int argCount = args.length;
+        // 查找方法
         List<Method> candidates = METHOD_INDEX
                 .computeIfAbsent(clazz, ReflectionHelper::buildMethodIndex)
                 .getOrDefault(methodName, Collections.emptyList());
@@ -85,13 +149,41 @@ public class ReflectionHelper {
         }
         // 匹配最佳方法
         Method best = findBestMatch(candidates, argTypes);
-        // 3. 如果是 varargs 方法，需要特殊处理参数
+        // varargs 方法特殊处理（不缓存）
         if (best.isVarArgs()) {
             return invokeVarargsMethod(best, target, args);
         }
-        // 4. 非 varargs 方法：缓存并调用
-        MethodHandle method = findAndCacheMethod(clazz, methodName, argTypes);
-        return invokeHandle(method, target, args);
+        // 创建优化的 MethodHandle
+        try {
+            MethodHandle mh = LOOKUP.unreflect(best);
+            // 转换为 (Object, Object[]) -> Object 形式，使用 asSpreader
+            MethodType spreadType = MethodType.methodType(Object.class, Object.class, Object[].class);
+            MethodHandle adapted = mh.asType(mh.type().changeReturnType(Object.class).changeParameterType(0, Object.class));
+            // 将剩余参数转换为 spreader
+            if (argCount > 0) {
+                // 先转换参数类型为 Object
+                MethodType genericType = MethodType.genericMethodType(argCount + 1);
+                adapted = adapted.asType(genericType);
+                adapted = adapted.asSpreader(Object[].class, argCount);
+            }
+            // 缓存
+            METHOD_CACHE.computeIfAbsent(clazz, k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(methodName, k -> new ArityCache())
+                    .put(argCount, argTypes, adapted);
+            return invokeSpread(adapted, target, args);
+        } catch (IllegalAccessException e) {
+            throw new MemberAccessError("Cannot access method: " + methodName, e);
+        }
+    }
+
+    /**
+     * 使用 spreader 调用 MethodHandle（比 invokeWithArguments 快）
+     */
+    private static Object invokeSpread(MethodHandle handle, Object target, Object[] args) throws Throwable {
+        if (args.length == 0) {
+            return handle.invoke(target);
+        }
+        return handle.invoke(target, args);
     }
 
     /**
@@ -107,61 +199,35 @@ public class ReflectionHelper {
         System.arraycopy(args, 0, newArgs, 0, fixedParamCount);
         // 打包 varargs 参数
         int varargCount = args.length - fixedParamCount;
-        Object varargArray = java.lang.reflect.Array.newInstance(varargType, varargCount);
+        Object varargArray = newInstance(varargType, varargCount);
         for (int i = 0; i < varargCount; i++) {
-            java.lang.reflect.Array.set(varargArray, i, args[fixedParamCount + i]);
+            set(varargArray, i, args[fixedParamCount + i]);
         }
         newArgs[fixedParamCount] = varargArray;
-        // 使用反射调用（varargs 不缓存，因为参数数量可变）
         return method.invoke(target, newArgs);
     }
+
+    // ==================== 字段查找 ====================
 
     /**
      * 查找字段（支持继承链和接口常量）
      */
     private static Field findField(Class<?> clazz, String fieldName) {
-        // 1. 先在类继承链中查找
-        Class<?> current = clazz;
-        while (current != null) {
-            try {
-                return current.getField(fieldName);
-            } catch (NoSuchFieldException e) {
-                current = current.getSuperclass();
-            }
+        // 直接使用 getField - 它会搜索整个继承链包括接口
+        try {
+            return clazz.getField(fieldName);
+        } catch (NoSuchFieldException e) {
+            return null;
         }
-        // 2. 在所有实现的接口中查找常量字段
-        return findInterfaceField(Objects.requireNonNull(clazz), fieldName, new HashSet<>());
-    }
-
-    /**
-     * 在接口继承链中查找字段（递归搜索所有父接口）
-     */
-    private static Field findInterfaceField(Class<?> clazz, String fieldName, Set<Class<?>> visited) {
-        // 遍历当前类/接口实现的所有接口
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (visited.contains(iface)) continue;
-            visited.add(iface);
-            try {
-                return iface.getField(fieldName);
-            } catch (NoSuchFieldException e) {
-                // 递归搜索父接口
-                Field found = findInterfaceField(iface, fieldName, visited);
-                if (found != null) return found;
-            }
-        }
-        // 如果有父类，也检查父类的接口
-        Class<?> superClass = clazz.getSuperclass();
-        if (superClass != null && superClass != Object.class) {
-            return findInterfaceField(superClass, fieldName, visited);
-        }
-        return null;
     }
 
     /**
      * 查找 getter 方法（getField, field, isField）
      */
     private static MethodHandle findGetterMethod(Class<?> clazz, String fieldName) throws IllegalAccessException {
-        String[] patterns = {"get" + capitalize(fieldName), fieldName, "is" + capitalize(fieldName)};
+        String capitalized = StringUtils.capitalize(fieldName);
+        // 尝试三种模式
+        String[] patterns = {"get" + capitalized, fieldName, "is" + capitalized};
         for (String methodName : patterns) {
             try {
                 Method method = clazz.getMethod(methodName);
@@ -174,47 +240,16 @@ public class ReflectionHelper {
         return null;
     }
 
-    /**
-     * 查找方法并缓存（处理重载和varargs）
-     */
-    private static MethodHandle findAndCacheMethod(Class<?> clazz, String methodName, Class<?>[] argTypes) {
-        // 查找所有同名方法（使用索引）
-        List<Method> candidates = METHOD_INDEX
-                .computeIfAbsent(clazz, ReflectionHelper::buildMethodIndex)
-                .getOrDefault(methodName, Collections.emptyList());
-        if (candidates.isEmpty()) {
-            throw new MemberNotFoundError(clazz, methodName, argTypes);
-        }
-        // 匹配最佳方法
-        Method best = findBestMatch(candidates, argTypes);
-        try {
-            MethodHandle mh = LOOKUP.unreflect(best);
-            // 对于 varargs 方法，需要特殊处理
-            if (best.isVarArgs()) {
-                // 将 varargs 方法转换为接受 Object[] 的形式
-                mh = mh.asFixedArity();
-                // 不缓存 varargs 方法，因为每次调用参数数量可能不同
-                return mh;
-            }
-            // 类型适配（自动装箱/拆箱、向上转型）
-            MethodType targetType = MethodType.methodType(Object.class, prependObjectClass(getObjectTypes(argTypes)));
-            MethodHandle adapted = mh.asType(targetType);
-            // 缓存（使用实际参数类型作为键）
-            MethodKey key = new MethodKey(clazz, methodName, argTypes);
-            METHOD_CACHE.put(key, adapted);
-            return adapted;
-        } catch (IllegalAccessException e) {
-            throw new MemberAccessError("Cannot access method: " + methodName, e);
-        }
-    }
+    // ==================== 方法索引与匹配 ====================
 
     /**
      * 构建类的方法索引（延迟初始化）
      */
     private static Map<String, List<Method>> buildMethodIndex(Class<?> clazz) {
-        Map<String, List<Method>> index = new HashMap<>();
-        for (Method method : clazz.getMethods()) { // 仅 public 方法
-            index.computeIfAbsent(method.getName(), k -> new ArrayList<>()).add(method);
+        Method[] methods = clazz.getMethods();
+        Map<String, List<Method>> index = new HashMap<>(methods.length);
+        for (Method method : methods) {
+            index.computeIfAbsent(method.getName(), k -> new ArrayList<>(4)).add(method);
         }
         return index;
     }
@@ -223,33 +258,26 @@ public class ReflectionHelper {
      * 匹配最佳方法（支持varargs）
      */
     private static Method findBestMatch(List<Method> candidates, Class<?>[] argTypes) {
-        // 优先级 1: 精确匹配
+        Method varargsFallback = null;
         for (Method m : candidates) {
-            if (Arrays.equals(m.getParameterTypes(), argTypes)) {
+            Class<?>[] paramTypes = m.getParameterTypes();
+            // 优先级 1: 精确匹配
+            if (Arrays.equals(paramTypes, argTypes)) {
                 return m;
             }
-        }
-        // 优先级 2: 赋值兼容（所有参数都可赋值，不含 varargs）
-        List<Method> compatible = new ArrayList<>();
-        for (Method m : candidates) {
-            if (!m.isVarArgs() && isAssignable(m.getParameterTypes(), argTypes)) {
-                compatible.add(m);
+            // 优先级 2: 赋值兼容（非 varargs）
+            if (!m.isVarArgs() && isAssignable(paramTypes, argTypes)) {
+                return m; // 找到第一个兼容的就返回
+            }
+            // 记录 varargs 备选
+            if (m.isVarArgs() && varargsFallback == null && isVarargsAssignable(m, argTypes)) {
+                varargsFallback = m;
             }
         }
-        // 优先级 3: 选择最具体的方法（参数类型最接近）
-        if (compatible.size() == 1) {
-            return compatible.get(0);
+        // 优先级 3: varargs 匹配
+        if (varargsFallback != null) {
+            return varargsFallback;
         }
-        if (compatible.size() > 1) {
-            return findMostSpecific(compatible, argTypes);
-        }
-        // 优先级 4: 尝试 varargs 匹配
-        for (Method m : candidates) {
-            if (m.isVarArgs() && isVarargsAssignable(m, argTypes)) {
-                return m;
-            }
-        }
-        // 没有找到匹配的方法
         throw new MemberNotFoundError(candidates.get(0).getDeclaringClass(), candidates.get(0).getName(), argTypes);
     }
 
@@ -259,7 +287,6 @@ public class ReflectionHelper {
     private static boolean isVarargsAssignable(Method method, Class<?>[] argTypes) {
         Class<?>[] paramTypes = method.getParameterTypes();
         int fixedParamCount = paramTypes.length - 1;
-        // 参数数量必须 >= 固定参数数量
         if (argTypes.length < fixedParamCount) {
             return false;
         }
@@ -280,7 +307,7 @@ public class ReflectionHelper {
     }
 
     /**
-     * 检查参数类型是否可赋值（支持数值类型拓宽转换）
+     * 检查参数类型是否可赋值
      */
     private static boolean isAssignable(Class<?>[] paramTypes, Class<?>[] argTypes) {
         if (paramTypes.length != argTypes.length) {
@@ -295,142 +322,46 @@ public class ReflectionHelper {
     }
 
     /**
-     * 检查单个类型是否兼容（支持数值类型拓宽转换）
+     * 检查单个类型是否兼容
      */
     private static boolean isTypeCompatible(Class<?> param, Class<?> arg) {
-        // 处理 null 参数
         if (arg == null) {
             return !param.isPrimitive();
         }
-        // 处理装箱/拆箱和数值拓宽
         if (param.isPrimitive() || arg.isPrimitive()) {
             return isPrimitiveCompatible(param, arg);
         }
-        // 引用类型赋值兼容性
         return param.isAssignableFrom(arg);
     }
 
     /**
-     * 检查原始类型兼容性（支持装箱/拆箱和数值拓宽转换）
-     * 支持 Java 的数值拓宽规则：
-     * - byte → short, int, long, float, double
-     * - short → int, long, float, double
-     * - char → int, long, float, double
-     * - int → long, float, double
-     * - long → float, double
-     * - float → double
+     * 检查原始类型兼容性
      */
     private static boolean isPrimitiveCompatible(Class<?> param, Class<?> arg) {
         Class<?> paramBoxed = BytecodeUtils.boxToClass(param);
         Class<?> argBoxed = BytecodeUtils.boxToClass(arg);
-        // 完全匹配（包含装箱/拆箱）
-        if (paramBoxed.equals(argBoxed)) {
+        if (paramBoxed == argBoxed) { // 使用 == 替代 equals（Class 对象唯一）
             return true;
         }
         // 数值类型拓宽转换
-        if (Number.class.isAssignableFrom(argBoxed) && Number.class.isAssignableFrom(paramBoxed)) {
-            return isNumericWideningAllowed(argBoxed, paramBoxed);
+        Integer fromRank = NUMERIC_RANK.get(argBoxed);
+        Integer toRank = NUMERIC_RANK.get(paramBoxed);
+        if (fromRank != null && toRank != null) {
+            return fromRank <= toRank;
         }
-        // 普通引用类型赋值
         return paramBoxed.isAssignableFrom(argBoxed);
-    }
-
-    /**
-     * 检查数值拓宽转换是否允许
-     */
-    private static boolean isNumericWideningAllowed(Class<?> from, Class<?> to) {
-        // 拓宽转换优先级：byte < short < int < long < float < double
-        int fromRank = getNumericRank(from);
-        int toRank = getNumericRank(to);
-        // 允许从较小类型转换到较大类型
-        // 特殊情况：int/long 可以转换为 float/double（可能有精度损失但 Java 允许）
-        return fromRank <= toRank;
-    }
-
-    /**
-     * 获取数值类型的拓宽等级
-     */
-    private static int getNumericRank(Class<?> type) {
-        if (type == Byte.class || type == byte.class) return 1;
-        if (type == Short.class || type == short.class) return 2;
-        if (type == Character.class || type == char.class) return 2; // char 与 short 同级
-        if (type == Integer.class || type == int.class) return 3;
-        if (type == Long.class || type == long.class) return 4;
-        if (type == Float.class || type == float.class) return 5;
-        if (type == Double.class || type == double.class) return 6;
-        return 0; // 未知类型
-    }
-
-    /**
-     * 查找最具体的方法（基于类型特异性）
-     * 选择参数类型特异性总和最高的方法
-     */
-    private static Method findMostSpecific(List<Method> methods, Class<?>[] argTypes) {
-        Method best = null;
-        int bestScore = -1;
-        for (Method method : methods) {
-            int score = 0;
-            Class<?>[] paramTypes = method.getParameterTypes();
-            for (Class<?> paramType : paramTypes) {
-                score += BytecodeUtils.getTypeSpecificity(paramType);
-            }
-            if (score > bestScore) {
-                bestScore = score;
-                best = method;
-            }
-        }
-        return best != null ? best : methods.get(0);
-    }
-
-    /**
-     * 调用 MethodHandle
-     */
-    private static Object invokeHandle(MethodHandle handle, Object target, Object[] args) throws Throwable {
-        Object[] allArgs = new Object[args.length + 1];
-        allArgs[0] = target;
-        System.arraycopy(args, 0, allArgs, 1, args.length);
-        return handle.invokeWithArguments(allArgs);
     }
 
     /**
      * 获取参数类型数组
      */
     private static Class<?>[] getArgTypes(Object[] args) {
-        Class<?>[] types = new Class<?>[args.length];
-        for (int i = 0; i < args.length; i++) {
-            types[i] = args[i] != null ? args[i].getClass() : null;
+        int len = args.length;
+        Class<?>[] types = new Class<?>[len];
+        for (int i = 0; i < len; i++) {
+            Object arg = args[i];
+            types[i] = arg != null ? arg.getClass() : null;
         }
         return types;
-    }
-
-    /**
-     * 转换为 Object 类型数组
-     */
-    private static Class<?>[] getObjectTypes(Class<?>[] types) {
-        Class<?>[] objectTypes = new Class<?>[types.length];
-        for (int i = 0; i < types.length; i++) {
-            objectTypes[i] = Object.class;
-        }
-        return objectTypes;
-    }
-
-    /**
-     * 在数组前添加 Object.class
-     */
-    private static Class<?>[] prependObjectClass(Class<?>[] types) {
-        Class<?>[] result = new Class<?>[types.length + 1];
-        result[0] = Object.class;
-        System.arraycopy(types, 0, result, 1, types.length);
-        return result;
-    }
-
-    /**
-     * 首字母大写
-     */
-    private static String capitalize(String str) {
-        if (str == null || str.isEmpty()) {
-            return str;
-        }
-        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
     }
 }
