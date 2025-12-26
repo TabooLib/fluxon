@@ -94,16 +94,16 @@ public class ReflectionHelper {
      * 字段访问慢路径
      */
     private static Object getFieldSlow(Object target, Class<?> clazz, String fieldName) throws Throwable {
-        // 检查是否为静态字段
         Field field = FieldResolver.findField(clazz, fieldName);
-        if (field != null && Modifier.isStatic(field.getModifiers())) {
-            return field.get(null);
-        }
         // 创建 MethodHandle
         MethodHandle getter;
         try {
             if (field != null) {
                 getter = LOOKUP.unreflectGetter(field);
+                // 静态字段：添加被忽略的参数，统一为 (Object)Object 签名
+                if (Modifier.isStatic(field.getModifiers())) {
+                    getter = MethodHandles.dropArguments(getter, 0, Object.class);
+                }
             } else {
                 getter = FieldResolver.findGetterMethod(clazz, fieldName);
             }
@@ -113,7 +113,7 @@ public class ReflectionHelper {
         if (getter == null) {
             throw new MemberNotFoundError(clazz, fieldName);
         }
-        // 缓存
+        // 缓存（静态字段和实例字段统一使用 (Object)Object 签名）
         FieldCache.put(clazz, fieldName, getter);
         return getter.invoke(target);
     }

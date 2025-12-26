@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime.reflection.bootstrap;
 
 import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.reflection.resolve.FieldResolver;
+import org.tabooproject.fluxon.runtime.reflection.util.PolymorphicInlineCache;
 
 import java.lang.invoke.*;
 
@@ -54,24 +55,13 @@ public class FieldBootstrap {
         // 1. 尝试创建类型特化的直接字段访问
         MethodHandle specialized = FieldResolver.tryCreateSpecializedFieldHandle(targetClass, fieldName);
         if (specialized != null) {
-            // 创建带类型保护的 MethodHandle
-            MethodHandle guarded = createGuardedFieldHandle(
-                targetClass, specialized,
-                createFieldFallback(callSite, fieldName),
-                callSite.type()
-            );
-            callSite.setTarget(guarded);
+            tryInstallGuard(callSite, targetClass, specialized, fieldName);
             return specialized.invoke(target);
         }
         // 2. 尝试 getter 方法
         MethodHandle getter = FieldResolver.tryCreateGetterHandle(targetClass, fieldName);
         if (getter != null) {
-            MethodHandle guarded = createGuardedFieldHandle(
-                targetClass, getter,
-                createFieldFallback(callSite, fieldName),
-                callSite.type()
-            );
-            callSite.setTarget(guarded);
+            tryInstallGuard(callSite, targetClass, getter, fieldName);
             return getter.invoke(target);
         }
         // 3. 降级使用 FieldResolver（不缓存，每次动态查找）
@@ -79,7 +69,23 @@ public class FieldBootstrap {
     }
 
     /**
+     * 尝试安装带类型保护的 MethodHandle 到 callsite
+     */
+    private static void tryInstallGuard(MutableCallSite callSite, Class<?> targetClass, MethodHandle handle, String fieldName) {
+        if (!PolymorphicInlineCache.canAddEntry(callSite)) {
+            return;
+        }
+        MethodHandle guarded = createGuardedFieldHandle(targetClass, handle, createFieldFallback(callSite, fieldName), callSite.type());
+        if (guarded != null) {
+            PolymorphicInlineCache.incrementDepth(callSite);
+            callSite.setTarget(guarded);
+            MutableCallSite.syncAll(new MutableCallSite[]{callSite});
+        }
+    }
+
+    /**
      * 创建带类型保护的字段访问 MethodHandle
+     * @return 成功返回 guarded MethodHandle，失败返回 null
      */
     private static MethodHandle createGuardedFieldHandle(Class<?> targetClass, MethodHandle specialized, MethodHandle fallback, MethodType callSiteType) {
         try {
@@ -97,7 +103,7 @@ public class FieldBootstrap {
             MethodHandle adaptedFallback = fallback.asType(callSiteType);
             return MethodHandles.guardWithTest(typeCheck, adapted, adaptedFallback);
         } catch (Exception e) {
-            return fallback.asType(callSiteType);
+            return null;
         }
     }
 

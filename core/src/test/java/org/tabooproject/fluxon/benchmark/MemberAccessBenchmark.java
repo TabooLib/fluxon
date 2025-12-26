@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * 二期测试：
  * Benchmark                                        Mode  Cnt    Score     Error  Units
-     * MemberAccessBenchmark.chainedAccess_Compile      avgt    5   10.210 ±   3.302  ns/op
+ * MemberAccessBenchmark.chainedAccess_Compile      avgt    5   10.210 ±   3.302  ns/op
  * MemberAccessBenchmark.chainedAccess_Interpret    avgt    5  189.081 ±  90.190  ns/op
  * MemberAccessBenchmark.chainedAccess_JavaDirect   avgt    5    2.141 ±   1.501  ns/op
  * MemberAccessBenchmark.complexChain_Compile       avgt    5    8.811 ±   3.078  ns/op
@@ -64,6 +64,26 @@ import java.util.concurrent.atomic.AtomicInteger;
  * MemberAccessBenchmark.methodWithArgs_Compile     avgt    5    9.771 ±   1.286  ns/op
  * MemberAccessBenchmark.methodWithArgs_Interpret   avgt    5  191.480 ± 185.897  ns/op
  * MemberAccessBenchmark.methodWithArgs_JavaDirect  avgt    5    2.085 ±   0.715  ns/op
+ * <p>
+ * 三期测试：
+ * Benchmark                                        Mode  Cnt    Score    Error  Units
+ * MemberAccessBenchmark.chainedAccess_Compile      avgt    5    8.547 ±  4.538  ns/op
+ * MemberAccessBenchmark.chainedAccess_Interpret    avgt    5  181.284 ± 62.816  ns/op
+ * MemberAccessBenchmark.chainedAccess_JavaDirect   avgt    5    2.099 ±  1.139  ns/op
+ * MemberAccessBenchmark.complexChain_Compile       avgt    5    8.924 ±  3.651  ns/op
+ * MemberAccessBenchmark.complexChain_Interpret     avgt    5  119.497 ± 88.123  ns/op
+ * MemberAccessBenchmark.complexChain_JavaDirect    avgt    5    2.406 ±  0.977  ns/op
+ * MemberAccessBenchmark.fieldAccess_Compile        avgt    5   10.430 ±  6.250  ns/op
+ * MemberAccessBenchmark.fieldAccess_Interpret      avgt    5   81.841 ± 46.202  ns/op
+ * MemberAccessBenchmark.fieldAccess_JavaDirect     avgt    5    2.084 ±  0.927  ns/op
+ * MemberAccessBenchmark.methodNoArgs_Compile       avgt    5    8.517 ±  4.173  ns/op
+ * MemberAccessBenchmark.methodNoArgs_Interpret     avgt    5   99.027 ± 54.215  ns/op
+ * MemberAccessBenchmark.methodNoArgs_JavaDirect    avgt    5    2.109 ±  1.093  ns/op
+ * MemberAccessBenchmark.methodOverload_Compile     avgt    5   16.979 ± 10.130  ns/op
+ * MemberAccessBenchmark.methodOverload_Interpret   avgt    5  129.827 ± 84.681  ns/op
+ * MemberAccessBenchmark.methodWithArgs_Compile     avgt    5   12.335 ±  5.263  ns/op
+ * MemberAccessBenchmark.methodWithArgs_Interpret   avgt    5  138.368 ± 38.717  ns/op
+ * MemberAccessBenchmark.methodWithArgs_JavaDirect  avgt    5    2.112 ±  0.368  ns/op
  *
  * @author sky
  */

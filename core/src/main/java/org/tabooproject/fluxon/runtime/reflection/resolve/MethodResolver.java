@@ -46,21 +46,23 @@ public final class MethodResolver {
 
     /**
      * 查找最佳匹配的方法（用于 Bootstrap）
+     * 单次遍历同时检查精确匹配和兼容匹配
      */
     public static Method findBestMethod(Class<?> targetClass, String methodName, Class<?>[] argTypes) {
-        // 首先尝试精确匹配
-        try {
-            return targetClass.getMethod(methodName, argTypes);
-        } catch (NoSuchMethodException ignored) {
-        }
-        // 尝试找到兼容的方法
+        Method compatible = null;
         for (Method method : targetClass.getMethods()) {
             if (!method.getName().equals(methodName)) continue;
-            if (TypeCompatibility.isParametersCompatible(method.getParameterTypes(), argTypes)) {
+            Class<?>[] paramTypes = method.getParameterTypes();
+            // 精确匹配直接返回
+            if (Arrays.equals(paramTypes, argTypes)) {
                 return method;
             }
+            // 记录第一个兼容匹配作为备选
+            if (compatible == null && TypeCompatibility.isParametersCompatible(paramTypes, argTypes)) {
+                compatible = method;
+            }
         }
-        return null;
+        return compatible;
     }
 
     /**
@@ -68,19 +70,27 @@ public final class MethodResolver {
      */
     public static MethodHandle tryCreateSpecializedMethodHandle(Class<?> targetClass, String methodName, Object[] args, MethodType callSiteType) {
         try {
-            // 根据参数类型查找方法
-            Class<?>[] argTypes = new Class<?>[args.length];
-            for (int i = 0; i < args.length; i++) {
-                argTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
-            }
+            // 使用与 ReflectionHelper.invokeMethod 一致的类型提取方式
+            Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
             // 尝试精确匹配
             Method method = findBestMethod(targetClass, methodName, argTypes);
             if (method == null) {
                 return null;
             }
-            // 确保方法可访问（处理嵌套类等情况）
-            method.setAccessible(true);
-            MethodHandle mh = MethodHandles.lookup().unreflect(method);
+            // 尝试创建 MethodHandle，优先使用 publicLookup
+            MethodHandle mh;
+            try {
+                mh = LOOKUP.unreflect(method);
+            } catch (IllegalAccessException e) {
+                // 方法不可公开访问，尝试使用 setAccessible
+                try {
+                    method.setAccessible(true);
+                    mh = MethodHandles.lookup().unreflect(method);
+                } catch (SecurityException | IllegalAccessException ex) {
+                    // SecurityManager 阻止或模块系统限制，回退返回 null
+                    return null;
+                }
+            }
             // 转换为接受 Object[] 参数的形式
             mh = mh.asSpreader(Object[].class, args.length);
             return mh.asType(callSiteType);

@@ -4,7 +4,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Polymorphic Inline Cache (PIC) 管理器
@@ -22,32 +24,35 @@ public final class PolymorphicInlineCache {
 
     /**
      * 每个 CallSite 的 PIC 深度计数器
+     * 使用 WeakHashMap 确保 CallSite 被 GC 后自动清理
      */
-    private static final ConcurrentHashMap<MutableCallSite, Integer> PIC_DEPTH_MAP = new ConcurrentHashMap<>();
+    private static final Map<MutableCallSite, Integer> PIC_DEPTH_MAP = Collections.synchronizedMap(new WeakHashMap<>());
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
     // ==================== PIC 深度管理 ====================
 
     /**
-     * 获取指定 CallSite 的 PIC 深度
-     */
-    public static int getDepth(MutableCallSite callSite) {
-        return PIC_DEPTH_MAP.getOrDefault(callSite, 0);
-    }
-
-    /**
-     * 增加 CallSite 的 PIC 深度
-     */
-    public static void incrementDepth(MutableCallSite callSite) {
-        PIC_DEPTH_MAP.compute(callSite, (k, v) -> v == null ? 1 : v + 1);
-    }
-
-    /**
-     * 检查是否可以添加新的 PIC 条目
+     * 检查是否可以添加新条目（不增加深度）
+     * @return true 如果当前深度 < MAX_PIC_DEPTH
      */
     public static boolean canAddEntry(MutableCallSite callSite) {
-        return getDepth(callSite) < MAX_PIC_DEPTH;
+        synchronized (PIC_DEPTH_MAP) {
+            Integer current = PIC_DEPTH_MAP.get(callSite);
+            int depth = current == null ? 0 : current;
+            return depth < MAX_PIC_DEPTH;
+        }
+    }
+
+    /**
+     * 增加 PIC 深度（仅在 guard 创建成功后调用）
+     */
+    public static void incrementDepth(MutableCallSite callSite) {
+        synchronized (PIC_DEPTH_MAP) {
+            Integer current = PIC_DEPTH_MAP.get(callSite);
+            int depth = current == null ? 0 : current;
+            PIC_DEPTH_MAP.put(callSite, depth + 1);
+        }
     }
 
     /**
@@ -68,6 +73,7 @@ public final class PolymorphicInlineCache {
 
     /**
      * 创建 PIC 方法调用条目
+     * @return 成功返回 guarded MethodHandle，失败返回 null
      */
     public static MethodHandle createMethodEntry(
             Class<?> targetClass,
@@ -81,7 +87,7 @@ public final class PolymorphicInlineCache {
             MethodHandle adaptedFallback = fallback.asType(callSiteType);
             return MethodHandles.guardWithTest(guard, adapted, adaptedFallback);
         } catch (Throwable e) {
-            return fallback;
+            return null;
         }
     }
 
@@ -125,6 +131,7 @@ public final class PolymorphicInlineCache {
 
     /**
      * 创建 PIC 构造函数调用条目
+     * @return 成功返回 guarded MethodHandle，失败返回 null
      */
     public static MethodHandle createConstructorEntry(
             String className,
@@ -138,7 +145,7 @@ public final class PolymorphicInlineCache {
             MethodHandle adaptedFallback = fallback.asType(callSiteType);
             return MethodHandles.guardWithTest(guard, adapted, adaptedFallback);
         } catch (Throwable e) {
-            return fallback;
+            return null;
         }
     }
 

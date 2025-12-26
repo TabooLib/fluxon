@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime.reflection.util;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 
 import java.lang.reflect.Executable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -108,7 +109,12 @@ public final class TypeCompatibility {
             return false;
         }
         for (int i = 0; i < paramTypes.length; i++) {
-            if (argTypes[i] != null && !isAssignableFrom(paramTypes[i], argTypes[i])) {
+            // null 只能赋给非原始类型
+            if (argTypes[i] == null) {
+                if (paramTypes[i].isPrimitive()) {
+                    return false;
+                }
+            } else if (!isAssignableFrom(paramTypes[i], argTypes[i])) {
                 return false;
             }
         }
@@ -169,7 +175,7 @@ public final class TypeCompatibility {
 
     /**
      * 匹配最佳 Executable（Method 或 Constructor）
-     * 按优先级顺序：精确匹配 > 赋值兼容（非 varargs）> varargs 匹配
+     * 按优先级顺序：精确匹配 > 最具体的赋值兼容（非 varargs）> varargs 匹配
      *
      * @param candidates 候选列表
      * @param argTypes   实际参数类型
@@ -178,22 +184,69 @@ public final class TypeCompatibility {
      */
     public static <T extends Executable> T findBestMatch(List<T> candidates, Class<?>[] argTypes) {
         T varargsFallback = null;
+        List<T> compatibleCandidates = null; // 延迟初始化
         for (T executable : candidates) {
             Class<?>[] paramTypes = executable.getParameterTypes();
-            // 优先级 1: 精确匹配
+            // 优先级 1: 精确匹配（直接返回）
             if (Arrays.equals(paramTypes, argTypes)) {
                 return executable;
             }
-            // 优先级 2: 赋值兼容（非 varargs）
+            // 优先级 2: 赋值兼容（非 varargs）- 收集所有兼容候选
             if (!executable.isVarArgs() && isAssignable(paramTypes, argTypes)) {
-                return executable;
+                if (compatibleCandidates == null) {
+                    compatibleCandidates = new ArrayList<>(4);
+                }
+                compatibleCandidates.add(executable);
             }
-            // 记录 varargs 备选
+            // 优先级 3: varargs 备选
             if (executable.isVarArgs() && varargsFallback == null && isVarargsCompatible(paramTypes, argTypes)) {
                 varargsFallback = executable;
             }
         }
+        // 从兼容候选中选择最具体的
+        if (compatibleCandidates != null) {
+            if (compatibleCandidates.size() == 1) {
+                return compatibleCandidates.get(0);
+            }
+            return selectMostSpecific(compatibleCandidates);
+        }
         // 优先级 3: varargs 匹配
         return varargsFallback;
+    }
+
+    /**
+     * 从多个兼容候选中选择最具体的 Executable
+     * 基于 JLS 15.12.2.5 的简化实现：参数类型更窄的更具体
+     */
+    private static <T extends Executable> T selectMostSpecific(List<T> candidates) {
+        T best = candidates.get(0);
+        for (int i = 1; i < candidates.size(); i++) {
+            T current = candidates.get(i);
+            if (isMoreSpecific(current, best)) {
+                best = current;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * 判断 a 是否比 b 更具体
+     * 如果 a 的所有参数类型都可以赋值给 b 的对应参数类型，则 a 更具体
+     */
+    private static boolean isMoreSpecific(Executable a, Executable b) {
+        Class<?>[] aParams = a.getParameterTypes();
+        Class<?>[] bParams = b.getParameterTypes();
+        if (aParams.length != bParams.length) {
+            return false;
+        }
+        boolean aMoreSpecific = true;
+        for (int i = 0; i < aParams.length; i++) {
+            // a 的参数类型必须是 b 的参数类型的子类型（或相同）
+            if (!bParams[i].isAssignableFrom(aParams[i])) {
+                aMoreSpecific = false;
+                break;
+            }
+        }
+        return aMoreSpecific;
     }
 }

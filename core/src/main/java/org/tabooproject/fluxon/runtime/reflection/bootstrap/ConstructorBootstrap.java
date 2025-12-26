@@ -53,12 +53,16 @@ public class ConstructorBootstrap {
         // 3. 尝试创建类型特化的构造函数 MethodHandle 用于后续调用
         MethodHandle specialized = ConstructorResolver.tryCreateSpecializedConstructorHandle(clazz, args, callSite.type());
         if (specialized != null) {
+            // 先检查是否可添加，创建成功后再增加深度
             if (PolymorphicInlineCache.canAddEntry(callSite)) {
                 MethodHandle currentTarget = callSite.getTarget();
-                // 为特定类名 + 参数类型创建 PIC entry
-                MethodHandle guard = PolymorphicInlineCache.createConstructorEntry(className, argTypes, specialized, currentTarget, callSite.type());
-                callSite.setTarget(guard);
-                PolymorphicInlineCache.incrementDepth(callSite);
+                MethodHandle guarded = PolymorphicInlineCache.createConstructorEntry(className, argTypes, specialized, currentTarget, callSite.type());
+                if (guarded != null) {
+                    // guard 创建成功，增加深度并更新 callsite
+                    PolymorphicInlineCache.incrementDepth(callSite);
+                    callSite.setTarget(guarded);
+                    MutableCallSite.syncAll(new MutableCallSite[]{callSite});
+                }
             }
         }
         return result;
