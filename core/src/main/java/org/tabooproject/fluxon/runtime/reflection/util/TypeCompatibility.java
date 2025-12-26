@@ -116,7 +116,7 @@ public final class TypeCompatibility {
     }
 
     /**
-     * 获取参数类型数组
+     * 获取参数类型数组（null 参数返回 null 类型）
      */
     public static Class<?>[] getArgTypes(Object[] args) {
         int len = args.length;
@@ -124,6 +124,25 @@ public final class TypeCompatibility {
         for (int i = 0; i < len; i++) {
             Object arg = args[i];
             types[i] = arg != null ? arg.getClass() : null;
+        }
+        return types;
+    }
+
+    /**
+     * 尝试获取参数类型数组（用于 specialized handle 创建）
+     * 如果任何参数为 null，返回 null 表示无法创建 specialized handle
+     *
+     * @return 参数类型数组，或 null（如果包含 null 参数）
+     */
+    public static Class<?>[] tryGetArgTypes(Object[] args) {
+        int len = args.length;
+        Class<?>[] types = new Class<?>[len];
+        for (int i = 0; i < len; i++) {
+            Object arg = args[i];
+            if (arg == null) {
+                return null;
+            }
+            types[i] = arg.getClass();
         }
         return types;
     }

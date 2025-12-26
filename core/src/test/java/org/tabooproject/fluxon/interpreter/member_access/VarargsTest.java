@@ -66,6 +66,20 @@ public class VarargsTest extends MemberAccessTestBase {
         assertEquals(150, interpret("&obj.varargsSum(10, 20, 30, 40, 50)"));
     }
 
+    // ========== 传入数组参数 ==========
+
+    @Test
+    public void testVarargsWithArrayArgument() throws Exception {
+        Object result = interpretAndCompile("&obj.varargs(&obj.getArray())");
+        assertEquals("varargs:3", result);
+    }
+
+    @Test
+    public void testVarargsSumWithArrayArgument() throws Exception {
+        Object result = interpretAndCompile("&obj.varargsSum(&obj.getPrimitiveArray())");
+        assertEquals(15, result);
+    }
+
     // ========== 编译模式可变参数 ==========
 
     @Test

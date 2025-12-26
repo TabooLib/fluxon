@@ -257,6 +257,20 @@ public class NewExpressionTest {
         result.assertBothEqual(3);
     }
 
+    // ========== 构造函数重载与 null ==========
+
+    @Test
+    public void testConstructorOverloadWithNullConsistency() {
+        TestResult result = runWithJavaConstruction(
+                "results = []; " +
+                        "for i in 1..2 { " +
+                        "  o = new org.tabooproject.fluxon.type.TestCtorOverload(null); " +
+                        "  &results += &o.tag " +
+                        "}; " +
+                        "&results");
+        result.assertBothToStringEqual("[string, string]");
+    }
+
     // ========== 错误场景测试 ==========
 
     @Test

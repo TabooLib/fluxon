@@ -24,13 +24,23 @@ public final class VarargsHandler {
      */
     public static Object[] packVarargsArguments(Class<?>[] paramTypes, Object[] args) {
         int fixedParamCount = paramTypes.length - 1;
-        Class<?> varargType = paramTypes[fixedParamCount].getComponentType();
+        Class<?> varargArrayType = paramTypes[fixedParamCount];
         // 构建新的参数数组
         Object[] newArgs = new Object[paramTypes.length];
         // 复制固定参数
         System.arraycopy(args, 0, newArgs, 0, fixedParamCount);
-        // 打包 varargs 参数
+        // 检查是否传入了单个匹配的数组参数（如 varargs(getArray()) 的情况）
         int varargCount = args.length - fixedParamCount;
+        if (varargCount == 1) {
+            Object singleArg = args[fixedParamCount];
+            if (varargArrayType.isInstance(singleArg)) {
+                // 传入的已经是匹配的数组类型，直接使用
+                newArgs[fixedParamCount] = singleArg;
+                return newArgs;
+            }
+        }
+        // 打包 varargs 参数
+        Class<?> varargType = varargArrayType.getComponentType();
         Object varargArray = newInstance(varargType, varargCount);
         for (int i = 0; i < varargCount; i++) {
             set(varargArray, i, args[fixedParamCount + i]);

@@ -41,7 +41,7 @@ public final class ConstructorCache {
      * 获取构造函数索引
      */
     public static List<Constructor<?>> getConstructors(Class<?> clazz) {
-        return CLASS_DATA.get(clazz).constructors;
+        return CLASS_DATA.get(clazz).index;
     }
 
     /**

@@ -74,31 +74,34 @@ public final class MethodResolver {
 
     /**
      * 尝试创建直接方法调用的 MethodHandle
+     * <p>
+     * 以下情况返回 null，走 fallback 路径：
+     * <ul>
+     *   <li>参数包含 null（无法确定具体类型，需要 findBestMatch 选择最具体的重载）</li>
+     *   <li>匹配到 varargs 方法（需要 VarargsHandler 进行参数打包）</li>
+     * </ul>
      */
     public static MethodHandle tryCreateSpecializedMethodHandle(Class<?> targetClass, String methodName, Object[] args, MethodType callSiteType) {
         try {
-            // 使用与 ReflectionHelper.invokeMethod 一致的类型提取方式
-            Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
-            // 尝试精确匹配
-            Method method = findBestMethod(targetClass, methodName, argTypes);
-            if (method == null) {
+            Class<?>[] argTypes = TypeCompatibility.tryGetArgTypes(args);
+            if (argTypes == null) {
                 return null;
             }
-            // 尝试创建 MethodHandle，优先使用 publicLookup
+            Method method = findBestMethod(targetClass, methodName, argTypes);
+            if (method == null || method.isVarArgs()) {
+                return null;
+            }
             MethodHandle mh;
             try {
                 mh = LOOKUP.unreflect(method);
             } catch (IllegalAccessException e) {
-                // 方法不可公开访问，尝试使用 setAccessible
                 try {
                     method.setAccessible(true);
                     mh = MethodHandles.lookup().unreflect(method);
                 } catch (SecurityException | IllegalAccessException ex) {
-                    // SecurityManager 阻止或模块系统限制，回退返回 null
                     return null;
                 }
             }
-            // 转换为接受 Object[] 参数的形式
             mh = mh.asSpreader(Object[].class, args.length);
             return mh.asType(callSiteType);
         } catch (Exception e) {

@@ -1,8 +1,8 @@
 package org.tabooproject.fluxon.runtime.reflection.cache;
 
+import org.tabooproject.fluxon.runtime.reflection.resolve.ConstructorResolver;
+
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -11,9 +11,9 @@ import java.util.List;
 public final class ClassConstructorData {
 
     final ArityCache cache = new ArityCache();
-    final List<Constructor<?>> constructors;
+    final List<Constructor<?>> index;
 
     public ClassConstructorData(Class<?> clazz) {
-        this.constructors = new ArrayList<>(Arrays.asList(clazz.getConstructors()));
+        this.index = ConstructorResolver.buildConstructorIndex(clazz);
     }
 }

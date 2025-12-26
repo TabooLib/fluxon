@@ -265,6 +265,18 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals("concat:ab", interpretAndCompile("&obj.process('a', 'b')"));
     }
 
+    // ========== 静态方法 ==========
+
+    @Test
+    public void testStaticMethodCallOnInstance() throws Exception {
+        assertEquals("static-result", interpretAndCompile("&obj.staticMethod()"));
+    }
+
+    @Test
+    public void testStaticMethodCallWithArgsOnInstance() throws Exception {
+        assertEquals(3, interpretAndCompile("&obj.staticAdd(1, 2)"));
+    }
+
     // ========== 方法调用作为表达式 ==========
 
     @Test

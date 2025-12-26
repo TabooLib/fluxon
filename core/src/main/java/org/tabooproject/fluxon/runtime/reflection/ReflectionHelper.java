@@ -132,8 +132,16 @@ public class ReflectionHelper {
         // 创建优化的 MethodHandle
         try {
             MethodHandle mh = LOOKUP.unreflect(best);
-            // 转换为 (Object, Object[]) -> Object 形式，使用 asSpreader
-            MethodHandle adapted = mh.asType(mh.type().changeReturnType(Object.class).changeParameterType(0, Object.class));
+            boolean isStatic = Modifier.isStatic(best.getModifiers());
+            MethodHandle adapted;
+            if (isStatic) {
+                // 静态方法：添加一个被忽略的 receiver 参数，统一为 (Object, ...) 签名
+                adapted = mh.asType(mh.type().changeReturnType(Object.class));
+                adapted = MethodHandles.dropArguments(adapted, 0, Object.class);
+            } else {
+                // 实例方法：转换 receiver 类型为 Object
+                adapted = mh.asType(mh.type().changeReturnType(Object.class).changeParameterType(0, Object.class));
+            }
             // 将剩余参数转换为 spreader
             if (argCount > 0) {
                 MethodType genericType = MethodType.genericMethodType(argCount + 1);

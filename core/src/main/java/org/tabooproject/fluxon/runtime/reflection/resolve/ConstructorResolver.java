@@ -56,23 +56,25 @@ public final class ConstructorResolver {
 
     /**
      * 尝试创建直接构造函数调用的 MethodHandle
+     * <p>
+     * 以下情况返回 null，走 fallback 路径：
+     * <ul>
+     *   <li>参数包含 null（无法确定具体类型，需要 findBestMatch 选择最具体的重载）</li>
+     *   <li>匹配到 varargs 构造函数（需要 VarargsHandler 进行参数打包）</li>
+     * </ul>
      */
     public static MethodHandle tryCreateSpecializedConstructorHandle(Class<?> clazz, Object[] args, MethodType callSiteType) {
         try {
-            // 根据参数类型查找构造函数
-            Class<?>[] argTypes = new Class<?>[args.length];
-            for (int i = 0; i < args.length; i++) {
-                argTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
+            Class<?>[] argTypes = TypeCompatibility.tryGetArgTypes(args);
+            if (argTypes == null) {
+                return null;
             }
-            // 尝试找到匹配的构造函数
             Constructor<?> constructor = findBestConstructor(clazz, argTypes);
-            if (constructor == null) {
+            if (constructor == null || constructor.isVarArgs()) {
                 return null;
             }
             MethodHandle mh = LOOKUP.unreflectConstructor(constructor);
-            // 转换为接受 Object[] 参数的形式
             mh = mh.asSpreader(Object[].class, args.length);
-            // 添加一个被忽略的 className 参数使签名变为 (String, Object[])Object
             mh = MethodHandles.dropArguments(mh, 0, String.class);
             return mh.asType(callSiteType);
         } catch (Exception e) {
