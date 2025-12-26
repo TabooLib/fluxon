@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.runtime.reflection.resolve;
 
-import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.util.StringUtils;
 
 import java.lang.invoke.MethodHandle;
@@ -29,24 +28,6 @@ public final class FieldResolver {
         } catch (NoSuchFieldException e) {
             return null;
         }
-    }
-
-    /**
-     * 查找 getter 方法（getField, field, isField）
-     */
-    public static MethodHandle findGetterMethod(Class<?> clazz, String fieldName) throws IllegalAccessException {
-        String capitalized = StringUtils.capitalize(fieldName);
-        String[] patterns = {"get" + capitalized, fieldName, "is" + capitalized};
-        for (String methodName : patterns) {
-            try {
-                Method method = clazz.getMethod(methodName);
-                if (method.getParameterCount() == 0) {
-                    return LOOKUP.unreflect(method);
-                }
-            } catch (NoSuchMethodException ignored) {
-            }
-        }
-        return null;
     }
 
     /**
@@ -79,6 +60,9 @@ public final class FieldResolver {
                 Method method = targetClass.getMethod(methodName);
                 if (method.getParameterCount() == 0) {
                     MethodHandle mh = LOOKUP.unreflect(method);
+                    if (Modifier.isStatic(method.getModifiers())) {
+                        mh = MethodHandles.dropArguments(mh, 0, Object.class);
+                    }
                     // 适配为 (Object)Object 签名
                     return mh.asType(MethodType.methodType(Object.class, Object.class));
                 }

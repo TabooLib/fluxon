@@ -14,17 +14,6 @@ public class FieldBootstrap {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
-    // 类型检查的 MethodHandle: boolean isInstance(Class<?>, Object)
-    private static final MethodHandle IS_INSTANCE;
-
-    static {
-        try {
-            IS_INSTANCE = LOOKUP.findVirtual(Class.class, "isInstance", MethodType.methodType(boolean.class, Object.class));
-        } catch (Exception e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
-
     /**
      * Bootstrap Method for invokedynamic (字段访问)
      */
@@ -89,8 +78,13 @@ public class FieldBootstrap {
      */
     private static MethodHandle createGuardedFieldHandle(Class<?> targetClass, MethodHandle specialized, MethodHandle fallback, MethodType callSiteType) {
         try {
-            // 创建类型检查: target instanceof TargetClass
-            MethodHandle typeCheck = IS_INSTANCE.bindTo(targetClass);
+            // 创建类型检查: target.getClass() == targetClass
+            MethodHandle typeCheck = LOOKUP.findStatic(
+                FieldBootstrap.class,
+                "checkReceiverType",
+                MethodType.methodType(boolean.class, Class.class, Object.class)
+            );
+            typeCheck = MethodHandles.insertArguments(typeCheck, 0, targetClass);
             // 适配 specialized 的返回类型（可能是原始类型，需要装箱）
             MethodHandle adapted = specialized;
             if (adapted.type().returnType() != callSiteType.returnType()) {
@@ -105,6 +99,13 @@ public class FieldBootstrap {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 检查 receiver 类型是否精确匹配
+     */
+    public static boolean checkReceiverType(Class<?> expectedClass, Object target) {
+        return target != null && target.getClass() == expectedClass;
     }
 
     /**

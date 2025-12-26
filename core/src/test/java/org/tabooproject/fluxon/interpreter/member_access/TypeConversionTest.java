@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.interpreter.member_access;
 
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
+import org.tabooproject.fluxon.type.TestObject;
 
 import java.util.List;
 
@@ -13,6 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author sky
  */
 public class TypeConversionTest extends MemberAccessTestBase {
+
+    // ========== char 类型相关辅助类 ==========
+
+    public static class CharOnlyTarget {
+        public String acceptChar(char value) {
+            return "char:" + (int) value;
+        }
+    }
 
     // ========== 基本类型参数 ==========
 
@@ -175,5 +185,22 @@ public class TypeConversionTest extends MemberAccessTestBase {
             Object compileResult = compile(sources[i], "TestOverloadConsist" + i);
             assertEquals(interpretResult, compileResult, "Mismatch for: " + sources[i]);
         }
+    }
+
+    // ========== char 类型不兼容测试 ==========
+
+    @Test
+    public void testByteToCharIsNotAssignable() throws Exception {
+        String source = "&target.acceptChar(&obj.getByte())";
+        CharOnlyTarget target = new CharOnlyTarget();
+        TestObject obj = new TestObject();
+        assertThrows(MemberNotFoundError.class, () -> interpret(source, env -> {
+            env.defineRootVariable("target", target);
+            env.defineRootVariable("obj", obj);
+        }));
+        assertThrows(MemberNotFoundError.class, () -> compile(source, env -> {
+            env.defineRootVariable("target", target);
+            env.defineRootVariable("obj", obj);
+        }));
     }
 }

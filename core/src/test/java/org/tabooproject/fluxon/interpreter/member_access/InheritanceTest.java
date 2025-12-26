@@ -1,6 +1,14 @@
 package org.tabooproject.fluxon.interpreter.member_access;
 
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.reflection.util.PolymorphicInlineCache;
 import org.tabooproject.fluxon.type.TestChild;
 import org.tabooproject.fluxon.type.TestGrandChild;
 import org.tabooproject.fluxon.type.TestParent;
@@ -14,6 +22,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author sky
  */
 public class InheritanceTest extends MemberAccessTestBase {
+
+    // ========== 字段遮蔽测试辅助类 ==========
+
+    public static class ShadowParent {
+        public String value = "parent";
+    }
+
+    public static class ShadowChild extends ShadowParent {
+        public String value = "child";
+    }
 
     // ========== 父类字段访问 ==========
 
@@ -254,5 +272,34 @@ public class InheritanceTest extends MemberAccessTestBase {
     public void testMixedFieldsAsArgs() {
         assertEquals("parent-fieldchild-field",
             interpret("&obj.concat(&obj.parentField, &obj.childField)", new TestChild()));
+    }
+
+    // ========== 编译模式字段遮蔽测试 ==========
+
+    @Test
+    public void testCompiledFieldShadowingUsesExactClass() throws Exception {
+        PolymorphicInlineCache.clear();
+        String source = "&obj.value";
+        String className = generateClassName();
+
+        CompilationContext ctx = new CompilationContext(source);
+        ctx.setAllowReflectionAccess(true);
+
+        Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
+        compileEnv.defineRootVariable("obj", new ShadowParent());
+
+        CompileResult compileResult = Fluxon.compile(compileEnv, ctx, className);
+        Class<?> scriptClass = compileResult.defineClass(new FluxonClassLoader());
+        RuntimeScriptBase script = (RuntimeScriptBase) scriptClass.newInstance();
+
+        Environment parentEnv = FluxonRuntime.getInstance().newEnvironment();
+        parentEnv.defineRootVariable("obj", new ShadowParent());
+        Object parentResult = script.eval(parentEnv);
+        assertEquals("parent", parentResult);
+
+        Environment childEnv = FluxonRuntime.getInstance().newEnvironment();
+        childEnv.defineRootVariable("obj", new ShadowChild());
+        Object childResult = script.eval(childEnv);
+        assertEquals("child", childResult);
     }
 }

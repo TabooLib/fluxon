@@ -18,6 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class FieldAccessTest extends MemberAccessTestBase {
 
+    // ========== 静态 getter 测试辅助类 ==========
+
+    public static class StaticGetterTarget {
+        public static String getValue() {
+            return "static-getter";
+        }
+    }
+
     // ========== 基本类型字段 ==========
 
     @Test
@@ -168,6 +176,18 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals("second", interpret("&obj.publicField", obj));
         obj.publicField = "third";
         assertEquals("third", interpret("&obj.publicField", obj));
+    }
+
+    // ========== 边界情况 ==========
+
+    // ========== 静态 getter 作为字段访问 ==========
+
+    @Test
+    public void testStaticGetterFieldAccess() throws Exception {
+        String source = "&obj.value";
+        StaticGetterTarget target = new StaticGetterTarget();
+        assertEquals("static-getter", interpret(source, env -> env.defineRootVariable("obj", target)));
+        assertEquals("static-getter", compile(source, env -> env.defineRootVariable("obj", target)));
     }
 
     // ========== 边界情况 ==========

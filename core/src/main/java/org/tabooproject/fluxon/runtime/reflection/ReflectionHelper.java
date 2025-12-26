@@ -105,7 +105,7 @@ public class ReflectionHelper {
                     getter = MethodHandles.dropArguments(getter, 0, Object.class);
                 }
             } else {
-                getter = FieldResolver.findGetterMethod(clazz, fieldName);
+                getter = FieldResolver.tryCreateGetterHandle(clazz, fieldName);
             }
         } catch (IllegalAccessException e) {
             throw new MemberAccessError("Cannot access field: " + fieldName, e);

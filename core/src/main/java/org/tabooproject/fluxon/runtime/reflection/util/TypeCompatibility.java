@@ -74,7 +74,12 @@ public final class TypeCompatibility {
         if (paramBoxed == argBoxed) {
             return true;
         }
-        // 数值类型拓宽转换
+        // char 只能拓宽到 int/long/float/double，不能接受其他类型
+        // 其他数值类型也不能缩窄到 char
+        if (paramBoxed == Character.class) {
+            return false;
+        }
+        // 数值类型拓宽转换（char 的 rank=2，可拓宽到 int/long/float/double）
         Integer fromRank = NUMERIC_RANK.get(argBoxed);
         Integer toRank = NUMERIC_RANK.get(paramBoxed);
         if (fromRank != null && toRank != null) {
