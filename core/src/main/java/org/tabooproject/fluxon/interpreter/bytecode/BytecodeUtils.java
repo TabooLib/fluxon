@@ -268,6 +268,26 @@ public class BytecodeUtils {
     }
 
     /**
+     * 将基本类型转换为对应的包装类
+     * 如果不是基本类型，则直接返回原类型
+     *
+     * @param type 要转换的类型
+     * @return 包装类或原类型
+     */
+    public static Class<?> boxToClass(Class<?> type) {
+        if (!type.isPrimitive()) return type;
+        if (type == int.class) return Integer.class;
+        if (type == long.class) return Long.class;
+        if (type == double.class) return Double.class;
+        if (type == float.class) return Float.class;
+        if (type == boolean.class) return Boolean.class;
+        if (type == byte.class) return Byte.class;
+        if (type == short.class) return Short.class;
+        if (type == char.class) return Character.class;
+        return type;
+    }
+
+    /**
      * 计算类型的特异性分数（继承深度）
      * 分数越高表示类型越具体，用于重载解析时的优先级排序
      * <p>

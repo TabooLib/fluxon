@@ -20,6 +20,13 @@ public class FluxonFeatures {
     public static boolean DEFAULT_ALLOW_IMPORT = true;
 
     /**
+     * 全局特性：是否启用反射访问
+     * 当启用时，允许使用 . 操作符进行反射成员访问（字段读取、方法调用）
+     * 默认值：false（禁用），避免性能开销和安全风险
+     */
+    public static boolean DEFAULT_ALLOW_REFLECTION_ACCESS = false;
+
+    /**
      * 全局特性：自动导入的包
      * 将自动导入这些包，无需在脚本中显式导入
      * 默认值：无

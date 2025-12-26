@@ -108,6 +108,8 @@ public class OperatorRegistry {
         registry.registerInfix(new FactorInfixOperator());
         // ContextCall (110) - 左结合
         registry.registerInfix(new ContextCallInfixOperator());
+        // MemberAccess (115) - 左结合（特性开关检查在 parse 中进行）
+        registry.registerInfix(new MemberAccessInfixOperator());
 
         // === 前缀运算符 ===
 

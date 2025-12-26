@@ -60,6 +60,8 @@ public enum ExpressionType {
 
     // 上下文调用
     CONTEXT_CALL(new ContextCallEvaluator()),
+    // 成员访问（反射）
+    MEMBER_ACCESS(new MemberAccessEvaluator()),
     // Lambda
     LAMBDA(new LambdaEvaluator()),
     // Command (自定义语法扩展)

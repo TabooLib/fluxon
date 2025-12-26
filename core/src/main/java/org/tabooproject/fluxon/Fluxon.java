@@ -162,6 +162,31 @@ public class Fluxon {
      */
     public static CompileResult compile(String source, String className, Environment env, ClassLoader classLoader) {
         CompilationContext context = new CompilationContext(source);
+        return compile(env, context, className, classLoader);
+    }
+
+    /**
+     * 使用指定的编译上下文编译 Fluxon 源代码
+     *
+     * @param env       环境对象
+     * @param context   编译上下文
+     * @param className 类名
+     * @return 编译结果
+     */
+    public static CompileResult compile(Environment env, CompilationContext context, String className) {
+        return compile(env, context, className, Fluxon.class.getClassLoader());
+    }
+
+    /**
+     * 使用指定的编译上下文编译 Fluxon 源代码
+     *
+     * @param env         环境对象
+     * @param context     编译上下文
+     * @param className   类名
+     * @param classLoader 类加载器
+     * @return 编译结果
+     */
+    public static CompileResult compile(Environment env, CompilationContext context, String className, ClassLoader classLoader) {
         // 创建字节码生成器
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
         generator.setSourceContext(context.getSource(), context.getFileName());
@@ -175,6 +200,6 @@ public class Fluxon {
         }
         // 生成字节码
         List<byte[]> bytecode = generator.generateClassBytecode(className, classLoader);
-        return new CompileResult(source, className, generator, bytecode);
+        return new CompileResult(context.getSource(), className, generator, bytecode);
     }
 }

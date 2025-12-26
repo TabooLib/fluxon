@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
@@ -375,15 +376,7 @@ public final class Intrinsics {
         }
         // 处理基本类型和包装类型的匹配
         if (expectedType.isPrimitive()) {
-            if (expectedType == int.class) return actualType == Integer.class;
-            if (expectedType == long.class) return actualType == Long.class;
-            if (expectedType == double.class) return actualType == Double.class;
-            if (expectedType == float.class) return actualType == Float.class;
-            if (expectedType == boolean.class) return actualType == Boolean.class;
-            if (expectedType == byte.class) return actualType == Byte.class;
-            if (expectedType == short.class) return actualType == Short.class;
-            if (expectedType == char.class) return actualType == Character.class;
-            return false;
+            return BytecodeUtils.boxToClass(expectedType) == actualType;
         }
         // 继承/实现关系检查（ArrayList 是 List 的子类，应该兼容）
         // expectedType.isAssignableFrom(actualType) 检查：actualType 能否赋值给 expectedType

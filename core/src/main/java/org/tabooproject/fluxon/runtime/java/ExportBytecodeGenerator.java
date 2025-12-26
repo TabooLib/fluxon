@@ -108,6 +108,16 @@ public class ExportBytecodeGenerator {
     }
 
     /**
+     * 获取指定类的类桥接器（如果已注册）
+     *
+     * @param targetClass 目标类
+     * @return 类桥接器，如果未注册则返回 null
+     */
+    public static ClassBridge getClassBridge(Class<?> targetClass) {
+        return generatedBridges.get(targetClass);
+    }
+
+    /**
      * 创建优化的类桥接器
      */
     @SuppressWarnings("unchecked")

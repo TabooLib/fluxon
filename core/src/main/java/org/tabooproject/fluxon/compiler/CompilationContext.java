@@ -24,6 +24,7 @@ public class CompilationContext {
     // 语法特性
     private boolean allowInvalidReference = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
     private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
+    private boolean allowReflectionAccess = FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS;
 
     private final List<String> packageAutoImport = FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT;
     private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
@@ -75,6 +76,14 @@ public class CompilationContext {
 
     public List<String> getPackageBlacklist() {
         return packageBlacklist;
+    }
+
+    public boolean isAllowReflectionAccess() {
+        return allowReflectionAccess;
+    }
+
+    public void setAllowReflectionAccess(boolean allowReflectionAccess) {
+        this.allowReflectionAccess = allowReflectionAccess;
     }
 
     public void setAttribute(String key, Object value) {
