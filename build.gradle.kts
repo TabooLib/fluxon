@@ -3,6 +3,7 @@ plugins {
     id("application")
     id("me.champeau.jmh") version "0.7.2"
     `maven-publish`
+    jacoco
 }
 
 repositories {
@@ -14,6 +15,7 @@ subprojects {
     apply(plugin = "application")
     apply(plugin = "me.champeau.jmh")
     apply(plugin = "maven-publish")
+    apply(plugin = "jacoco")
 
     repositories {
         mavenCentral()
@@ -46,6 +48,14 @@ subprojects {
 
     tasks.test {
         useJUnitPlatform()
+        finalizedBy(tasks.named("jacocoTestReport"))
+    }
+
+    tasks.withType<JacocoReport> {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
     }
 
     tasks.withType<JavaCompile> {
