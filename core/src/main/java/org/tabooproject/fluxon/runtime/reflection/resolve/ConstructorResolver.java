@@ -49,13 +49,9 @@ public final class ConstructorResolver {
             return clazz.getConstructor(argTypes);
         } catch (NoSuchMethodException ignored) {
         }
-        // 尝试找到兼容的构造函数
-        for (Constructor<?> constructor : clazz.getConstructors()) {
-            if (TypeCompatibility.isParametersCompatible(constructor.getParameterTypes(), argTypes)) {
-                return constructor;
-            }
-        }
-        return null;
+        // 使用 TypeCompatibility.findBestMatch 选择最具体的兼容构造函数
+        List<Constructor<?>> candidates = Arrays.asList(clazz.getConstructors());
+        return TypeCompatibility.findBestMatch(candidates, argTypes);
     }
 
     /**

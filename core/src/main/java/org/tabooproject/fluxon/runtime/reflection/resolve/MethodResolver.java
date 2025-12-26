@@ -46,10 +46,10 @@ public final class MethodResolver {
 
     /**
      * 查找最佳匹配的方法（用于 Bootstrap）
-     * 单次遍历同时检查精确匹配和兼容匹配
+     * 单次遍历同时检查精确匹配和收集兼容匹配，最后选择最具体的
      */
     public static Method findBestMethod(Class<?> targetClass, String methodName, Class<?>[] argTypes) {
-        Method compatible = null;
+        List<Method> compatibleCandidates = null;
         for (Method method : targetClass.getMethods()) {
             if (!method.getName().equals(methodName)) continue;
             Class<?>[] paramTypes = method.getParameterTypes();
@@ -57,12 +57,19 @@ public final class MethodResolver {
             if (Arrays.equals(paramTypes, argTypes)) {
                 return method;
             }
-            // 记录第一个兼容匹配作为备选
-            if (compatible == null && TypeCompatibility.isParametersCompatible(paramTypes, argTypes)) {
-                compatible = method;
+            // 收集所有兼容匹配
+            if (TypeCompatibility.isParametersCompatible(paramTypes, argTypes)) {
+                if (compatibleCandidates == null) {
+                    compatibleCandidates = new ArrayList<>(4);
+                }
+                compatibleCandidates.add(method);
             }
         }
-        return compatible;
+        // 从兼容候选中选择最具体的
+        if (compatibleCandidates != null) {
+            return TypeCompatibility.findBestMatch(compatibleCandidates, argTypes);
+        }
+        return null;
     }
 
     /**

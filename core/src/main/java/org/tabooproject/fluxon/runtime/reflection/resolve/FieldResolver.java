@@ -72,7 +72,7 @@ public final class FieldResolver {
      * 尝试创建 getter 方法的 MethodHandle
      */
     public static MethodHandle tryCreateGetterHandle(Class<?> targetClass, String fieldName) {
-        String capitalized = Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+        String capitalized = StringUtils.capitalize(fieldName);
         String[] patterns = {"get" + capitalized, fieldName, "is" + capitalized};
         for (String methodName : patterns) {
             try {

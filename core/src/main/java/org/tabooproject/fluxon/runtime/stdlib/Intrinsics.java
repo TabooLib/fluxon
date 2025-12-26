@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
@@ -11,6 +10,7 @@ import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
+import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 import org.tabooproject.fluxon.runtime.index.IndexAccessorRegistry;
 
 import java.util.*;
@@ -368,22 +368,8 @@ public final class Intrinsics {
      * @return 是否兼容
      */
     public static boolean isCompatibleType(Class<?> expectedType, Object value) {
-        if (value == null) {
-            return !expectedType.isPrimitive();
-        }
-        Class<?> actualType = value.getClass();
-        // 直接类型匹配
-        if (expectedType == actualType) {
-            return true;
-        }
-        // 处理基本类型和包装类型的匹配
-        if (expectedType.isPrimitive()) {
-            return BytecodeUtils.boxToClass(expectedType) == actualType;
-        }
-        // 继承/实现关系检查（ArrayList 是 List 的子类，应该兼容）
-        // expectedType.isAssignableFrom(actualType) 检查：actualType 能否赋值给 expectedType
-        // 例如：List.class.isAssignableFrom(ArrayList.class) = true
-        return expectedType.isAssignableFrom(actualType);
+        Class<?> actualType = value != null ? value.getClass() : null;
+        return TypeCompatibility.isTypeCompatible(expectedType, actualType);
     }
 
     /**

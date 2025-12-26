@@ -84,19 +84,13 @@ public final class TypeCompatibility {
     }
 
     /**
-     * 检查类型是否兼容（考虑自动装箱）- 用于 Bootstrap
+     * 检查类型是否兼容（考虑自动装箱和数值拓宽）- 用于 Bootstrap
      */
     public static boolean isAssignableFrom(Class<?> param, Class<?> arg) {
         if (param.isAssignableFrom(arg)) return true;
-        if (param.isPrimitive()) {
-            if (param == int.class && arg == Integer.class) return true;
-            if (param == long.class && arg == Long.class) return true;
-            if (param == double.class && arg == Double.class) return true;
-            if (param == float.class && arg == Float.class) return true;
-            if (param == boolean.class && arg == Boolean.class) return true;
-            if (param == byte.class && arg == Byte.class) return true;
-            if (param == short.class && arg == Short.class) return true;
-            return param == char.class && arg == Character.class;
+        // 委托给 isPrimitiveCompatible 处理装箱和数值拓宽
+        if (param.isPrimitive() || arg.isPrimitive()) {
+            return isPrimitiveCompatible(param, arg);
         }
         return false;
     }

@@ -54,46 +54,4 @@ public final class VarargsHandler {
         Object[] newArgs = packVarargsArguments(ctor.getParameterTypes(), args);
         return ctor.newInstance(newArgs);
     }
-
-    /**
-     * 检查 varargs 方法是否匹配
-     */
-    public static boolean isVarargsMethodAssignable(Method method, Class<?>[] argTypes) {
-        return isVarargsParametersCompatible(method.getParameterTypes(), argTypes);
-    }
-
-    /**
-     * 检查 varargs 构造函数是否匹配
-     */
-    public static boolean isVarargsConstructorAssignable(Constructor<?> ctor, Class<?>[] argTypes) {
-        return isVarargsParametersCompatible(ctor.getParameterTypes(), argTypes);
-    }
-
-    /**
-     * 检查 varargs 参数类型是否兼容
-     *
-     * @param paramTypes 方法/构造函数的参数类型（最后一个是数组类型）
-     * @param argTypes   实际参数类型
-     * @return 是否兼容
-     */
-    public static boolean isVarargsParametersCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
-        int fixedParamCount = paramTypes.length - 1;
-        if (argTypes.length < fixedParamCount) {
-            return false;
-        }
-        // 检查固定参数
-        for (int i = 0; i < fixedParamCount; i++) {
-            if (!TypeCompatibility.isTypeCompatible(paramTypes[i], argTypes[i])) {
-                return false;
-            }
-        }
-        // 检查 varargs 参数
-        Class<?> varargType = paramTypes[fixedParamCount].getComponentType();
-        for (int i = fixedParamCount; i < argTypes.length; i++) {
-            if (!TypeCompatibility.isTypeCompatible(varargType, argTypes[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
 }

@@ -4,7 +4,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
-import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -25,8 +24,9 @@ public final class PolymorphicInlineCache {
     /**
      * 每个 CallSite 的 PIC 深度计数器
      * 使用 WeakHashMap 确保 CallSite 被 GC 后自动清理
+     * 所有访问都通过 synchronized 块保护
      */
-    private static final Map<MutableCallSite, Integer> PIC_DEPTH_MAP = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<MutableCallSite, Integer> PIC_DEPTH_MAP = new WeakHashMap<>();
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
