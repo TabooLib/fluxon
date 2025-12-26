@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.runtime.java.ClassBridge;
 import org.tabooproject.fluxon.runtime.java.ExportBytecodeGenerator;
 
 import java.lang.invoke.*;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -230,16 +231,7 @@ public class ReflectionBootstrap {
         // 尝试找到兼容的方法
         for (Method method : targetClass.getMethods()) {
             if (!method.getName().equals(methodName)) continue;
-            if (method.getParameterCount() != argTypes.length) continue;
-            Class<?>[] paramTypes = method.getParameterTypes();
-            boolean compatible = true;
-            for (int i = 0; i < paramTypes.length; i++) {
-                if (argTypes[i] != null && !isAssignableFrom(paramTypes[i], argTypes[i])) {
-                    compatible = false;
-                    break;
-                }
-            }
-            if (compatible) {
+            if (isParametersCompatible(method.getParameterTypes(), argTypes)) {
                 return method;
             }
         }
@@ -260,7 +252,7 @@ public class ReflectionBootstrap {
             if (param == boolean.class && arg == Boolean.class) return true;
             if (param == byte.class && arg == Byte.class) return true;
             if (param == short.class && arg == Short.class) return true;
-            if (param == char.class && arg == Character.class) return true;
+            return param == char.class && arg == Character.class;
         }
         return false;
     }
@@ -332,6 +324,151 @@ public class ReflectionBootstrap {
                 MethodType.methodType(Object.class, MutableCallSite.class, String.class, Object.class, Object[].class)
             );
             return fallback.bindTo(callSite).bindTo(memberName);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // ==================== 构造函数调用 Bootstrap ====================
+
+    /**
+     * Bootstrap Method for invokedynamic (构造函数调用)
+     * 用于处理 new ClassName(args) 语法的字节码编译
+     */
+    public static CallSite bootstrapConstructor(MethodHandles.Lookup lookup, String name, MethodType type) throws Throwable {
+        MutableCallSite callSite = new MutableCallSite(type);
+        MethodHandle fallback = lookup.findStatic(
+                ReflectionBootstrap.class,
+                "lookupAndConstruct",
+                MethodType.methodType(Object.class, MutableCallSite.class, String.class, Object[].class)
+        );
+        MethodHandle target = fallback
+                .bindTo(callSite)
+                .asType(type);
+        callSite.setTarget(target);
+        return callSite;
+    }
+
+    /**
+     * 首次构造函数调用时的查找逻辑
+     * @param callSite 可变调用站点，用于缓存优化后的 MethodHandle
+     * @param className 要构造的类的完全限定名
+     * @param args 构造函数参数
+     * @return 新创建的对象实例
+     */
+    public static Object lookupAndConstruct(MutableCallSite callSite, String className, Object[] args) throws Throwable {
+        // 1. 加载类
+        Class<?> clazz;
+        try {
+            clazz = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Class not found: " + className, e);
+        }
+        // 2. 调用 ReflectionHelper 执行构造
+        Object result = ReflectionHelper.invokeConstructor(clazz, args);
+        // 3. 尝试创建类型特化的构造函数 MethodHandle 用于后续调用
+        MethodHandle specialized = tryCreateSpecializedConstructorHandle(clazz, args, callSite.type());
+        if (specialized != null) {
+            // 为特定类名创建保护
+            MethodHandle guard = createClassNameGuard(className, specialized, createConstructorFallback(callSite), callSite.type());
+            callSite.setTarget(guard);
+        }
+        return result;
+    }
+
+    /**
+     * 尝试创建直接构造函数调用的 MethodHandle
+     */
+    private static MethodHandle tryCreateSpecializedConstructorHandle(Class<?> clazz, Object[] args, MethodType callSiteType) {
+        try {
+            // 根据参数类型查找构造函数
+            Class<?>[] argTypes = new Class<?>[args.length];
+            for (int i = 0; i < args.length; i++) {
+                argTypes[i] = args[i] != null ? args[i].getClass() : Object.class;
+            }
+            // 尝试找到匹配的构造函数
+            Constructor<?> constructor = findBestConstructor(clazz, argTypes);
+            if (constructor == null) {
+                return null;
+            }
+            MethodHandle mh = LOOKUP.unreflectConstructor(constructor);
+            // 转换为接受 Object[] 参数的形式
+            mh = mh.asSpreader(Object[].class, args.length);
+            // 添加一个被忽略的 className 参数使签名变为 (String, Object[])Object
+            mh = MethodHandles.dropArguments(mh, 0, String.class);
+            return mh.asType(callSiteType);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 查找最佳匹配的构造函数
+     */
+    private static Constructor<?> findBestConstructor(Class<?> clazz, Class<?>[] argTypes) {
+        // 首先尝试精确匹配
+        try {
+            return clazz.getConstructor(argTypes);
+        } catch (NoSuchMethodException ignored) {
+        }
+        // 尝试找到兼容的构造函数
+        for (Constructor<?> constructor : clazz.getConstructors()) {
+            if (isParametersCompatible(constructor.getParameterTypes(), argTypes)) {
+                return constructor;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 检查参数类型是否兼容
+     *
+     * @param paramTypes 方法/构造函数的参数类型
+     * @param argTypes   实际参数类型
+     * @return 是否兼容
+     */
+    private static boolean isParametersCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
+        if (paramTypes.length != argTypes.length) {
+            return false;
+        }
+        for (int i = 0; i < paramTypes.length; i++) {
+            if (argTypes[i] != null && !isAssignableFrom(paramTypes[i], argTypes[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 创建类名保护的 MethodHandle
+     * 当类名匹配时使用特化版本，否则回退到通用路径
+     */
+    private static MethodHandle createClassNameGuard(String expectedClassName, MethodHandle specialized, MethodHandle fallback, MethodType callSiteType) {
+        try {
+            // 创建类名检查: className.equals(expectedClassName)
+            MethodHandle equals = LOOKUP.findVirtual(String.class, "equals", MethodType.methodType(boolean.class, Object.class));
+            MethodHandle boundEquals = MethodHandles.insertArguments(equals, 1, expectedClassName);
+            // 丢弃额外的参数（args 数组）使签名变为 (String)boolean
+            boundEquals = MethodHandles.dropArguments(boundEquals, 1, Object[].class);
+            MethodHandle adapted = specialized.asType(callSiteType);
+            MethodHandle adaptedFallback = fallback.asType(callSiteType);
+            return MethodHandles.guardWithTest(boundEquals, adapted, adaptedFallback);
+        } catch (Exception e) {
+            return fallback.asType(callSiteType);
+        }
+    }
+
+    /**
+     * 创建构造函数调用的 fallback MethodHandle
+     */
+    private static MethodHandle createConstructorFallback(MutableCallSite callSite) {
+        try {
+            MethodHandle fallback = LOOKUP.findStatic(
+                    ReflectionBootstrap.class,
+                    "lookupAndConstruct",
+                    MethodType.methodType(Object.class, MutableCallSite.class, String.class, Object[].class)
+            );
+            return fallback.bindTo(callSite);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

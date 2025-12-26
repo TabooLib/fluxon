@@ -25,6 +25,7 @@ public class CompilationContext {
     private boolean allowInvalidReference = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
     private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
     private boolean allowReflectionAccess = FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS;
+    private boolean allowJavaConstruction = FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION;
 
     private final List<String> packageAutoImport = FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT;
     private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
@@ -84,6 +85,14 @@ public class CompilationContext {
 
     public void setAllowReflectionAccess(boolean allowReflectionAccess) {
         this.allowReflectionAccess = allowReflectionAccess;
+    }
+
+    public boolean isAllowJavaConstruction() {
+        return allowJavaConstruction;
+    }
+
+    public void setAllowJavaConstruction(boolean allowJavaConstruction) {
+        this.allowJavaConstruction = allowJavaConstruction;
     }
 
     public void setAttribute(String key, Object value) {

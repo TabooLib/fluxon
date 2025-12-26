@@ -27,6 +27,13 @@ public class FluxonFeatures {
     public static boolean DEFAULT_ALLOW_REFLECTION_ACCESS = false;
 
     /**
+     * 全局特性：是否允许直接构造 Java 对象
+     * 当启用时，允许使用 new 关键字直接构造任意 Java 类的实例
+     * 默认值：false（禁用），避免安全风险
+     */
+    public static boolean DEFAULT_ALLOW_JAVA_CONSTRUCTION = false;
+
+    /**
      * 全局特性：自动导入的包
      * 将自动导入这些包，无需在脚本中显式导入
      * 默认值：无

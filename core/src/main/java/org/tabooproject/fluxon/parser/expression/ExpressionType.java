@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.expression;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.DestructuringAssignmentEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.NewEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
 
@@ -65,7 +66,9 @@ public enum ExpressionType {
     // Lambda
     LAMBDA(new LambdaEvaluator()),
     // Command (自定义语法扩展)
-    COMMAND(new CommandEvaluator());
+    COMMAND(new CommandEvaluator()),
+    // New (Java 对象构造)
+    NEW(new NewEvaluator());
 
     public final Evaluator<ParseResult> evaluator;
 

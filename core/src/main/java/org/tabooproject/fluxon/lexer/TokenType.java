@@ -26,6 +26,7 @@ public enum TokenType {
     WHILE("while"),
     BREAK("break"),
     CONTINUE("continue"),
+    NEW("new"),
 
     // 标识符和字面量
     IDENTIFIER,    // 标识符

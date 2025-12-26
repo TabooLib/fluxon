@@ -8,6 +8,7 @@ import org.tabooproject.fluxon.util.StringUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -30,6 +31,10 @@ public class ReflectionHelper {
     private static final ConcurrentHashMap<Class<?>, ConcurrentHashMap<String, ArityCache>> METHOD_CACHE = new ConcurrentHashMap<>();
     // 方法索引（按方法名快速查找所有重载）
     private static final ConcurrentHashMap<Class<?>, Map<String, List<Method>>> METHOD_INDEX = new ConcurrentHashMap<>();
+    // 构造函数缓存：Class -> ArityCache
+    private static final ConcurrentHashMap<Class<?>, ArityCache> CONSTRUCTOR_CACHE = new ConcurrentHashMap<>();
+    // 构造函数索引：Class -> List<Constructor<?>>
+    private static final ConcurrentHashMap<Class<?>, List<Constructor<?>>> CONSTRUCTOR_INDEX = new ConcurrentHashMap<>();
     // Lookup 实例（可访问 public 成员）
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
@@ -104,6 +109,28 @@ public class ReflectionHelper {
         return invokeMethodSlow(target, clazz, methodName, args);
     }
 
+    /**
+     * 调用构造函数（支持重载、多态缓存和varargs）
+     *
+     * @param clazz 目标类
+     * @param args  构造函数参数
+     * @return 新创建的实例
+     */
+    public static Object invokeConstructor(Class<?> clazz, Object... args) throws Throwable {
+        int argCount = args.length;
+        // 1. 快速路径：缓存查找
+        ArityCache arityCache = CONSTRUCTOR_CACHE.get(clazz);
+        if (arityCache != null) {
+            Class<?>[] argTypes = getArgTypes(args);
+            MethodHandle cached = arityCache.get(argCount, argTypes);
+            if (cached != null) {
+                return invokeConstructorSpread(cached, args);
+            }
+        }
+        // 2. 慢路径：查找并缓存
+        return invokeConstructorSlow(clazz, args);
+    }
+
     // ==================== 慢路径实现 ====================
 
     /**
@@ -157,7 +184,6 @@ public class ReflectionHelper {
         try {
             MethodHandle mh = LOOKUP.unreflect(best);
             // 转换为 (Object, Object[]) -> Object 形式，使用 asSpreader
-            MethodType spreadType = MethodType.methodType(Object.class, Object.class, Object[].class);
             MethodHandle adapted = mh.asType(mh.type().changeReturnType(Object.class).changeParameterType(0, Object.class));
             // 将剩余参数转换为 spreader
             if (argCount > 0) {
@@ -190,7 +216,74 @@ public class ReflectionHelper {
      * 调用varargs方法（处理参数打包）
      */
     private static Object invokeVarargsMethod(Method method, Object target, Object[] args) throws Throwable {
-        Class<?>[] paramTypes = method.getParameterTypes();
+        Object[] newArgs = packVarargsArguments(method.getParameterTypes(), args);
+        return method.invoke(target, newArgs);
+    }
+
+    /**
+     * 构造函数调用慢路径
+     */
+    private static Object invokeConstructorSlow(Class<?> clazz, Object[] args) throws Throwable {
+        Class<?>[] argTypes = getArgTypes(args);
+        int argCount = args.length;
+        // 查找构造函数
+        List<Constructor<?>> candidates = CONSTRUCTOR_INDEX.computeIfAbsent(clazz, ReflectionHelper::buildConstructorIndex);
+        if (candidates.isEmpty()) {
+            throw new MemberAccessError("No public constructor found for class: " + clazz.getName());
+        }
+        // 匹配最佳构造函数
+        Constructor<?> best = findBestConstructorMatch(candidates, argTypes);
+        // varargs 构造函数特殊处理（不缓存）
+        if (best.isVarArgs()) {
+            return invokeVarargsConstructor(best, args);
+        }
+        // 创建优化的 MethodHandle
+        try {
+            MethodHandle mh = LOOKUP.unreflectConstructor(best);
+            // 转换为 (Object[]) -> Object 形式
+            MethodHandle adapted;
+            if (argCount > 0) {
+                MethodType genericType = MethodType.genericMethodType(argCount);
+                adapted = mh.asType(genericType.changeReturnType(Object.class));
+                adapted = adapted.asSpreader(Object[].class, argCount);
+            } else {
+                adapted = mh.asType(MethodType.methodType(Object.class));
+            }
+            // 缓存
+            CONSTRUCTOR_CACHE.computeIfAbsent(clazz, k -> new ArityCache()).put(argCount, argTypes, adapted);
+            return invokeConstructorSpread(adapted, args);
+        } catch (IllegalAccessException e) {
+            throw new MemberAccessError("Cannot access constructor of class: " + clazz.getName(), e);
+        }
+    }
+
+    /**
+     * 使用 spreader 调用构造函数 MethodHandle
+     */
+    private static Object invokeConstructorSpread(MethodHandle handle, Object[] args) throws Throwable {
+        if (args.length == 0) {
+            return handle.invoke();
+        }
+        return handle.invoke(args);
+    }
+
+    /**
+     * 调用 varargs 构造函数（处理参数打包）
+     */
+    private static Object invokeVarargsConstructor(Constructor<?> ctor, Object[] args) throws Throwable {
+        Object[] newArgs = packVarargsArguments(ctor.getParameterTypes(), args);
+        return ctor.newInstance(newArgs);
+    }
+
+    /**
+     * 打包 varargs 参数
+     * 将原始参数数组转换为符合 varargs 方法/构造函数签名的参数数组
+     *
+     * @param paramTypes 方法/构造函数的参数类型（最后一个是数组类型）
+     * @param args       原始参数
+     * @return 打包后的参数数组
+     */
+    private static Object[] packVarargsArguments(Class<?>[] paramTypes, Object[] args) {
         int fixedParamCount = paramTypes.length - 1;
         Class<?> varargType = paramTypes[fixedParamCount].getComponentType();
         // 构建新的参数数组
@@ -204,7 +297,48 @@ public class ReflectionHelper {
             set(varargArray, i, args[fixedParamCount + i]);
         }
         newArgs[fixedParamCount] = varargArray;
-        return method.invoke(target, newArgs);
+        return newArgs;
+    }
+
+    /**
+     * 构建类的构造函数索引
+     */
+    private static List<Constructor<?>> buildConstructorIndex(Class<?> clazz) {
+        return new ArrayList<>(Arrays.asList(clazz.getConstructors()));
+    }
+
+    /**
+     * 匹配最佳构造函数（支持varargs）
+     */
+    private static Constructor<?> findBestConstructorMatch(List<Constructor<?>> candidates, Class<?>[] argTypes) {
+        Constructor<?> varargsFallback = null;
+        for (Constructor<?> c : candidates) {
+            Class<?>[] paramTypes = c.getParameterTypes();
+            // 优先级 1: 精确匹配
+            if (Arrays.equals(paramTypes, argTypes)) {
+                return c;
+            }
+            // 优先级 2: 赋值兼容（非 varargs）
+            if (!c.isVarArgs() && isAssignable(paramTypes, argTypes)) {
+                return c;
+            }
+            // 记录 varargs 备选
+            if (c.isVarArgs() && varargsFallback == null && isVarargsConstructorAssignable(c, argTypes)) {
+                varargsFallback = c;
+            }
+        }
+        // 优先级 3: varargs 匹配
+        if (varargsFallback != null) {
+            return varargsFallback;
+        }
+        throw new MemberAccessError("No matching constructor found for argument types: " + Arrays.toString(argTypes));
+    }
+
+    /**
+     * 检查 varargs 构造函数是否匹配
+     */
+    private static boolean isVarargsConstructorAssignable(Constructor<?> ctor, Class<?>[] argTypes) {
+        return isVarargsParametersCompatible(ctor.getParameterTypes(), argTypes);
     }
 
     // ==================== 字段查找 ====================
@@ -285,7 +419,17 @@ public class ReflectionHelper {
      * 检查varargs方法是否匹配
      */
     private static boolean isVarargsAssignable(Method method, Class<?>[] argTypes) {
-        Class<?>[] paramTypes = method.getParameterTypes();
+        return isVarargsParametersCompatible(method.getParameterTypes(), argTypes);
+    }
+
+    /**
+     * 检查 varargs 参数类型是否兼容
+     *
+     * @param paramTypes 方法/构造函数的参数类型（最后一个是数组类型）
+     * @param argTypes   实际参数类型
+     * @return 是否兼容
+     */
+    private static boolean isVarargsParametersCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
         int fixedParamCount = paramTypes.length - 1;
         if (argTypes.length < fixedParamCount) {
             return false;
@@ -324,6 +468,7 @@ public class ReflectionHelper {
     /**
      * 检查单个类型是否兼容
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean isTypeCompatible(Class<?> param, Class<?> arg) {
         if (arg == null) {
             return !param.isPrimitive();

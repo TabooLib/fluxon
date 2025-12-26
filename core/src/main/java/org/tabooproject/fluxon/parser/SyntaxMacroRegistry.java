@@ -122,6 +122,7 @@ public class SyntaxMacroRegistry {
         registry.register(new WhileSyntaxMacro());
         registry.register(new TrySyntaxMacro());
         registry.register(new WhenSyntaxMacro());
+        registry.register(new NewSyntaxMacro());
 
         // Lambda (priority: 100)
         registry.register(new LambdaSyntaxMacro());
