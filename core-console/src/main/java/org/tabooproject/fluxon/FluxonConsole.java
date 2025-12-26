@@ -7,6 +7,7 @@ import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import org.jline.utils.InfoCmp;
+import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.jsr223.FluxonScriptEngine;
 import org.tabooproject.fluxon.jsr223.FluxonScriptEngineFactory;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -42,6 +43,7 @@ public class FluxonConsole {
      * 构造函数，初始化终端和读取器
      */
     public FluxonConsole() throws IOException {
+        FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS = true;
         // 构建终端
         terminal = TerminalBuilder.builder()
                 .system(true)
