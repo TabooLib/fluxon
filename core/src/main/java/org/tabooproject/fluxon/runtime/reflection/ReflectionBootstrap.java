@@ -1,10 +1,10 @@
-package org.tabooproject.fluxon.runtime;
+package org.tabooproject.fluxon.runtime.reflection;
 
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
 import org.tabooproject.fluxon.runtime.java.ExportBytecodeGenerator;
 
 import java.lang.invoke.*;
-import java.util.Arrays;
 
 /**
  * 反射访问的 Bootstrap Method
@@ -59,7 +59,7 @@ public class ReflectionBootstrap {
             return bridgeHandle.invokeWithArguments(target, args);
         }
         // 2. 降级使用 ReflectionCache 查找方法（带缓存）
-        Object result = ReflectionCache.invokeMethod(target, memberName, args);
+        Object result = ReflectionHelper.invokeMethod(target, memberName, args);
         // 创建优化的 MethodHandle 并更新 CallSite
         MethodHandle optimizedHandle = createMethodHandle(memberName, callSite.type());
         if (optimizedHandle != null) {
@@ -104,7 +104,7 @@ public class ReflectionBootstrap {
         if (target == null) {
             throw new NullPointerException("Cannot access field '" + fieldName + "' on null object");
         }
-        Object result = ReflectionCache.getField(target, fieldName);
+        Object result = ReflectionHelper.getField(target, fieldName);
         // 创建优化的 MethodHandle 并更新 CallSite
         MethodHandle optimizedHandle = createFieldHandle(fieldName, callSite.type());
         if (optimizedHandle != null) {
@@ -138,7 +138,7 @@ public class ReflectionBootstrap {
         try {
             // 查找 ReflectionCache.invokeMethod(Object, String, Object[]) 方法
             MethodHandle invokeHandle = MethodHandles.publicLookup().findStatic(
-                    ReflectionCache.class,
+                    ReflectionHelper.class,
                     "invokeMethod",
                     MethodType.methodType(Object.class, Object.class, String.class, Object[].class)
             );
@@ -158,7 +158,7 @@ public class ReflectionBootstrap {
         try {
             // 查找 ReflectionCache.getField(Object, String) 方法
             MethodHandle getFieldHandle = MethodHandles.publicLookup().findStatic(
-                    ReflectionCache.class,
+                    ReflectionHelper.class,
                     "getField",
                     MethodType.methodType(Object.class, Object.class, String.class)
             );

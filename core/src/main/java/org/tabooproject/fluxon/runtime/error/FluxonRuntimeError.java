@@ -1,6 +1,7 @@
-package org.tabooproject.fluxon.runtime;
+package org.tabooproject.fluxon.runtime.error;
 
 import org.tabooproject.fluxon.parser.SourceExcerpt;
+import org.tabooproject.fluxon.runtime.Type;
 
 /**
  * Fluxon 运行时错误基类

@@ -375,7 +375,13 @@ public class Lexer implements CompilationPhase<List<Token>> {
             // 检查下一个字符是否也是小数点（范围操作符的开始）
             if (next == '.') {
                 // 这是范围操作符的开始，不是浮点数的一部分
-                return new Token(TokenType.INTEGER, parseInteger(start, position), startLine, startColumn);
+                // 尝试解析为 int，超出范围则自动升级为 long
+                Integer intValue = parseIntegerSafe(start, position);
+                if (intValue != null) {
+                    return new Token(TokenType.INTEGER, intValue, startLine, startColumn);
+                } else {
+                    return new Token(TokenType.LONG, parseLong(start, position), startLine, startColumn);
+                }
             } else {
                 isDouble = true;
                 // 消费小数点
@@ -402,8 +408,13 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 f 或 F
                 return new Token(TokenType.FLOAT, parseFloat(start, position - 1), startLine, startColumn);
             }
-            // 优化纯整数情况，直接提取子字符串并返回
-            return new Token(TokenType.INTEGER, parseInteger(start, position), startLine, startColumn);
+            // 优化纯整数情况，尝试解析为 int，超出范围则自动升级为 long
+            Integer intValue = parseIntegerSafe(start, position);
+            if (intValue != null) {
+                return new Token(TokenType.INTEGER, intValue, startLine, startColumn);
+            } else {
+                return new Token(TokenType.LONG, parseLong(start, position), startLine, startColumn);
+            }
         }
 
         // 检查是否有指数部分
@@ -448,7 +459,13 @@ public class Lexer implements CompilationPhase<List<Token>> {
             if (isDouble) {
                 return new Token(TokenType.DOUBLE, parseDouble(start, position), startLine, startColumn);
             } else {
-                return new Token(TokenType.INTEGER, parseInteger(start, position), startLine, startColumn);
+                // 尝试解析为 int，超出范围则自动升级为 long
+                Integer intValue = parseIntegerSafe(start, position);
+                if (intValue != null) {
+                    return new Token(TokenType.INTEGER, intValue, startLine, startColumn);
+                } else {
+                    return new Token(TokenType.LONG, parseLong(start, position), startLine, startColumn);
+                }
             }
         }
         // endregion
@@ -478,7 +495,17 @@ public class Lexer implements CompilationPhase<List<Token>> {
         return c >= '0' && c <= '9';
     }
 
-    // 辅助方法 - 从缓冲区中提取整数
+    // 辅助方法 - 从缓冲区中提取整数，如果超出 int 范围则返回 null
+    private Integer parseIntegerSafe(int start, int end) {
+        String numStr = removeUnderscores(new String(sourceChars, start, end - start));
+        try {
+            return Integer.parseInt(numStr);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    // 辅助方法 - 从缓冲区中提取整数（向后兼容）
     private int parseInteger(int start, int end) {
         return Integer.parseInt(removeUnderscores(new String(sourceChars, start, end - start)));
     }

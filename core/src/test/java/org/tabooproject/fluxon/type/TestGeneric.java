@@ -38,7 +38,62 @@ public class TestGeneric<T> {
         return items;
     }
 
-    // ========== 泛型方法 ==========
+    /**
+     * 转换值为大写（如果是String的话）
+     */
+    @SuppressWarnings("unchecked")
+    public String transformValue() {
+        if (value instanceof String) {
+            return ((String) value).toUpperCase();
+        }
+        return String.valueOf(value);
+    }
+
+    // ========== 实例泛型方法 ==========
+    
+    /**
+     * 返回传入的值（实例版本的identity）
+     */
+    public <E> E identity(E val) {
+        return val;
+    }
+
+    /**
+     * 将值包装为单元素列表
+     */
+    public <E> List<E> wrap(E val) {
+        List<E> list = new ArrayList<>();
+        list.add(val);
+        return list;
+    }
+
+    /**
+     * 创建键值对Map
+     */
+    public <K, V> Map<K, V> pair(K key, V val) {
+        Map<K, V> map = new HashMap<>();
+        map.put(key, val);
+        return map;
+    }
+
+    /**
+     * 合并两个值为列表
+     */
+    public <E> List<E> merge(E first, E second) {
+        List<E> list = new ArrayList<>();
+        list.add(first);
+        list.add(second);
+        return list;
+    }
+
+    /**
+     * 有界泛型方法 - 返回数值的double值
+     */
+    public <N extends Number> double toDouble(N num) {
+        return num.doubleValue();
+    }
+
+    // ========== 函数式接口方法 ==========
     public <R> R transform(Function<T, R> func) {
         return func.apply(value);
     }
@@ -52,6 +107,7 @@ public class TestGeneric<T> {
     }
 
     // ========== 静态泛型方法 ==========
+    @SuppressWarnings("unchecked")
     public static <E> List<E> createList(E... elements) {
         List<E> list = new ArrayList<>();
         for (E e : elements) {
@@ -64,10 +120,6 @@ public class TestGeneric<T> {
         Map<K, V> map = new HashMap<>();
         map.put(key, value);
         return map;
-    }
-
-    public static <E> E identity(E value) {
-        return value;
     }
 
     // ========== 有界泛型 ==========
@@ -88,6 +140,55 @@ public class TestGeneric<T> {
     }
 
     // ========== 返回泛型集合 ==========
+    
+    /**
+     * 返回字符串列表（用于测试）
+     */
+    public List<String> getList() {
+        List<String> list = new ArrayList<>();
+        list.add("item1");
+        list.add("item2");
+        list.add("item3");
+        return list;
+    }
+
+    /**
+     * 返回字符串-整数映射（用于测试）
+     */
+    public Map<String, Integer> getMap() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("key1", 1);
+        map.put("key2", 2);
+        return map;
+    }
+
+    /**
+     * 返回自身（用于链式调用测试）
+     */
+    public TestGeneric<T> getSelf() {
+        return this;
+    }
+
+    /**
+     * varargs版本的sumNumbers（实例方法）
+     */
+    @SafeVarargs
+    public final <N extends Number> double sumNumbers(N... numbers) {
+        double sum = 0;
+        for (N n : numbers) {
+            sum += n.doubleValue();
+        }
+        return sum;
+    }
+
+    /**
+     * 返回两个Comparable值中的较大者
+     */
+    @SuppressWarnings("unchecked")
+    public <C extends Comparable<C>> C max(C a, C b) {
+        return a.compareTo(b) >= 0 ? a : b;
+    }
+
     public List<String> getStringList() {
         List<String> list = new ArrayList<>();
         list.add("a");

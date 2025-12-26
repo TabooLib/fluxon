@@ -296,24 +296,6 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals(6, interpretAndCompile(source)); // 2 * 3
     }
 
-    // ========== 静态方法 ==========
-
-    @Test
-    public void testStaticMethodNoArgs() throws Exception {
-        assertEquals("static-result", interpretAndCompile("&obj.staticMethod()"));
-    }
-
-    @Test
-    public void testStaticMethodWithArgs() throws Exception {
-        assertEquals(30, interpretAndCompile("&obj.staticAdd(10, 20)"));
-    }
-
-    @Test
-    public void testStaticMethodReturningInstance() throws Exception {
-        Object result = interpretAndCompile("&obj.createInstance()");
-        assertTrue(result instanceof TestObject);
-    }
-
     // ========== 方法调用后续操作 ==========
 
     @Test

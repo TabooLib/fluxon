@@ -7,19 +7,29 @@ package org.tabooproject.fluxon.type;
  */
 public class TestGrandChild extends TestChild {
 
-    public String grandChildField = "grandchild-field-value";
+    public String grandChildField = "grandchild-field";
 
     public String getGrandChildName() {
         return "grandchild-name";
     }
 
+    public String grandChildOnlyMethod() {
+        return "grandchild-only";
+    }
+
     @Override
     public String overridableMethod() {
-        return "grandchild-impl";
+        return "grandchild-override";
     }
 
     // 访问祖父类方法
     public String getFromGrandParent() {
         return getParentName();
+    }
+
+    // ========== 返回自身用于链式调用 ==========
+    @Override
+    public TestGrandChild getSelf() {
+        return this;
     }
 }

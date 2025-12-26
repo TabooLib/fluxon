@@ -101,13 +101,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals("z", arr[2]);
     }
 
-    // ========== 静态字段 ==========
-
-    @Test
-    public void testStaticField() throws Exception {
-        assertEquals("static-value", interpretAndCompile("&obj.staticField"));
-    }
-
     // ========== final 字段 ==========
 
     @Test

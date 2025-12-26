@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;

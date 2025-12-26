@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 import static org.junit.jupiter.api.Assertions.*;
 

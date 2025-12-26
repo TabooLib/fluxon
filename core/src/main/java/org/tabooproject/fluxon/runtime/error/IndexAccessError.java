@@ -1,7 +1,5 @@
 package org.tabooproject.fluxon.runtime.error;
 
-import org.tabooproject.fluxon.runtime.FluxonRuntimeError;
-
 /**
  * 索引访问异常
  * 当尝试访问或设置无效索引时抛出

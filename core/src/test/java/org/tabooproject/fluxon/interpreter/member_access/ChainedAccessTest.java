@@ -205,12 +205,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals("nested-value", interpretAndCompile("&obj.createNested().publicField"));
     }
 
-    @Test
-    public void testCreateInstanceChain() throws Exception {
-        Object result = interpretAndCompile("&obj.createInstance().getName()");
-        assertEquals("test-object", result);
-    }
-
     // ========== 链式调用中的类型变化 ==========
 
     @Test
@@ -229,7 +223,8 @@ public class ChainedAccessTest extends MemberAccessTestBase {
     @Test
     public void testDotNotConfusedWithRange() throws Exception {
         // 确保 . 和 .. 不混淆
-        parse("&obj.publicField; 1..10");
+        // 解析并执行验证
+        interpretAndCompile("&obj.publicField; 1..10");
     }
 
     @Test

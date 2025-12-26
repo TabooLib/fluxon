@@ -16,6 +16,8 @@ import org.tabooproject.fluxon.runtime.index.IndexAccessorRegistry;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static java.lang.reflect.Array.*;
+
 public final class Intrinsics {
 
     public static final Type TYPE = new Type(Intrinsics.class);
@@ -411,6 +413,14 @@ public final class Intrinsics {
                 throw IndexAccessError.outOfBounds(target, index, arr.length);
             }
             arr[idx] = value;
+        } else if (target.getClass().isArray()) {
+            // 处理基本类型数组 (int[], long[], double[], etc.)
+            int idx = ((Number) index).intValue();
+            int length = getLength(target);
+            if (idx < 0 || idx >= length) {
+                throw IndexAccessError.outOfBounds(target, index, length);
+            }
+            set(target, idx, value);
         } else {
             // 尝试使用第三方注册的索引访问器
             IndexAccessorRegistry.AccessResult result = IndexAccessorRegistry.getInstance().trySet(target, index, value);
@@ -457,6 +467,14 @@ public final class Intrinsics {
                 throw IndexAccessError.outOfBounds(target, index, arr.length);
             }
             return arr[idx];
+        } else if (target.getClass().isArray()) {
+            // 处理基本类型数组 (int[], long[], double[], etc.)
+            int idx = ((Number) index).intValue();
+            int length = getLength(target);
+            if (idx < 0 || idx >= length) {
+                throw IndexAccessError.outOfBounds(target, index, length);
+            }
+            return get(target, idx);
         } else {
             // 尝试使用第三方注册的索引访问器
             IndexAccessorRegistry.AccessResult result = IndexAccessorRegistry.getInstance().tryGet(target, index);

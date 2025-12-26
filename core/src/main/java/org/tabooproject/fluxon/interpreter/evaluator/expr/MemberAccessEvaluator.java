@@ -9,8 +9,8 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.MemberAccessExpression;
-import org.tabooproject.fluxon.runtime.ReflectionBootstrap;
-import org.tabooproject.fluxon.runtime.ReflectionCache;
+import org.tabooproject.fluxon.runtime.reflection.ReflectionBootstrap;
+import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
@@ -43,10 +43,10 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
                 for (int i = 0; i < args.length; i++) {
                     args[i] = interpreter.evaluate(expression.getArgs()[i]);
                 }
-                return ReflectionCache.invokeMethod(target, expression.getMemberName(), args);
+                return ReflectionHelper.invokeMethod(target, expression.getMemberName(), args);
             } else {
                 // 字段访问：obj.field
-                return ReflectionCache.getField(target, expression.getMemberName());
+                return ReflectionHelper.getField(target, expression.getMemberName());
             }
         } catch (Throwable e) {
             if (e instanceof RuntimeException) {

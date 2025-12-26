@@ -1,7 +1,5 @@
 package org.tabooproject.fluxon.runtime.error;
 
-import org.tabooproject.fluxon.runtime.FluxonRuntimeError;
-
 import java.util.Arrays;
 import java.util.stream.Collectors;
 

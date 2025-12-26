@@ -61,14 +61,27 @@ public abstract class MemberAccessTestBase {
      * 编译执行代码（带默认 TestObject）
      */
     protected Object compile(String source) throws Exception {
-        return compile(source, new TestObject());
+        return compile(source, new TestObject(), generateClassName());
+    }
+
+    /**
+     * 编译执行代码（自定义类名，带默认 TestObject）
+     */
+    protected Object compile(String source, String className) throws Exception {
+        return compile(source, new TestObject(), className);
     }
 
     /**
      * 编译执行代码（自定义对象）
      */
     protected Object compile(String source, Object obj) throws Exception {
-        String className = generateClassName();
+        return compile(source, obj, generateClassName());
+    }
+
+    /**
+     * 编译执行代码（自定义对象和类名）
+     */
+    protected Object compile(String source, Object obj, String className) throws Exception {
         CompilationContext ctx = new CompilationContext(source);
         ctx.setAllowReflectionAccess(true);
         Environment env = FluxonRuntime.getInstance().newEnvironment();

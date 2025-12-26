@@ -8,11 +8,11 @@ package org.tabooproject.fluxon.type;
 public class TestParent {
 
     // ========== 公共字段 ==========
-    public String parentField = "parent-field-value";
+    public String parentField = "parent-field";
     public int parentInt = 100;
 
     // ========== 受保护字段 ==========
-    protected String protectedField = "protected-field-value";
+    protected String protectedField = "protected-value";
 
     // ========== 私有字段 ==========
     private String privateParentField = "private-parent-value";
@@ -26,13 +26,17 @@ public class TestParent {
         return 999;
     }
 
-    public String parentMethod(String arg) {
+    public String parentMethod() {
+        return "parent-method";
+    }
+
+    public String parentMethodWithArg(String arg) {
         return "parent:" + arg;
     }
 
     // ========== 可被重写的方法 ==========
     public String overridableMethod() {
-        return "parent-impl";
+        return "parent-overridable";
     }
 
     public String overridableWithArg(String arg) {
@@ -40,6 +44,14 @@ public class TestParent {
     }
 
     // ========== 重载方法（子类会添加更多重载）==========
+    public String overloadedMethod() {
+        return "parent-overload:0";
+    }
+
+    public String overloadedMethod(String arg) {
+        return "parent-overload:1:" + arg;
+    }
+
     public String overloadedInHierarchy(int value) {
         return "parent-int:" + value;
     }
@@ -52,5 +64,20 @@ public class TestParent {
     // ========== 静态方法 ==========
     public static String staticParentMethod() {
         return "static-parent";
+    }
+
+    // ========== 获取 protected 字段值 ==========
+    public String getProtectedValue() {
+        return protectedField;
+    }
+
+    // ========== 返回自身用于链式调用 ==========
+    public TestParent getSelf() {
+        return this;
+    }
+
+    // ========== concat 方法用于测试 ==========
+    public String concat(String a, String b) {
+        return a + b;
     }
 }

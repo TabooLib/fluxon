@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.tabooproject.fluxon.parser.SourceExcerpt;
+import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 /**
  * 运行时脚本的基类

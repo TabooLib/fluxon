@@ -9,5 +9,5 @@ public interface TestSecondInterface {
 
     String secondInterfaceMethod();
 
-    int getInterfaceValue();
+    String secondInterfaceWithArg(String arg);
 }

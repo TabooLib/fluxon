@@ -1,7 +1,5 @@
 package org.tabooproject.fluxon.runtime.error;
 
-import org.tabooproject.fluxon.runtime.FluxonRuntimeError;
-
 /**
  * 当解释执行超出成本限制时抛出
  */
