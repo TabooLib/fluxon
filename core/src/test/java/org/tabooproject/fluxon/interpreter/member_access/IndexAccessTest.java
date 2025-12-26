@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.interpreter.member_access;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;

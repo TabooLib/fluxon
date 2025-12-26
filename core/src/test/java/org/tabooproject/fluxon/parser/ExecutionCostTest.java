@@ -1,8 +1,8 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.parser;
 
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError;

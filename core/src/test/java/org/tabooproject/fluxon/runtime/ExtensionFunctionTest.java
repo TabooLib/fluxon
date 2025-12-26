@@ -1,14 +1,13 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.runtime;
 
-import org.tabooproject.fluxon.FluxonRuntimeTest;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.type.TestRuntime;
 
 import java.util.Comparator;
 
 public class ExtensionFunctionTest {
 
     public static void main(String[] args) {
-        FluxonRuntimeTest.registerTestFunctions();
+        TestRuntime.registerTestFunctions();
         FluxonRuntime.getInstance().getExtensionFunctions()
                 .entrySet()
                 .stream()

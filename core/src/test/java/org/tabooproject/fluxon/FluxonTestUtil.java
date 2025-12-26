@@ -9,6 +9,9 @@ import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class FluxonTestUtil {
 
@@ -155,7 +158,6 @@ public class FluxonTestUtil {
         TestResult result = new TestResult(interpretResult, interpretEnv, compileResult, compileEnv, interpretTime, compileTime, executeTime);
         System.out.println("\n=== 结果对比 ===");
         System.out.println("结果匹配: " + result.isMatch());
-
         return result;
     }
 
@@ -256,5 +258,161 @@ public class FluxonTestUtil {
         Object compileResult = base.eval(compileEnv);
         long executeTime = System.currentTimeMillis() - startExecute;
         return new TestResult(null, null, compileResult, compileEnv, 0, compileTime, executeTime);
+    }
+
+    // ========== 异常测试支持 ==========
+
+    /**
+     * 测试预期抛出异常的场景
+     *
+     * @param source                  Fluxon 源代码
+     * @param expectedMessageContains 预期异常消息包含的字符串
+     */
+    public static void runExpectingError(String source, String expectedMessageContains) {
+        try {
+            runSilent(source);
+            fail("Expected exception containing: " + expectedMessageContains);
+        } catch (Exception e) {
+            assertTrue(e.getMessage() != null && e.getMessage().contains(expectedMessageContains), "Expected message containing '" + expectedMessageContains + "' but got: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 测试仅解释模式下预期抛出异常的场景
+     *
+     * @param source                  Fluxon 源代码
+     * @param expectedMessageContains 预期异常消息包含的字符串
+     */
+    public static void interpretExpectingError(String source, String expectedMessageContains) {
+        try {
+            interpret(source);
+            fail("Expected exception containing: " + expectedMessageContains);
+        } catch (Exception e) {
+            assertTrue(e.getMessage() != null && e.getMessage().contains(expectedMessageContains), "Expected message containing '" + expectedMessageContains + "' but got: " + e.getMessage());
+        }
+    }
+
+    // ========== 带环境配置的测试 ==========
+
+    /**
+     * 静默测试：支持环境预配置
+     *
+     * @param source   Fluxon 源代码
+     * @param envSetup 环境配置函数
+     * @return 测试结果
+     */
+    public static TestResult runSilentWithEnv(String source, Consumer<Environment> envSetup) {
+        return runSilentWithEnv(source, "TestScript", envSetup);
+    }
+
+    /**
+     * 静默测试：支持环境预配置
+     *
+     * @param source    Fluxon 源代码
+     * @param className 编译时使用的类名
+     * @param envSetup  环境配置函数
+     * @return 测试结果
+     */
+    public static TestResult runSilentWithEnv(String source, String className, Consumer<Environment> envSetup) {
+        Object interpretResult;
+        Object compileResult;
+        long interpretTime;
+        long compileTime;
+        long executeTime;
+
+        // 1. 解释执行
+        long startInterpret = System.currentTimeMillis();
+        Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(interpretEnv);
+        interpretResult = Fluxon.eval(source, interpretEnv);
+        interpretTime = System.currentTimeMillis() - startInterpret;
+
+        // 2. 编译
+        long startCompile = System.currentTimeMillis();
+        Environment compileParseEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(compileParseEnv);
+        CompileResult compileResultObj = Fluxon.compile(source, className, compileParseEnv);
+        compileTime = System.currentTimeMillis() - startCompile;
+        // 输出编译字节码
+        try {
+            compileResultObj.dump(new File("dump/TestScript.class"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // 3. 执行
+        long startExecute = System.currentTimeMillis();
+        Class<?> scriptClass = compileResultObj.defineClass(new FluxonClassLoader());
+        RuntimeScriptBase base;
+        try {
+            base = (RuntimeScriptBase) scriptClass.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(compileEnv);
+        compileResult = base.eval(compileEnv);
+        executeTime = System.currentTimeMillis() - startExecute;
+        return new TestResult(interpretResult, interpretEnv, compileResult, compileEnv, interpretTime, compileTime, executeTime);
+    }
+
+    /**
+     * 仅解释执行：支持环境预配置
+     *
+     * @param source   Fluxon 源代码
+     * @param envSetup 环境配置函数
+     * @return 测试结果
+     */
+    public static TestResult interpretWithEnv(String source, Consumer<Environment> envSetup) {
+        long startInterpret = System.currentTimeMillis();
+        Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(interpretEnv);
+        Object interpretResult = Fluxon.eval(source, interpretEnv);
+        long interpretTime = System.currentTimeMillis() - startInterpret;
+        return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
+    }
+
+    // ========== 静态断言方法 ==========
+
+    /**
+     * 断言解释结果和编译结果匹配
+     *
+     * @param result 测试结果
+     */
+    public static void assertMatch(TestResult result) {
+        assertTrue(result.isMatch(), "Interpret and compile results should match. Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 断言解释结果等于预期值
+     *
+     * @param expected 预期值
+     * @param result   测试结果
+     */
+    public static void assertInterpretEquals(Object expected, TestResult result) {
+        assertEquals(expected, result.getInterpretResult());
+    }
+
+    /**
+     * 断言解释结果和编译结果都等于预期值
+     *
+     * @param expected 预期值
+     * @param result   测试结果
+     */
+    public static void assertBothEqual(Object expected, TestResult result) {
+        assertEquals(expected, result.getInterpretResult(), "Interpret result should equal expected");
+        assertEquals(expected, result.getCompileResult(), "Compile result should equal expected");
+        assertTrue(result.isMatch(), "Interpret and compile results should match");
+    }
+
+    /**
+     * 断言解释结果和编译结果的字符串表示都等于预期值
+     *
+     * @param expected 预期的字符串表示
+     * @param result   测试结果
+     */
+    public static void assertBothToStringEqual(String expected, TestResult result) {
+        assertEquals(expected, String.valueOf(result.getInterpretResult()), "Interpret result toString should equal expected");
+        assertEquals(expected, String.valueOf(result.getCompileResult()), "Compile result toString should equal expected");
     }
 }

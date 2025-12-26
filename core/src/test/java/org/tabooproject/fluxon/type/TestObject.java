@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.type;
 
 import org.tabooproject.fluxon.runtime.java.Export;
 

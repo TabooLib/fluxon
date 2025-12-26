@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.parser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.tabooproject.fluxon.FluxonRuntimeTest;
+import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
@@ -21,7 +21,7 @@ public class PseudoCodeTest {
 
     @BeforeEach
     public void BeforeEach() {
-        FluxonRuntimeTest.registerTestFunctions();
+        TestRuntime.registerTestFunctions();
     }
 
     @Test

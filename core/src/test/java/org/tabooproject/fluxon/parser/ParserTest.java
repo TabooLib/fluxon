@@ -3,20 +3,16 @@ package org.tabooproject.fluxon.parser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.tabooproject.fluxon.FluxonRuntimeTest;
+import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompilationContext;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.AwaitExpression;
-import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
-import org.tabooproject.fluxon.parser.expression.literal.StringLiteral;
-import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -33,7 +29,7 @@ public class ParserTest {
 
     @BeforeEach
     public void BeforeEach() {
-        FluxonRuntimeTest.registerTestFunctions();
+        TestRuntime.registerTestFunctions();
     }
 
     /**

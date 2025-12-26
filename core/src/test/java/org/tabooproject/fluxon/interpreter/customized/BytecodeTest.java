@@ -1,12 +1,12 @@
-package org.tabooproject.fluxon.interpreter.bytecode;
+package org.tabooproject.fluxon.interpreter.customized;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.FluxonRuntimeTest;
+import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompileResult;
-import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -21,7 +21,7 @@ public class BytecodeTest {
 
     @BeforeEach
     public void BeforeEach() {
-        FluxonRuntimeTest.registerTestFunctions();
+        TestRuntime.registerTestFunctions();
     }
 
     @Test

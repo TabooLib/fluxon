@@ -1,13 +1,13 @@
-package org.tabooproject.fluxon.parser;
+package org.tabooproject.fluxon.runtime;
 
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.CommandRegistry;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.CommandExpression;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
 

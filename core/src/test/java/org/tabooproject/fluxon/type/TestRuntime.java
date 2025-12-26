@@ -1,11 +1,11 @@
-package org.tabooproject.fluxon;
+package org.tabooproject.fluxon.type;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-public class FluxonRuntimeTest {
+public class TestRuntime {
 
     public static class TestAudience {
 

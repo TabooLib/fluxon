@@ -1,7 +1,7 @@
-package org.tabooproject.fluxon.interpreter;
+package org.tabooproject.fluxon.interpreter.customized;
 
 import org.tabooproject.fluxon.Fluxon;
-import org.tabooproject.fluxon.FluxonRuntimeTest;
+import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -17,10 +17,10 @@ import java.util.List;
 public class ComplexTest {
 
     public static void main(String[] args) throws IOException, InstantiationException, IllegalAccessException {
-        FluxonRuntimeTest.registerTestFunctions();
+        TestRuntime.registerTestFunctions();
         Environment env = FluxonRuntime.getInstance().newEnvironment();
-        env.defineRootVariable("audience", new FluxonRuntimeTest.TestAudience(new FluxonRuntimeTest.TestLocation(0, 0, 0)));
-        env.defineRootVariable("location", new FluxonRuntimeTest.TestLocation(0, 0, 0));
+        env.defineRootVariable("audience", new TestRuntime.TestAudience(new TestRuntime.TestLocation(0, 0, 0)));
+        env.defineRootVariable("location", new TestRuntime.TestLocation(0, 0, 0));
         List<String> lines = Files.readAllLines(new File("effect.fs").toPath());
 
         System.out.println("Run:");

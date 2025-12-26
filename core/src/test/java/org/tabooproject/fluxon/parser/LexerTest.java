@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon;
+package org.tabooproject.fluxon.parser;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
