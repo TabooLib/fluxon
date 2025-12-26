@@ -1,4 +1,4 @@
-package org.tabooproject.fluxon.runtime;
+package org.tabooproject.fluxon.interpreter.member_access;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -7,7 +7,10 @@ import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.runtime.reflection.ReflectionBootstrap;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.reflection.util.PolymorphicInlineCache;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +42,7 @@ public class MethodOverloadCachingTest {
     @BeforeEach
     public void setUp() {
         // 每个测试前清除 PIC 缓存
-        ReflectionBootstrap.clearPICCache();
+        PolymorphicInlineCache.clear();
     }
 
     // ==================== 测试辅助类 ====================
@@ -413,7 +416,7 @@ public class MethodOverloadCachingTest {
     @Test
     public void testCheckFullTypeSignature() {
         // 正确匹配
-        assertTrue(ReflectionBootstrap.checkFullTypeSignature(
+        assertTrue(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Integer.class},
                 "test",
@@ -421,7 +424,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // receiver 类型不匹配
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 Integer.class,
                 new Class<?>[]{Integer.class},
                 "test",
@@ -429,7 +432,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 参数类型不匹配
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{String.class},
                 "test",
@@ -437,7 +440,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 参数数量不匹配
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Integer.class, String.class},
                 "test",
@@ -445,7 +448,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // null receiver
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Integer.class},
                 null,
@@ -459,7 +462,7 @@ public class MethodOverloadCachingTest {
     @Test
     public void testCheckFullTypeSignatureWithNull() {
         // 期望 null，实际 null
-        assertTrue(ReflectionBootstrap.checkFullTypeSignature(
+        assertTrue(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Void.class},  // Void.class 表示期望 null
                 "test",
@@ -467,7 +470,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 期望 null，实际非 null
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Void.class},
                 "test",
@@ -475,7 +478,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 期望非 null，实际 null
-        assertFalse(ReflectionBootstrap.checkFullTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkFullTypeSignature(
                 String.class,
                 new Class<?>[]{Integer.class},
                 "test",
@@ -489,7 +492,7 @@ public class MethodOverloadCachingTest {
     @Test
     public void testCheckConstructorTypeSignature() {
         // 正确匹配
-        assertTrue(ReflectionBootstrap.checkConstructorTypeSignature(
+        assertTrue(PolymorphicInlineCache.checkConstructorTypeSignature(
                 "java.lang.StringBuilder",
                 new Class<?>[]{String.class},
                 "java.lang.StringBuilder",
@@ -497,7 +500,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 类名不匹配
-        assertFalse(ReflectionBootstrap.checkConstructorTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkConstructorTypeSignature(
                 "java.lang.StringBuilder",
                 new Class<?>[]{String.class},
                 "java.lang.StringBuffer",
@@ -505,7 +508,7 @@ public class MethodOverloadCachingTest {
         ));
 
         // 参数类型不匹配
-        assertFalse(ReflectionBootstrap.checkConstructorTypeSignature(
+        assertFalse(PolymorphicInlineCache.checkConstructorTypeSignature(
                 "java.lang.StringBuilder",
                 new Class<?>[]{Integer.class},
                 "java.lang.StringBuilder",
@@ -565,13 +568,11 @@ public class MethodOverloadCachingTest {
      * 测试：PIC 缓存清除
      */
     @Test
-    public void testPICCacheClear() {
-        assertEquals(0, ReflectionBootstrap.getPICCacheSize());
-
+    public void testCacheClear() {
+        assertEquals(0, PolymorphicInlineCache.size());
         // 运行一些会创建 PIC 条目的代码后清除
-        ReflectionBootstrap.clearPICCache();
-
-        assertEquals(0, ReflectionBootstrap.getPICCacheSize());
+        PolymorphicInlineCache.clear();
+        assertEquals(0, PolymorphicInlineCache.size());
     }
 
     /**

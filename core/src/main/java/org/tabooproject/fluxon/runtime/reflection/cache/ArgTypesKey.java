@@ -1,16 +1,16 @@
-package org.tabooproject.fluxon.runtime.reflection;
+package org.tabooproject.fluxon.runtime.reflection.cache;
 
 import java.util.Arrays;
 
 /**
  * 参数类型数组包装器（用于 HashMap 键）
  */
-final class ArgTypesKey {
+public final class ArgTypesKey {
 
     private final Class<?>[] types;
     private final int hash;
 
-    ArgTypesKey(Class<?>[] types) {
+    public ArgTypesKey(Class<?>[] types) {
         this.types = types;
         this.hash = Arrays.hashCode(types);
     }

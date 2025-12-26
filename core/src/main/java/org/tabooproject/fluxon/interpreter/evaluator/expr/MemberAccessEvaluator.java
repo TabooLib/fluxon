@@ -14,6 +14,10 @@ import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 import static org.tabooproject.fluxon.runtime.Type.STRING;
@@ -115,7 +119,7 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
         return OBJECT;
     }
 
-    private static final Type LOOKUP = new Type(java.lang.invoke.MethodHandles.Lookup.class);
-    private static final Type METHOD_TYPE = new Type(java.lang.invoke.MethodType.class);
-    private static final Type CALL_SITE = new Type(java.lang.invoke.CallSite.class);
+    private static final Type LOOKUP = new Type(MethodHandles.Lookup.class);
+    private static final Type METHOD_TYPE = new Type(MethodType.class);
+    private static final Type CALL_SITE = new Type(CallSite.class);
 }
