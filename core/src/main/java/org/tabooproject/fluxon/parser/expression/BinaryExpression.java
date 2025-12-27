@@ -6,12 +6,13 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 二元表达式
  */
-public class BinaryExpression implements Expression {
+public class BinaryExpression extends Expression {
     private final ParseResult left;
     private final Token operator;
     private final ParseResult right;
 
     public BinaryExpression(ParseResult left, Token operator, ParseResult right) {
+        super(ExpressionType.BINARY);
         this.left = left;
         this.operator = operator;
         this.right = right;

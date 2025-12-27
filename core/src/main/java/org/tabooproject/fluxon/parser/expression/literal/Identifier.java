@@ -6,10 +6,11 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 /**
  * 标识符
  */
-public class Identifier implements Expression {
+public class Identifier extends Expression {
     private final String name;
 
     public Identifier(String name) {
+        super(ExpressionType.IDENTIFIER);
         this.name = name;
     }
 

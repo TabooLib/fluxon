@@ -10,6 +10,7 @@ public class BooleanLiteral extends Literal {
     private final Boolean boxedValue;
 
     public BooleanLiteral(boolean value) {
+        super(ExpressionType.BOOLEAN_LITERAL);
         this.value = value;
         this.boxedValue = value;
     }

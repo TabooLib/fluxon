@@ -9,6 +9,7 @@ public class StringLiteral extends Literal {
     private final String value;
 
     public StringLiteral(String value) {
+        super(ExpressionType.STRING_LITERAL);
         this.value = value;
     }
 

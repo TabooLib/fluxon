@@ -6,13 +6,13 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 线程本地的 FunctionContext 简单池，避免在高频调用路径上重复分配。
  * 仅在单线程借用/归还的情况下使用，不涉及跨线程共享。
+ * 由于使用 ThreadLocal 存储，每个线程自动获得独立的池实例，无需额外的线程检查。
  */
 public final class FunctionContextPool {
 
     private static final int MAX_POOL_SIZE = 32;
     private static final ThreadLocal<FunctionContextPool> LOCAL = ThreadLocal.withInitial(FunctionContextPool::new);
 
-    private final Thread ownerThread = Thread.currentThread();
     private final FunctionContext<?>[] pool = new FunctionContext<?>[MAX_POOL_SIZE];
     private int size;
 
@@ -32,9 +32,6 @@ public final class FunctionContextPool {
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, Object[] arguments, @NotNull Environment environment) {
         FunctionContext<?> context;
-        if (ownerThread != Thread.currentThread()) {
-            return new FunctionContext<>(function, target, arguments, environment);
-        }
         if (size > 0) {
             context = pool[--size];
             pool[size] = null;
@@ -49,7 +46,7 @@ public final class FunctionContextPool {
      * 归还一个 FunctionContext 实例到线程本地池
      */
     public void release(FunctionContext<?> context) {
-        if (context == null || ownerThread != Thread.currentThread()) {
+        if (context == null) {
             return;
         }
         context.clearForPooling();

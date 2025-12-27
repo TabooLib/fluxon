@@ -5,12 +5,13 @@ import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 /**
  * 引用表达式（&变量）
  */
-public class ReferenceExpression implements Expression {
+public class ReferenceExpression extends Expression {
     private final Identifier identifier;
     private final boolean isOptional;
     private final int position;
 
     public ReferenceExpression(Identifier identifier, boolean isOptional, int position) {
+        super(ExpressionType.REFERENCE);
         this.identifier = identifier;
         this.isOptional = isOptional;
         this.position = position;

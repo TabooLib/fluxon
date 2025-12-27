@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 成员访问表达式
  * 表示形如 obj.field 或 obj.method(args) 的反射访问表达式
  */
-public class MemberAccessExpression implements Expression {
+public class MemberAccessExpression extends Expression {
 
     private final ParseResult target;
     private final String memberName;
@@ -20,6 +20,7 @@ public class MemberAccessExpression implements Expression {
      * @param memberName 成员名称（字段名或方法名）
      */
     public MemberAccessExpression(ParseResult target, String memberName) {
+        super(ExpressionType.MEMBER_ACCESS);
         this.target = target;
         this.memberName = memberName;
         this.args = new ParseResult[0];
@@ -34,6 +35,7 @@ public class MemberAccessExpression implements Expression {
      * @param args       方法参数
      */
     public MemberAccessExpression(ParseResult target, String memberName, ParseResult[] args) {
+        super(ExpressionType.MEMBER_ACCESS);
         this.target = target;
         this.memberName = memberName;
         this.args = args;

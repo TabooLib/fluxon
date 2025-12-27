@@ -6,12 +6,13 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 逻辑表达式
  */
-public class LogicalExpression implements Expression {
+public class LogicalExpression extends Expression {
     private final ParseResult left;
     private final Token operator;
     private final ParseResult right;
 
     public LogicalExpression(ParseResult left, Token operator, ParseResult right) {
+        super(ExpressionType.LOGICAL);
         this.left = left;
         this.operator = operator;
         this.right = right;

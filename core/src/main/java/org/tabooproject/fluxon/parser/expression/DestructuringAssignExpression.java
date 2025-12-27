@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
  * 语法: (var1, var2, ...) = expression
  * 将右侧表达式的值解构并赋值给左侧的多个变量
  */
-public class DestructuringAssignExpression implements Expression {
+public class DestructuringAssignExpression extends Expression {
 
     // 变量名到局部变量位置的映射
     private final LinkedHashMap<String, Integer> variables;
@@ -23,6 +23,7 @@ public class DestructuringAssignExpression implements Expression {
      * @param value     右侧表达式
      */
     public DestructuringAssignExpression(LinkedHashMap<String, Integer> variables, ParseResult value) {
+        super(ExpressionType.DESTRUCTURING_ASSIGNMENT);
         this.variables = variables;
         this.value = value;
     }

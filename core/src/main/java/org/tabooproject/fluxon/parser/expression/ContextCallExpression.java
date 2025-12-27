@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 上下文调用表达式
  * 表示形如 "text" :: replace("a", "b") 或 "text" :: { replace("a", "b"); length } 的表达式
  */
-public class ContextCallExpression implements Expression {
+public class ContextCallExpression extends Expression {
 
     private final ParseResult target;
     private final ParseResult context;
@@ -18,6 +18,7 @@ public class ContextCallExpression implements Expression {
      * @param context 上下文表达式（:: 右侧的表达式或块）
      */
     public ContextCallExpression(ParseResult target, ParseResult context) {
+        super(ExpressionType.CONTEXT_CALL);
         this.target = target;
         this.context = context;
     }

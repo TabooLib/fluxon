@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * 函数调用
  */
-public class FunctionCallExpression implements Expression {
+public class FunctionCallExpression extends Expression {
 
     private final String functionName;
     private final ParseResult[] arguments;
@@ -21,6 +21,7 @@ public class FunctionCallExpression implements Expression {
     private ExtensionFunctionPosition extensionPosition;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
+        super(ExpressionType.FUNCTION_CALL);
         this.functionName = functionName;
         this.arguments = arguments;
         this.position = pos1;

@@ -6,12 +6,13 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * If 表达式
  */
-public class IfExpression implements Expression {
+public class IfExpression extends Expression {
     private final ParseResult condition;
     private final ParseResult thenBranch;
     private final ParseResult elseBranch;
 
     public IfExpression(ParseResult condition, ParseResult thenBranch, ParseResult elseBranch) {
+        super(ExpressionType.IF);
         this.condition = condition;
         this.thenBranch = thenBranch;
         this.elseBranch = elseBranch;

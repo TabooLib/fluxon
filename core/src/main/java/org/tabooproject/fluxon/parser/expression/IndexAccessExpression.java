@@ -9,13 +9,14 @@ import java.util.List;
  *
  * @author sky
  */
-public class IndexAccessExpression implements Expression {
+public class IndexAccessExpression extends Expression {
 
     private final ParseResult target;
     private final List<ParseResult> indices;
     private final int position;
 
     public IndexAccessExpression(ParseResult target, List<ParseResult> indices, int position) {
+        super(ExpressionType.INDEX_ACCESS);
         this.target = target;
         this.indices = indices;
         this.position = position;

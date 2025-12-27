@@ -4,6 +4,10 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 
 public class NullLiteral extends Literal {
 
+    public NullLiteral() {
+        super(ExpressionType.NULL);
+    }
+
     @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.NULL;

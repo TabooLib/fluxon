@@ -5,10 +5,11 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * Await 表达式
  */
-public class AwaitExpression implements Expression {
+public class AwaitExpression extends Expression {
     private final ParseResult expression;
 
     public AwaitExpression(ParseResult expression) {
+        super(ExpressionType.AWAIT);
         this.expression = expression;
     }
 

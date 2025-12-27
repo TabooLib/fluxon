@@ -10,6 +10,7 @@ public class IntLiteral extends Literal {
     private final Integer boxedValue;
 
     public IntLiteral(int value) {
+        super(ExpressionType.INT_LITERAL);
         this.value = value;
         this.boxedValue = value;
     }

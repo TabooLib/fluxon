@@ -9,12 +9,13 @@ import java.util.List;
  * 代码块
  * 表示一组语句组成的代码块
  */
-public class Block implements Statement {
+public class Block extends Statement {
 
     private final String label;
     private final ParseResult[] statements;
 
     public Block(String label, ParseResult[] statements) {
+        super(StatementType.BLOCK);
         this.label = label;
         this.statements = statements;
     }

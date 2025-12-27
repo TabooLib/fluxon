@@ -5,11 +5,12 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * Elvis操作符表达式
  */
-public class ElvisExpression implements Expression {
+public class ElvisExpression extends Expression {
     private final ParseResult condition;
     private final ParseResult alternative;
 
     public ElvisExpression(ParseResult condition, ParseResult alternative) {
+        super(ExpressionType.ELVIS);
         this.condition = condition;
         this.alternative = alternative;
     }

@@ -4,7 +4,11 @@ package org.tabooproject.fluxon.parser.statement;
  * 继续语句
  * 表示继续循环
  */
-public class ContinueStatement implements Statement {
+public class ContinueStatement extends Statement {
+
+    public ContinueStatement() {
+        super(StatementType.CONTINUE);
+    }
 
     @Override
     public StatementType getStatementType() {

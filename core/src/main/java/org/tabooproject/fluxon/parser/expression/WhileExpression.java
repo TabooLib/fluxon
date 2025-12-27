@@ -6,11 +6,12 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * While表达式
  */
-public class WhileExpression implements Expression {
+public class WhileExpression extends Expression {
     private final ParseResult condition;
     private final ParseResult body;
 
     public WhileExpression(ParseResult condition, ParseResult body) {
+        super(ExpressionType.WHILE);
         this.condition = condition;
         this.body = body;
     }

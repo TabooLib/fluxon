@@ -5,12 +5,13 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 范围表达式
  */
-public class RangeExpression implements Expression {
+public class RangeExpression extends Expression {
     private final ParseResult start;
     private final ParseResult end;
     private final boolean inclusive; // true表示包含上界，false表示不包含上界
 
     public RangeExpression(ParseResult start, ParseResult end, boolean inclusive) {
+        super(ExpressionType.RANGE);
         this.start = start;
         this.end = end;
         this.inclusive = inclusive;

@@ -46,14 +46,14 @@ public class Interpreter {
      */
     public Object execute(List<ParseResult> parseResults) {
         for (ParseResult result : parseResults) {
-            if (result.getType() == ParseResult.ResultType.DEFINITION) {
+            if (result instanceof Definition) {
                 evaluateDefinition((Definition) result);
             }
         }
         // 第二遍：真正执行表达式和语句；定义节点已经处理过，直接跳过即可
         Object lastValue = null;
         for (ParseResult result : parseResults) {
-            if (result.getType() != ParseResult.ResultType.DEFINITION) {
+            if (!(result instanceof Definition)) {
                 lastValue = evaluate(result);
             }
         }
@@ -79,6 +79,7 @@ public class Interpreter {
 
     /**
      * 评估单个解析结果
+     * 使用 instanceof 进行类型判断，避免 getType() 的虚方法调用开销
      *
      * @param result 解析结果
      * @return 执行结果
@@ -86,16 +87,14 @@ public class Interpreter {
     public Object evaluate(ParseResult result) {
         try {
             consumeCostIfNeeded(result);
-            switch (result.getType()) {
-                case EXPRESSION:
-                    return evaluateExpression((Expression) result);
-                case STATEMENT:
-                    return evaluateStatement((Statement) result);
-                case DEFINITION:
-                    return evaluateDefinition((Definition) result);
-                default:
-                    return null;
+            if (result instanceof Expression) {
+                return evaluateExpression((Expression) result);
+            } else if (result instanceof Statement) {
+                return evaluateStatement((Statement) result);
+            } else if (result instanceof Definition) {
+                return evaluateDefinition((Definition) result);
             }
+            return null;
         } catch (FluxonRuntimeError ex) {
             attachSource(ex, result);
             throw ex;
@@ -103,11 +102,11 @@ public class Interpreter {
     }
 
     /**
-     * 直接评估表达式，跳过 ResultType 分派开销
+     * 直接评估表达式，使用缓存的 evaluator 引用避免 getExpressionType() 调用
      */
     public Object evaluateExpression(Expression expression) {
         try {
-            return expression.getExpressionType().evaluator.evaluate(this, expression);
+            return expression.getEvaluator().evaluate(this, expression);
         } catch (FluxonRuntimeError ex) {
             attachSource(ex, expression);
             throw ex;
@@ -115,11 +114,11 @@ public class Interpreter {
     }
 
     /**
-     * 直接评估语句
+     * 直接评估语句，使用缓存的 evaluator 引用避免 getStatementType() 调用
      */
     public Object evaluateStatement(Statement statement) {
         try {
-            return statement.getStatementType().evaluator.evaluate(this, statement);
+            return statement.getEvaluator().evaluate(this, statement);
         } catch (FluxonRuntimeError ex) {
             attachSource(ex, statement);
             throw ex;
@@ -181,7 +180,7 @@ public class Interpreter {
      */
     private void consumeCostIfNeeded(ParseResult result) {
         // 只对语句级别扣费，避免在表达式内部（如函数参数）重复扣费
-        if (costLimitEnabled && result.getType() == ParseResult.ResultType.STATEMENT) {
+        if (costLimitEnabled && result instanceof Statement) {
             consumeCostStep();
         }
     }

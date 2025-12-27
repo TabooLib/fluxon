@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * Lambda 表达式
  */
-public class LambdaExpression implements Expression {
+public class LambdaExpression extends Expression {
 
     private final String name;
     private final LinkedHashMap<String, Integer> parameters;
@@ -19,6 +19,7 @@ public class LambdaExpression implements Expression {
     private final Set<String> localVariables;
 
     public LambdaExpression(String name, LinkedHashMap<String, Integer> parameters, ParseResult body, Set<String> localVariables) {
+        super(ExpressionType.LAMBDA);
         this.name = name;
         this.parameters = parameters;
         this.body = body;

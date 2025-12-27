@@ -9,11 +9,12 @@ import java.util.List;
 /**
  * When 表达式
  */
-public class WhenExpression implements Expression {
+public class WhenExpression extends Expression {
     private final ParseResult subject;
     private final List<WhenBranch> branches;
 
     public WhenExpression(ParseResult subject, List<WhenBranch> branches) {
+        super(ExpressionType.WHEN);
         this.subject = subject;
         this.branches = branches;
     }

@@ -6,11 +6,12 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 一元表达式
  */
-public class UnaryExpression implements Expression {
+public class UnaryExpression extends Expression {
     private final Token operator;
     private final ParseResult right;
 
     public UnaryExpression(Token operator, ParseResult right) {
+        super(ExpressionType.UNARY);
         this.operator = operator;
         this.right = right;
     }

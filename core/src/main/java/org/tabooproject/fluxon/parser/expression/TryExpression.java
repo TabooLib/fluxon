@@ -7,7 +7,7 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * try 表达式
  */
-public class TryExpression implements Expression {
+public class TryExpression extends Expression {
     private final ParseResult body;
     @Nullable
     private final String catchName;
@@ -18,6 +18,7 @@ public class TryExpression implements Expression {
     private final ParseResult finallyBody;
 
     public TryExpression(ParseResult body, @Nullable String catchName, int position, @Nullable ParseResult catchBody, @Nullable ParseResult finallyBody) {
+        super(ExpressionType.TRY);
         this.body = body;
         this.catchName = catchName;
         this.position = position;

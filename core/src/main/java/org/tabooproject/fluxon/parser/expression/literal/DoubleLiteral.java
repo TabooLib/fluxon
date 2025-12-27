@@ -10,6 +10,7 @@ public class DoubleLiteral extends Literal {
     private final Double boxedValue;
 
     public DoubleLiteral(double value) {
+        super(ExpressionType.DOUBLE_LITERAL);
         this.value = value;
         this.boxedValue = value;
     }

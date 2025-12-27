@@ -10,6 +10,7 @@ public class LongLiteral extends Literal {
     private final Long boxedValue;
 
     public LongLiteral(long value) {
+        super(ExpressionType.LONG_LITERAL);
         this.value = value;
         this.boxedValue = value;
     }

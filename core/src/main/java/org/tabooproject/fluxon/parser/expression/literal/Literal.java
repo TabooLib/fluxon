@@ -6,7 +6,11 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 /**
  * 字面量表达式基类
  */
-public abstract class Literal implements Expression {
+public abstract class Literal extends Expression {
+
+    protected Literal(ExpressionType type) {
+        super(type);
+    }
 
     // 字面量基类，具体实现由子类提供
     @Override

@@ -12,10 +12,11 @@ import org.tabooproject.fluxon.parser.ParseResult;
  *  if true { ... } <--- 这里的每一行都会被解析为 ExprStmt，并封装为 Block
  * </code>
  */
-public class ExpressionStatement implements Statement {
+public class ExpressionStatement extends Statement {
     private final ParseResult expression;
 
     public ExpressionStatement(ParseResult expression) {
+        super(StatementType.EXPRESSION_STATEMENT);
         this.expression = expression;
     }
 

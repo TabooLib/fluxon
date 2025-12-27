@@ -10,6 +10,7 @@ public class FloatLiteral extends Literal {
     private final Float boxedValue;
 
     public FloatLiteral(float value) {
+        super(ExpressionType.FLOAT_LITERAL);
         this.value = value;
         this.boxedValue = value;
     }

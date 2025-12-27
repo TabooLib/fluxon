@@ -24,7 +24,7 @@ import org.tabooproject.fluxon.parser.CommandExecutor;
  * @see org.tabooproject.fluxon.parser.CommandExecutor
  * @see org.tabooproject.fluxon.parser.CommandRegistry
  */
-public class CommandExpression implements Expression {
+public class CommandExpression extends Expression {
 
     private final String commandName;
     private final Object parsedData;
@@ -38,6 +38,7 @@ public class CommandExpression implements Expression {
      * @param executor    执行器（在解析时捕获，保证一致性）
      */
     public CommandExpression(@NotNull String commandName, Object parsedData, @NotNull CommandExecutor<?> executor) {
+        super(ExpressionType.COMMAND);
         if (commandName.isEmpty()) {
             throw new IllegalArgumentException("Command name cannot be null or empty");
         }

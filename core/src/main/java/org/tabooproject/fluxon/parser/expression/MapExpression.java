@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 字典字面量
  */
-public class MapExpression implements Expression {
+public class MapExpression extends Expression {
     private final List<MapEntry> entries;
     private final boolean immutable;
 
@@ -16,6 +16,7 @@ public class MapExpression implements Expression {
     }
 
     public MapExpression(List<MapEntry> entries, boolean immutable) {
+        super(ExpressionType.MAP);
         this.entries = entries;
         this.immutable = immutable;
     }

@@ -5,10 +5,11 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 分组表达式
  */
-public class GroupingExpression implements Expression {
+public class GroupingExpression extends Expression {
     private final ParseResult expression;
 
     public GroupingExpression(ParseResult expression) {
+        super(ExpressionType.GROUPING);
         this.expression = expression;
     }
 

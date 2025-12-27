@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 /**
  * For 表达式
  */
-public class ForExpression implements Expression {
+public class ForExpression extends Expression {
     private final LinkedHashMap<String, Integer> variables;
     private final ParseResult collection;
     private final ParseResult body;
@@ -21,6 +21,7 @@ public class ForExpression implements Expression {
      * @param body 循环体
      */
     public ForExpression(LinkedHashMap<String, Integer> variables, ParseResult collection, ParseResult body, int localVariables) {
+        super(ExpressionType.FOR);
         this.variables = variables;
         this.collection = collection;
         this.body = body;

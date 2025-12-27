@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 列表表达式
  */
-public class ListExpression implements Expression {
+public class ListExpression extends Expression {
     private final List<ParseResult> elements;
     private final boolean immutable;
 
@@ -16,6 +16,7 @@ public class ListExpression implements Expression {
     }
 
     public ListExpression(List<ParseResult> elements, boolean immutable) {
+        super(ExpressionType.LIST);
         this.elements = elements;
         this.immutable = immutable;
     }
