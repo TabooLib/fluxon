@@ -38,6 +38,8 @@ public class FluxonRuntime {
     private volatile Function[] cachedSystemFunctions;
     // 缓存的系统扩展函数数组（避免每次创建环境时都转换）
     private volatile KV<Class<?>, Function>[][] cachedSystemExtensionFunctions;
+    // 缓存的扩展函数派发表数组（用于优化扩展函数解析）
+    private volatile ExtensionDispatchTable[] cachedDispatchTables;
     // 脏标记：当注册新函数时标记为 true，下次创建环境时会重新构建缓存
     private volatile boolean dirty = false;
 
@@ -95,16 +97,29 @@ public class FluxonRuntime {
     private void bake() {
         // 构建系统函数数组
         cachedSystemFunctions = systemFunctions.values().toArray(new Function[0]);
-        // 构建系统扩展函数数组
+        // 构建系统扩展函数数组和派发表
         List<KV<Class<?>, Function>[]> systemExtensionFunctionsList = new ArrayList<>();
+        List<ExtensionDispatchTable> dispatchTablesList = new ArrayList<>();
         for (Map.Entry<String, Map<Class<?>, Function>> entry : extensionFunctions.entrySet()) {
-            List<KV<Class<?>, Function>> classFunctionMap = new ArrayList<>();
-            for (Map.Entry<Class<?>, Function> entry2 : entry.getValue().entrySet()) {
-                classFunctionMap.add(new KV<>(entry2.getKey(), entry2.getValue()));
+            Map<Class<?>, Function> classFunctionMap = entry.getValue();
+            int size = classFunctionMap.size();
+            // 构建候选数组（保持注册顺序）
+            Class<?>[] candidateClasses = new Class<?>[size];
+            Function[] candidateFunctions = new Function[size];
+            List<KV<Class<?>, Function>> candidatesList = new ArrayList<>();
+            int i = 0;
+            for (Map.Entry<Class<?>, Function> entry2 : classFunctionMap.entrySet()) {
+                candidateClasses[i] = entry2.getKey();
+                candidateFunctions[i] = entry2.getValue();
+                candidatesList.add(new KV<>(entry2.getKey(), entry2.getValue()));
+                i++;
             }
-            systemExtensionFunctionsList.add(classFunctionMap.toArray(new KV[0]));
+            systemExtensionFunctionsList.add(candidatesList.toArray(new KV[0]));
+            // 构建派发表
+            dispatchTablesList.add(new ExtensionDispatchTable(classFunctionMap, candidateClasses, candidateFunctions));
         }
         cachedSystemExtensionFunctions = systemExtensionFunctionsList.toArray(new KV[0][]);
+        cachedDispatchTables = dispatchTablesList.toArray(new ExtensionDispatchTable[0]);
         // 重置脏标记
         dirty = false;
     }
@@ -121,7 +136,7 @@ public class FluxonRuntime {
                 }
             }
         }
-        return new Environment(systemFunctions, cachedSystemFunctions, systemVariables, extensionFunctions, cachedSystemExtensionFunctions);
+        return new Environment(systemFunctions, cachedSystemFunctions, systemVariables, extensionFunctions, cachedSystemExtensionFunctions, cachedDispatchTables);
     }
 
     /**

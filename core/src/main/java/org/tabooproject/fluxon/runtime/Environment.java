@@ -31,6 +31,9 @@ public class Environment {
     protected final Map<String, Map<Class<?>, Function>> extensionFunctions;
     @Nullable
     protected final KV<Class<?>, Function>[][] systemExtensionFunctions;
+    // 扩展函数派发表（用于优化扩展函数解析）
+    @Nullable
+    protected final ExtensionDispatchTable[] dispatchTables;
 
     // 根变量
     @Nullable
@@ -64,13 +67,15 @@ public class Environment {
             @NotNull Function[] systemFunctions,
             @NotNull Map<String, Object> values,
             @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
-            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions) {
+            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions,
+            @NotNull ExtensionDispatchTable[] dispatchTables) {
         this.root = this;
         this.parent = null;
         this.functions = new HashMap<>(functions);
         this.systemFunctions = systemFunctions;
         this.extensionFunctions = extensionFunctions;
         this.systemExtensionFunctions = systemExtensionFunctions;
+        this.dispatchTables = dispatchTables;
         this.rootVariables = new HashMap<>(values);
         this.localVariables = null;
         this.localVariableNames = null;
@@ -90,6 +95,7 @@ public class Environment {
         this.systemFunctions = null;
         this.extensionFunctions = null;
         this.systemExtensionFunctions = null;
+        this.dispatchTables = null;
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
@@ -193,27 +199,25 @@ public class Environment {
     @Nullable
     public Function getExtensionFunctionOrNull(Class<?> extensionClass, String name, int index) {
         if (index != -1) {
-            KV<Class<?>, Function>[] classFunctionMap = Objects.requireNonNull(root.systemExtensionFunctions)[index];
-            // 查找兼容的类型
-            for (KV<Class<?>, Function> entry : classFunctionMap) {
-                if (entry.getKey() == extensionClass) return entry.getValue();
-            }
-            for (KV<Class<?>, Function> entry : classFunctionMap) {
-                if (entry.getKey().isAssignableFrom(extensionClass)) return entry.getValue();
-            }
+            // 使用派发表进行优化解析
+            ExtensionDispatchTable dispatchTable = Objects.requireNonNull(root.dispatchTables)[index];
+            return Objects.requireNonNull(dispatchTable).resolve(extensionClass);
         }
         // 回退逻辑，使用名称检索
-        // 效率低于索引逻辑
+        // 需要进行线性扫描（用于动态注册的扩展函数）
         else {
             Map<Class<?>, Function> classFunctionMap = Objects.requireNonNull(root.extensionFunctions).get(name);
             if (classFunctionMap != null) {
-                // 查找兼容的类型
-                Set<Map.Entry<Class<?>, Function>> entries = classFunctionMap.entrySet();
-                for (Map.Entry<Class<?>, Function> entry : entries) {
-                    if (entry.getKey() == extensionClass) return entry.getValue();
+                // 查找精确匹配
+                Function exact = classFunctionMap.get(extensionClass);
+                if (exact != null) {
+                    return exact;
                 }
-                for (Map.Entry<Class<?>, Function> entry : entries) {
-                    if (entry.getKey().isAssignableFrom(extensionClass)) return entry.getValue();
+                // 查找可赋值匹配
+                for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
+                    if (entry.getKey().isAssignableFrom(extensionClass)) {
+                        return entry.getValue();
+                    }
                 }
             }
         }
@@ -288,7 +292,9 @@ public class Environment {
         } else {
             if (localVariables != null && index < localVariables.length) {
                 localVariables[index] = value;
-                localVariableNames[index] = name;
+                if (localVariableNames != null) {
+                    localVariableNames[index] = name;
+                }
             } else if (parent != null) {
                 parent.assign(name, value, index);
             } else {
@@ -325,6 +331,13 @@ public class Environment {
      */
     public KV<Class<?>, Function>[][] getRootSystemExtensionFunctions() {
         return root.systemExtensionFunctions;
+    }
+
+    /**
+     * 获取根环境中的所有扩展函数派发表
+     */
+    public ExtensionDispatchTable[] getRootDispatchTables() {
+        return root.dispatchTables;
     }
 
     /**
