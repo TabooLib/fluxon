@@ -224,12 +224,11 @@ public class ExtensionFile {
                 // 复制到
                 .function("copyTo", Arrays.asList(1, 2), (context) -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    Object targetArg = args[0];
+                    Object targetArg = context.getArgument(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
-                        if (args.length > 1) {
-                            boolean replaceExisting = Coerce.asBoolean(args[1]).orElse(false);
+                        if (context.hasArgument(1)) {
+                            boolean replaceExisting = Coerce.asBoolean(context.getArgument(1)).orElse(false);
                             if (replaceExisting) {
                                 Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                             } else {
@@ -246,12 +245,11 @@ public class ExtensionFile {
                 // 移动到
                 .function("moveTo", Arrays.asList(1, 2), (context) -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    Object targetArg = args[0];
+                    Object targetArg = context.getArgument(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
-                        if (args.length > 1) {
-                            boolean replaceExisting = Coerce.asBoolean(args[1]).orElse(false);
+                        if (context.hasArgument(1)) {
+                            boolean replaceExisting = Coerce.asBoolean(context.getArgument(1)).orElse(false);
                             if (replaceExisting) {
                                 Files.move(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                             } else {
@@ -273,10 +271,9 @@ public class ExtensionFile {
                 // 递归复制目录
                 .function("copyRecursively", Arrays.asList(1, 2), (context) -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    Object targetArg = args[0];
+                    Object targetArg = context.getArgument(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = args.length > 1 ? Coerce.asBoolean(args[1]).orElse(false) : false;
+                    boolean replaceExisting = context.hasArgument(1) ? Coerce.asBoolean(context.getArgument(1)).orElse(false) : false;
                     try {
                         copyRecursively(file.toPath(), target.toPath(), replaceExisting);
                         return target;
@@ -301,8 +298,7 @@ public class ExtensionFile {
                 // 遍历目录树
                 .function("walk", Arrays.asList(0, 1), (context) -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    int maxDepth = args.length > 0 ? Coerce.asInteger(args[0]).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
+                    int maxDepth = context.hasArgument(0) ? Coerce.asInteger(context.getArgument(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
                     try (Stream<Path> stream = Files.walk(file.toPath(), maxDepth)) {
                         return stream.map(Path::toFile).collect(Collectors.toList());
                     } catch (IOException e) {

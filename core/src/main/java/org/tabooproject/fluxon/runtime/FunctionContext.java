@@ -23,8 +23,18 @@ public class FunctionContext<Target> {
     @NotNull
     private Environment environment;
 
+    // ====================== 参数数组模式 ======================
     private Object[] arguments;
     private int argumentCount;
+
+    // ====================== inline 参数槽位（fast-args）======================
+    // 当 inlineMode 为 true 时，参数存储在 inlineArg0..inlineArg3 中，arguments 为 null
+    private boolean inlineMode;
+    private int inlineCount;
+    private Object inlineArg0;
+    private Object inlineArg1;
+    private Object inlineArg2;
+    private Object inlineArg3;
 
     private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
@@ -55,7 +65,7 @@ public class FunctionContext<Target> {
      * @return 如果索引有效则返回true，否则返回false
      */
     public boolean hasArgument(int index) {
-        return index < argumentCount;
+        return index < getArgumentCount();
     }
 
     /**
@@ -66,6 +76,20 @@ public class FunctionContext<Target> {
      */
     @Nullable
     public Object getArgument(int index) {
+        if (inlineMode) {
+            if (index >= inlineCount) {
+                return null;
+            }
+            // @formatter:off
+            switch (index) {
+                case 0: return inlineArg0;
+                case 1: return inlineArg1;
+                case 2: return inlineArg2;
+                case 3: return inlineArg3;
+                default: return null;
+            }
+            // @formatter:on
+        }
         if (index >= argumentCount) {
             return null;
         }
@@ -193,10 +217,20 @@ public class FunctionContext<Target> {
 
     /**
      * 获取当前函数上下文关联的参数数组
+     * 在 inline 模式下，会惰性创建数组并缓存
      *
      * @return 参数数组
      */
     public Object[] getArguments() {
+        if (inlineMode) {
+            // 惰性物化：创建数组并缓存
+            Object[] materialized = Intrinsics.materializeArgs(inlineCount, inlineArg0, inlineArg1, inlineArg2, inlineArg3);
+            // 切换到数组模式，避免重复物化
+            this.arguments = materialized;
+            this.argumentCount = inlineCount;
+            this.inlineMode = false;
+            return materialized;
+        }
         return arguments;
     }
 
@@ -206,7 +240,7 @@ public class FunctionContext<Target> {
      * @return 参数数量
      */
     public int getArgumentCount() {
-        return argumentCount;
+        return inlineMode ? inlineCount : argumentCount;
     }
 
     /**
@@ -222,13 +256,36 @@ public class FunctionContext<Target> {
     /**
      * 更新当前函数上下文关联的参数数组和参数数量
      * 用于在高频调用时避免重复创建函数上下文实例
-     *
-     * @param arguments 参数数组
-     * @return 当前函数上下文实例
+     * 注意：此方法会清除 inline 模式
      */
     public FunctionContext<Target> updateArguments(Object[] arguments) {
         this.arguments = arguments;
         this.argumentCount = arguments.length;
+        this.inlineMode = false;
+        clearInlineSlots();
+        return this;
+    }
+
+    /**
+     * 更新当前函数上下文关联的 inline 参数槽位
+     * 用于在高频调用时避免重复创建函数上下文实例和参数数组
+     * 注意：此方法会启用 inline 模式
+     */
+    public FunctionContext<Target> updateArguments(
+            int count,
+            @Nullable Object arg0,
+            @Nullable Object arg1,
+            @Nullable Object arg2,
+            @Nullable Object arg3
+    ) {
+        this.arguments = null;
+        this.argumentCount = 0;
+        this.inlineMode = true;
+        this.inlineCount = count;
+        this.inlineArg0 = arg0;
+        this.inlineArg1 = arg1;
+        this.inlineArg2 = arg2;
+        this.inlineArg3 = arg3;
         return this;
     }
 
@@ -246,20 +303,44 @@ public class FunctionContext<Target> {
      * 仅供内部池化使用的重置方法，用于避免重复创建 FunctionContext 实例
      */
     @SuppressWarnings("unchecked")
-    void reset(@NotNull Function function, @Nullable Object target, Object[] arguments, @NotNull Environment environment) {
+    void reset(
+            @NotNull Function function,
+            @Nullable Object target,
+            @NotNull Object[] arguments,
+            @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
         this.arguments = arguments;
         this.argumentCount = arguments.length;
         this.environment = environment;
+        this.inlineMode = false;
+        clearInlineSlots();
     }
 
     /**
-     * 释放对当前实参数组的引用，方便被池化对象尽快释放大型数组
+     * 仅供内部池化使用的 inline 模式重置方法
      */
-    void clearArguments() {
-        this.arguments = EMPTY_ARGUMENTS;
+    @SuppressWarnings("unchecked")
+    void resetInline(
+            @NotNull Function function,
+            @Nullable Object target,
+            int count,
+            @Nullable Object arg0,
+            @Nullable Object arg1,
+            @Nullable Object arg2,
+            @Nullable Object arg3,
+            @NotNull Environment environment) {
+        this.function = function;
+        this.target = (Target) target;
+        this.arguments = null;
         this.argumentCount = 0;
+        this.environment = environment;
+        this.inlineMode = true;
+        this.inlineCount = count;
+        this.inlineArg0 = arg0;
+        this.inlineArg1 = arg1;
+        this.inlineArg2 = arg2;
+        this.inlineArg3 = arg3;
     }
 
     /**
@@ -271,6 +352,19 @@ public class FunctionContext<Target> {
         this.argumentCount = 0;
         this.target = null;
         this.environment = null;
+        this.inlineMode = false;
+        clearInlineSlots();
+    }
+
+    /**
+     * 清理 inline 槽位引用，便于 GC
+     */
+    private void clearInlineSlots() {
+        this.inlineCount = 0;
+        this.inlineArg0 = null;
+        this.inlineArg1 = null;
+        this.inlineArg2 = null;
+        this.inlineArg3 = null;
     }
 
     @Override
@@ -278,7 +372,8 @@ public class FunctionContext<Target> {
         return "FunctionContext{" +
                 "function=" + function.getName() +
                 ", target=" + target +
-                ", arguments=" + arguments.length +
+                ", arguments=" + getArgumentCount() +
+                ", inline=" + inlineMode +
                 '}';
     }
 }

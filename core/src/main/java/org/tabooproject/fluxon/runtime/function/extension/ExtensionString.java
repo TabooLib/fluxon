@@ -43,33 +43,29 @@ public class ExtensionString {
                 // 字符串分割
                 .function("split", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String delimiter = args[0].toString();
+                    String delimiter = Coerce.asString(context.getArgument(0)).orElse("");
                     return Arrays.asList(str.split(delimiter));
                 })
                 // 字符串替换
                 .function("replace", 2, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String oldStr = Coerce.asString(args[0]).orElse("");
-                    String newStr = Coerce.asString(args[1]).orElse("");
+                    String oldStr = Coerce.asString(context.getArgument(0)).orElse("");
+                    String newStr = Coerce.asString(context.getArgument(1)).orElse("");
                     return str.replace(oldStr, newStr);
                 })
                 // 字符串替换（全部）
                 .function("replaceAll", 2, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String regex = Coerce.asString(args[0]).orElse("");
-                    String replacement = Coerce.asString(args[1]).orElse("");
+                    String regex = Coerce.asString(context.getArgument(0)).orElse("");
+                    String replacement = Coerce.asString(context.getArgument(1)).orElse("");
                     return str.replaceAll(regex, replacement);
                 })
                 // 获取子字符串
                 .function("substring", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    int start = Coerce.asInteger(args[0]).orElse(0);
-                    if (args.length > 1) {
-                        int end = Coerce.asInteger(args[1]).orElse(str.length());
+                    int start = Coerce.asInteger(context.getArgument(0)).orElse(0);
+                    if (context.hasArgument(1)) {
+                        int end = Coerce.asInteger(context.getArgument(1)).orElse(str.length());
                         return str.substring(start, Math.min(end, str.length()));
                     }
                     return str.substring(start);
@@ -77,10 +73,9 @@ public class ExtensionString {
                 // 查找子字符串位置
                 .function("indexOf", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String searchStr = Coerce.asString(args[0]).orElse("");
-                    if (args.length > 1) {
-                        int fromIndex = Coerce.asInteger(args[1]).orElse(0);
+                    String searchStr = Coerce.asString(context.getArgument(0)).orElse("");
+                    if (context.hasArgument(1)) {
+                        int fromIndex = Coerce.asInteger(context.getArgument(1)).orElse(0);
                         return str.indexOf(searchStr, fromIndex);
                     }
                     return str.indexOf(searchStr);
@@ -88,10 +83,9 @@ public class ExtensionString {
                 // 查找子字符串最后位置
                 .function("lastIndexOf", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String searchStr = Coerce.asString(args[0]).orElse("");
-                    if (args.length > 1) {
-                        int fromIndex = Coerce.asInteger(args[1]).orElse(str.length());
+                    String searchStr = Coerce.asString(context.getArgument(0)).orElse("");
+                    if (context.hasArgument(1)) {
+                        int fromIndex = Coerce.asInteger(context.getArgument(1)).orElse(str.length());
                         return str.lastIndexOf(searchStr, fromIndex);
                     }
                     return str.lastIndexOf(searchStr);
@@ -109,10 +103,9 @@ public class ExtensionString {
                 // 检查是否以指定字符串开始
                 .function("startsWith", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    String prefix = Coerce.asString(args[0]).orElse("");
-                    if (args.length > 1) {
-                        int offset = Coerce.asInteger(args[1]).orElse(0);
+                    String prefix = Coerce.asString(context.getArgument(0)).orElse("");
+                    if (context.hasArgument(1)) {
+                        int offset = Coerce.asInteger(context.getArgument(1)).orElse(0);
                         return str.startsWith(prefix, offset);
                     }
                     return str.startsWith(prefix);
@@ -126,9 +119,8 @@ public class ExtensionString {
                 // 左填充
                 .function("padLeft", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    int totalLength = Coerce.asInteger(args[0]).orElse(0);
-                    String padChar = args.length > 1 ? Coerce.asString(args[1]).orElse(" ") : " ";
+                    int totalLength = Coerce.asInteger(context.getArgument(0)).orElse(0);
+                    String padChar = context.hasArgument(1) ? Coerce.asString(context.getArgument(1)).orElse(" ") : " ";
                     if (padChar.isEmpty()) padChar = " ";
 
                     StringBuilder result = new StringBuilder(str);
@@ -140,9 +132,8 @@ public class ExtensionString {
                 // 右填充
                 .function("padRight", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    Object[] args = context.getArguments();
-                    int totalLength = Coerce.asInteger(args[0]).orElse(0);
-                    String padChar = args.length > 1 ? Coerce.asString(args[1]).orElse(" ") : " ";
+                    int totalLength = Coerce.asInteger(context.getArgument(0)).orElse(0);
+                    String padChar = context.hasArgument(1) ? Coerce.asString(context.getArgument(1)).orElse(" ") : " ";
                     if (padChar.isEmpty()) padChar = " ";
 
                     StringBuilder result = new StringBuilder(str);

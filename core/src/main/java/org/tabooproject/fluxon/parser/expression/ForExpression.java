@@ -2,13 +2,13 @@ package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.parser.ParseResult;
 
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * For 表达式
  */
 public class ForExpression extends Expression {
-    private final LinkedHashMap<String, Integer> variables;
+    private final Map<String, Integer> variables;
     private final ParseResult collection;
     private final ParseResult body;
     private final int localVariables;
@@ -20,7 +20,7 @@ public class ForExpression extends Expression {
      * @param collection 集合表达式
      * @param body 循环体
      */
-    public ForExpression(LinkedHashMap<String, Integer> variables, ParseResult collection, ParseResult body, int localVariables) {
+    public ForExpression(Map<String, Integer> variables, ParseResult collection, ParseResult body, int localVariables) {
         super(ExpressionType.FOR);
         this.variables = variables;
         this.collection = collection;
@@ -33,7 +33,7 @@ public class ForExpression extends Expression {
      *
      * @return 变量名列表
      */
-    public LinkedHashMap<String, Integer> getVariables() {
+    public Map<String, Integer> getVariables() {
         return variables;
     }
 

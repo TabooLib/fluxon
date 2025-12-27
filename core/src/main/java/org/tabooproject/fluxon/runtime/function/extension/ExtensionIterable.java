@@ -107,7 +107,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        closure.call(ctx.updateArguments(new Object[]{object}));
+                        closure.call(ctx.updateArguments(1, object, null, null, null));
                     }
                     return null;
                 })
@@ -120,7 +120,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        result.add(closure.call(ctx.updateArguments(new Object[]{object})));
+                        result.add(closure.call(ctx.updateArguments(1, object, null, null, null)));
                     }
                     return result;
                 })
@@ -133,7 +133,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(1, object, null, null, null)))) {
                             result.add(object);
                         }
                     }
@@ -148,7 +148,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        Object key = closure.call(ctx.updateArguments(new Object[]{object}));
+                        Object key = closure.call(ctx.updateArguments(1, object, null, null, null));
                         result.computeIfAbsent(key, k -> new ArrayList<>()).add(object);
                     }
                     return result;
@@ -161,7 +161,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(1, object, null, null, null)))) {
                             return true;
                         }
                     }
@@ -175,7 +175,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        if (!Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                        if (!Operations.isTrue(closure.call(ctx.updateArguments(1, object, null, null, null)))) {
                             return false;
                         }
                     }
@@ -189,7 +189,7 @@ public class ExtensionIterable {
                         if (ctx == null) {
                             ctx = context.copy(new Object[0]);
                         }
-                        if (Operations.isTrue(closure.call(ctx.updateArguments(new Object[]{object})))) {
+                        if (Operations.isTrue(closure.call(ctx.updateArguments(1, object, null, null, null)))) {
                             return false;
                         }
                     }

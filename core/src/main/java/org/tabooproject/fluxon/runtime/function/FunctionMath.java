@@ -14,18 +14,20 @@ public class FunctionMath {
 
         // 最大最小值
         runtime.registerFunction("min", 2, (context) -> {
-            Object[] args = context.getArguments();
-            if (Operations.compare(args[0], args[1]) < 0) {
-                return args[0];
+            Number num0 = context.getNumber(0);
+            Number num1 = context.getNumber(1);
+            if (Operations.compareNumbers(num0, num1) < 0) {
+                return num0;
             }
-            return args[1];
+            return num1;
         });
         runtime.registerFunction("max", 2, (context) -> {
-            Object[] args = context.getArguments();
-            if (Operations.compare(args[0], args[1]) > 0) {
-                return args[0];
+            Number num0 = context.getNumber(0);
+            Number num1 = context.getNumber(1);
+            if (Operations.compareNumbers(num0, num1) > 0) {
+                return num0;
             }
-            return args[1];
+            return num1;
         });
         runtime.registerFunction("clamp", 3, (context) -> {
             Number num = context.getNumber(0);
@@ -127,16 +129,16 @@ public class FunctionMath {
         // 随机数生成函数
         // random() / random(end) / random(start, end)
         runtime.registerFunction("random", Arrays.asList(0, 1, 2),(context) -> {
-            Object[] args = context.getArguments();
-            switch (args.length) {
+            int argCount = context.getArgumentCount();
+            switch (argCount) {
                 case 0:
                     return Math.random();
                 case 1:
-                    return generateRandomSingle(args[0]);
+                    return generateRandomSingle(context.getArgument(0));
                 case 2:
-                    return generateRandomRange(args[0], args[1]);
+                    return generateRandomRange(context.getArgument(0), context.getArgument(1));
                 default:
-                    throw new IllegalArgumentException("random function accepts 0, 1, or 2 arguments, got " + args.length);
+                    throw new IllegalArgumentException("random function accepts 0, 1, or 2 arguments, got " + argCount);
             }
         });
 

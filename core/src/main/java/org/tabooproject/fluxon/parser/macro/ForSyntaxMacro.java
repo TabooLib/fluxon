@@ -11,8 +11,11 @@ import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.parser.type.BlockParser;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
 
+import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * For 表达式语法宏
@@ -50,17 +53,16 @@ public class ForSyntaxMacro implements SyntaxMacro {
         env.setContinuable(true);
 
         // 解析变量部分
-        LinkedHashMap<String, Integer> variables;
+        Map<String, Integer> variables;
 
         // 检查是否是解构形式 (变量1, 变量2, ...)
         if (parser.match(TokenType.LEFT_PAREN)) {
             variables = parseDestructuringVariables(parser);
         } else {
-            // 单变量形式
+            // 单变量形式 - 使用轻量 SingleEntryMap 避免 LinkedHashMap 开销
             String variable = parser.consume(TokenType.IDENTIFIER, "Expected identifier after 'for'").getLexeme();
             parser.defineVariable(variable);
-            variables = new LinkedHashMap<>();
-            variables.put(variable, env.getLocalVariable(variable));
+            variables = new SingleEntryMap<>(variable, env.getLocalVariable(variable));
         }
 
         // 消费 IN 标记
@@ -98,7 +100,7 @@ public class ForSyntaxMacro implements SyntaxMacro {
             SymbolEnvironment env,
             boolean oldBreakable,
             boolean oldContinuable,
-            LinkedHashMap<String, Integer> variables,
+            Map<String, Integer> variables,
             ParseResult collection,
             Trampoline.Continuation<ParseResult> continuation,
             Token forToken

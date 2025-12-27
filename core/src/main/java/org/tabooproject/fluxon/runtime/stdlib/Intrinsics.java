@@ -24,6 +24,8 @@ public final class Intrinsics {
 
     public static long AWAIT_TIMEOUT_MINUTES = 1;
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     /**
      * 为集合对象创建迭代器
      *
@@ -88,7 +90,6 @@ public final class Intrinsics {
     public static List<Integer> createRange(Object start, Object end, boolean isInclusive) {
         // 检查开始值和结束值是否为数字
         Operations.checkNumberOperands(start, end);
-
         // 转换为整数
         int startInt = ((Number) start).intValue();
         int endInt = ((Number) end).intValue();
@@ -96,7 +97,6 @@ public final class Intrinsics {
         if (!isInclusive) {
             endInt--;
         }
-
         // 计算所需的确切大小
         int size = Math.abs(endInt - startInt) + 1;
         // 创建具有预设容量的 ArrayList
@@ -162,15 +162,66 @@ public final class Intrinsics {
     }
 
     /**
+     * 执行函数调用（fast-args 路径，避免创建参数数组）
+     * 仅在符合条件时使用 inline 路径，否则回退到标准路径
+     *
+     * @param environment 脚本运行环境
+     * @param name        函数名称
+     * @param count       参数数量
+     * @param arg0        参数0
+     * @param arg1        参数1
+     * @param arg2        参数2
+     * @param arg3        参数3
+     * @param pos         函数位置
+     * @param exPos       扩展函数位置
+     * @return 函数调用结果
+     */
+    public static Object callFunctionFastArgs(
+            Environment environment,
+            String name,
+            int count,
+            Object arg0,
+            Object arg1,
+            Object arg2,
+            Object arg3,
+            int pos,
+            int exPos) {
+        Object target = environment.getTarget();
+        // 先尝试解析函数
+        Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
+        if (function == null) {
+            // 函数未找到，物化参数数组用于错误信息
+            Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
+            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
+        }
+        // 判断是否适用 fast-args 路径
+        // 条件：同步 NativeFunction（非 async、非 primarySync）
+        if (function instanceof NativeFunction && !function.isAsync() && !function.isPrimarySync()) {
+            return callSynchronouslyInline(function, target, count, arg0, arg1, arg2, arg3, environment);
+        }
+        // 回退到标准路径：物化参数数组
+        Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
+        return callResolvedFunction(function, target, arguments, environment);
+    }
+
+    /**
      * 解析函数引用，若找不到则抛出 FunctionNotFoundError
      */
     public static Function resolveFunction(Environment environment, Object target, String name, Object[] arguments, int pos, int exPos) {
+        Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
+        // 如果函数不存在
+        if (function == null) {
+            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
+        }
+        return function;
+    }
+
+    /**
+     * 尝试解析函数引用，若找不到则返回 null
+     */
+    private static Function resolveFunctionOrNull(Environment environment, Object target, String name, int pos, int exPos) {
         Function function = null;
-        // 优先尝试从扩展函数中获取函数
         if (target != null && target != GlobalObject.INSTANCE && exPos != -1) {
-            // 此时有可能获取不到扩展函数
-            // 例如：&sender::location()::isBehand( player(HUAIHEI)::location() )
-            // player 在 isBehand 里调用，因此会尝试检索扩展函数
             function = environment.getExtensionFunctionOrNull(target.getClass(), name, exPos);
         }
         if (function == null) {
@@ -179,10 +230,6 @@ public final class Intrinsics {
             } else {
                 function = environment.getFunctionOrNull(name);
             }
-        }
-        // 如果函数不存在
-        if (function == null) {
-            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
         }
         return function;
     }
@@ -209,6 +256,32 @@ public final class Intrinsics {
             return function.call(context);
         } catch (Throwable ex) {
             // 如果函数有 except 注解，则打印异常栈
+            if (AnnotationAccess.hasAnnotation(function, "except")) {
+                ex.printStackTrace();
+            }
+            throw ex;
+        } finally {
+            pool.release(context);
+        }
+    }
+
+    /**
+     * 使用 inline 参数执行同步函数调用
+     */
+    private static Object callSynchronouslyInline(
+            Function function,
+            Object target,
+            int count,
+            Object arg0,
+            Object arg1,
+            Object arg2,
+            Object arg3,
+            Environment environment) {
+        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContext<?> context = pool.borrowInline(function, target, count, arg0, arg1, arg2, arg3, environment);
+        try {
+            return function.call(context);
+        } catch (Throwable ex) {
             if (AnnotationAccess.hasAnnotation(function, "except")) {
                 ex.printStackTrace();
             }
@@ -472,5 +545,20 @@ public final class Intrinsics {
             }
             throw IndexAccessError.unsupportedType(target, index);
         }
+    }
+
+    /**
+     * 物化参数数组（用于回退路径）
+     */
+    public static Object[] materializeArgs(int count, Object arg0, Object arg1, Object arg2, Object arg3) {
+        // @formatter:off
+        switch (count) {
+            case 1: return new Object[]{arg0};
+            case 2: return new Object[]{arg0, arg1};
+            case 3: return new Object[]{arg0, arg1, arg2};
+            case 4: return new Object[]{arg0, arg1, arg2, arg3};
+            default: return EMPTY_ARGS;
+        }
+        // @formatter:on
     }
 }

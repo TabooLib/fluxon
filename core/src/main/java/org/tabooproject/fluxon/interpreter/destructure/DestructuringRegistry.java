@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.destructure;
 
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,10 +88,15 @@ public class DestructuringRegistry {
         if (variables.isEmpty()) {
             return;
         }
-        // 单变量情况特殊处理
+        // 单变量情况特殊处理 - 利用 SingleEntryMap 直接访问避免迭代器开销
         if (variables.size() == 1) {
-            Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
-            environment.assign(entry.getKey(), element, entry.getValue());
+            if (variables instanceof SingleEntryMap) {
+                SingleEntryMap<String, Integer> single = (SingleEntryMap<String, Integer>) variables;
+                environment.assign(single.getKey(), element, single.getValue());
+            } else {
+                Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
+                environment.assign(entry.getKey(), element, entry.getValue());
+            }
             return;
         }
         // 查找合适的解构器
@@ -103,4 +109,4 @@ public class DestructuringRegistry {
         // 如果没有找到合适的解构器，使用默认解构器
         defaultDestructurer.destructure(environment, variables, element);
     }
-} 
+}

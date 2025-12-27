@@ -43,6 +43,32 @@ public final class FunctionContextPool {
     }
 
     /**
+     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
+     */
+    public FunctionContext<?> borrowInline(
+            @NotNull Function function,
+            @Nullable Object target,
+            int count,
+            @Nullable Object arg0,
+            @Nullable Object arg1,
+            @Nullable Object arg2,
+            @Nullable Object arg3,
+            @NotNull Environment environment
+    ) {
+        FunctionContext<?> context;
+        if (size > 0) {
+            context = pool[--size];
+            pool[size] = null;
+        } else {
+            context = new FunctionContext<>(function, target, EMPTY_ARGUMENTS, environment);
+        }
+        context.resetInline(function, target, count, arg0, arg1, arg2, arg3, environment);
+        return context;
+    }
+
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+
+    /**
      * 归还一个 FunctionContext 实例到线程本地池
      */
     public void release(FunctionContext<?> context) {

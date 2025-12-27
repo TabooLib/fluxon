@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.parser.SourceTrace;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
+import java.lang.reflect.Parameter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -19,27 +20,28 @@ import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.POP;
+import static org.tabooproject.fluxon.runtime.Type.OBJECT;
+import static org.tabooproject.fluxon.runtime.Type.STRING;
 
 public class BytecodeUtils {
 
     /**
      * 生成创建和填充 Map<String, Integer> 的字节码
      */
-    public static void generateVariablePositionMap(MethodVisitor mv, LinkedHashMap<String, Integer> variables) {
+    public static void generateVariablePositionMap(MethodVisitor mv, Map<String, Integer> variables) {
         // 创建 HashMap 实例
         mv.visitTypeInsn(NEW, LINKED_HASH_MAP.getPath());
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP.getPath(), "<init>", "()V", false);
-
         // 填充 Map
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
             mv.visitInsn(DUP);                 // 复制 Map 引用
             mv.visitLdcInsn(entry.getKey());   // 键
             mv.visitLdcInsn(entry.getValue()); // 值
             // 装箱
-            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
             // 调用 put 方法
-            mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + Type.OBJECT + Type.OBJECT + ")" + Type.OBJECT, true);
+            mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + OBJECT + OBJECT + ")" + OBJECT, true);
             // 丢弃 put 方法的返回值
             mv.visitInsn(POP);
         }
@@ -49,31 +51,25 @@ public class BytecodeUtils {
      * 生成安全的参数访问代码
      * 如果参数不存在，使用默认值；如果参数存在，进行类型转换
      */
-    public static void generateSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, java.lang.reflect.Parameter parameter) {
-        boolean isOptional = parameter.isAnnotationPresent(Optional.class);
-
-        if (isOptional) {
+    public static void generateSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, Parameter parameter) {
+        if (parameter.isAnnotationPresent(Optional.class)) {
             // 可选参数：检查数组长度，如果不存在则使用默认值
             Label hasParam = new Label();
             Label endLabel = new Label();
-
             // if (args.length > paramIndex)
             mv.visitVarInsn(ALOAD, 3); // args 数组
             mv.visitInsn(ARRAYLENGTH);
             mv.visitIntInsn(BIPUSH, paramIndex + 1);
             mv.visitJumpInsn(IF_ICMPGE, hasParam);
-
             // 参数不存在，使用默认值
             generateDefaultValue(mv, paramType);
             mv.visitJumpInsn(GOTO, endLabel);
-
             // 参数存在，获取并转换
             mv.visitLabel(hasParam);
             mv.visitVarInsn(ALOAD, 3); // args 数组
             mv.visitIntInsn(BIPUSH, paramIndex);
             mv.visitInsn(AALOAD);
             generateTypeConversion(mv, paramType);
-
             mv.visitLabel(endLabel);
         } else {
             // 必需参数：直接获取并转换
@@ -146,15 +142,12 @@ public class BytecodeUtils {
             mv.visitTypeInsn(CHECKCAST, org.objectweb.asm.Type.getInternalName(targetType));
             return;
         }
-
         String wrapperClass = getWrapperClassName(targetType);
         if (wrapperClass == null) {
             throw new IllegalArgumentException("Unknown primitive type: " + targetType);
         }
-
         String unboxingMethod = getUnboxingMethodName(targetType);
         String descriptor = "()" + org.objectweb.asm.Type.getDescriptor(targetType);
-
         // boolean 和 char 直接从包装类拆箱
         if (targetType == boolean.class || targetType == char.class) {
             mv.visitTypeInsn(CHECKCAST, wrapperClass);
@@ -193,7 +186,7 @@ public class BytecodeUtils {
         Map<String, Object> attributes = annotation.getAttributes();
         if (attributes.isEmpty()) {
             // 无属性，使用单参数构造函数
-            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(Ljava/lang/String;)V", false);
+            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(" + STRING + ")V", false);
         } else {
             // 有属性，创建属性 Map
             mv.visitTypeInsn(NEW, "java/util/HashMap");
@@ -205,11 +198,11 @@ public class BytecodeUtils {
                 mv.visitLdcInsn(entry.getKey()); // 键
                 generatePushValue(mv, entry.getValue()); // 值
                 // 调用 put 方法
-                mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
+                mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + OBJECT + OBJECT + ")" + OBJECT, true);
                 mv.visitInsn(POP); // 丢弃返回值
             }
             // 调用双参数构造函数
-            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(Ljava/lang/String;Ljava/util/Map;)V", false);
+            mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(" + STRING + MAP + ")V", false);
         }
     }
 

@@ -14,18 +14,16 @@ public class FunctionSystem {
     @SuppressWarnings({"DataFlowIssue"})
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("print", 1, (context) -> {
-            Object[] args = context.getArguments();
-            if (args.length > 0) {
-                context.getEnvironment().getOut().println(args[0]);
+            if (context.hasArgument(0)) {
+                context.getEnvironment().getOut().println(context.getArgument(0));
             } else {
                 context.getEnvironment().getOut().println();
             }
             return null;
         });
         runtime.registerFunction("error", 1, (context) -> {
-            Object[] args = context.getArguments();
-            if (args.length > 0) {
-                context.getEnvironment().getErr().println(args[0]);
+            if (context.hasArgument(0)) {
+                context.getEnvironment().getErr().println(context.getArgument(0));
             } else {
                 context.getEnvironment().getErr().println();
             }
