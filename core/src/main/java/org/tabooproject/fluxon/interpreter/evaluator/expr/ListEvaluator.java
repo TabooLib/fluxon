@@ -28,23 +28,40 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, ListExpression result) {
-        int size = result.getElements().size();
+        List<ParseResult> elements = result.getElements();
+        int size = elements.size();
         if (result.isImmutable()) {
-            if (size == 0) {
-                return ImmutableList.empty();
+            // 使用 inline 工厂方法避免数组分配
+            switch (size) {
+                case 0: return ImmutableList.empty();
+                case 1: return ImmutableList.of(
+                        interpreter.evaluate(elements.get(0)));
+                case 2: return ImmutableList.of(
+                        interpreter.evaluate(elements.get(0)),
+                        interpreter.evaluate(elements.get(1)));
+                case 3: return ImmutableList.of(
+                        interpreter.evaluate(elements.get(0)),
+                        interpreter.evaluate(elements.get(1)),
+                        interpreter.evaluate(elements.get(2)));
+                case 4: return ImmutableList.of(
+                        interpreter.evaluate(elements.get(0)),
+                        interpreter.evaluate(elements.get(1)),
+                        interpreter.evaluate(elements.get(2)),
+                        interpreter.evaluate(elements.get(3)));
+                default:
+                    // >4 元素回退到数组模式
+                    Object[] values = new Object[size];
+                    for (int i = 0; i < size; i++) {
+                        values[i] = interpreter.evaluate(elements.get(i));
+                    }
+                    return ImmutableList.of(values);
             }
-            Object[] values = new Object[size];
-            int i = 0;
-            for (ParseResult element : result.getElements()) {
-                values[i++] = interpreter.evaluate(element);
-            }
-            return ImmutableList.of(values);
         }
-        List<Object> elements = new ArrayList<>(size);
-        for (ParseResult element : result.getElements()) {
-            elements.add(interpreter.evaluate(element));
+        List<Object> list = new ArrayList<>(size);
+        for (ParseResult element : elements) {
+            list.add(interpreter.evaluate(element));
         }
-        return elements;
+        return list;
     }
 
     @Override
@@ -71,9 +88,30 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     private void generateImmutableListBytecode(ListExpression result, CodeContext ctx, MethodVisitor mv) {
         List<ParseResult> elements = result.getElements();
-        mv.visitLdcInsn(elements.size());
+        int size = elements.size();
+        if (size == 0) {
+            // 空列表直接调用 empty()
+            mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_LIST.getPath(), "empty", "()" + IMMUTABLE_LIST, false);
+            return;
+        }
+        if (size <= 4) {
+            // 使用 inline 工厂方法，避免数组分配
+            for (ParseResult element : elements) {
+                emitElement(ctx, mv, element);
+            }
+            // 构建方法描述符: (Object, Object, ...) -> ImmutableList
+            StringBuilder desc = new StringBuilder("(");
+            for (int i = 0; i < size; i++) {
+                desc.append(Type.OBJECT);
+            }
+            desc.append(")").append(IMMUTABLE_LIST);
+            mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_LIST.getPath(), "of", desc.toString(), false);
+            return;
+        }
+        // >4 元素回退到数组模式
+        mv.visitLdcInsn(size);
         mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
-        for (int i = 0; i < elements.size(); i++) {
+        for (int i = 0; i < size; i++) {
             mv.visitInsn(DUP);
             mv.visitLdcInsn(i);
             emitElement(ctx, mv, elements.get(i));

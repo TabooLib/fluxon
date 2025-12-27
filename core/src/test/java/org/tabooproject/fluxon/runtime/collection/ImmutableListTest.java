@@ -37,8 +37,8 @@ class ImmutableListTest {
     @Test
     void getThrowsIndexOutOfBoundsForInvalidIndex() {
         ImmutableList<String> list = ImmutableList.of(new Object[]{"a"});
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> list.get(5));
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> list.get(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(5));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(-1));
     }
 
     @Test

@@ -14,6 +14,7 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -27,28 +28,54 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
 
     @Override
     public Object evaluate(Interpreter interpreter, MapExpression result) {
-        int size = result.getEntries().size();
+        List<MapExpression.MapEntry> entries = result.getEntries();
+        int size = entries.size();
         if (result.isImmutable()) {
-            if (size == 0) {
-                return ImmutableMap.empty();
+            // 使用 inline 工厂方法避免数组分配
+            switch (size) {
+                case 0: return ImmutableMap.empty();
+                case 1: return ImmutableMap.of(
+                        interpreter.evaluate(entries.get(0).getKey()),
+                        interpreter.evaluate(entries.get(0).getValue()));
+                case 2: return ImmutableMap.of(
+                        interpreter.evaluate(entries.get(0).getKey()),
+                        interpreter.evaluate(entries.get(0).getValue()),
+                        interpreter.evaluate(entries.get(1).getKey()),
+                        interpreter.evaluate(entries.get(1).getValue()));
+                case 3: return ImmutableMap.of(
+                        interpreter.evaluate(entries.get(0).getKey()),
+                        interpreter.evaluate(entries.get(0).getValue()),
+                        interpreter.evaluate(entries.get(1).getKey()),
+                        interpreter.evaluate(entries.get(1).getValue()),
+                        interpreter.evaluate(entries.get(2).getKey()),
+                        interpreter.evaluate(entries.get(2).getValue()));
+                case 4: return ImmutableMap.of(
+                        interpreter.evaluate(entries.get(0).getKey()),
+                        interpreter.evaluate(entries.get(0).getValue()),
+                        interpreter.evaluate(entries.get(1).getKey()),
+                        interpreter.evaluate(entries.get(1).getValue()),
+                        interpreter.evaluate(entries.get(2).getKey()),
+                        interpreter.evaluate(entries.get(2).getValue()),
+                        interpreter.evaluate(entries.get(3).getKey()),
+                        interpreter.evaluate(entries.get(3).getValue()));
+                default:
+                    // >4 条目回退到数组模式
+                    Object[] keys = new Object[size];
+                    Object[] values = new Object[size];
+                    for (int i = 0; i < size; i++) {
+                        keys[i] = interpreter.evaluate(entries.get(i).getKey());
+                        values[i] = interpreter.evaluate(entries.get(i).getValue());
+                    }
+                    return ImmutableMap.of(keys, values);
             }
-            Object[] keys = new Object[size];
-            Object[] values = new Object[size];
-            int i = 0;
-            for (MapExpression.MapEntry entry : result.getEntries()) {
-                keys[i] = interpreter.evaluate(entry.getKey());
-                values[i] = interpreter.evaluate(entry.getValue());
-                i++;
-            }
-            return ImmutableMap.of(keys, values);
         }
-        Map<Object, Object> entries = new HashMap<>(Math.max(4, (int) (size / 0.75f) + 1));
-        for (MapExpression.MapEntry entry : result.getEntries()) {
+        Map<Object, Object> map = new HashMap<>(Math.max(4, (int) (size / 0.75f) + 1));
+        for (MapExpression.MapEntry entry : entries) {
             Object key = interpreter.evaluate(entry.getKey());
             Object value = interpreter.evaluate(entry.getValue());
-            entries.put(key, value);
+            map.put(key, value);
         }
-        return entries;
+        return map;
     }
 
     @Override
@@ -80,16 +107,33 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
     }
 
     private void generateImmutableMapBytecode(MapExpression result, CodeContext ctx, MethodVisitor mv) {
-        int size = result.getEntries().size();
+        List<MapExpression.MapEntry> entries = result.getEntries();
+        int size = entries.size();
         if (size == 0) {
             mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_MAP.getPath(), "empty", "()" + IMMUTABLE_MAP, false);
             return;
         }
+        if (size <= 4) {
+            // 使用 inline 工厂方法，避免数组分配
+            for (MapExpression.MapEntry entry : entries) {
+                emitKey(ctx, mv, entry.getKey());
+                emitValue(ctx, mv, entry.getValue());
+            }
+            // 构建方法描述符: (k1, v1, k2, v2, ...) -> ImmutableMap
+            StringBuilder desc = new StringBuilder("(");
+            for (int i = 0; i < size * 2; i++) {
+                desc.append(Type.OBJECT);
+            }
+            desc.append(")").append(IMMUTABLE_MAP);
+            mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_MAP.getPath(), "of", desc.toString(), false);
+            return;
+        }
+        // >4 条目回退到数组模式
         // keys array
         mv.visitLdcInsn(size);
         mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
         for (int i = 0; i < size; i++) {
-            MapExpression.MapEntry entry = result.getEntries().get(i);
+            MapExpression.MapEntry entry = entries.get(i);
             mv.visitInsn(DUP);
             mv.visitLdcInsn(i);
             emitKey(ctx, mv, entry.getKey());
@@ -99,7 +143,7 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
         mv.visitLdcInsn(size);
         mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
         for (int i = 0; i < size; i++) {
-            MapExpression.MapEntry entry = result.getEntries().get(i);
+            MapExpression.MapEntry entry = entries.get(i);
             mv.visitInsn(DUP);
             mv.visitLdcInsn(i);
             emitValue(ctx, mv, entry.getValue());
