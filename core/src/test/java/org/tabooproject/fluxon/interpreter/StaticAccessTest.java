@@ -135,4 +135,52 @@ public class StaticAccessTest {
             FluxonTestUtil.interpret("static com.nonexistent.FakeClass.method()");
         });
     }
+
+    // ==================== Part 3: 括号语法消除歧义测试 ====================
+
+    @Test
+    public void testParenthesizedClassNameField() {
+        // static (java.lang.Integer).MAX_VALUE - 括号语法访问静态字段
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "static (java.lang.Integer).MAX_VALUE"
+        );
+        FluxonTestUtil.assertBothEqual(Integer.MAX_VALUE, result);
+    }
+
+    @Test
+    public void testParenthesizedClassNameMethod() {
+        // static (java.lang.Integer).parseInt("42") - 括号语法调用静态方法
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "static (java.lang.Integer).parseInt(\"42\")"
+        );
+        FluxonTestUtil.assertBothEqual(42, result);
+    }
+
+    @Test
+    public void testParenthesizedClassNameChainedAccess() {
+        // static (java.lang.System).out 返回 PrintStream，然后链式调用
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "static (java.lang.System).out"
+        );
+        assertNotNull(result.getInterpretResult());
+        assertTrue(result.getInterpretResult() instanceof PrintStream);
+    }
+
+    @Test
+    public void testParenthesizedClassNameFieldThenMethod() {
+        // static (java.lang.Integer).TYPE.getName() - 获取静态字段后调用实例方法
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "static (java.lang.Integer).TYPE.getName()"
+        );
+        FluxonTestUtil.assertBothEqual("int", result);
+    }
+
+    @Test
+    public void testParenthesizedMathPI() {
+        // static (java.lang.Math).PI - 括号语法访问常量
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "static (java.lang.Math).PI"
+        );
+        FluxonTestUtil.assertBothEqual(Math.PI, result);
+    }
 }

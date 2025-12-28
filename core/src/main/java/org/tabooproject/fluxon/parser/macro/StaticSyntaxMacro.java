@@ -11,6 +11,7 @@ import org.tabooproject.fluxon.parser.type.PostfixParser;
 
 import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseArgumentList;
 import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseQualifiedName;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.QualifiedNameResult;
 
 /**
  * static 表达式语法宏
@@ -35,19 +36,30 @@ public class StaticSyntaxMacro implements SyntaxMacro {
     @Override
     public Trampoline<ParseResult> parse(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         Token staticToken = parser.consume(TokenType.STATIC, "Expected 'static'");
-        // 检查 Java 静态访问特性是否启用（复用 Java 构造特性开关）
+        // 检查 Java 静态访问特性是否启用
         if (!parser.getContext().isAllowJavaConstruction()) {
             parser.error("Java static access is not enabled. Use ctx.setAllowJavaConstruction(true) to enable the 'static' keyword.");
         }
-        // 解析全限定路径（ClassName.memberName 格式）
-        String fullPath = parseQualifiedName(parser, "Expected class name after 'static'");
-        // 分离类名和成员名
-        int lastDot = fullPath.lastIndexOf('.');
-        if (lastDot == -1) {
-            parser.error("Expected 'static ClassName.memberName', but got 'static " + fullPath + "'");
+        // 解析全限定路径（支持括号语法消除歧义）
+        QualifiedNameResult nameResult = parseQualifiedName(parser, "Expected class name after 'static'");
+        String className;
+        String memberName;
+        if (nameResult.parenthesized) {
+            // 括号模式：类名已确定，需要消费 .member
+            className = nameResult.name;
+            parser.consume(TokenType.DOT, "Expected '.' after (ClassName)");
+            Token memberToken = parser.consume(TokenType.IDENTIFIER, "Expected member name");
+            memberName = memberToken.getLexeme();
+        } else {
+            // 原有模式：在最后一个点处分离类名和成员名
+            String fullPath = nameResult.name;
+            int lastDot = fullPath.lastIndexOf('.');
+            if (lastDot == -1) {
+                parser.error("Expected 'static ClassName.memberName', but got 'static " + fullPath + "'");
+            }
+            className = fullPath.substring(0, lastDot);
+            memberName = fullPath.substring(lastDot + 1);
         }
-        String className = fullPath.substring(0, lastDot);
-        String memberName = fullPath.substring(lastDot + 1);
         // 检查是方法调用还是字段访问
         boolean isMethodCall = parser.check(TokenType.LEFT_PAREN);
         ParseResult[] args = new ParseResult[0];

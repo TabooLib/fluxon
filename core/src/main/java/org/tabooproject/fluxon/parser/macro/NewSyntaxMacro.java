@@ -40,7 +40,7 @@ public class NewSyntaxMacro implements SyntaxMacro {
             parser.error("Java object construction is not enabled. Use ctx.setAllowJavaConstruction(true) to enable the 'new' keyword.");
         }
         // 解析全限定类名
-        String className = parseQualifiedName(parser, "Expected class name after 'new'");
+        String className = parseQualifiedName(parser, "Expected class name after 'new'").name;
         // 解析参数列表
         parser.consume(TokenType.LEFT_PAREN, "Expected '(' after class name");
         // 创建表达式并附加源信息
