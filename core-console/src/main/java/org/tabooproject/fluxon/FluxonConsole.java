@@ -18,6 +18,7 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -280,14 +281,121 @@ public class FluxonConsole {
     }
 
     /**
+     * 执行脚本文件
+     *
+     * @param scriptPath 脚本文件路径
+     * @return 执行结果，失败返回 null
+     */
+    public Object executeFile(Path scriptPath) {
+        try {
+            String content = new String(Files.readAllBytes(scriptPath), java.nio.charset.StandardCharsets.UTF_8);
+            return scriptEngine.eval(content);
+        } catch (Exception e) {
+            printError("Execution error: ", e);
+            return null;
+        }
+    }
+
+    /**
+     * 执行表达式字符串
+     *
+     * @param expression 表达式
+     * @return 执行结果，失败返回 null
+     */
+    public Object executeExpression(String expression) {
+        try {
+            return scriptEngine.eval(expression);
+        } catch (Exception e) {
+            printError("Execution error: ", e);
+            return null;
+        }
+    }
+
+    /**
+     * 打印使用说明
+     */
+    private static void printUsage() {
+        System.out.println("Usage: fluxon [options] [script.fs]");
+        System.out.println();
+        System.out.println("Options:");
+        System.out.println("  -e, --eval <expr>   Evaluate expression and exit");
+        System.out.println("  -h, --help          Show this help message");
+        System.out.println("  -v, --version       Show version information");
+        System.out.println();
+        System.out.println("If no arguments are provided, starts interactive REPL mode.");
+        System.out.println("If a script file is provided, executes it and exits.");
+    }
+
+    /**
+     * 打印版本信息
+     */
+    private static void printVersion() {
+        System.out.println("Fluxon Console v1.0.0");
+    }
+
+    /**
      * 程序入口
      */
     public static void main(String[] args) {
         try {
-            FluxonConsole line = new FluxonConsole();
-            line.run();
+            // 无参数：进入交互模式
+            if (args.length == 0) {
+                FluxonConsole console = new FluxonConsole();
+                console.run();
+                return;
+            }
+            // 解析命令行参数
+            String firstArg = args[0];
+            // 处理帮助选项
+            if ("-h".equals(firstArg) || "--help".equals(firstArg)) {
+                printUsage();
+                return;
+            }
+            // 处理版本选项
+            if ("-v".equals(firstArg) || "--version".equals(firstArg)) {
+                printVersion();
+                return;
+            }
+            // 处理表达式执行
+            if ("-e".equals(firstArg) || "--eval".equals(firstArg)) {
+                if (args.length < 2) {
+                    System.err.println("Error: -e/--eval requires an expression argument");
+                    System.exit(1);
+                    return;
+                }
+                // 合并后续所有参数作为表达式（支持空格）
+                StringBuilder expr = new StringBuilder();
+                for (int i = 1; i < args.length; i++) {
+                    if (i > 1) expr.append(" ");
+                    expr.append(args[i]);
+                }
+                FluxonConsole console = new FluxonConsole();
+                Object result = console.executeExpression(expr.toString());
+                if (result != null) {
+                    System.out.println(result);
+                }
+                return;
+            }
+            // 默认：将第一个参数视为脚本文件路径
+            Path scriptPath = Paths.get(firstArg);
+            if (!Files.exists(scriptPath)) {
+                System.err.println("Error: Script file not found: " + scriptPath);
+                System.exit(1);
+                return;
+            }
+            if (!Files.isRegularFile(scriptPath)) {
+                System.err.println("Error: Not a regular file: " + scriptPath);
+                System.exit(1);
+                return;
+            }
+            FluxonConsole console = new FluxonConsole();
+            Object result = console.executeFile(scriptPath);
+            if (result != null) {
+                System.out.println(result);
+            }
         } catch (IOException e) {
             System.err.println("Failed to start: " + e.getMessage());
+            System.exit(1);
         }
     }
-} 
+}
