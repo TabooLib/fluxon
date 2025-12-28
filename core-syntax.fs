@@ -116,6 +116,11 @@ print("parseInt=" + &parsed)
 maxInt = static java.lang.Integer.MAX_VALUE
 print("Integer.MAX_VALUE=" + &maxInt)
 
+// 括号语法消除歧义：static (ClassName).field.method()
+// 当需要访问静态字段后继续链式调用时使用
+intType = static (java.lang.Integer).TYPE.getName()
+print("Integer.TYPE.getName()=" + &intType)
+
 // Class 对象上调用静态方法（forName 返回 Class 对象）
 intClass = forName("java.lang.Integer")
 parsed2 = &intClass.parseInt("123")

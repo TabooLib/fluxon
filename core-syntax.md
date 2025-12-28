@@ -105,6 +105,9 @@
 - 静态方法调用：`static java.lang.Integer.parseInt("42")`
 - 静态字段访问：`static java.lang.System.out`
 - 链式调用：`static java.lang.System.out.println("hello")`
+- 括号语法消除歧义：`static (ClassName).field.method()`
+  - 当需要访问静态字段后继续链式调用时，用括号包裹类名
+  - 示例：`static (com.example.MyObject).INSTANCE.doSomething()`
 - 需要宿主启用 `allowJavaConstruction` 特性。
 
 ## 解构赋值
