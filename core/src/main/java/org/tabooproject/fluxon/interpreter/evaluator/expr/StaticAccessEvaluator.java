@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.StaticAccessExpression;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.reflection.ReflectionBootstrap;
@@ -43,7 +44,7 @@ public class StaticAccessEvaluator extends ExpressionEvaluator<StaticAccessExpre
         // 加载类
         Class<?> clazz;
         try {
-            clazz = Class.forName(expression.getClassName(), true, Thread.currentThread().getContextClassLoader());
+            clazz = Class.forName(expression.getClassName());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Class not found: " + expression.getClassName(), e);
         }
