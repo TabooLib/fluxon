@@ -27,6 +27,7 @@ public enum TokenType {
     BREAK("break"),
     CONTINUE("continue"),
     NEW("new"),
+    STATIC("static"),
 
     // 标识符和字面量
     IDENTIFIER,    // 标识符

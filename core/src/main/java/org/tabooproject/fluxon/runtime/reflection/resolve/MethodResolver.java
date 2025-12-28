@@ -9,6 +9,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.*;
 
 /**
@@ -125,5 +126,31 @@ public final class MethodResolver {
             throw new MemberNotFoundError(clazz, methodName, argTypes);
         }
         return findBestMatch(candidates, argTypes);
+    }
+
+    /**
+     * 查找最佳匹配的静态方法
+     *
+     * @param clazz      目标类
+     * @param methodName 方法名
+     * @param argTypes   参数类型
+     * @return 匹配的静态方法，如果没有找到返回 null
+     */
+    public static Method findBestStaticMatch(Class<?> clazz, String methodName, Class<?>[] argTypes) {
+        List<Method> candidates = MethodCache.getMethods(clazz, methodName);
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        // 过滤出静态方法
+        List<Method> staticCandidates = new ArrayList<>(candidates.size());
+        for (Method method : candidates) {
+            if (Modifier.isStatic(method.getModifiers())) {
+                staticCandidates.add(method);
+            }
+        }
+        if (staticCandidates.isEmpty()) {
+            return null;
+        }
+        return TypeCompatibility.findBestMatch(staticCandidates, argTypes);
     }
 }

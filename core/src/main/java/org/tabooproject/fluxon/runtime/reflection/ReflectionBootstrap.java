@@ -4,12 +4,11 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.reflection.bootstrap.ConstructorBootstrap;
 import org.tabooproject.fluxon.runtime.reflection.bootstrap.FieldBootstrap;
 import org.tabooproject.fluxon.runtime.reflection.bootstrap.MethodBootstrap;
-import org.tabooproject.fluxon.runtime.reflection.util.PolymorphicInlineCache;
+import org.tabooproject.fluxon.runtime.reflection.bootstrap.StaticMethodBootstrap;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.MutableCallSite;
 
 /**
  * 反射访问的 Bootstrap Method 门面类
@@ -45,5 +44,21 @@ public class ReflectionBootstrap {
      */
     public static CallSite bootstrapConstructor(MethodHandles.Lookup lookup, String name, MethodType type) throws Throwable {
         return ConstructorBootstrap.bootstrap(lookup, name, type);
+    }
+
+    /**
+     * Bootstrap Method for invokedynamic (静态方法调用)
+     * 签名: (Class, Object[]) -> Object
+     */
+    public static CallSite bootstrapStaticMethod(MethodHandles.Lookup lookup, String memberName, MethodType type) throws Throwable {
+        return StaticMethodBootstrap.bootstrapMethod(lookup, memberName, type);
+    }
+
+    /**
+     * Bootstrap Method for invokedynamic (静态字段访问)
+     * 签名: (Class) -> Object
+     */
+    public static CallSite bootstrapStaticField(MethodHandles.Lookup lookup, String fieldName, MethodType type) throws Throwable {
+        return StaticMethodBootstrap.bootstrapField(lookup, fieldName, type);
     }
 }

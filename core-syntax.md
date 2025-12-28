@@ -97,6 +97,15 @@
 
 - `.` 基于 Java 反射，通常默认禁用（安全/性能考虑）。
 - console/REPL 默认启用；宿主集成时需显式开启 `allowReflectionAccess`。
+- 特殊处理：当 target 是 `Class` 对象时（如 `forName("...")` 返回），优先查找该类的静态方法，找不到时回退到 `java.lang.Class` 的实例方法。
+
+## 静态成员访问 `static`
+
+- 形式：`static <fully.qualified.ClassName>.<member>`
+- 静态方法调用：`static java.lang.Integer.parseInt("42")`
+- 静态字段访问：`static java.lang.System.out`
+- 链式调用：`static java.lang.System.out.println("hello")`
+- 需要宿主启用 `allowJavaConstruction` 特性。
 
 ## 解构赋值
 

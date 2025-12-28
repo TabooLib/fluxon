@@ -45,6 +45,7 @@ public class FluxonConsole {
      */
     public FluxonConsole() throws IOException {
         FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS = true;
+        FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION = true;
         // 构建终端
         terminal = TerminalBuilder.builder()
                 .system(true)

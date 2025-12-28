@@ -9,8 +9,8 @@ import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.NewExpression;
 import org.tabooproject.fluxon.parser.type.PostfixParser;
 
-import java.util.ArrayList;
-import java.util.List;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseArgumentList;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseQualifiedName;
 
 /**
  * new 表达式语法宏
@@ -39,27 +39,12 @@ public class NewSyntaxMacro implements SyntaxMacro {
         if (!parser.getContext().isAllowJavaConstruction()) {
             parser.error("Java object construction is not enabled. Use ctx.setAllowJavaConstruction(true) to enable the 'new' keyword.");
         }
-        // 解析全限定类名 (标识符序列，用 . 连接)
-        StringBuilder className = new StringBuilder();
-        Token firstIdent = parser.consume(TokenType.IDENTIFIER, "Expected class name after 'new'");
-        className.append(firstIdent.getLexeme());
-        // 继续解析 .identifier 序列
-        while (parser.check(TokenType.DOT) && parser.peek(1).is(TokenType.IDENTIFIER)) {
-            parser.advance(); // 消费 .
-            Token ident = parser.consume(TokenType.IDENTIFIER, "Expected identifier after '.'");
-            className.append('.').append(ident.getLexeme());
-        }
+        // 解析全限定类名
+        String className = parseQualifiedName(parser, "Expected class name after 'new'");
         // 解析参数列表
         parser.consume(TokenType.LEFT_PAREN, "Expected '(' after class name");
-        List<ParseResult> args = new ArrayList<>();
-        if (!parser.check(TokenType.RIGHT_PAREN)) {
-            do {
-                args.add(parser.parseExpression());
-            } while (parser.match(TokenType.COMMA));
-        }
-        parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after constructor arguments");
         // 创建表达式并附加源信息
-        ParseResult result = new NewExpression(className.toString(), args.toArray(new ParseResult[0]));
+        ParseResult result = new NewExpression(className, parseArgumentList(parser));
         result = parser.attachSource(result, newToken);
         // 处理后缀操作（如索引访问 []、成员访问 . 和上下文调用 ::）
         return continuation.apply(PostfixParser.parsePostfixOperations(parser, result));

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon;
 
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -14,6 +15,16 @@ import java.util.function.Consumer;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class FluxonTestUtil {
+
+    /**
+     * 创建启用了所有测试特性的编译上下文
+     */
+    private static CompilationContext createTestContext(String source) {
+        CompilationContext ctx = new CompilationContext(source);
+        ctx.setAllowJavaConstruction(true);
+        ctx.setAllowReflectionAccess(true);
+        return ctx;
+    }
 
     /**
      * 测试结果类
@@ -185,15 +196,18 @@ public class FluxonTestUtil {
         long compileTime;
         long executeTime;
 
-        // 1. 解释执行
+        // 1. 解释执行（使用启用特性的上下文）
         long startInterpret = System.currentTimeMillis();
         Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
-        interpretResult = Fluxon.eval(source, interpretEnv);
+        CompilationContext interpretCtx = createTestContext(source);
+        interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, interpretCtx), interpretEnv);
         interpretTime = System.currentTimeMillis() - startInterpret;
 
-        // 2. 编译
+        // 2. 编译（使用启用特性的上下文）
         long startCompile = System.currentTimeMillis();
-        CompileResult compileResultObj = Fluxon.compile(source, className);
+        Environment compileParseEnv = FluxonRuntime.getInstance().newEnvironment();
+        CompilationContext compileCtx = createTestContext(source);
+        CompileResult compileResultObj = Fluxon.compile(compileParseEnv, compileCtx, className);
         compileTime = System.currentTimeMillis() - startCompile;
         // 输出编译字节码
         try {
@@ -226,7 +240,8 @@ public class FluxonTestUtil {
     public static TestResult interpret(String source) {
         long startInterpret = System.currentTimeMillis();
         Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
-        Object interpretResult = Fluxon.eval(source, interpretEnv);
+        CompilationContext ctx = createTestContext(source);
+        Object interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, ctx), interpretEnv);
         long interpretTime = System.currentTimeMillis() - startInterpret;
         return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
     }

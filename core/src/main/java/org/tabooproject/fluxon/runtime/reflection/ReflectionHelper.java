@@ -52,10 +52,24 @@ public class ReflectionHelper {
 
     /**
      * 调用方法（支持重载、多态缓存和varargs）
+     * <p>
+     * 特殊处理：当 target 是 Class 对象时，优先查找该类的静态方法，
+     * 找不到时回退到 java.lang.Class 的实例方法。
      */
     public static Object invokeMethod(Object target, String methodName, Object... args) throws Throwable {
         if (target == null) {
             throw new NullPointerException("Cannot invoke method '" + methodName + "' on null object");
+        }
+        // 特殊处理：target 是 Class 对象时，尝试调用该类的静态方法
+        if (target instanceof Class<?>) {
+            Class<?> targetClass = (Class<?>) target;
+            Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
+            // 先尝试查找目标类的静态方法
+            Method staticMethod = MethodResolver.findBestStaticMatch(targetClass, methodName, argTypes);
+            if (staticMethod != null) {
+                return invokeStaticMethodInternal(targetClass, staticMethod, args, argTypes);
+            }
+            // 静态方法未找到，回退到 Class 的实例方法
         }
         Class<?> clazz = target.getClass();
         int argCount = args.length;
@@ -67,6 +81,76 @@ public class ReflectionHelper {
         }
         // 2. 慢路径：查找并缓存
         return invokeMethodSlow(target, clazz, methodName, args, argTypes);
+    }
+
+    /**
+     * 调用类的静态方法
+     *
+     * @param clazz      目标类
+     * @param methodName 方法名
+     * @param args       方法参数
+     * @return 方法返回值
+     */
+    public static Object invokeStaticMethod(Class<?> clazz, String methodName, Object... args) throws Throwable {
+        if (clazz == null) {
+            throw new NullPointerException("Cannot invoke static method '" + methodName + "' on null class");
+        }
+        Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
+        Method staticMethod = MethodResolver.findBestStaticMatch(clazz, methodName, argTypes);
+        if (staticMethod == null) {
+            throw new MemberNotFoundError(clazz, methodName, argTypes);
+        }
+        return invokeStaticMethodInternal(clazz, staticMethod, args, argTypes);
+    }
+
+    /**
+     * 获取类的静态字段值
+     *
+     * @param clazz     目标类
+     * @param fieldName 字段名
+     * @return 字段值
+     */
+    public static Object getStaticField(Class<?> clazz, String fieldName) throws Throwable {
+        if (clazz == null) {
+            throw new NullPointerException("Cannot access static field '" + fieldName + "' on null class");
+        }
+        Field field = FieldResolver.findField(clazz, fieldName);
+        if (field == null || !Modifier.isStatic(field.getModifiers())) {
+            throw new MemberNotFoundError(clazz, fieldName);
+        }
+        try {
+            MethodHandle getter = LOOKUP.unreflectGetter(field);
+            return getter.invoke();
+        } catch (IllegalAccessException e) {
+            throw new MemberAccessError("Cannot access static field: " + fieldName, e);
+        }
+    }
+
+    /**
+     * 内部方法：调用静态方法
+     */
+    private static Object invokeStaticMethodInternal(Class<?> clazz, Method method, Object[] args, Class<?>[] argTypes) throws Throwable {
+        int argCount = args.length;
+        // varargs 方法特殊处理
+        if (method.isVarArgs()) {
+            return VarargsHandler.invokeVarargsMethod(method, null, args);
+        }
+        // 创建优化的 MethodHandle
+        try {
+            MethodHandle mh = LOOKUP.unreflect(method);
+            MethodHandle adapted = mh.asType(mh.type().changeReturnType(Object.class));
+            if (argCount > 0) {
+                MethodType genericType = MethodType.genericMethodType(argCount);
+                adapted = adapted.asType(genericType.changeReturnType(Object.class));
+                adapted = adapted.asSpreader(Object[].class, argCount);
+            }
+            if (argCount == 0) {
+                return adapted.invoke();
+            }
+            return adapted.invoke(args);
+        } catch (IllegalAccessException e) {
+            throw new MemberAccessError("Cannot access static method: " + method.getName(), e);
+        }
     }
 
     /**

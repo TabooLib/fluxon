@@ -54,6 +54,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         KEYWORDS.put("break", TokenType.BREAK);
         KEYWORDS.put("continue", TokenType.CONTINUE);
         KEYWORDS.put("new", TokenType.NEW);
+        KEYWORDS.put("static", TokenType.STATIC);
         KEYWORDS.put("true", TokenType.TRUE);
         KEYWORDS.put("false", TokenType.FALSE);
         KEYWORDS.put("null", TokenType.NULL);

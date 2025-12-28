@@ -106,6 +106,25 @@ print("timeBlock=" + &timeBlock)
 text = "hi"
 print("text.length=" + &text.length())
 
+// 静态成员访问 static（需要 allowJavaConstruction）
+pi = static java.lang.Math.PI
+print("Math.PI=" + &pi)
+
+parsed = static java.lang.Integer.parseInt("42")
+print("parseInt=" + &parsed)
+
+maxInt = static java.lang.Integer.MAX_VALUE
+print("Integer.MAX_VALUE=" + &maxInt)
+
+// Class 对象上调用静态方法（forName 返回 Class 对象）
+intClass = forName("java.lang.Integer")
+parsed2 = &intClass.parseInt("123")
+print("via Class.parseInt=" + &parsed2)
+
+// 回退到 Class 实例方法
+className = &intClass.getName()
+print("className=" + &className)
+
 // 解构赋值
 pair = [10, 20]
 (a, b) = &pair
