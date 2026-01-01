@@ -3,9 +3,7 @@ package org.tabooproject.fluxon.runtime.function;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class FunctionType {
 
@@ -26,6 +24,26 @@ public class FunctionType {
             Collection<?> collection = context.getArgumentByType(0, Collection.class);
             if (collection != null) {
                 return collection.toArray();
+            } else {
+                return null;
+            }
+        });
+        // 将数组转换为集合
+        runtime.registerFunction("list", 1, (context) -> {
+            Object[] array = context.getArgumentByType(0, Object[].class);
+            if (array != null) {
+                return Arrays.asList(array);
+            } else {
+                return null;
+            }
+        });
+        // 将数组转换为可变集合
+        runtime.registerFunction("mutableList", 1, (context) -> {
+            Object[] array = context.getArgumentByType(0, Object[].class);
+            if (array != null) {
+                ArrayList<Object> list = new ArrayList<>(array.length);
+                Collections.addAll(list, array);
+                return list;
             } else {
                 return null;
             }
