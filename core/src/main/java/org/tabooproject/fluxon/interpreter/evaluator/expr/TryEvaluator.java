@@ -67,6 +67,9 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         
         // 分配局部变量用于存储结果值 (对应字节码中的 astore_3)
         int valueVar = ctx.allocateLocalVar(Type.OBJECT);
+        // 预分配异常变量槽位 - 必须在 visitTryCatchBlock 之前分配
+        // 避免栈映射表与实际局部变量表不一致
+        int exVar = ctx.allocateLocalVar(Type.OBJECT);
         
         // 创建标签
         Label tryStart = new Label();
@@ -102,8 +105,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         // Catch 块开始 (对应字节码 14)
         mv.visitLabel(catchStart);
 
-        // 异常已经在栈顶，需要存储它 (对应字节码 14: astore ex)
-        int exVar = ctx.allocateLocalVar(Type.OBJECT);
+        // 异常已经在栈顶，需要存储到预分配的槽位 (对应字节码 14: astore ex)
         mv.visitVarInsn(ASTORE, exVar);
 
         // 如果有 catch 变量名，则将异常赋值给该变量 (对应字节码 16-37)
