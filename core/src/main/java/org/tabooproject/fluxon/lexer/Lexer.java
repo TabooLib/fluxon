@@ -342,12 +342,16 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance();
             }
         }
+        // 记录结束位置（引号消费前）
+        int endLine = line;
+        int endColumn = column;
         // 消费结束引号，如果存在
         if (position < sourceLength) {
             advance();
+            endColumn = column; // 包含结束引号
         }
         // 从缓冲区创建字符串
-        return new Token(TokenType.STRING, sb.toString(), startLine, startColumn);
+        return new Token(TokenType.STRING, sb.toString(), startLine, startColumn, endLine, endColumn);
         // endregion
     }
 

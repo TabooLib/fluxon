@@ -9,6 +9,8 @@ public class Token {
     private final Object value;
     private final int line;
     private final int column;
+    private final int endLine;
+    private final int endColumn;
 
     /**
      * 创建词法单元
@@ -38,10 +40,26 @@ public class Token {
      * @param column 列号
      */
     public Token(TokenType type, Object value, int line, int column) {
+        this(type, value, line, column, line, column + (value != null ? value.toString().length() : 0));
+    }
+    
+    /**
+     * 创建词法单元（完整位置信息）
+     * 
+     * @param type 词法单元类型
+     * @param value 词法单元值
+     * @param line 行号
+     * @param column 列号
+     * @param endLine 结束行号
+     * @param endColumn 结束列号
+     */
+    public Token(TokenType type, Object value, int line, int column, int endLine, int endColumn) {
         this.type = type;
         this.value = value;
         this.line = line;
         this.column = column;
+        this.endLine = endLine;
+        this.endColumn = endColumn;
     }
     
     /**
@@ -82,6 +100,20 @@ public class Token {
     }
     
     /**
+     * 获取结束行号
+     */
+    public int getEndLine() {
+        return endLine;
+    }
+    
+    /**
+     * 获取结束列号
+     */
+    public int getEndColumn() {
+        return endColumn;
+    }
+    
+    /**
      * 检查词法单元类型是否为指定类型
      * 
      * @param type 要检查的类型
@@ -108,6 +140,10 @@ public class Token {
     
     @Override
     public String toString() {
-        return String.format("%s('%s') at %d:%d", type, value, line, column);
+        if (endLine == line) {
+            return String.format("%s('%s') at %d:%d-%d", type, value, line, column, endColumn);
+        } else {
+            return String.format("%s('%s') at %d:%d-%d:%d", type, value, line, column, endLine, endColumn);
+        }
     }
 }

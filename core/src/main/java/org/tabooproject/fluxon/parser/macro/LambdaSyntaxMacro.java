@@ -79,7 +79,12 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
             Function<LinkedHashMap<String, Integer>, Trampoline<ParseResult>> continuation
     ) {
         LinkedHashMap<String, Integer> parameters = new LinkedHashMap<>();
-        if (!usedOrToken && !parser.check(TokenType.PIPE)) {
+        if (usedOrToken) {
+            // || 语法：自动添加隐式参数 it
+            parser.defineVariable("it");
+            parameters.put("it", parser.getSymbolEnvironment().getLocalVariable("it"));
+        } else if (!parser.check(TokenType.PIPE)) {
+            // |x, y| 语法：解析显式参数
             do {
                 String paramName = parser.consume(TokenType.IDENTIFIER, "Expected parameter name in lambda").getLexeme();
                 parser.defineVariable(paramName);

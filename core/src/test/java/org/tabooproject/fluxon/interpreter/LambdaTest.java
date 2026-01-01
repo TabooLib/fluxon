@@ -25,6 +25,30 @@ public class LambdaTest {
     }
 
     @Test
+    public void testImplicitItParameter() {
+        // || 语法自动绑定第一个参数到 it
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("inc = || &it + 1; call(&inc, [5])");
+        assertEquals(6, result.getInterpretResult());
+        assertTrue(result.isMatch());
+    }
+
+    @Test
+    public void testImplicitItWithMap() {
+        // 使用 it 进行 map 操作
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("list = [1, 2, 3]; doubled = &list::map(|| &it * 2); &doubled");
+        assertEquals(Arrays.asList(2, 4, 6), result.getInterpretResult());
+        assertTrue(result.isMatch());
+    }
+
+    @Test
+    public void testImplicitItWithMemberAccess() {
+        // 测试 it 的成员访问 (模拟 each(|| &it.name) 场景)
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("list = ['hello', 'world']; lengths = &list::map(|| &it::length()); &lengths");
+        assertEquals(Arrays.asList(5, 5), result.getInterpretResult());
+        assertTrue(result.isMatch());
+    }
+
+    @Test
     public void testLambdaWithIterableMap() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("list = [1, 2, 3]; doubled = &list::map(|x| &x * 2); &doubled");
         assertEquals(Arrays.asList(2, 4, 6), result.getInterpretResult());
