@@ -82,9 +82,18 @@ print("fib=" + fib(5))
 
 // Lambda
 inc = |x| &x + 1
-answer = || 42
 print("inc(5)=" + call(&inc, [5]))
-print("answer()=" + call(&answer, []))
+
+// Lambda 隐式参数 it（|| 语法自动绑定第一个实参到 it）
+incIt = || &it + 1
+print("incIt(5)=" + call(&incIt, [5]))
+
+// 配合集合操作
+doubled = [1, 2, 3] :: map(|| &it * 2)
+print("doubled=" + &doubled)
+
+lengths = ["hello", "world"] :: map(|| &it :: length())
+print("lengths=" + &lengths)
 
 // 上下文调用 ::（左侧标识符可省略 ()）
 items = [1, 2, 3]

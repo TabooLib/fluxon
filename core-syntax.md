@@ -79,7 +79,7 @@
 - Lambda：
   - `|x| <exprOrBlock>`
   - `|a, b| <exprOrBlock>`
-  - `|| <exprOrBlock>`（零参数）
+  - `|| <exprOrBlock>`（隐式参数 `it`，自动绑定第一个实参）
 
 注意（验证脚本时很重要）：
 
