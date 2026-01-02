@@ -51,7 +51,7 @@ class JvmModuleTest {
     void testInjectWithLambdaDefaultsBefore() {
         String script = 
             "import 'fs:jvm'\n" +
-            "let id = jvm()::inject('com.example.Foo::bar', |self, arg| {})\n" +
+            "let id = jvm()::inject('com.example.Foo::bar', 'before', |self, arg| {})\n" +
             "&id";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
@@ -73,13 +73,10 @@ class JvmModuleTest {
     }
 
     @Test
-    void testInjectWithMapConfigReplace() {
+    void testInjectWithReplaceType() {
         String script = 
             "import 'fs:jvm'\n" +
-            "let id = jvm()::inject('com.example.Foo::bar', [\n" +
-            "    type: 'replace',\n" +
-            "    handler: |self, arg| { return 'replaced' }\n" +
-            "])\n" +
+            "let id = jvm()::inject('com.example.Foo::bar', 'replace', |self, arg| { return 'replaced' })\n" +
             "&id";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
@@ -98,7 +95,7 @@ class JvmModuleTest {
     void testInjectWithDescriptor() {
         String script = 
             "import 'fs:jvm'\n" +
-            "jvm()::inject('com.example.Foo::bar(Ljava/lang/String;)V', |self, arg| {})";
+            "jvm()::inject('com.example.Foo::bar(Ljava/lang/String;)V', 'before', |self, arg| {})";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         Fluxon.eval(script, env);
@@ -113,7 +110,7 @@ class JvmModuleTest {
     void testRestoreById() {
         String script = 
             "import 'fs:jvm'\n" +
-            "let id = jvm()::inject('com.example.Foo::bar', |self| {})\n" +
+            "let id = jvm()::inject('com.example.Foo::bar', 'before', |self| {})\n" +
             "let before = jvm()::injections()::size()\n" +
             "jvm()::restore(&id)\n" +
             "let after = jvm()::injections()::size()\n" +
@@ -129,8 +126,8 @@ class JvmModuleTest {
     void testRestoreByTarget() {
         String script = 
             "import 'fs:jvm'\n" +
-            "jvm()::inject('com.example.Foo::bar', |self| {})\n" +
-            "jvm()::inject('com.example.Foo::baz', |self| {})\n" +
+            "jvm()::inject('com.example.Foo::bar', 'before', |self| {})\n" +
+            "jvm()::inject('com.example.Foo::baz', 'before', |self| {})\n" +
             "let before = jvm()::injections()::size()\n" +
             "jvm()::restore('com.example.Foo::bar')\n" +
             "let after = jvm()::injections()::size()\n" +
@@ -146,11 +143,8 @@ class JvmModuleTest {
     void testListInjections() {
         String script = 
             "import 'fs:jvm'\n" +
-            "jvm()::inject('com.example.Foo::bar', |self| {})\n" +
-            "jvm()::inject('com.example.Foo::baz', [\n" +
-            "    type: 'replace',\n" +
-            "    handler: |self| { return null }\n" +
-            "])\n" +
+            "jvm()::inject('com.example.Foo::bar', 'before', |self| {})\n" +
+            "jvm()::inject('com.example.Foo::baz', 'replace', |self| { return null })\n" +
             "jvm()::injections()";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
@@ -174,8 +168,8 @@ class JvmModuleTest {
     void testMultipleInjectionsOnSameMethod() {
         String script = 
             "import 'fs:jvm'\n" +
-            "let id1 = jvm()::inject('com.example.Foo::bar', |self| {})\n" +
-            "let id2 = jvm()::inject('com.example.Foo::bar', |self| {})\n" +
+            "let id1 = jvm()::inject('com.example.Foo::bar', 'before', |self| {})\n" +
+            "let id2 = jvm()::inject('com.example.Foo::bar', 'before', |self| {})\n" +
             "[&id1, &id2]";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
@@ -193,7 +187,7 @@ class JvmModuleTest {
     void testInvalidTargetFormat() {
         String script = 
             "import 'fs:jvm'\n" +
-            "jvm()::inject('invalid-target-no-separator', |self| {})";
+            "jvm()::inject('invalid-target-no-separator', 'before', |self| {})";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         
@@ -201,10 +195,10 @@ class JvmModuleTest {
     }
 
     @Test
-    void testInvalidSpecType() {
+    void testInvalidHandlerType() {
         String script = 
             "import 'fs:jvm'\n" +
-            "jvm()::inject('com.example.Foo::bar', 'not-a-function-or-map')";
+            "jvm()::inject('com.example.Foo::bar', 'before', 'not-a-function')";
         
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         

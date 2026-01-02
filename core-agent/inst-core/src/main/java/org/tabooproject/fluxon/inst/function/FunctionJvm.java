@@ -14,12 +14,11 @@ import java.util.*;
  * <pre>{@code
  * import 'fs:jvm'
  *
- * id = jvm::inject("com.example.Foo::bar", [
- *     type: "replace",
- *     handler: |self, arg| { return "replaced" }
- * ])
+ * id = jvm::inject("com.example.Foo::bar", "replace", |self, arg| {
+ *     return "replaced"
+ * })
  *
- * jvm::restore(id)          // 撤销注入
+ * jvm::restore(id)      // 撤销注入
  * jvm::injections()     // 列出所有注入
  * }</pre>
  */
@@ -34,7 +33,7 @@ public final class FunctionJvm {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("fs:jvm", "jvm", 0, ctx -> INSTANCE);
-        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", 2, FunctionJvm::inject);
+        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", 3, FunctionJvm::inject);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "restore", 1, FunctionJvm::restore);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "injections", 0, FunctionJvm::injections);
     }
@@ -42,13 +41,20 @@ public final class FunctionJvm {
     // ==================== API 实现 ====================
 
     /**
-     * jvm()::inject(target, spec)
+     * jvm()::inject(target, type, handler)
+     * <p>
+     * ctx.arg[0] target   - 目标方法 "com.example.Foo::bar" 或 "com.example.Foo::bar(Ljava/lang/String;)V"
+     * ctx.arg[1] type     - 注入类型 "before" 或 "replace"
+     * ctx.arg[2] handler  - 回调函数
+     *
+     * @return 注入 ID
      */
     private static Object inject(FunctionContext<?> ctx) {
         TargetMethod method = parseTarget(Objects.requireNonNull(ctx.getString(0)));
-        InjectionConfig config = parseSpec(ctx.getArgument(1));
-        InjectionSpec spec = new InjectionSpec(method.className, method.methodName, method.descriptor, config.type);
-        CallbackDispatcher.register(spec.getId(), config.callback, ctx.getEnvironment());
+        InjectionType type = parseType(ctx.getString(1));
+        Function handler = asFunction(ctx.getArgument(2));
+        InjectionSpec spec = new InjectionSpec(method.className, method.methodName, method.descriptor, type);
+        CallbackDispatcher.register(spec.getId(), handler, ctx.getEnvironment());
         return InjectionRegistry.getInstance().register(spec);
     }
 
@@ -87,37 +93,29 @@ public final class FunctionJvm {
 
     // ==================== 解析逻辑 ====================
 
-    @SuppressWarnings("unchecked")
-    private static InjectionConfig parseSpec(Object spec) {
-        if (spec instanceof Function) {
-            return new InjectionConfig((Function) spec, InjectionType.BEFORE);
+    /**
+     * 解析注入类型字符串。
+     *
+     * @param typeStr 类型字符串 "before" 或 "replace"
+     * @return InjectionType 枚举
+     */
+    private static InjectionType parseType(String typeStr) {
+        if (typeStr == null || "before".equalsIgnoreCase(typeStr)) {
+            return InjectionType.BEFORE;
         }
-        if (spec instanceof Map) {
-            return parseSpecMap((Map<String, Object>) spec);
+        if ("replace".equalsIgnoreCase(typeStr)) {
+            return InjectionType.REPLACE;
         }
-        throw new IllegalArgumentException("spec 必须是 Function 或 Map 类型");
+        throw new IllegalArgumentException("不支持的注入类型: " + typeStr + "，仅支持 'before' 或 'replace'");
     }
 
-    private static InjectionConfig parseSpecMap(Map<String, Object> map) {
-        // 优先使用 handler 字段
-        Object handler = map.get("handler");
-        if (handler != null) {
-            String typeStr = (String) map.getOrDefault("type", "before");
-            InjectionType type = "replace".equalsIgnoreCase(typeStr) ? InjectionType.REPLACE : InjectionType.BEFORE;
-            return new InjectionConfig(asFunction(handler), type);
-        }
-        // 兼容 before/replace 作为 key
-        Object before = map.get("before");
-        if (before != null) {
-            return new InjectionConfig(asFunction(before), InjectionType.BEFORE);
-        }
-        Object replace = map.get("replace");
-        if (replace != null) {
-            return new InjectionConfig(asFunction(replace), InjectionType.REPLACE);
-        }
-        throw new IllegalArgumentException("spec 必须包含 handler、before 或 replace 字段");
-    }
-
+    /**
+     * 将对象转换为 Function。
+     *
+     * @param obj 待转换对象
+     * @return Function 实例
+     * @throws IllegalArgumentException 如果对象不是 Function 类型
+     */
     private static Function asFunction(Object obj) {
         if (obj instanceof Function) {
             return (Function) obj;
@@ -125,6 +123,12 @@ public final class FunctionJvm {
         throw new IllegalArgumentException("回调必须是 Function 类型");
     }
 
+    /**
+     * 解析目标方法字符串。
+     *
+     * @param target 目标字符串，格式为 "className::methodName" 或 "className::methodName(descriptor)"
+     * @return TargetMethod 实例
+     */
     private static TargetMethod parseTarget(String target) {
         int sep = target.indexOf("::");
         if (sep == -1) {
@@ -145,19 +149,6 @@ public final class FunctionJvm {
      * JVM 模块类型标记
      */
     public static final class JvmModule {
-    }
-
-    /**
-     * 注入配置
-     */
-    private static final class InjectionConfig {
-        final Function callback;
-        final InjectionType type;
-
-        InjectionConfig(Function callback, InjectionType type) {
-            this.callback = callback;
-            this.type = type;
-        }
     }
 
     /**
