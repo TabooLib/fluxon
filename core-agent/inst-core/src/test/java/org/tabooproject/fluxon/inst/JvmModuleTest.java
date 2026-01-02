@@ -204,4 +204,50 @@ class JvmModuleTest {
         
         assertThrows(Exception.class, () -> Fluxon.eval(script, env));
     }
+
+    @Test
+    void testInjectWithAfterType() {
+        String script = 
+            "import 'fs:jvm'\n" +
+            "let id = jvm()::inject('com.example.Foo::bar', 'after', |self, arg, result| { return result })\n" +
+            "&id";
+        
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        Object result = Fluxon.eval(script, env);
+        
+        assertNotNull(result);
+        String idw = (String) result;
+        
+        // 验证类型是 AFTER
+        List<InjectionSpec> specs = InjectionRegistry.getInstance().getSpecsForClass("com/example/Foo");
+        assertEquals(1, specs.size());
+        assertEquals(InjectionType.AFTER, specs.get(0).getType());
+    }
+
+    @Test
+    void testAfterTypeInInjectionsList() {
+        String script = 
+            "import 'fs:jvm'\n" +
+            "jvm()::inject('com.example.Foo::bar', 'after', |self, result| { return result })\n" +
+            "jvm()::injections()";
+        
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> result = (List<Map<String, Object>>) Fluxon.eval(script, env);
+        
+        assertEquals(1, result.size());
+        Map<String, Object> item = result.get(0);
+        assertEquals("after", item.get("type"));
+    }
+
+    @Test
+    void testInvalidInjectionType() {
+        String script = 
+            "import 'fs:jvm'\n" +
+            "jvm()::inject('com.example.Foo::bar', 'invalid', |self| {})";
+        
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        
+        assertThrows(Exception.class, () -> Fluxon.eval(script, env));
+    }
 }

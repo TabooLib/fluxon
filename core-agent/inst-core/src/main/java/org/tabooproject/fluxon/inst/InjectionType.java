@@ -13,5 +13,11 @@ public enum InjectionType {
     /**
      * 替换整个方法实现。
      */
-    REPLACE
+    REPLACE,
+    
+    /**
+     * 在方法退出时注入代码（包括正常返回和异常退出）。
+     * 回调可以访问返回值（或异常对象）并修改返回值。
+     */
+    AFTER
 }

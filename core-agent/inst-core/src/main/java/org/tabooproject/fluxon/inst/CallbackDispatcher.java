@@ -111,6 +111,27 @@ public class CallbackDispatcher {
     }
 
     /**
+     * 分发 AFTER advice 回调。
+     * 
+     * @param specId 注入规格 ID
+     * @param args 方法参数（最后一个元素是返回值或异常对象）
+     * @return 回调返回值（null 表示不修改，非 null 表示替换原返回值/异常）
+     */
+    public static Object dispatchAfter(String specId, Object[] args) {
+        Function callback = callbacks.get(specId);
+        Environment environment = environments.get(specId);
+        if (callback == null || environment == null) {
+            return null; // 无回调，不修改
+        }
+        try {
+            FunctionContext<?> context = new FunctionContext<>(callback, null, args, environment);
+            return callback.call(context); // 直接返回回调结果，包括 null
+        } catch (Exception e) {
+            throw new RuntimeException("Fluxon AFTER 回调执行失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 调用原方法（用于 replace 模式中的 original() 调用）。
      * 
      * @param specId 注入规格 ID

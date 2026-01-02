@@ -44,7 +44,7 @@ public final class FunctionJvm {
      * jvm()::inject(target, type, handler)
      * <p>
      * ctx.arg[0] target   - 目标方法 "com.example.Foo::bar" 或 "com.example.Foo::bar(Ljava/lang/String;)V"
-     * ctx.arg[1] type     - 注入类型 "before" 或 "replace"
+     * ctx.arg[1] type     - 注入类型 "before"、"replace" 或 "after"
      * ctx.arg[2] handler  - 回调函数
      *
      * @return 注入 ID
@@ -101,7 +101,7 @@ public final class FunctionJvm {
     /**
      * 解析注入类型字符串。
      *
-     * @param typeStr 类型字符串 "before" 或 "replace"
+     * @param typeStr 类型字符串 "before"、"replace" 或 "after"
      * @return InjectionType 枚举
      */
     private static InjectionType parseType(String typeStr) {
@@ -111,7 +111,10 @@ public final class FunctionJvm {
         if ("replace".equalsIgnoreCase(typeStr)) {
             return InjectionType.REPLACE;
         }
-        throw new IllegalArgumentException("不支持的注入类型: " + typeStr + "，仅支持 'before' 或 'replace'");
+        if ("after".equalsIgnoreCase(typeStr)) {
+            return InjectionType.AFTER;
+        }
+        throw new IllegalArgumentException("不支持的注入类型: " + typeStr + "，仅支持 'before'、'replace' 或 'after'");
     }
 
     /**
