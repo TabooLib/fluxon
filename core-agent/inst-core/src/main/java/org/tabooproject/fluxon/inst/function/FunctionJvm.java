@@ -33,7 +33,7 @@ public final class FunctionJvm {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("fs:jvm", "jvm", 0, ctx -> INSTANCE);
-        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", 3, FunctionJvm::inject);
+        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", Arrays.asList(2, 3), FunctionJvm::inject);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "restore", 1, FunctionJvm::restore);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "injections", 0, FunctionJvm::injections);
     }
@@ -51,8 +51,13 @@ public final class FunctionJvm {
      */
     private static Object inject(FunctionContext<?> ctx) {
         TargetMethod method = parseTarget(Objects.requireNonNull(ctx.getString(0)));
-        InjectionType type = parseType(ctx.getString(1));
-        Function handler = asFunction(ctx.getArgument(2));
+        InjectionType type;
+        if (ctx.getArgumentCount() >= 2) {
+            type = parseType(ctx.getString(1));
+        } else {
+            type = InjectionType.BEFORE;
+        }
+        Function handler = asFunction(ctx.getArgument(ctx.getArgumentCount() - 1));
         InjectionSpec spec = new InjectionSpec(method.className, method.methodName, method.descriptor, type);
         CallbackDispatcher.register(spec.getId(), handler, ctx.getEnvironment());
         return InjectionRegistry.getInstance().register(spec);
