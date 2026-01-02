@@ -15,8 +15,6 @@ import java.util.logging.Logger;
  */
 public class CallbackDispatcher {
 
-    public static final Type TYPE = new Type(CallbackDispatcher.class);
-
     private static final Logger LOGGER = Logger.getLogger(CallbackDispatcher.class.getName());
 
     /** 回调标记：跳过原方法执行 */

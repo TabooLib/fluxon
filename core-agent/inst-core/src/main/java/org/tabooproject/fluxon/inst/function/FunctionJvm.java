@@ -144,7 +144,8 @@ public final class FunctionJvm {
     /**
      * JVM 模块类型标记
      */
-    public static final class JvmModule {}
+    public static final class JvmModule {
+    }
 
     /**
      * 注入配置

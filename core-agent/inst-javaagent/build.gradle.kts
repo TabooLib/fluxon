@@ -1,7 +1,3 @@
-dependencies {
-    implementation(project(":core-agent:inst-core"))
-}
-
 tasks.jar {
     archiveBaseName = "fluxon-inst-javaagent"
     // 包含所有依赖，构建 fat jar

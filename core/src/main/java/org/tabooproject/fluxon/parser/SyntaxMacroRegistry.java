@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.macro.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 语法宏注册表
@@ -94,7 +95,7 @@ public class SyntaxMacroRegistry {
      * 创建空的语法宏注册表
      */
     public SyntaxMacroRegistry() {
-        this.macros = new ArrayList<>();
+        this.macros = new CopyOnWriteArrayList<>();
     }
 
     /**

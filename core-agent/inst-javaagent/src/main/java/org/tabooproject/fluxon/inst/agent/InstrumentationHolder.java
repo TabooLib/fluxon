@@ -4,35 +4,28 @@ import java.lang.instrument.Instrumentation;
 
 /**
  * Instrumentation 持有者。
- * 全局静态持有 JVM 提供的 Instrumentation 实例。
  */
 public final class InstrumentationHolder {
 
+    public static final InstrumentationHolder INSTANCE = new InstrumentationHolder();
+    
     private static volatile Instrumentation instrumentation;
 
     private InstrumentationHolder() {
     }
 
-    /**
-     * 设置 Instrumentation 实例。
-     * 由 FluxonAgent 在 premain/agentmain 时调用。
-     */
     static void set(Instrumentation inst) {
         instrumentation = inst;
     }
 
-    /**
-     * 获取 Instrumentation 实例。
-     * @return Instrumentation 实例，如果 Agent 未加载则返回 null
-     */
-    public static Instrumentation get() {
+    public Instrumentation getInstrumentation() {
         return instrumentation;
     }
 
-    /**
-     * 检查 Instrumentation 是否可用。
-     */
-    public static boolean isAvailable() {
-        return instrumentation != null;
+    public void retransform(Class<?>... classes) throws Exception {
+        if (instrumentation == null) {
+            throw new IllegalStateException("Instrumentation 不可用");
+        }
+        instrumentation.retransformClasses(classes);
     }
 }

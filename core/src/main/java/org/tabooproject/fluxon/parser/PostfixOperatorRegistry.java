@@ -8,6 +8,7 @@ import org.tabooproject.fluxon.parser.operator.IndexAccessPostfixOperator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 后缀运算符注册表
@@ -34,7 +35,7 @@ public class PostfixOperatorRegistry {
     }
 
     public PostfixOperatorRegistry() {
-        this.operators = new ArrayList<>();
+        this.operators = new CopyOnWriteArrayList<>();
     }
 
     private static PostfixOperatorRegistry createDefault() {

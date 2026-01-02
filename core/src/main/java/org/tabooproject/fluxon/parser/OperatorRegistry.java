@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.operator.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 运算符注册表
@@ -67,8 +68,8 @@ public class OperatorRegistry {
      * 创建空的运算符注册表
      */
     public OperatorRegistry() {
-        this.infixOperators = new ArrayList<>();
-        this.prefixOperators = new ArrayList<>();
+        this.infixOperators = new CopyOnWriteArrayList<>();
+        this.prefixOperators = new CopyOnWriteArrayList<>();
     }
 
     /**

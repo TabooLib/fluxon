@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.macro.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 语句宏注册表
@@ -33,7 +34,7 @@ public class StatementMacroRegistry {
     }
 
     public StatementMacroRegistry() {
-        this.macros = new ArrayList<>();
+        this.macros = new CopyOnWriteArrayList<>();
     }
 
     private static StatementMacroRegistry createDefault() {
