@@ -38,8 +38,12 @@ openspec
 AGENTS.md
 CLAUDE.md
 core/dump
+core-lsp
+test-scripts
 jfr
 ts-port
 vscode-extension
 mintlify-docs
+fluxon-highlight
+fluxon-training-data.jsonl
 .gradle-local
