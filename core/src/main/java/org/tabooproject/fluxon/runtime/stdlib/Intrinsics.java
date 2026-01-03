@@ -251,8 +251,7 @@ public final class Intrinsics {
      */
     private static Object callSynchronously(Function function, Object target, Object[] arguments, Environment environment) {
         FunctionContextPool pool = FunctionContextPool.local();
-        FunctionContext<?> context = pool.borrow(function, target, arguments, environment);
-        try {
+        try (FunctionContext<?> context = pool.borrow(function, target, arguments, environment)) {
             return function.call(context);
         } catch (Throwable ex) {
             // 如果函数有 except 注解，则打印异常栈
@@ -260,8 +259,6 @@ public final class Intrinsics {
                 ex.printStackTrace();
             }
             throw ex;
-        } finally {
-            pool.release(context);
         }
     }
 
@@ -278,16 +275,13 @@ public final class Intrinsics {
             Object arg3,
             Environment environment) {
         FunctionContextPool pool = FunctionContextPool.local();
-        FunctionContext<?> context = pool.borrowInline(function, target, count, arg0, arg1, arg2, arg3, environment);
-        try {
+        try (FunctionContext<?> context = pool.borrowInline(function, target, count, arg0, arg1, arg2, arg3, environment)) {
             return function.call(context);
         } catch (Throwable ex) {
             if (AnnotationAccess.hasAnnotation(function, "except")) {
                 ex.printStackTrace();
             }
             throw ex;
-        } finally {
-            pool.release(context);
         }
     }
 

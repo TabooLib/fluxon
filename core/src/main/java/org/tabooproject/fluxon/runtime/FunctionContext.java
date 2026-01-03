@@ -6,13 +6,11 @@ import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.Arrays;
-
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
  */
-public class FunctionContext<Target> {
+public class FunctionContext<Target> implements AutoCloseable {
 
     public static final Type TYPE = new Type(FunctionContext.class);
 
@@ -22,6 +20,8 @@ public class FunctionContext<Target> {
     private Target target;
     @NotNull
     private Environment environment;
+    @Nullable
+    private FunctionContextPool pool;
 
     // ====================== 参数数组模式 ======================
     private Object[] arguments;
@@ -38,12 +38,28 @@ public class FunctionContext<Target> {
 
     private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
-    public FunctionContext(@NotNull Function function, @Nullable Target target, Object[] arguments, @NotNull Environment environment) {
+    public FunctionContext(
+            @NotNull Function function,
+            @Nullable Target target,
+            Object[] arguments,
+            @NotNull Environment environment
+    ) {
+        this(function, target, arguments, environment, null);
+    }
+
+    public FunctionContext(
+            @NotNull Function function,
+            @Nullable Target target,
+            Object[] arguments,
+            @NotNull Environment environment,
+            @Nullable FunctionContextPool pool
+    ) {
         this.function = function;
         this.target = target;
         this.arguments = arguments;
         this.argumentCount = arguments.length;
         this.environment = environment;
+        this.pool = pool;
     }
 
     /**
@@ -254,6 +270,14 @@ public class FunctionContext<Target> {
     }
 
     /**
+     * 获取当前函数上下文所属的池实例（如果有的话）
+     */
+    @Nullable
+    public FunctionContextPool getPool() {
+        return pool;
+    }
+
+    /**
      * 更新当前函数上下文关联的参数数组和参数数量
      * 用于在高频调用时避免重复创建函数上下文实例
      * 注意：此方法会清除 inline 模式
@@ -287,16 +311,6 @@ public class FunctionContext<Target> {
         this.inlineArg2 = arg2;
         this.inlineArg3 = arg3;
         return this;
-    }
-
-    /**
-     * 复制当前函数上下文实例
-     *
-     * @return 新的函数上下文实例
-     */
-    @NotNull
-    public FunctionContext<?> copy(Object[] arguments) {
-        return new FunctionContext<>(function, target, arguments, environment);
     }
 
     /**
@@ -375,5 +389,12 @@ public class FunctionContext<Target> {
                 ", arguments=" + getArgumentCount() +
                 ", inline=" + inlineMode +
                 '}';
+    }
+
+    @Override
+    public void close() {
+        if (pool != null) {
+            pool.release(this);
+        }
     }
 }

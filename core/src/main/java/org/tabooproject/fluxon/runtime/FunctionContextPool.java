@@ -37,9 +37,31 @@ public final class FunctionContextPool {
             pool[size] = null;
             context.reset(function, target, arguments, environment);
         } else {
-            context = new FunctionContext<>(function, target, arguments, environment);
+            context = new FunctionContext<>(function, target, arguments, environment, this);
         }
         return context;
+    }
+
+    /**
+     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
+     */
+    public FunctionContext<?> borrowCopy(@NotNull FunctionContext<?> context, @Nullable Object[] parameters) {
+        if (parameters == null) {
+            return borrowInline(context.getFunction(), context.getTarget(), context.getEnvironment());
+        } else {
+            return borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
+        }
+    }
+
+    /**
+     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
+     */
+    public FunctionContext<?> borrowInline(
+            @NotNull Function function,
+            @Nullable Object target,
+            @NotNull Environment environment
+    ) {
+        return borrowInline(function, target, 0, null, null, null, null, environment);
     }
 
     /**
@@ -60,7 +82,7 @@ public final class FunctionContextPool {
             context = pool[--size];
             pool[size] = null;
         } else {
-            context = new FunctionContext<>(function, target, EMPTY_ARGUMENTS, environment);
+            context = new FunctionContext<>(function, target, EMPTY_ARGUMENTS, environment, this);
         }
         context.resetInline(function, target, count, arg0, arg1, arg2, arg3, environment);
         return context;

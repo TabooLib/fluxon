@@ -58,20 +58,14 @@ public class FunctionSystem {
             // 调用函数
             if (func instanceof Function) {
                 FunctionContextPool pool = FunctionContextPool.local();
-                FunctionContext<?> borrowed = pool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
-                try {
+                try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
                     return ((Function) func).call(borrowed);
-                } finally {
-                    pool.release(borrowed);
                 }
             } else {
                 Function function = context.getEnvironment().getFunction(func.toString());
                 FunctionContextPool pool = FunctionContextPool.local();
-                FunctionContext<?> borrowed = pool.borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
-                try {
+                try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
                     return function.call(borrowed);
-                } finally {
-                    pool.release(borrowed);
                 }
             }
         });
