@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.expression;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.DestructuringAssignmentEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.IsEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.NewEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.StaticAccessEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
@@ -44,6 +45,7 @@ public enum ExpressionType {
     UNARY(new UnaryEvaluator()),
     BINARY(new BinaryEvaluator()),
     LOGICAL(new LogicalEvaluator()),
+    IS_CHECK(new IsEvaluator()),
 
     // 赋值表达式
     ASSIGNMENT(new AssignmentEvaluator()),

@@ -42,11 +42,34 @@
 - 乘除模：`*`、`/`、`%`
 - 加减：`+`、`-`
 - 区间：`a..b`（闭区间）、`a..<b`（左闭右开）
-- 比较：`> >= < <= == !=`
+- 比较与类型检查：`> >= < <= == !=`、`is`
 - 逻辑：`&&`、`||`（短路）
 - 三元：`<cond> ? <then> : <else>`
 - Elvis：`<expr> ?: <fallback>`（左侧为 `null` 时取右侧）
 - 赋值：`=`、`+=` 等
+
+### 类型检查操作符 `is`
+
+- 形式：`<expr> is <TypeName>`
+- 运行时类型检查，返回布尔值
+- 右侧必须是类型字面量（不能是表达式）
+- 支持类型别名（不区分大小写）：
+  - `string`/`String` → `java.lang.String`
+  - `int`/`Int` → `java.lang.Integer`
+  - `long`/`Long` → `java.lang.Long`
+  - `float`/`Float` → `java.lang.Float`
+  - `double`/`Double` → `java.lang.Double`
+  - `boolean`/`Boolean` → `java.lang.Boolean`
+  - `list`/`List` → `java.util.List`
+  - `map`/`Map` → `java.util.Map`
+  - `set`/`Set` → `java.util.Set`
+- 支持完全限定类名：`obj is java.util.ArrayList`
+- `null` 值始终返回 `false`
+- 示例：
+  - `"hello" is string` → `true`
+  - `123 is int` → `true`
+  - `[1,2,3] is list` → `true`
+  - `null is string` → `false`
 
 ## 控制流（均为表达式）
 
@@ -56,6 +79,9 @@
 - `when`：
   - 条件模式：`when { <cond> -> <expr>; ...; else -> <expr> }`
   - 值匹配：`when <value> { <case> -> <expr>; in <collectionOrRange> -> <expr>; else -> <expr> }`
+  - 类型匹配：`when <value> { is <TypeName> -> <expr>; ...; else -> <expr> }`
+    - 示例：`when obj { is string -> "text"; is int -> "number"; else -> "other" }`
+    - 支持与其他匹配类型混合使用
 - 循环：
   - `for <name> in <iterable> { ... }`
   - `for (<a>, <b>, ...) in <iterable> { ... }`（解构迭代项）

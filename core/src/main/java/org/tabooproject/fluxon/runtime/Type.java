@@ -11,6 +11,7 @@ public class Type {
     public static final Type FLOAT = new Type(Float.class);
     public static final Type DOUBLE = new Type(Double.class);
     public static final Type BOOLEAN = new Type(Boolean.class);
+    public static final Type CLASS = new Type(Class.class);
     public static final Type I = new Type(int.class);
     public static final Type J = new Type(long.class);
     public static final Type F = new Type(float.class);

@@ -369,22 +369,23 @@ public final class Intrinsics {
      * @param subject   主题对象（可能为 null）
      * @param condition 条件对象
      * @param matchType 匹配类型
+     * @param targetClass IS 类型匹配时的目标类（可为 null）
      * @return 是否匹配成功
      */
-    public static boolean matchWhenBranch(Object subject, Object condition, WhenExpression.MatchType matchType) {
+    public static boolean matchWhenBranch(Object subject, Object condition, WhenExpression.MatchType matchType, Class<?> targetClass) {
         switch (matchType) {
             case EQUAL:
-                // 如果有主题，判断主题和条件是否相等
                 if (subject != null) {
                     return Operations.isEqual(subject, condition);
                 } else {
-                    // 没有主题时，直接判断条件是否为真
                     return Operations.isTrue(condition);
                 }
             case CONTAINS:
                 return checkContains(subject, condition, false);
             case NOT_CONTAINS:
                 return checkContains(subject, condition, true);
+            case IS:
+                return isInstanceOf(subject, targetClass);
             default:
                 return false;
         }
@@ -554,5 +555,19 @@ public final class Intrinsics {
             default: return EMPTY_ARGS;
         }
         // @formatter:on
+    }
+
+    /**
+     * 类型检查：判断对象是否为指定类型的实例
+     *
+     * @param obj         要检查的对象
+     * @param targetClass 目标类型
+     * @return 是否为该类型的实例
+     */
+    public static boolean isInstanceOf(Object obj, Class<?> targetClass) {
+        if (obj == null) {
+            return false;
+        }
+        return targetClass.isInstance(obj);
     }
 }

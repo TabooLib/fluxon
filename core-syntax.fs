@@ -49,6 +49,16 @@ bucket = when &y {
 }
 print("bucket=" + &bucket)
 
+// when 表达式类型检查 (is)
+obj = "hello"
+typeLabel = when &obj {
+    is int -> "integer"
+    is string -> "text"
+    is list -> "list"
+    else -> "unknown"
+}
+print("typeLabel=" + &typeLabel)
+
 // 循环与 break/continue
 sum = 0
 for i in 1..5 {
@@ -63,6 +73,16 @@ while &j < 3 {
     j += 1
 }
 print("j=" + &j)
+
+// 类型检查操作符 (is)
+checkResult1 = "test" is string
+print("'test' is string: " + &checkResult1)
+
+checkResult2 = 123 is int
+print("123 is int: " + &checkResult2)
+
+checkResult3 = [1,2,3] is list
+print("[1,2,3] is list: " + &checkResult3)
 
 // 函数定义（仅顶层）+ 注解
 @api

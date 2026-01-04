@@ -66,6 +66,9 @@ public class WhenExpression extends Expression {
 
         // 不包含
         NOT_CONTAINS("!in "),
+
+        // 类型检查
+        IS("is "),
         ;
 
         final String pseudoCode;
@@ -88,11 +91,17 @@ public class WhenExpression extends Expression {
         private final MatchType matchType;
         private final ParseResult condition;
         private final ParseResult result;
+        private final Class<?> targetClass; // 用于 IS 类型匹配
 
         public WhenBranch(MatchType matchType, ParseResult condition, ParseResult result) {
+            this(matchType, condition, result, null);
+        }
+
+        public WhenBranch(MatchType matchType, ParseResult condition, ParseResult result, Class<?> targetClass) {
             this.matchType = matchType;
             this.condition = condition;
             this.result = result;
+            this.targetClass = targetClass;
         }
 
         @NotNull
@@ -108,6 +117,11 @@ public class WhenExpression extends Expression {
         @NotNull
         public ParseResult getResult() {
             return result;
+        }
+
+        @Nullable
+        public Class<?> getTargetClass() {
+            return targetClass;
         }
 
         @Override

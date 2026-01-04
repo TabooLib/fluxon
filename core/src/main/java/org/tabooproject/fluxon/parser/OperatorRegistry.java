@@ -103,6 +103,8 @@ public class OperatorRegistry {
         registry.registerInfix(new EqualityInfixOperator());
         // Comparison (80) - 左结合
         registry.registerInfix(new ComparisonInfixOperator());
+        // Is (80) - 左结合
+        registry.registerInfix(new IsInfixOperator());
         // Term (90) - 左结合
         registry.registerInfix(new TermInfixOperator());
         // Factor (100) - 左结合

@@ -6,12 +6,34 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 语法宏解析辅助工具
  */
 public final class SyntaxMacroHelper {
+
+    /**
+     * 类型别名映射表（不区分大小写）
+     * 用于将常见类型名（如 string、int、list）解析为对应的 Java Class 对象
+     */
+    private static final Map<String, Class<?>> TYPE_ALIASES = new HashMap<>();
+
+    static {
+        // 基本类型别名（小写 key）
+        TYPE_ALIASES.put("string", String.class);
+        TYPE_ALIASES.put("int", Integer.class);
+        TYPE_ALIASES.put("long", Long.class);
+        TYPE_ALIASES.put("float", Float.class);
+        TYPE_ALIASES.put("double", Double.class);
+        TYPE_ALIASES.put("boolean", Boolean.class);
+        TYPE_ALIASES.put("list", List.class);
+        TYPE_ALIASES.put("map", Map.class);
+        TYPE_ALIASES.put("set", Set.class);
+    }
 
     private SyntaxMacroHelper() {
     }
@@ -86,5 +108,45 @@ public final class SyntaxMacroHelper {
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
         return args.toArray(new ParseResult[0]);
+    }
+
+    /**
+     * 解析类型字面量并解析为 Class 对象
+     * <p>
+     * 支持的格式：
+     * <ul>
+     *   <li>类型别名（不区分大小写）：{@code string, int, List}</li>
+     *   <li>全限定类名：{@code java.lang.String, java.util.ArrayList}</li>
+     * </ul>
+     *
+     * @param parser 解析器实例
+     * @return 解析后的 Class 对象
+     */
+    public static Class<?> parseAndResolveType(Parser parser) {
+        String typeName = parseQualifiedName(parser, "Expected type name").name;
+        return resolveTypeName(typeName, parser);
+    }
+
+    /**
+     * 将类型名称解析为 Class 对象
+     * <p>
+     * 先检查类型别名（不区分大小写），如果不是别名则尝试作为完全限定类名加载
+     *
+     * @param typeName 类型名称（可以是别名或完全限定名）
+     * @param parser 解析器实例（用于错误报告）
+     * @return 解析后的 Class 对象
+     */
+    public static Class<?> resolveTypeName(String typeName, Parser parser) {
+        // 先检查别名（不区分大小写）
+        Class<?> aliased = TYPE_ALIASES.get(typeName.toLowerCase());
+        if (aliased != null) {
+            return aliased;
+        }
+        // 尝试作为完全限定类名解析
+        try {
+            return Class.forName(typeName);
+        } catch (ClassNotFoundException e) {
+            throw parser.createParseException("Unknown type: " + typeName + ". Check spelling or use fully-qualified name.", parser.peek());
+        }
     }
 }

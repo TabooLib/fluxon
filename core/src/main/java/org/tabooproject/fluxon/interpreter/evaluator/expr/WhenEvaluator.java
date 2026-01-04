@@ -17,8 +17,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.Type.OBJECT;
-import static org.tabooproject.fluxon.runtime.Type.VOID;
+import static org.tabooproject.fluxon.runtime.Type.*;
 
 public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
 
@@ -37,13 +36,16 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
         // 遍历所有分支，只执行匹配的分支
         for (WhenExpression.WhenBranch branch : result.getBranches()) {
             // 如果是 else 分支（没有条件），直接返回其结果
-            if (branch.getCondition() == null) {
+            if (branch.getCondition() == null && branch.getMatchType() != WhenExpression.MatchType.IS) {
                 return interpreter.evaluate(branch.getResult());
             }
-            // 评估分支条件
-            Object condition = interpreter.evaluate(branch.getCondition());
+            // 评估分支条件（IS 类型不需要条件）
+            Object condition = null;
+            if (branch.getMatchType() != WhenExpression.MatchType.IS) {
+                condition = interpreter.evaluate(branch.getCondition());
+            }
             // 执行分支匹配
-            if (Intrinsics.matchWhenBranch(subject, condition, branch.getMatchType())) {
+            if (Intrinsics.matchWhenBranch(subject, condition, branch.getMatchType(), branch.getTargetClass())) {
                 return interpreter.evaluate(branch.getResult());
             }
         }
@@ -79,34 +81,47 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
         // 遍历所有分支进行条件判断
         for (int i = 0; i < branches.size(); i++) {
             WhenExpression.WhenBranch branch = branches.get(i);
-            // 如果是 else 分支（没有条件），直接跳转到分支执行
-            if (branch.getCondition() == null) {
+            // 如果是 else 分支（没有条件且不是 IS 类型），直接跳转到分支执行
+            if (branch.getCondition() == null && branch.getMatchType() != WhenExpression.MatchType.IS) {
                 mv.visitJumpInsn(GOTO, branchLabels[i]);
                 break;
             }
             // 加载 subject
             mv.visitVarInsn(ALOAD, subjectVar);
-            // 评估分支条件
-            Evaluator<ParseResult> conditionEval = ctx.getEvaluator(branch.getCondition());
-            if (conditionEval == null) {
-                throw new EvaluatorNotFoundError("No evaluator found for when expression condition");
-            }
-            Type conditionType = conditionEval.generateBytecode(branch.getCondition(), ctx, mv);
-            if (conditionType == VOID) {
-                throw new VoidError("Void type is not allowed for when expression condition");
+            // 根据匹配类型处理条件
+            if (branch.getMatchType() == WhenExpression.MatchType.IS) {
+                // IS 类型：condition 为 null，直接加载 null
+                mv.visitInsn(ACONST_NULL);
+            } else {
+                // 其他类型：评估分支条件
+                Evaluator<ParseResult> conditionEval = ctx.getEvaluator(branch.getCondition());
+                if (conditionEval == null) {
+                    throw new EvaluatorNotFoundError("No evaluator found for when expression condition");
+                }
+                Type conditionType = conditionEval.generateBytecode(branch.getCondition(), ctx, mv);
+                if (conditionType == VOID) {
+                    throw new VoidError("Void type is not allowed for when expression condition");
+                }
             }
             // 加载 matchType
-            mv.visitFieldInsn(
-                    GETSTATIC,
-                    MATCH_TYPE.getPath(),
-                    branch.getMatchType().name(),
-                    MATCH_TYPE.getDescriptor()
-            );
-            // 调用 matchWhenBranch
+            mv.visitFieldInsn(GETSTATIC, MATCH_TYPE.getPath(), branch.getMatchType().name(), MATCH_TYPE.getDescriptor());
+            // 加载 targetClass (对于 IS 类型)
+            if (branch.getMatchType() == WhenExpression.MatchType.IS) {
+                Class<?> targetClass = branch.getTargetClass();
+                if (targetClass == null) {
+                    throw new RuntimeException("IS match type requires a targetClass");
+                }
+                // 使用 LDC 加载 Class 对象
+                mv.visitLdcInsn(org.objectweb.asm.Type.getType(targetClass));
+            } else {
+                // 非 IS 类型，传递 null
+                mv.visitInsn(ACONST_NULL);
+            }
+            // 调用 matchWhenBranch(Object, Object, MatchType, Class<?>)
             mv.visitMethodInsn(INVOKESTATIC,
                     Intrinsics.TYPE.getPath(),
                     "matchWhenBranch",
-                    "(" + OBJECT + OBJECT + MATCH_TYPE + ")Z",
+                    "(" + OBJECT + OBJECT + MATCH_TYPE + CLASS + ")Z",
                     false
             );
             // 如果匹配，跳转到对应分支

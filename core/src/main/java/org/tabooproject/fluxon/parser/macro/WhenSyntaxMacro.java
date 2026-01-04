@@ -52,37 +52,58 @@ public class WhenSyntaxMacro implements SyntaxMacro {
             parser.match(TokenType.RIGHT_BRACE);
             return continuation.apply(parser.attachSource(new WhenExpression(condition, branches), whenToken));
         }
-
-        Token peek = parser.peek();
-        WhenExpression.MatchType matchType;
-        if (peek.getType() == TokenType.IN) {
-            parser.advance();
-            matchType = WhenExpression.MatchType.CONTAINS;
-        } else if (peek.getType() == TokenType.NOT) {
-            parser.advance();
-            if (parser.peek(1).getType() == TokenType.IN) {
-                parser.advance();
-                matchType = WhenExpression.MatchType.NOT_CONTAINS;
-            } else {
-                throw new RuntimeException("Expected 'in' after 'not'");
-            }
-        } else {
-            matchType = WhenExpression.MatchType.EQUAL;
-        }
-
-        // 解析分支条件与结果，递归构建分支列表
-        Trampoline.Continuation<ParseResult> addBranch = branchCondition -> {
+        // 检查 else 分支
+        if (parser.match(TokenType.ELSE)) {
             parser.consume(TokenType.ARROW, "Expected '->' after else");
             return ExpressionParser.parse(parser, branchResult -> {
-                branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, branchResult));
+                branches.add(new WhenExpression.WhenBranch(WhenExpression.MatchType.EQUAL, null, branchResult, null));
                 parser.match(TokenType.SEMICOLON);
                 return parseBranch(parser, condition, branches, continuation, whenToken);
             });
-        };
-
-        if (parser.match(TokenType.ELSE)) {
-            return addBranch.apply(null);
         }
-        return ExpressionParser.parse(parser, addBranch);
+        Token peek = parser.peek();
+        WhenExpression.MatchType matchType;
+        Class<?> targetClass;
+        // 检查特殊匹配类型（必须在解析表达式之前）
+        switch (peek.getType()) {
+            case IS:
+                parser.advance();
+                matchType = WhenExpression.MatchType.IS;
+                // 解析类型字面量并解析为 Class 对象
+                targetClass = SyntaxMacroHelper.parseAndResolveType(parser);
+                // 对于 IS 类型，直接跳到箭头和结果解析
+                parser.consume(TokenType.ARROW, "Expected '->' after is type");
+                Class<?> finalTargetClass = targetClass;
+                return ExpressionParser.parse(parser, branchResult -> {
+                    branches.add(new WhenExpression.WhenBranch(matchType, null, branchResult, finalTargetClass));
+                    parser.match(TokenType.SEMICOLON);
+                    return parseBranch(parser, condition, branches, continuation, whenToken);
+                });
+            case IN:
+                parser.advance();
+                matchType = WhenExpression.MatchType.CONTAINS;
+                break;
+            case NOT:
+                parser.advance();
+                if (parser.peek(1).getType() == TokenType.IN) {
+                    parser.advance();
+                    matchType = WhenExpression.MatchType.NOT_CONTAINS;
+                } else {
+                    throw new RuntimeException("Expected 'in' after 'not'");
+                }
+                break;
+            default:
+                matchType = WhenExpression.MatchType.EQUAL;
+                break;
+        }
+        // 解析条件表达式和结果
+        return ExpressionParser.parse(parser, branchCondition -> {
+            parser.consume(TokenType.ARROW, "Expected '->' after condition");
+            return ExpressionParser.parse(parser, branchResult -> {
+                branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, branchResult, null));
+                parser.match(TokenType.SEMICOLON);
+                return parseBranch(parser, condition, branches, continuation, whenToken);
+            });
+        });
     }
 }
