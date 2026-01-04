@@ -313,6 +313,40 @@ public class BytecodeUtils {
         return depth;
     }
 
+    /**
+     * 生成 instanceof 类型检查的字节码
+     * <p>
+     * 输入栈：[obj]
+     * 输出栈：[int] (0 表示 false, 1 表示 true)
+     * <p>
+     * 处理逻辑：
+     * - 如果 obj 为 null，返回 0 (false)
+     * - 否则使用 INSTANCEOF 字节码指令进行类型检查
+     *
+     * @param mv          方法访问器
+     * @param targetClass 要检查的目标类型
+     */
+    public static void generateInstanceofCheck(MethodVisitor mv, Class<?> targetClass) {
+        // 创建标签用于 null 检查和结果处理
+        Label nullLabel = new Label();
+        Label endLabel = new Label();
+        // 复制栈顶值用于 null 检查（栈：[obj] -> [obj, obj]）
+        mv.visitInsn(DUP);
+        // 检查是否为 null（栈：[obj, obj] -> [obj]）
+        mv.visitJumpInsn(IFNULL, nullLabel);
+        // 非 null 情况：使用 INSTANCEOF 指令（栈：[obj] -> [int]）
+        String internalName = org.objectweb.asm.Type.getInternalName(targetClass);
+        mv.visitTypeInsn(INSTANCEOF, internalName);
+        mv.visitJumpInsn(GOTO, endLabel);
+        // null 情况：弹出栈顶值并压入 0 (false)（栈：[obj] -> [int]）
+        mv.visitLabel(nullLabel);
+        mv.visitInsn(POP);
+        mv.visitInsn(ICONST_0);
+        // 结束标签
+        mv.visitLabel(endLabel);
+        // 栈上现在是 int (0 或 1)
+    }
+
     private static final Type MAP = new Type(Map.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
 }

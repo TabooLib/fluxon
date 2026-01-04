@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -12,10 +13,6 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
-
-import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.Type.CLASS;
-import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 
 /**
  * Is 类型检查表达式求值器
@@ -48,18 +45,9 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
         if (leftType == Type.VOID) {
             throw new VoidError("Void type is not allowed for is expression left operand");
         }
-        // 加载目标 Class<?> 对象（栈：[obj] -> [obj, Class]）
-        Class<?> targetClass = expr.getTargetClass();
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType(targetClass));
-        // 调用 Intrinsics.isInstanceOf(Object, Class)（栈：[obj, Class] -> [boolean]）
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "isInstanceOf",
-                "(" + OBJECT + CLASS + ")Z",
-                false
-        );
-        // 结果是原始 boolean 类型，需要装箱为 Boolean
+        // 使用 BytecodeUtils 生成 INSTANCEOF 检查字节码（栈：[obj] -> [int]）
+        BytecodeUtils.generateInstanceofCheck(mv, expr.getTargetClass());
+        // 结果是原始 boolean 类型（int 0 或 1），需要装箱为 Boolean
         return boxing(Type.Z, mv);
     }
 }

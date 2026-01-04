@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -86,37 +87,36 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
                 mv.visitJumpInsn(GOTO, branchLabels[i]);
                 break;
             }
-            // 加载 subject
-            mv.visitVarInsn(ALOAD, subjectVar);
-            // 根据匹配类型处理条件
-            if (branch.getMatchType() == WhenExpression.MatchType.IS) {
-                // IS 类型：condition 为 null，直接加载 null
-                mv.visitInsn(ACONST_NULL);
-            } else {
-                // 其他类型：评估分支条件
-                Evaluator<ParseResult> conditionEval = ctx.getEvaluator(branch.getCondition());
-                if (conditionEval == null) {
-                    throw new EvaluatorNotFoundError("No evaluator found for when expression condition");
-                }
-                Type conditionType = conditionEval.generateBytecode(branch.getCondition(), ctx, mv);
-                if (conditionType == VOID) {
-                    throw new VoidError("Void type is not allowed for when expression condition");
-                }
-            }
-            // 加载 matchType
-            mv.visitFieldInsn(GETSTATIC, MATCH_TYPE.getPath(), branch.getMatchType().name(), MATCH_TYPE.getDescriptor());
-            // 加载 targetClass (对于 IS 类型)
+            // 对于 IS 类型，使用内联的 INSTANCEOF 字节码
             if (branch.getMatchType() == WhenExpression.MatchType.IS) {
                 Class<?> targetClass = branch.getTargetClass();
                 if (targetClass == null) {
                     throw new RuntimeException("IS match type requires a targetClass");
                 }
-                // 使用 LDC 加载 Class 对象
-                mv.visitLdcInsn(org.objectweb.asm.Type.getType(targetClass));
-            } else {
-                // 非 IS 类型，传递 null
-                mv.visitInsn(ACONST_NULL);
+                // 加载 subject（栈：[] -> [obj]）
+                mv.visitVarInsn(ALOAD, subjectVar);
+                // 使用 BytecodeUtils 生成 INSTANCEOF 检查（栈：[obj] -> [int]）
+                BytecodeUtils.generateInstanceofCheck(mv, targetClass);
+                // 如果匹配（int != 0），跳转到对应分支
+                mv.visitJumpInsn(IFNE, branchLabels[i]);
+                continue;
             }
+            // 其他匹配类型：使用 Intrinsics.matchWhenBranch()
+            // 加载 subject
+            mv.visitVarInsn(ALOAD, subjectVar);
+            // 评估分支条件
+            Evaluator<ParseResult> conditionEval = ctx.getEvaluator(branch.getCondition());
+            if (conditionEval == null) {
+                throw new EvaluatorNotFoundError("No evaluator found for when expression condition");
+            }
+            Type conditionType = conditionEval.generateBytecode(branch.getCondition(), ctx, mv);
+            if (conditionType == VOID) {
+                throw new VoidError("Void type is not allowed for when expression condition");
+            }
+            // 加载 matchType
+            mv.visitFieldInsn(GETSTATIC, MATCH_TYPE.getPath(), branch.getMatchType().name(), MATCH_TYPE.getDescriptor());
+            // 传递 null 作为 targetClass（非 IS 类型不需要）
+            mv.visitInsn(ACONST_NULL);
             // 调用 matchWhenBranch(Object, Object, MatchType, Class<?>)
             mv.visitMethodInsn(INVOKESTATIC,
                     Intrinsics.TYPE.getPath(),
