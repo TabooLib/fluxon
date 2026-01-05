@@ -28,7 +28,7 @@ public class ExtensionIterable {
         runtime.registerExtension(Iterable.class)
                 .function("each", 1, (context) -> {
                     forEachElement(context, null);
-                    return null;
+                    return context.getTarget();
                 });
     }
 
