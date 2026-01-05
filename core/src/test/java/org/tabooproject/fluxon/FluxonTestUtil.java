@@ -190,6 +190,31 @@ public class FluxonTestUtil {
      * @return 测试结果
      */
     public static TestResult runSilent(String source, String className) {
+        return runSilent(source, className, ctx -> {}, env -> {});
+    }
+
+    /**
+     * 静默测试：支持编译上下文和环境预配置
+     *
+     * @param source    Fluxon 源代码
+     * @param ctxSetup  编译上下文配置函数
+     * @param envSetup  环境配置函数
+     * @return 测试结果
+     */
+    public static TestResult runSilent(String source, Consumer<CompilationContext> ctxSetup, Consumer<Environment> envSetup) {
+        return runSilent(source, "TestScript", ctxSetup, envSetup);
+    }
+
+    /**
+     * 静默测试：支持编译上下文和环境预配置
+     *
+     * @param source    Fluxon 源代码
+     * @param className 编译时使用的类名
+     * @param ctxSetup  编译上下文配置函数
+     * @param envSetup  环境配置函数
+     * @return 测试结果
+     */
+    public static TestResult runSilent(String source, String className, Consumer<CompilationContext> ctxSetup, Consumer<Environment> envSetup) {
         Object interpretResult;
         Object compileResult;
         long interpretTime;
@@ -199,14 +224,18 @@ public class FluxonTestUtil {
         // 1. 解释执行（使用启用特性的上下文）
         long startInterpret = System.currentTimeMillis();
         Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(interpretEnv);
         CompilationContext interpretCtx = createTestContext(source);
+        ctxSetup.accept(interpretCtx);
         interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, interpretCtx), interpretEnv);
         interpretTime = System.currentTimeMillis() - startInterpret;
 
         // 2. 编译（使用启用特性的上下文）
         long startCompile = System.currentTimeMillis();
         Environment compileParseEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(compileParseEnv);
         CompilationContext compileCtx = createTestContext(source);
+        ctxSetup.accept(compileCtx);
         CompileResult compileResultObj = Fluxon.compile(compileParseEnv, compileCtx, className);
         compileTime = System.currentTimeMillis() - startCompile;
         // 输出编译字节码
@@ -226,6 +255,7 @@ public class FluxonTestUtil {
             throw new RuntimeException(e);
         }
         Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
+        envSetup.accept(compileEnv);
         compileResult = base.eval(compileEnv);
         executeTime = System.currentTimeMillis() - startExecute;
         return new TestResult(interpretResult, interpretEnv, compileResult, compileEnv, interpretTime, compileTime, executeTime);
