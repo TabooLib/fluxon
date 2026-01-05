@@ -25,6 +25,9 @@ public class Environment {
     protected final Map<String, Function> functions;
     @Nullable
     protected final Function[] systemFunctions;
+    // 用户动态定义的函数名称（用于区分系统函数和用户定义的函数）
+    @Nullable
+    protected Set<String> userFunctionNames;
 
     // 扩展函数
     @Nullable
@@ -130,6 +133,11 @@ public class Environment {
      */
     public void defineRootFunction(String name, Function value) {
         Objects.requireNonNull(root.functions).put(name, value);
+        // 追踪用户定义的函数名
+        if (root.userFunctionNames == null) {
+            root.userFunctionNames = new HashSet<>();
+        }
+        root.userFunctionNames.add(name);
     }
 
     /**
@@ -309,6 +317,26 @@ public class Environment {
     @Export
     public Map<String, Function> getRootFunctions() {
         return root.functions;
+    }
+
+    /**
+     * 获取用户动态定义的函数（不包含系统函数）
+     * 用于解析器识别运行时定义的函数
+     *
+     * @return 用户定义的函数映射，如果没有则返回空 map
+     */
+    public Map<String, Function> getUserFunctions() {
+        if (root.functions == null || root.userFunctionNames == null || root.userFunctionNames.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Function> result = new HashMap<>();
+        for (String name : root.userFunctionNames) {
+            Function func = root.functions.get(name);
+            if (func != null) {
+                result.put(name, func);
+            }
+        }
+        return result;
     }
 
     /**

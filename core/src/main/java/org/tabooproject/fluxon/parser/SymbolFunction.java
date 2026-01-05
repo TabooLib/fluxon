@@ -70,8 +70,25 @@ public class SymbolFunction implements Callable {
         return parameterCounts.contains(count);
     }
 
+    /**
+     * 从 Function 创建符号函数
+     *
+     * @param function 函数对象
+     * @return 符号函数
+     */
     public static SymbolFunction of(Function function) {
         return new SymbolFunction(function.getNamespace(), function.getName(), function.getParameterCounts());
+    }
+
+    /**
+     * 创建一个支持任意参数数量的符号函数
+     * 用于动态注册的函数，没有明确的参数签名
+     *
+     * @param name 函数名
+     * @return 符号函数
+     */
+    public static SymbolFunction varargs(String name) {
+        return new VarargsSymbolFunction(null, name);
     }
 
     @Override

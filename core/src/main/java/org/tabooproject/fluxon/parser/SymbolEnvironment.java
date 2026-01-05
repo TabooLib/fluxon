@@ -70,12 +70,24 @@ public class SymbolEnvironment {
      */
     public void defineUserFunctions(Map<String, Function> functions) {
         for (Map.Entry<String, Function> entry : functions.entrySet()) {
+            String name = entry.getKey();
             Function function = entry.getValue();
+            SymbolFunction symbolFunc = null;
+            // 优先使用 Symbolic 接口获取符号信息
             if (function instanceof Symbolic) {
-                userFunctions.put(entry.getKey(), ((Symbolic) function).getInfo());
-            } else {
-                userFunctions.put(entry.getKey(), SymbolFunction.of(function));
+                symbolFunc = ((Symbolic) function).getInfo();
             }
+            // 如果没有符号信息，尝试从 Function 接口构建
+            if (symbolFunc == null) {
+                try {
+                    symbolFunc = SymbolFunction.of(function);
+                } catch (Exception e) {
+                    // 如果无法从 Function 构建，使用 map 的 key 作为函数名
+                    // 创建一个支持任意参数数量的符号函数
+                    symbolFunc = SymbolFunction.varargs(name);
+                }
+            }
+            userFunctions.put(name, symbolFunc);
         }
     }
 

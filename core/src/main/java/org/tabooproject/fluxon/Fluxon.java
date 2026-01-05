@@ -62,8 +62,9 @@ public class Fluxon {
         context.setAttribute("tokens", tokens);
         // 语法分析
         Parser parser = new Parser();
-        // 传入上下文符号
+        // 传入上下文符号（变量和用户动态定义的函数）
         parser.defineRootVariables(env.getRootVariables());
+        parser.defineUserFunction(env.getUserFunctions());
         return parser.process(context);
     }
 
