@@ -228,4 +228,18 @@ public class DomainTest {
                 env -> {}
         ));
     }
+
+    @Test
+    void testDomainAlso() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("[] :: also { add(1); add(2); add(3) }");
+        assertEquals("[1, 2, 3]", result.getInterpretResult().toString());
+        assertTrue(result.isMatch());
+    }
+
+    @Test
+    void testDomainWith() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("[] :: with { add(1); add(2); add(3) }");
+        assertEquals("true", result.getInterpretResult().toString());
+        assertTrue(result.isMatch());
+    }
 }

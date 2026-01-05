@@ -110,6 +110,7 @@ public class Environment {
         this.rootVariables = null;
         this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+        this.target = parentEnv.target;
         this.out = null;
         this.err = null;
     }

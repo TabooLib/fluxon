@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime;
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.function.*;
+import org.tabooproject.fluxon.runtime.function.domain.DomainExtension;
 import org.tabooproject.fluxon.runtime.function.extension.*;
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionClass;
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionConstructor;
@@ -87,6 +88,8 @@ public class FluxonRuntime {
         FunctionSystem.init(this);
         FunctionTime.init(this);
         FunctionType.init(this);
+        // Domain
+        DomainExtension.init();
     }
 
     /**
