@@ -29,6 +29,9 @@ public class CodeContext {
     // 循环标签栈管理
     private final Stack<LoopContext> loopStack = new Stack<>();
 
+    // Command 解析数据（运行时通过 index 访问）
+    private final List<Object> commandDataList = new ArrayList<>();
+
     /**
      * 循环上下文，包含 break 和 continue 的跳转标签
      */
@@ -76,6 +79,16 @@ public class CodeContext {
 
     public List<LambdaFunctionDefinition> getLambdaDefinitions() {
         return lambdaDefinitions;
+    }
+
+    public int addCommandData(Object data) {
+        int index = commandDataList.size();
+        commandDataList.add(data);
+        return index;
+    }
+
+    public List<Object> getCommandDataList() {
+        return commandDataList;
     }
 
     public String getClassName() {

@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.CommandRegistry;
+import org.tabooproject.fluxon.parser.DomainRegistry;
 import org.tabooproject.fluxon.parser.StatementMacroRegistry;
 import org.tabooproject.fluxon.parser.SyntaxMacroRegistry;
 import org.tabooproject.fluxon.parser.OperatorRegistry;
@@ -32,6 +33,7 @@ public class CompilationContext {
 
     // 注册表
     private CommandRegistry commandRegistry = CommandRegistry.primary();
+    private DomainRegistry domainRegistry = DomainRegistry.primary();
     private SyntaxMacroRegistry syntaxMacroRegistry = SyntaxMacroRegistry.primary();
     private OperatorRegistry operatorRegistry = OperatorRegistry.primary();
     private StatementMacroRegistry statementMacroRegistry = StatementMacroRegistry.primary();
@@ -115,6 +117,15 @@ public class CompilationContext {
 
     public void setCommandRegistry(@NotNull CommandRegistry commandRegistry) {
         this.commandRegistry = commandRegistry;
+    }
+
+    @NotNull
+    public DomainRegistry getDomainRegistry() {
+        return domainRegistry;
+    }
+
+    public void setDomainRegistry(@NotNull DomainRegistry domainRegistry) {
+        this.domainRegistry = domainRegistry;
     }
 
     @NotNull

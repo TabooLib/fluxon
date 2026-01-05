@@ -11,6 +11,8 @@ public abstract class RuntimeScriptBase {
     public static final Type TYPE = new Type(RuntimeScriptBase.class);
 
     protected Environment environment;
+    // Command 解析数据
+    protected Object[] commandData;
 
     // 克隆当前脚本
     abstract public RuntimeScriptBase clone();
@@ -44,6 +46,19 @@ public abstract class RuntimeScriptBase {
     // 获取运行时环境
     public Environment getEnvironment() {
         return environment;
+    }
+
+    // 获取 Command 解析数据
+    public Object getCommandData(int index) {
+        if (commandData == null || index < 0 || index >= commandData.length) {
+            return null;
+        }
+        return commandData[index];
+    }
+
+    // 设置 Command 解析数据
+    public void setCommandData(Object[] commandData) {
+        this.commandData = commandData;
     }
 
     /**

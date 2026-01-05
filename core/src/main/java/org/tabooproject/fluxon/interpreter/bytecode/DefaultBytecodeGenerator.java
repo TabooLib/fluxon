@@ -29,6 +29,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private final List<Definition> definitions = new ArrayList<>();
     // 收集到的 lambda 定义
     private List<LambdaFunctionDefinition> lastLambdaDefinitions = new ArrayList<>();
+    // 收集到的 Command 解析数据
+    private List<Object> lastCommandDataList = new ArrayList<>();
     // 脚本源上下文
     private String source = "";
     // 脚本文件名
@@ -130,6 +132,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             byteList.add(generateFunctionClass(lambdaDef, lambdaDef.getOwnerClassName(), classLoader, lambdaDefinitions));
         }
         this.lastLambdaDefinitions = lambdaDefinitions;
+        this.lastCommandDataList = ctx.getCommandDataList();
         return byteList;
     }
 
@@ -517,6 +520,11 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<LambdaFunctionDefinition> getLambdaDefinitions() {
         return lastLambdaDefinitions;
+    }
+
+    @Override
+    public List<Object> getCommandDataList() {
+        return lastCommandDataList;
     }
 
     private void declareSourceMetadata(ClassWriter cw) {

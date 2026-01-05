@@ -21,10 +21,7 @@ public class CompileResult {
     private final byte[] mainClass;
     private final List<byte[]> innerClasses;
 
-    public CompileResult(String source,
-                         String className,
-                         BytecodeGenerator generator,
-                         List<byte[]> bytecode) {
+    public CompileResult(String source, String className, BytecodeGenerator generator, List<byte[]> bytecode) {
         this.source = source;
         this.className = className;
         this.generator = generator;
@@ -76,6 +73,7 @@ public class CompileResult {
     /**
      * 将字节码写入文件，便于调试
      */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     public void dump(File file) throws Exception {
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
@@ -123,6 +121,15 @@ public class CompileResult {
 
     public List<byte[]> getInnerClasses() {
         return innerClasses;
+    }
+
+    public List<Object> getCommandDataList() {
+        return generator.getCommandDataList();
+    }
+
+    public Object[] getCommandDataArray() {
+        List<Object> list = getCommandDataList();
+        return list.isEmpty() ? null : list.toArray();
     }
 }
 

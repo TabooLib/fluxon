@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.CommandRegistry;
+import org.tabooproject.fluxon.parser.DomainRegistry;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
@@ -55,6 +57,12 @@ public class Environment {
     protected PrintStream out;
     @Nullable
     protected PrintStream err;
+
+    // Command 和 Domain 注册表
+    @Nullable
+    protected CommandRegistry commandRegistry;
+    @Nullable
+    protected DomainRegistry domainRegistry;
 
     // 根环境
     @NotNull
@@ -116,7 +124,7 @@ public class Environment {
         return root;
     }
 
-     /**
+    /**
      * 获取父环境
      */
     @Export
@@ -124,6 +132,8 @@ public class Environment {
     public Environment getParent() {
         return parent;
     }
+
+    // region 函数定义与获取
 
     /**
      * 在根环境中定义函数
@@ -233,85 +243,6 @@ public class Environment {
     }
 
     /**
-     * 在根环境中定义变量
-     *
-     * @param name  变量名
-     * @param value 变量值
-     */
-    public void defineRootVariable(@NotNull String name, @Nullable Object value) {
-        Objects.requireNonNull(root.rootVariables).put(name, value);
-    }
-
-    /**
-     * 判断变量是否存在
-     *
-     * @param name  变量名
-     * @param index 索引（-1 索引表示根变量）
-     * @return 存在与否
-     */
-    public boolean has(@NotNull String name, int index) {
-        if (index == -1) {
-            return Objects.requireNonNull(root.rootVariables).containsKey(name);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                return true;
-            }
-            if (parent != null) {
-                return parent.has(name, index);
-            }
-            return false;
-        }
-    }
-
-    /**
-     * 获取变量值
-     * 根据 position 参数决定更新局部变量还是根变量
-     *
-     * @param name  变量名
-     * @param index 索引（-1 索引表示根变量）
-     * @return 变量值
-     */
-    @Nullable
-    public Object get(@NotNull String name, int index) {
-        if (index == -1) {
-            return Objects.requireNonNull(root.rootVariables).get(name);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                return localVariables[index];
-            }
-            if (parent != null) {
-                return parent.get(name, index);
-            }
-            return null;
-        }
-    }
-
-    /**
-     * 更新变量值
-     * 根据 position 参数决定更新局部变量还是根变量
-     *
-     * @param name  变量名
-     * @param value 新的变量值
-     * @param index 索引（-1 索引表示根变量）
-     */
-    public void assign(@NotNull String name, @Nullable Object value, int index) {
-        if (index == -1) {
-            Objects.requireNonNull(root.rootVariables).put(name, value);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                localVariables[index] = value;
-                if (localVariableNames != null) {
-                    localVariableNames[index] = name;
-                }
-            } else if (parent != null) {
-                parent.assign(name, value, index);
-            } else {
-                throw new VariableNotFoundError(this, name, index, Arrays.asList(localVariableNames));
-            }
-        }
-    }
-
-    /**
      * 获取根环境中的所有函数
      */
     @Export
@@ -368,6 +299,89 @@ public class Environment {
         return root.dispatchTables;
     }
 
+    // endregion
+
+    // region 变量定义与获取
+
+    /**
+     * 在根环境中定义变量
+     *
+     * @param name  变量名
+     * @param value 变量值
+     */
+    public void defineRootVariable(@NotNull String name, @Nullable Object value) {
+        Objects.requireNonNull(root.rootVariables).put(name, value);
+    }
+
+    /**
+     * 更新变量值
+     * 根据 position 参数决定更新局部变量还是根变量
+     *
+     * @param name  变量名
+     * @param value 新的变量值
+     * @param index 索引（-1 索引表示根变量）
+     */
+    public void assign(@NotNull String name, @Nullable Object value, int index) {
+        if (index == -1) {
+            Objects.requireNonNull(root.rootVariables).put(name, value);
+        } else {
+            if (localVariables != null && index < localVariables.length) {
+                localVariables[index] = value;
+                if (localVariableNames != null) {
+                    localVariableNames[index] = name;
+                }
+            } else if (parent != null) {
+                parent.assign(name, value, index);
+            } else {
+                throw new VariableNotFoundError(this, name, index, Arrays.asList(Objects.requireNonNull(localVariableNames)));
+            }
+        }
+    }
+
+    /**
+     * 判断变量是否存在
+     *
+     * @param name  变量名
+     * @param index 索引（-1 索引表示根变量）
+     * @return 存在与否
+     */
+    public boolean has(@NotNull String name, int index) {
+        if (index == -1) {
+            return Objects.requireNonNull(root.rootVariables).containsKey(name);
+        } else {
+            if (localVariables != null && index < localVariables.length) {
+                return true;
+            }
+            if (parent != null) {
+                return parent.has(name, index);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * 获取变量值
+     * 根据 position 参数决定更新局部变量还是根变量
+     *
+     * @param name  变量名
+     * @param index 索引（-1 索引表示根变量）
+     * @return 变量值
+     */
+    @Nullable
+    public Object get(@NotNull String name, int index) {
+        if (index == -1) {
+            return Objects.requireNonNull(root.rootVariables).get(name);
+        } else {
+            if (localVariables != null && index < localVariables.length) {
+                return localVariables[index];
+            }
+            if (parent != null) {
+                return parent.get(name, index);
+            }
+            return null;
+        }
+    }
+
     /**
      * 获取根环境中的所有变量
      */
@@ -391,6 +405,10 @@ public class Environment {
         return localVariableNames;
     }
 
+    // endregion
+
+    // region 目标对象
+
     /**
      * 获取当前环境中的目标对象
      */
@@ -404,6 +422,10 @@ public class Environment {
     public void setTarget(@Nullable Object target) {
         this.target = target;
     }
+
+    // endregion
+
+    // region 输入输出
 
     /**
      * 获取输出流（来自根环境）
@@ -432,6 +454,42 @@ public class Environment {
     public void setErr(@NotNull PrintStream err) {
         root.err = Objects.requireNonNull(err, "err");
     }
+
+    // endregion
+
+    // region 注册表
+
+    /**
+     * 获取 Command 注册表
+     */
+    public CommandRegistry getCommandRegistry() {
+        CommandRegistry registry = root.commandRegistry;
+        return registry != null ? registry : CommandRegistry.primary();
+    }
+
+    /**
+     * 设置 Command 注册表
+     */
+    public void setCommandRegistry(CommandRegistry commandRegistry) {
+        root.commandRegistry = commandRegistry;
+    }
+
+    /**
+     * 获取 Domain 注册表
+     */
+    public DomainRegistry getDomainRegistry() {
+        DomainRegistry registry = root.domainRegistry;
+        return registry != null ? registry : DomainRegistry.primary();
+    }
+
+    /**
+     * 设置 Domain 注册表
+     */
+    public void setDomainRegistry(DomainRegistry domainRegistry) {
+        root.domainRegistry = domainRegistry;
+    }
+
+    // endregion
 
     @Override
     public String toString() {

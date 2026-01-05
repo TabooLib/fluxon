@@ -70,6 +70,8 @@ public enum ExpressionType {
     LAMBDA(new LambdaEvaluator()),
     // Command (自定义语法扩展)
     COMMAND(new CommandEvaluator()),
+    // Domain (域语法)
+    DOMAIN(new DomainEvaluator()),
     // New (Java 对象构造)
     NEW(new NewEvaluator()),
     // Static Access (Java 静态成员访问)

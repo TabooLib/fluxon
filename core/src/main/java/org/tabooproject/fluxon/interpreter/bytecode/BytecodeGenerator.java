@@ -65,4 +65,9 @@ public interface BytecodeGenerator {
       * 获取已生成的 Lambda 函数定义列表
       */
     List<LambdaFunctionDefinition> getLambdaDefinitions();
+
+    /**
+     * 获取 Command 解析数据列表
+     */
+    List<Object> getCommandDataList();
 }

@@ -114,6 +114,8 @@ public class SyntaxMacroRegistry {
         // 扩展语法 (高优先级)
         // Command (priority: 1000) - 需要在标识符之前匹配
         registry.register(new CommandSyntaxMacro());
+        // Domain (priority: 1000) - 需要在标识符之前匹配
+        registry.register(new DomainSyntaxMacro());
         // 解构赋值 (priority: 900) - 需要在分组表达式之前匹配
         registry.register(new DestructuringSyntaxMacro());
 

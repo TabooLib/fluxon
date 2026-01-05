@@ -227,6 +227,8 @@ public class FluxonTestUtil {
         envSetup.accept(interpretEnv);
         CompilationContext interpretCtx = createTestContext(source);
         ctxSetup.accept(interpretCtx);
+        // 将 registry 从 ctx 同步到 env
+        syncRegistries(interpretCtx, interpretEnv);
         interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, interpretCtx), interpretEnv);
         interpretTime = System.currentTimeMillis() - startInterpret;
 
@@ -236,6 +238,8 @@ public class FluxonTestUtil {
         envSetup.accept(compileParseEnv);
         CompilationContext compileCtx = createTestContext(source);
         ctxSetup.accept(compileCtx);
+        // 将 registry 从 ctx 同步到 env
+        syncRegistries(compileCtx, compileParseEnv);
         CompileResult compileResultObj = Fluxon.compile(compileParseEnv, compileCtx, className);
         compileTime = System.currentTimeMillis() - startCompile;
         // 输出编译字节码
@@ -256,9 +260,24 @@ public class FluxonTestUtil {
         }
         Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
         envSetup.accept(compileEnv);
+        // 将 registry 同步到执行环境，commandData 同步到脚本实例
+        syncRegistries(compileCtx, compileEnv);
+        base.setCommandData(compileResultObj.getCommandDataArray());
         compileResult = base.eval(compileEnv);
         executeTime = System.currentTimeMillis() - startExecute;
         return new TestResult(interpretResult, interpretEnv, compileResult, compileEnv, interpretTime, compileTime, executeTime);
+    }
+
+    /**
+     * 将 CompilationContext 中的 registry 同步到 Environment
+     */
+    private static void syncRegistries(CompilationContext ctx, Environment env) {
+        if (ctx.getCommandRegistry() != null) {
+            env.setCommandRegistry(ctx.getCommandRegistry());
+        }
+        if (ctx.getDomainRegistry() != null) {
+            env.setDomainRegistry(ctx.getDomainRegistry());
+        }
     }
 
     /**

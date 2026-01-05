@@ -2,6 +2,9 @@ package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
+import org.tabooproject.fluxon.parser.CommandExecutor;
+import org.tabooproject.fluxon.parser.CommandHandler;
+import org.tabooproject.fluxon.parser.DomainExecutor;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
@@ -15,6 +18,7 @@ import org.tabooproject.fluxon.runtime.index.IndexAccessorRegistry;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 import static java.lang.reflect.Array.*;
 
@@ -366,9 +370,9 @@ public final class Intrinsics {
     /**
      * 执行 When 分支匹配判断
      *
-     * @param subject   主题对象（可能为 null）
-     * @param condition 条件对象
-     * @param matchType 匹配类型
+     * @param subject     主题对象（可能为 null）
+     * @param condition   条件对象
+     * @param matchType   匹配类型
      * @param targetClass IS 类型匹配时的目标类（可为 null）
      * @return 是否匹配成功
      */
@@ -569,5 +573,60 @@ public final class Intrinsics {
             return false;
         }
         return targetClass.isInstance(obj);
+    }
+
+    /**
+     * 执行 Command
+     *
+     * @param commandName 命令名称
+     * @param environment 运行时环境
+     * @param parsedData  解析时捕获的数据
+     * @return 命令的返回值
+     */
+    @SuppressWarnings("unchecked")
+    public static Object executeCommand(String commandName, Environment environment, Object parsedData) {
+        CommandHandler<?> handler = environment.getCommandRegistry().get(commandName);
+        if (handler == null) {
+            throw new RuntimeException("Command not found: " + commandName);
+        }
+        try {
+            CommandExecutor<Object> executor = (CommandExecutor<Object>) handler.getExecutor();
+            return executor.execute(environment, parsedData);
+        } catch (RuntimeException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new RuntimeException("Error executing command '" + commandName + "': " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * 执行域（编译模式入口）
+     * <p>
+     * 此方法由编译后的字节码调用，从 DomainRegistry 获取执行器并执行。
+     *
+     * @param domainName  域名称
+     * @param environment 运行时环境
+     * @param bodyFunc    编译后的域体函数
+     * @return 域的返回值
+     */
+    public static Object executeDomain(String domainName, Environment environment, Function bodyFunc) {
+        DomainExecutor executor = environment.getDomainRegistry().get(domainName);
+        if (executor == null) {
+            throw new RuntimeException("Domain not found: " + domainName);
+        }
+        try {
+            // 创建 Supplier 包装 Function
+            Supplier<Object> body = () -> {
+                FunctionContextPool pool = FunctionContextPool.local();
+                try (FunctionContext<?> ctx = pool.borrow(bodyFunc, null, new Object[0], environment)) {
+                    return bodyFunc.call(ctx);
+                }
+            };
+            return executor.execute(environment, body);
+        } catch (RuntimeException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new RuntimeException("Error executing domain '" + domainName + "': " + ex.getMessage(), ex);
+        }
     }
 }
