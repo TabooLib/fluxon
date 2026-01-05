@@ -24,16 +24,6 @@ public abstract class RuntimeScriptBase {
         return null;
     }
 
-    // 设置运行时变量
-    public void assign(String name, Object value, int index) {
-        environment.assign(name, value, index);
-    }
-
-    // 获取运行时变量
-    public Object get(String name, int index) {
-        return environment.get(name, index);
-    }
-
     // 调用运行时函数
     public Object callFunction(String name, Object target, Object[] args) {
         Function function = environment.getFunction(name);

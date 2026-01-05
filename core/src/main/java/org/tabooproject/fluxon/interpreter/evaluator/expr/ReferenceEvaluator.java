@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -28,8 +29,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     @Override
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
         // 获取环境
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        BytecodeUtils.loadEnvironment(mv, ctx);
         // 变量名
         mv.visitLdcInsn(result.getIdentifier().getValue());
         // isOptional

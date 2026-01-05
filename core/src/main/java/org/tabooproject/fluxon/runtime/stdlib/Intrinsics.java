@@ -618,7 +618,7 @@ public final class Intrinsics {
             // 创建 Supplier 包装 Function
             Supplier<Object> body = () -> {
                 FunctionContextPool pool = FunctionContextPool.local();
-                try (FunctionContext<?> ctx = pool.borrow(bodyFunc, null, new Object[0], environment)) {
+                try (FunctionContext<?> ctx = pool.borrowInline(bodyFunc, null, environment)) {
                     return bodyFunc.call(ctx);
                 }
             };

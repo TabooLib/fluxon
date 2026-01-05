@@ -148,10 +148,15 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         Label handler = new Label();
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
-        // 设置 environment 参数
+        // 设置 environment 参数（保持兼容性）
         mv.visitVarInsn(ALOAD, 0);  // 加载 this
         mv.visitVarInsn(ALOAD, 1);  // 加载 environment 参数
         mv.visitFieldInsn(PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        // 设置 CodeContext：localVarIndex 从 2 开始（slot 0=this, slot 1=Environment 参数）
+        ctx.allocateLocalVar(Type.OBJECT); // 占用 slot 0 (this)
+        ctx.allocateLocalVar(Type.OBJECT); // 占用 slot 1 (Environment 参数)
+        // 设置使用局部变量 slot 1（Environment 参数本身）
+        ctx.setEnvironmentLocalSlot(1);
         // 注册用户定义的函数到 environment
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {
@@ -257,8 +262,7 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
      */
     private void generatorUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
         // 加载 environment
-        mv.visitVarInsn(ALOAD, 0);  // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        BytecodeUtils.loadEnvironment(mv, ctx);
         mv.visitInsn(DUP);          // 复制 environment 引用
         // 加载函数名
         mv.visitLdcInsn(funcDef.getName());
@@ -447,23 +451,25 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         // 实现 call(FunctionContext) 方法 - 包含函数的实际执行逻辑
         mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
         mv.visitCode();
-        // 直接将 Operations.bindFunctionParameters 的结果赋值给 this.environment
-        // this（为 PUTFIELD 准备）
-        mv.visitVarInsn(ALOAD, 0);
-        // 准备 Operations.bindFunctionParameters 的参数
+        
+        // 创建代码上下文
+        CodeContext funcCtx = new CodeContext(functionClassName, RuntimeScriptBase.TYPE.getPath());
+        // localVarIndex 从 2 开始（slot 0=this, slot 1=FunctionContext 参数）
+        funcCtx.allocateLocalVar(Type.OBJECT); // 占用 slot 0 (this)
+        funcCtx.allocateLocalVar(Type.OBJECT); // 占用 slot 1 (FunctionContext 参数)
+        
+        // 调用 Intrinsics.bindFunctionParameters 创建新环境
         // 从 FunctionContext 获取环境
-        // FunctionContext (第一个参数)
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
         // 获取函数参数映射（static 字段）
         mv.visitFieldInsn(GETSTATIC, functionClassName, "parameters", MAP.getDescriptor());
         // 从 FunctionContext 获取参数数组
-        // FunctionContext (第一个参数)
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
         // 压入 localVariables
         mv.visitLdcInsn(funcDef.getLocalVariables().size());
-        // 调用 Operations.bindFunctionParameters
+        // 调用 Intrinsics.bindFunctionParameters
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
@@ -471,10 +477,17 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
                 "(" + Environment.TYPE + MAP + "[" + OBJECT + I + ")" + Environment.TYPE,
                 false
         );
+        // 复制结果，存储到局部变量（动态分配槽位）
+        mv.visitInsn(DUP);
+        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, envSlot);
+        // 将结果赋值给 this.environment（保持兼容性）
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(SWAP);
         mv.visitFieldInsn(PUTFIELD, functionClassName, "environment", Environment.TYPE.getDescriptor());
-
-        // 创建代码上下文并生成函数体字节码
-        CodeContext funcCtx = new CodeContext(functionClassName, RuntimeScriptBase.TYPE.getPath());
+        // 设置使用局部变量
+        funcCtx.setEnvironmentLocalSlot(envSlot);
+        
         // 生成函数体字节码
         Type returnType;
         Label start = new Label();
@@ -496,13 +509,15 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         mv.visitLabel(end);
         mv.visitInsn(ARETURN);
         mv.visitLabel(handler);
-        mv.visitVarInsn(ASTORE, 2);
-        mv.visitVarInsn(ALOAD, 2);
+        // 异常处理器使用新的槽位（在 envSlot 之后）
+        int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, exceptionSlot);
+        mv.visitVarInsn(ALOAD, exceptionSlot);
         loadSourceMetadata(mv, functionClassName);
         mv.visitLdcInsn(externalName(functionClassName));
         mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
         mv.visitInsn(ATHROW);
-        mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 2);
+        mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 1);
         mv.visitEnd();
         lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
     }

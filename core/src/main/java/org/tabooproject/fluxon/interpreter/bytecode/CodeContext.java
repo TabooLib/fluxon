@@ -26,32 +26,14 @@ public class CodeContext {
     // 局部变量表
     private int localVarIndex = 0;
 
+    // environment 局部变量槽位索引 (-1 表示使用字段，>=0 表示使用局部变量)
+    private int environmentLocalSlot = -1;
+
     // 循环标签栈管理
     private final Stack<LoopContext> loopStack = new Stack<>();
 
     // Command 解析数据（运行时通过 index 访问）
     private final List<Object> commandDataList = new ArrayList<>();
-
-    /**
-     * 循环上下文，包含 break 和 continue 的跳转标签
-     */
-    public static class LoopContext {
-        private final Label breakLabel;
-        private final Label continueLabel;
-
-        public LoopContext(Label breakLabel, Label continueLabel) {
-            this.breakLabel = breakLabel;
-            this.continueLabel = continueLabel;
-        }
-
-        public Label getBreakLabel() {
-            return breakLabel;
-        }
-
-        public Label getContinueLabel() {
-            return continueLabel;
-        }
-    }
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -171,5 +153,29 @@ public class CodeContext {
      */
     public boolean isInLoop() {
         return !loopStack.isEmpty();
+    }
+
+    /**
+     * 设置 environment 局部变量槽位索引
+     * @param slot 局部变量槽位索引
+     */
+    public void setEnvironmentLocalSlot(int slot) {
+        this.environmentLocalSlot = slot;
+    }
+
+    /**
+     * 获取 environment 局部变量槽位索引
+     * @return 局部变量槽位索引，-1 表示使用字段
+     */
+    public int getEnvironmentLocalSlot() {
+        return environmentLocalSlot;
+    }
+
+    /**
+     * 判断是否使用局部变量存储 environment
+     * @return true 表示使用局部变量，false 表示使用字段
+     */
+    public boolean useLocalEnvironment() {
+        return environmentLocalSlot >= 0;
     }
 }

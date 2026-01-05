@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.CommandExecutor;
@@ -45,8 +46,7 @@ public class CommandEvaluator extends Evaluator<CommandExpression> {
         // 1. 加载 command name
         mv.visitLdcInsn(commandName);
         // 2. 加载 environment
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        BytecodeUtils.loadEnvironment(mv, ctx);
         // 3. 调用 this.getCommandData(dataIndex) 获取 parsedData
         mv.visitVarInsn(ALOAD, 0);  // this
         mv.visitLdcInsn(dataIndex);

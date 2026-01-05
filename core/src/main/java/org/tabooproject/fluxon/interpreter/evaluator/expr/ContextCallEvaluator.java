@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -53,9 +54,8 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             throw new EvaluatorNotFoundError("No evaluator found for context expression");
         }
 
-        // 首先保存当前的 target - 调用 this.environment.getTarget()
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        // 首先保存当前的 target - 调用 environment.getTarget()
+        BytecodeUtils.loadEnvironment(mv, ctx);
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
         int oldTargetIndex = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, oldTargetIndex);
@@ -66,11 +66,10 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             throw new VoidError("Void type is not allowed for context call target");
         }
 
-        // 设置新的 target - 调用 this.environment.setTarget(newTarget)
+        // 设置新的 target - 调用 environment.setTarget(newTarget)
         int newTargetIndex = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, newTargetIndex); // 保存新 target
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        BytecodeUtils.loadEnvironment(mv, ctx);
         mv.visitVarInsn(ALOAD, newTargetIndex); // 加载新 target
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
 
@@ -84,9 +83,8 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             mv.visitVarInsn(ASTORE, resultIndex);
         }
 
-        // 恢复原来的 target - 调用 this.environment.setTarget(oldTarget)
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        // 恢复原来的 target - 调用 environment.setTarget(oldTarget)
+        BytecodeUtils.loadEnvironment(mv, ctx);
         mv.visitVarInsn(ALOAD, oldTargetIndex); // 加载原 target
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
 

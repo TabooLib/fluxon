@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.parser.SourceTrace;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -24,6 +25,24 @@ import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 import static org.tabooproject.fluxon.runtime.Type.STRING;
 
 public class BytecodeUtils {
+
+    /**
+     * 加载 environment 到栈顶
+     * 根据 CodeContext 配置，从局部变量或字段加载
+     * 
+     * @param mv  方法访问器
+     * @param ctx 代码上下文
+     */
+    public static void loadEnvironment(MethodVisitor mv, CodeContext ctx) {
+        if (ctx.useLocalEnvironment()) {
+            // 从局部变量加载
+            mv.visitVarInsn(ALOAD, ctx.getEnvironmentLocalSlot());
+        } else {
+            // 从字段加载（保持向后兼容）
+            mv.visitVarInsn(ALOAD, 0);  // this
+            mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
+        }
+    }
 
     /**
      * 生成创建和填充 Map<String, Integer> 的字节码
