@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.jsr223;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -11,12 +10,23 @@ import java.util.List;
  * 用于创建 Fluxon 脚本引擎实例
  */
 public class FluxonScriptEngineFactory implements ScriptEngineFactory {
-    
+
     private static final String ENGINE_NAME = "fluxon";
-    private static final String ENGINE_VERSION = "1.0";
     private static final String LANGUAGE_NAME = "Fluxon";
-    private static final String LANGUAGE_VERSION = "1.0";
-    
+
+    // 从项目配置获取版本，若失败则使用默认值
+    private static final String VERSION = loadVersion();
+
+    private static String loadVersion() {
+        // 尝试从 package 信息获取版本
+        Package pkg = FluxonScriptEngineFactory.class.getPackage();
+        if (pkg != null && pkg.getImplementationVersion() != null) {
+            return pkg.getImplementationVersion();
+        }
+        // 回退到硬编码版本
+        return "1.5.1";
+    }
+
     @Override
     public String getEngineName() {
         return ENGINE_NAME;
@@ -24,17 +34,17 @@ public class FluxonScriptEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineVersion() {
-        return ENGINE_VERSION;
+        return VERSION;
     }
 
     @Override
     public List<String> getExtensions() {
-        return Collections.singletonList("flx");
+        return Arrays.asList("flx", "fluxon", "fs");
     }
 
     @Override
     public List<String> getMimeTypes() {
-        return Collections.singletonList("application/x-fluxon");
+        return Arrays.asList("application/x-fluxon", "text/x-fluxon");
     }
 
     @Override
@@ -49,7 +59,7 @@ public class FluxonScriptEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getLanguageVersion() {
-        return LANGUAGE_VERSION;
+        return VERSION;
     }
 
     @Override
