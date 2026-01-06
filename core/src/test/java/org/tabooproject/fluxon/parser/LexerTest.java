@@ -311,6 +311,148 @@ public class LexerTest {
             assertEquals("\n\r\t\\\"\'", strings.get(0), "双引号字符串转义序列应正确解析");
             assertEquals("\n\r\t\\\"\'", strings.get(1), "单引号字符串转义序列应正确解析");
         }
+
+        @Test
+        @DisplayName("测试简单字符串插值")
+        void testSimpleStringInterpolation() {
+            String source = "\"Hello ${name}\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期 token 序列: STRING_PART("Hello ") + INTERPOLATION_START + IDENTIFIER("name") + INTERPOLATION_END + EOF
+            assertEquals(5, tokens.size(), "应生成 5 个 token (包含 EOF)");
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType(), "第1个 token 应为 STRING_PART");
+            assertEquals("Hello ", tokens.get(0).getLexeme(), "STRING_PART 内容应为 'Hello '");
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType(), "第2个 token 应为 INTERPOLATION_START");
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType(), "第3个 token 应为 IDENTIFIER");
+            assertEquals("name", tokens.get(2).getLexeme(), "IDENTIFIER 内容应为 'name'");
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(3).getType(), "第4个 token 应为 INTERPOLATION_END");
+            assertEquals(TokenType.EOF, tokens.get(4).getType(), "第5个 token 应为 EOF");
+        }
+
+        @Test
+        @DisplayName("测试多个插值的字符串")
+        void testMultipleInterpolations() {
+            String source = "\"Hello ${first} ${last}!\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: STRING_PART + INTERP_START + IDENT + INTERP_END + STRING_PART + INTERP_START + IDENT + INTERP_END + STRING_PART + EOF
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType());
+            assertEquals("Hello ", tokens.get(0).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType());
+            assertEquals("first", tokens.get(2).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(3).getType());
+            assertEquals(TokenType.STRING_PART, tokens.get(4).getType());
+            assertEquals(" ", tokens.get(4).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(5).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(6).getType());
+            assertEquals("last", tokens.get(6).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(7).getType());
+            assertEquals(TokenType.STRING_PART, tokens.get(8).getType());
+            assertEquals("!", tokens.get(8).getLexeme());
+        }
+
+        @Test
+        @DisplayName("测试插值内包含表达式")
+        void testInterpolationWithExpression() {
+            String source = "\"Result: ${a + b}\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: STRING_PART + INTERP_START + IDENT + PLUS + IDENT + INTERP_END + EOF
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType());
+            assertEquals("Result: ", tokens.get(0).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType());
+            assertEquals("a", tokens.get(2).getLexeme());
+            assertEquals(TokenType.PLUS, tokens.get(3).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(4).getType());
+            assertEquals("b", tokens.get(4).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(5).getType());
+        }
+
+        @Test
+        @DisplayName("测试插值内包含大括号")
+        void testInterpolationWithBraces() {
+            String source = "\"Map: ${[a: 1]}\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: STRING_PART + INTERP_START + [ + IDENT + : + INTEGER + ] + INTERP_END + EOF
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType());
+            assertEquals(TokenType.LEFT_BRACKET, tokens.get(2).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(3).getType());
+            assertEquals(TokenType.COLON, tokens.get(4).getType());
+            assertEquals(TokenType.INTEGER, tokens.get(5).getType());
+            assertEquals(TokenType.RIGHT_BRACKET, tokens.get(6).getType());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(7).getType());
+        }
+
+        @Test
+        @DisplayName("测试无插值字符串保持 STRING 类型")
+        void testPlainStringRemainsStringType() {
+            String source = "\"Hello World\"";
+            List<Token> tokens = getTokens(source);
+
+            // 无插值的字符串应保持 STRING 类型以保证向后兼容
+            assertEquals(2, tokens.size(), "应生成 2 个 token (STRING + EOF)");
+            assertEquals(TokenType.STRING, tokens.get(0).getType(), "无插值字符串应为 STRING 类型");
+            assertEquals("Hello World", tokens.get(0).getLexeme());
+        }
+
+        @Test
+        @DisplayName("测试转义 $ 符号")
+        void testEscapedDollarSign() {
+            String source = "\"Price: \\${100}\"";
+            List<Token> tokens = getTokens(source);
+
+            // 转义的 $ 不应触发插值
+            assertEquals(2, tokens.size(), "应生成 2 个 token (STRING + EOF)");
+            assertEquals(TokenType.STRING, tokens.get(0).getType());
+            assertEquals("Price: ${100}", tokens.get(0).getLexeme(), "转义的 $ 应被保留为字面量");
+        }
+
+        @Test
+        @DisplayName("测试插值开头的字符串")
+        void testInterpolationAtStart() {
+            String source = "\"${name} is here\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: INTERP_START + IDENT + INTERP_END + STRING_PART + EOF
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(0).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(1).getType());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(2).getType());
+            assertEquals(TokenType.STRING_PART, tokens.get(3).getType());
+            assertEquals(" is here", tokens.get(3).getLexeme());
+        }
+
+        @Test
+        @DisplayName("测试插值结尾的字符串")
+        void testInterpolationAtEnd() {
+            String source = "\"Name: ${name}\"";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: STRING_PART + INTERP_START + IDENT + INTERP_END + EOF
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType());
+            assertEquals("Name: ", tokens.get(0).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(3).getType());
+            assertEquals(TokenType.EOF, tokens.get(4).getType());
+        }
+
+        @Test
+        @DisplayName("测试单引号字符串插值")
+        void testSingleQuoteInterpolation() {
+            String source = "'Hello ${name}'";
+            List<Token> tokens = getTokens(source);
+
+            // 单引号字符串也应支持插值
+            assertEquals(TokenType.STRING_PART, tokens.get(0).getType());
+            assertEquals("Hello ", tokens.get(0).getLexeme());
+            assertEquals(TokenType.INTERPOLATION_START, tokens.get(1).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType());
+            assertEquals(TokenType.INTERPOLATION_END, tokens.get(3).getType());
+        }
     }
 
     @Nested

@@ -31,7 +31,10 @@ public enum TokenType {
 
     // 标识符和字面量
     IDENTIFIER,    // 标识符
-    STRING,        // 字符串字面量
+    STRING,        // 字符串字面量（无插值的完整字符串）
+    STRING_PART,   // 字符串片段（插值字符串的文本部分）
+    INTERPOLATION_START,  // 插值开始 ${
+    INTERPOLATION_END,    // 插值结束 }
     INTEGER,       // 整数字面量
     FLOAT,         // 浮点数字面量
     LONG,          // 长整型字面量

@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.expr.DestructuringAssignmen
 import org.tabooproject.fluxon.interpreter.evaluator.expr.IsEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.NewEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.StaticAccessEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.StringInterpolationEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
 
@@ -27,6 +28,7 @@ public enum ExpressionType {
     FLOAT_LITERAL(new FloatLiteralEvaluator()),
     DOUBLE_LITERAL(new DoubleLiteralEvaluator()),
     STRING_LITERAL(new StringLiteralEvaluator()),
+    STRING_INTERPOLATION(new StringInterpolationEvaluator()),
     BOOLEAN_LITERAL(new BooleanLiteralEvaluator()),
 
     // 高级字面量

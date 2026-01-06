@@ -3,14 +3,39 @@ package org.tabooproject.fluxon.lexer;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompilationPhase;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 词法分析器
  * 将源代码转换为词法单元序列
+ * <p>
+ * 支持字符串插值语法：{@code "Hello ${name}!"}
+ * <p>
+ * 字符串插值状态转换图：
+ * <pre>
+ *          ┌─────────────────────────────────────┐
+ *          │                                     │
+ *          ▼                                     │
+ *     ┌─────────┐   遇到 " 或 '     ┌───────────┐ │
+ *     │ NORMAL  │ ───────────────► │  STRING   │ │
+ *     └─────────┘                  └───────────┘ │
+ *          ▲                            │        │
+ *          │                           ${        │
+ *          │                            │        │
+ *          │                            ▼        │
+ *          │                   ┌──────────────┐  │
+ *          │                   │INTERPOLATION │──┘
+ *          │                   └──────────────┘ 遇到匹配的 }
+ *          │                            │
+ *          └────────────────────────────┘
+ *               (嵌套字符串时再次入栈)
+ * </pre>
+ * <p>
+ * Token 输出示例：
+ * <ul>
+ *   <li>输入: {@code "Hello ${name}!"}
+ *   <li>输出: STRING_PART("Hello ") → INTERPOLATION_START → IDENTIFIER("name") → INTERPOLATION_END → STRING_PART("!")
+ * </ul>
  */
 public class Lexer implements CompilationPhase<List<Token>> {
 
@@ -31,6 +56,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
 
     private char curr;        // 当前字符缓存
     private char next;        // 下一个字符缓存
+
+    // 字符串插值状态栈，用于追踪嵌套的字符串上下文
+    private Deque<StringContext> stringStack;
 
     static {
         // region
@@ -117,6 +145,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
     public List<Token> process(CompilationContext context) {
         this.sourceChars = context.getSource().toCharArray();
         this.sourceLength = sourceChars.length;
+        this.stringStack = new ArrayDeque<>();
 
         // 预加载第一个字符，避免重复边界检查
         if (sourceLength > 0) {
@@ -141,6 +170,11 @@ public class Lexer implements CompilationPhase<List<Token>> {
         column = 1;
 
         while (position < sourceLength) {
+            // 检查是否需要继续扫描字符串（插值结束后）
+            if (!stringStack.isEmpty() && stringStack.peek().braceDepth == 0) {
+                consumeStringContinuation(tokens);
+                continue;
+            }
             // 使用缓存的字符，避免调用 peek()
             char c = curr;
             // 使用内联的方式处理常见情况，减少方法调用开销
@@ -176,7 +210,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 // 块注释 - 快速消费
                 consumeBlockComment();
             } else if (c == '"' || c == '\'') {
-                tokens.add(consumeString());
+                consumeStringStart(tokens);
             }
             // 数字检查使用优化的范围检查而不是 Character.isDigit()
             else if (c >= '0' && c <= '9') {
@@ -185,11 +219,31 @@ public class Lexer implements CompilationPhase<List<Token>> {
             // 标识符检查，扩展为支持中文字符
             else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || Character.isIdeographic(c) || isChineseChar(c)) {
                 tokens.add(consumeIdentifier());
+            }
+            // 插值模式下的大括号追踪
+            else if (c == '{') {
+                if (!stringStack.isEmpty()) {
+                    stringStack.peek().braceDepth++;
+                }
+                tokens.add(consumeOperator());
+            } else if (c == '}') {
+                if (!stringStack.isEmpty() && stringStack.peek().braceDepth > 0) {
+                    StringContext ctx = stringStack.peek();
+                    ctx.braceDepth--;
+                    if (ctx.braceDepth == 0) {
+                        // 插值结束
+                        int startLine = line;
+                        int startColumn = column;
+                        advance();
+                        tokens.add(new Token(TokenType.INTERPOLATION_END, "}", startLine, startColumn));
+                        continue;
+                    }
+                }
+                tokens.add(consumeOperator());
             } else {
                 tokens.add(consumeOperator());
             }
         }
-
         // 添加 EOF 标记
         tokens.add(new Token(TokenType.EOF, "", line, column));
         return tokens;
@@ -298,25 +352,58 @@ public class Lexer implements CompilationPhase<List<Token>> {
         // endregion
     }
 
-    // 消费字符串
-    private Token consumeString() {
-        // region
+    // region 消费字符串
+
+    // 消费字符串开始（从引号开始）
+    private void consumeStringStart(List<Token> tokens) {
         int startLine = line;
         int startColumn = column;
-
-        // 直接使用 currentChar 而不是 advance() 后的返回值
         char quote = curr;
+        ScanMode mode = (quote == '"') ? ScanMode.STRING_DOUBLE : ScanMode.STRING_SINGLE;
         // 消费引号
         advance();
+        // 扫描字符串内容
+        consumeStringContent(tokens, mode, quote, startLine, startColumn);
+    }
 
-        // 使用 StringBuilder，避免中间字符串创建
+    // 插值结束后继续扫描字符串
+    private void consumeStringContinuation(List<Token> tokens) {
+        StringContext ctx = Objects.requireNonNull(stringStack.peek());
+        char quote = (ctx.mode == ScanMode.STRING_DOUBLE) ? '"' : '\'';
+        int startLine = line;
+        int startColumn = column;
+        consumeStringContent(tokens, ctx.mode, quote, startLine, startColumn);
+    }
+
+    // 扫描字符串内容（共用逻辑）
+    private void consumeStringContent(List<Token> tokens, ScanMode mode, char quote, int startLine, int startColumn) {
         StringBuilder sb = new StringBuilder(Math.min(32, sourceLength - position));
         while (position < sourceLength && curr != quote) {
             char c = this.curr;
+            // 检测插值开始: ${
+            if (c == '$' && next == '{') {
+                // 输出当前累积的字符串片段
+                if (sb.length() > 0) {
+                    tokens.add(new Token(TokenType.STRING_PART, sb.toString(), startLine, startColumn));
+                    sb.setLength(0);
+                }
+                // 输出插值开始标记
+                int interpLine = line;
+                int interpColumn = column;
+                advance(); // 消费 $
+                advance(); // 消费 {
+                tokens.add(new Token(TokenType.INTERPOLATION_START, "${", interpLine, interpColumn));
+
+                // 压入或更新字符串上下文
+                if (stringStack.isEmpty() || stringStack.peek().braceDepth != 0) {
+                    stringStack.push(new StringContext(mode));
+                }
+                Objects.requireNonNull(stringStack.peek()).braceDepth = 1;
+                return; // 返回主循环处理插值内容
+            }
+            // 转义处理
             if (c == '\\') {
-                // 消费反斜杠
                 advance();
-                // 检查反斜杠后的字符是否合法
                 if (position >= sourceLength) {
                     break;
                 }
@@ -341,6 +428,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
                     case '"':
                         sb.append('"');
                         break;
+                    case '$':
+                        sb.append('$');
+                        break;
                     default:
                         sb.append(escaped);
                 }
@@ -349,18 +439,28 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance();
             }
         }
-        // 记录结束位置（引号消费前）
+        // 字符串结束
         int endLine = line;
         int endColumn = column;
-        // 消费结束引号，如果存在
         if (position < sourceLength) {
-            advance();
-            endColumn = column; // 包含结束引号
+            advance(); // 消费结束引号
+            endColumn = column;
         }
-        // 从缓冲区创建字符串
-        return new Token(TokenType.STRING, sb.toString(), startLine, startColumn, endLine, endColumn);
-        // endregion
+        // 根据是否有插值选择 token 类型
+        if (!stringStack.isEmpty()) {
+            // 这是插值字符串的最后一个片段
+            if (sb.length() > 0) {
+                tokens.add(new Token(TokenType.STRING_PART, sb.toString(), startLine, startColumn, endLine, endColumn));
+            }
+            // 字符串完全结束，弹出上下文
+            stringStack.pop();
+        } else {
+            // 普通字符串（无插值），保持兼容性使用 STRING 类型
+            tokens.add(new Token(TokenType.STRING, sb.toString(), startLine, startColumn, endLine, endColumn));
+        }
     }
+
+    // endregion
 
     // 消费数字
     private Token consumeNumber() {
