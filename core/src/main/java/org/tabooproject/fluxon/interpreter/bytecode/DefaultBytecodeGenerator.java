@@ -1,25 +1,24 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.tabooproject.fluxon.parser.definition.Annotation;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.MainClassEmitter;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
-import org.tabooproject.fluxon.runtime.*;
-import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
-import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.Type;
 
-import java.util.*;
-
-import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.Type.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 默认字节码生成器实现
+ * 作为协调者，将具体的类生成工作委托给专门的 Emitter
  */
 public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
@@ -73,453 +72,36 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
 
     @Override
     public List<byte[]> generateClassBytecode(String className, String superClassName, ClassLoader classLoader) {
-        CodeContext ctx = new CodeContext(className, superClassName);
         List<byte[]> byteList = new ArrayList<>();
-        List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
-
-        // 生成主类
-        ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
-        cw.visit(V1_8, ACC_PUBLIC, className, null, superClassName, null);
-        cw.visitSource(fileName, null);
-        declareSourceMetadata(cw);
-
-        // 为每个用户函数生成静态常量字段
-        for (Definition definition : definitions) {
-            if (definition instanceof FunctionDefinition) {
-                FunctionDefinition funcDef = (FunctionDefinition) definition;
-                if (!funcDef.isRegisterToRoot()) {
-                    continue;
-                }
-                String functionClassName = className + funcDef.getName();
-                // 添加静态常量字段: public static final FunctionType functionName = new FunctionType();
-                cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, funcDef.getName(), "L" + functionClassName + ";", null, null);
+        // 1. 生成主类
+        MainClassEmitter mainEmitter = new MainClassEmitter(className, superClassName, fileName, source, statements, definitions, this, classLoader);
+        EmitResult mainResult = mainEmitter.emit();
+        byteList.add(mainResult.getBytecode());
+        List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>(mainResult.getLambdaDefinitions());
+        // 2. 为每个用户函数生成类
+        for (Definition def : definitions) {
+            if (def instanceof FunctionDefinition) {
+                FunctionClassEmitter funcEmitter = new FunctionClassEmitter((FunctionDefinition) def, className, fileName, source, this, classLoader);
+                EmitResult funcResult = funcEmitter.emit();
+                byteList.add(funcResult.getBytecode());
+                lambdaDefinitions.addAll(funcResult.getLambdaDefinitions());
             }
         }
-
-        // 生成空的构造函数
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
-        mv.visitCode();
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, superClassName, "<init>", "()V", false);
-        mv.visitInsn(RETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 生成 eval 函数（会收集 lambda）
-        generateEvalMethod(cw, ctx, lambdaDefinitions);
-        // 为当前类拥有的 lambda 创建静态字段（在收集后）
-        List<LambdaFunctionDefinition> ownedMainLambdas = getOwnedLambdas(ctx.getClassName(), lambdaDefinitions);
-        for (LambdaFunctionDefinition lambdaDef : ownedMainLambdas) {
-            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
-            cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, lambdaDef.getName(), "L" + lambdaClassName + ";", null, null);
-        }
-        // 生成静态初始化块
-        generateStaticInitializationBlock(cw, ctx, ownedMainLambdas);
-        // 生成 clone 函数
-        generateCloneMethod(cw, ctx.getClassName());
-        // 主类生成结束
-        cw.visitEnd();
-        byteList.add(cw.toByteArray());
-
-        // 为每个用户函数生成继承 Function 的内部类
-        for (Definition definition : definitions) {
-            if (definition instanceof FunctionDefinition) {
-                byteList.add(generateFunctionClass((FunctionDefinition) definition, className, classLoader, lambdaDefinitions));
-            }
-        }
+        // 3. 为每个 Lambda 生成类（注意：Lambda 可能嵌套 Lambda）
         for (int i = 0; i < lambdaDefinitions.size(); i++) {
             LambdaFunctionDefinition lambdaDef = lambdaDefinitions.get(i);
-            byteList.add(generateFunctionClass(lambdaDef, lambdaDef.getOwnerClassName(), classLoader, lambdaDefinitions));
+            FunctionClassEmitter lambdaEmitter = new FunctionClassEmitter(lambdaDef, lambdaDef.getOwnerClassName(), fileName, source, this, classLoader);
+            EmitResult lambdaResult = lambdaEmitter.emit();
+            byteList.add(lambdaResult.getBytecode());
+            // Lambda 可能嵌套 Lambda，添加到列表末尾继续处理
+            lambdaDefinitions.addAll(lambdaResult.getLambdaDefinitions());
         }
+        // 保存结果供后续查询
         this.lastLambdaDefinitions = lambdaDefinitions;
-        this.lastCommandDataList = ctx.getCommandDataList();
+        if (mainResult.getCtx() != null) {
+            this.lastCommandDataList = mainResult.getCtx().getCommandDataList();
+        }
         return byteList;
-    }
-
-    /**
-     * 生成脚本主体函数
-     */
-    private void generateEvalMethod(ClassWriter cw, CodeContext ctx, List<LambdaFunctionDefinition> lambdaDefinitions) {
-        // 继承 Object eval(Environment env) 函数
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "eval", "(" + Environment.TYPE + ")" + OBJECT, null, null);
-        mv.visitCode();
-        Label start = new Label();
-        Label end = new Label();
-        Label handler = new Label();
-        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
-        mv.visitLabel(start);
-        // 设置 environment 参数（保持兼容性）
-        mv.visitVarInsn(ALOAD, 0);  // 加载 this
-        mv.visitVarInsn(ALOAD, 1);  // 加载 environment 参数
-        mv.visitFieldInsn(PUTFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
-        // 设置 CodeContext：localVarIndex 从 2 开始（slot 0=this, slot 1=Environment 参数）
-        ctx.allocateLocalVar(Type.OBJECT); // 占用 slot 0 (this)
-        ctx.allocateLocalVar(Type.OBJECT); // 占用 slot 1 (Environment 参数)
-        // 设置使用局部变量 slot 1（Environment 参数本身）
-        ctx.setEnvironmentLocalSlot(1);
-        // 注册用户定义的函数到 environment
-        for (Definition definition : definitions) {
-            if (definition instanceof FunctionDefinition) {
-                FunctionDefinition funcDef = (FunctionDefinition) definition;
-                if (funcDef.isRegisterToRoot()) {
-                    generatorUserFunctionRegister(funcDef, mv, ctx);
-                }
-            }
-        }
-        // 生成脚本主体代码
-        Type last = null;
-        for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
-            BytecodeUtils.emitLineNumber(statements.get(i), mv);
-            last = generateStatementBytecode(statements.get(i), ctx, mv);
-            // 如果不是最后一条语句，并且有返回值，则丢弃它
-            if (i < statementsSize - 1 && last != VOID) {
-                mv.visitInsn(POP);
-            }
-        }
-        // 如果最后一个表达式是 void 类型，则压入 null
-        if (last == null || last == VOID) {
-            mv.visitInsn(ACONST_NULL);
-        }
-        mv.visitLabel(end);
-        mv.visitInsn(ARETURN);
-        mv.visitLabel(handler);
-        mv.visitVarInsn(ASTORE, 2);
-        mv.visitVarInsn(ALOAD, 2);
-        loadSourceMetadata(mv, ctx.getClassName());
-        mv.visitLdcInsn(externalName(ctx.getClassName()));
-        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
-        mv.visitInsn(ATHROW);
-        mv.visitMaxs(9, ctx.getLocalVarIndex() + 3);
-        mv.visitEnd();
-        lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
-    }
-
-    /**
-     * 生成 clone() 方法
-     */
-    private void generateCloneMethod(ClassWriter cw, String className) {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "clone", "()" + RuntimeScriptBase.TYPE, null, null);
-        mv.visitCode();
-
-        // 创建新实例
-        mv.visitTypeInsn(NEW, className);
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, className, "<init>", "()V", false);
-
-        // 复制 environment 字段
-        mv.visitInsn(DUP);          // 复制新实例引用
-        mv.visitVarInsn(ALOAD, 0);  // 加载 this
-        mv.visitFieldInsn(GETFIELD, className, "environment", Environment.TYPE.getDescriptor());
-        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
-
-        // 返回新实例
-        mv.visitInsn(ARETURN);
-        mv.visitMaxs(3, 1);
-        mv.visitEnd();
-    }
-
-    /**
-     * 生成静态初始化块
-     */
-    private void generateStaticInitializationBlock(ClassWriter cw, CodeContext ctx, List<LambdaFunctionDefinition> lambdaDefinitions) {
-        MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
-        mv.visitCode();
-
-        // 为每个用户函数初始化静态常量
-        for (Definition definition : definitions) {
-            if (definition instanceof FunctionDefinition) {
-                FunctionDefinition funcDef = (FunctionDefinition) definition;
-                if (!funcDef.isRegisterToRoot()) {
-                    continue;
-                }
-                String functionClassName = ctx.getClassName() + funcDef.getName();
-
-                // 创建函数实例: new FunctionClassName()
-                mv.visitTypeInsn(NEW, functionClassName);
-                mv.visitInsn(DUP);
-                mv.visitMethodInsn(INVOKESPECIAL, functionClassName, "<init>", "()V", false);
-                // 存储到静态常量字段
-                mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
-            }
-        }
-        // 初始化当前类的 lambda 单例
-        for (LambdaFunctionDefinition lambdaDef : getOwnedLambdas(ctx.getClassName(), lambdaDefinitions)) {
-            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
-            mv.visitTypeInsn(NEW, lambdaClassName);
-            mv.visitInsn(DUP);
-            mv.visitMethodInsn(INVOKESPECIAL, lambdaClassName, "<init>", "()V", false);
-            mv.visitFieldInsn(PUTSTATIC, ctx.getClassName(), lambdaDef.getName(), "L" + lambdaClassName + ";");
-        }
-
-        mv.visitInsn(RETURN);
-        mv.visitMaxs(2, 0);
-        mv.visitEnd();
-    }
-
-    /**
-     * 注册用户函数到环境中
-     * environment.defineFunction(name, staticFunctionInstance)
-     */
-    private void generatorUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
-        // 加载 environment
-        BytecodeUtils.loadEnvironment(mv, ctx);
-        mv.visitInsn(DUP);          // 复制 environment 引用
-        // 加载函数名
-        mv.visitLdcInsn(funcDef.getName());
-        // 获取静态函数实例
-        String functionClassName = ctx.getClassName() + funcDef.getName();
-        mv.visitFieldInsn(GETSTATIC, ctx.getClassName(), funcDef.getName(), "L" + functionClassName + ";");
-        // 调用 defineRootFunction
-        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "defineRootFunction", "(" + STRING + Function.TYPE + ")V", false);
-    }
-
-    /**
-     * 生成继承 RuntimeScriptBase 并实现 Function 的独立函数类
-     */
-    private byte[] generateFunctionClass(FunctionDefinition funcDef, String parentClassName, ClassLoader classLoader, List<LambdaFunctionDefinition> lambdaDefinitions) {
-        String functionClassName = parentClassName + funcDef.getName();
-        List<LambdaFunctionDefinition> functionLambdaDefs = new ArrayList<>();
-        ClassWriter cw = new FluxonClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, classLoader);
-        // 继承 RuntimeScriptBase 并实现 Function 接口
-        cw.visit(V1_8, ACC_PUBLIC, functionClassName, null, RuntimeScriptBase.TYPE.getPath(), new String[]{Function.TYPE.getPath()});
-        cw.visitSource(fileName, null);
-        declareSourceMetadata(cw);
-        // 添加 parameters 字段来保存函数参数（static 字段，所有实例共享）
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "parameters", MAP.getDescriptor(), null, null);
-        // 添加 annotations 字段来保存函数注解（static 字段，所有实例共享）
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "annotations", LIST.getDescriptor(), null, null);
-
-        // 生成构造函数，不需要 environment 参数
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
-        mv.visitCode();
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, RuntimeScriptBase.TYPE.getPath(), "<init>", "()V", false);
-
-        // 返回
-        mv.visitInsn(RETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 Function 接口的方法
-        generateFunctionInterfaceMethods(funcDef, cw, functionClassName, functionLambdaDefs);
-
-        // 为此函数类的 lambda 创建静态字段
-        for (LambdaFunctionDefinition lambdaDef : functionLambdaDefs) {
-            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
-            cw.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, lambdaDef.getName(), "L" + lambdaClassName + ";", null, null);
-        }
-
-        // 生成静态初始化块来初始化 parameters
-        generateStaticInitializationBlock(funcDef, cw, functionClassName, functionLambdaDefs);
-
-        // 实现 clone 函数
-        generateCloneMethod(cw, functionClassName);
-        cw.visitEnd();
-        lambdaDefinitions.addAll(functionLambdaDefs);
-        return cw.toByteArray();
-    }
-
-    /**
-     * 生成静态初始化块来初始化 parameters 和 annotations 字段
-     */
-    private void generateStaticInitializationBlock(FunctionDefinition funcDef, ClassWriter cw, String functionClassName, List<LambdaFunctionDefinition> lambdaDefinitions) {
-        MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
-        mv.visitCode();
-        // 将 funcDef.getParameters() 转换为 Map
-        BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
-        // 将 Map 存储到 static parameters 字段
-        mv.visitFieldInsn(PUTSTATIC, functionClassName, "parameters", MAP.getDescriptor());
-
-        // 初始化注解列表
-        generateAnnotationsInitialization(mv, funcDef, functionClassName);
-        // 初始化当前函数类拥有的 lambda 单例
-        for (LambdaFunctionDefinition lambdaDef : getOwnedLambdas(functionClassName, lambdaDefinitions)) {
-            String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
-            mv.visitTypeInsn(NEW, lambdaClassName);
-            mv.visitInsn(DUP);
-            mv.visitMethodInsn(INVOKESPECIAL, lambdaClassName, "<init>", "()V", false);
-            mv.visitFieldInsn(PUTSTATIC, functionClassName, lambdaDef.getName(), "L" + lambdaClassName + ";");
-        }
-        
-        mv.visitInsn(RETURN);
-        mv.visitMaxs(1, 0);
-        mv.visitEnd();
-    }
-    
-    /**
-     * 生成注解初始化代码
-     */
-    private void generateAnnotationsInitialization(MethodVisitor mv, FunctionDefinition funcDef, String functionClassName) {
-        List<Annotation> annotations = funcDef.getAnnotations();
-        if (annotations.isEmpty()) {
-            // 如果没有注解，创建空列表
-            mv.visitMethodInsn(INVOKESTATIC, COLLECTIONS.getPath(), "emptyList", "()" + LIST, false);
-        } else {
-            // 创建注解数组
-            mv.visitIntInsn(BIPUSH, annotations.size());
-            mv.visitTypeInsn(ANEWARRAY, ANNOTATION.getPath());
-            // 填充注解数组
-            for (int i = 0; i < annotations.size(); i++) {
-                Annotation annotation = annotations.get(i);
-                mv.visitInsn(DUP);           // 复制数组引用
-                mv.visitIntInsn(BIPUSH, i);  // 数组索引
-                // 使用 BytecodeUtils 生成注解字节码
-                BytecodeUtils.generateAnnotation(mv, annotation);
-                // 存储到数组中
-                mv.visitInsn(AASTORE);
-            }
-            // 使用 Arrays.asList 创建列表
-            mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
-        }
-        // 将注解列表存储到 static annotations 字段
-        mv.visitFieldInsn(PUTSTATIC, functionClassName, "annotations", LIST.getDescriptor());
-    }
-
-    /**
-     * 生成 Function 接口的实现方法
-     */
-    private void generateFunctionInterfaceMethods(FunctionDefinition funcDef, ClassWriter cw, String functionClassName, List<LambdaFunctionDefinition> lambdaDefinitions) {
-        // 实现 getName() 方法
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getName", "()" + STRING, null, null);
-        mv.visitCode();
-        mv.visitLdcInsn(funcDef.getName());
-        mv.visitInsn(ARETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 getNamespace() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "getNamespace", "()" + STRING, null, null);
-        mv.visitCode();
-        mv.visitInsn(ACONST_NULL);
-        mv.visitInsn(ARETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 getParameterCounts() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "getParameterCounts", "()" + LIST, null, null);
-        mv.visitCode();
-        // 使用 Arrays.asList 创建大小为 1 的数组
-        mv.visitIntInsn(BIPUSH, 1);
-        mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
-        mv.visitInsn(DUP);
-        // 数组索引 0
-        mv.visitIntInsn(BIPUSH, 0);
-        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
-        mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
-        // 存储到数组中
-        mv.visitInsn(AASTORE);
-        mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
-        mv.visitInsn(ARETURN);
-        mv.visitMaxs(4, 1);
-        mv.visitEnd();
-
-        // 实现 getMaxParameterCount() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "getMaxParameterCount", "()I", null, null);
-        mv.visitCode();
-        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
-        mv.visitInsn(IRETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 isAsync() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "isAsync", "()Z", null, null);
-        mv.visitCode();
-        // 根据函数定义决定
-        mv.visitInsn(funcDef.isAsync() ? ICONST_1 : ICONST_0);
-        mv.visitInsn(IRETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 isPrimarySync() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "isPrimarySync", "()Z", null, null);
-        mv.visitCode();
-        // 根据函数定义决定
-        mv.visitInsn(funcDef.isPrimarySync() ? ICONST_1 : ICONST_0);
-        mv.visitInsn(IRETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-        
-        // 实现 getAnnotations() 方法
-        mv = cw.visitMethod(ACC_PUBLIC, "getAnnotations", "()" + LIST, null, null);
-        mv.visitCode();
-        // 返回 static annotations 字段
-        mv.visitFieldInsn(GETSTATIC, functionClassName, "annotations", LIST.getDescriptor());
-        mv.visitInsn(ARETURN);
-        mv.visitMaxs(1, 1);
-        mv.visitEnd();
-
-        // 实现 call(FunctionContext) 方法 - 包含函数的实际执行逻辑
-        mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
-        mv.visitCode();
-        
-        // 创建代码上下文
-        CodeContext funcCtx = new CodeContext(functionClassName, RuntimeScriptBase.TYPE.getPath());
-        // localVarIndex 从 2 开始（slot 0=this, slot 1=FunctionContext 参数）
-        funcCtx.allocateLocalVar(Type.OBJECT); // 占用 slot 0 (this)
-        funcCtx.allocateLocalVar(Type.OBJECT); // 占用 slot 1 (FunctionContext 参数)
-        
-        // 调用 Intrinsics.bindFunctionParameters 创建新环境
-        // 从 FunctionContext 获取环境
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
-        // 获取函数参数映射（static 字段）
-        mv.visitFieldInsn(GETSTATIC, functionClassName, "parameters", MAP.getDescriptor());
-        // 从 FunctionContext 获取参数数组
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
-        // 压入 localVariables
-        mv.visitLdcInsn(funcDef.getLocalVariables().size());
-        // 调用 Intrinsics.bindFunctionParameters
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "bindFunctionParameters",
-                "(" + Environment.TYPE + MAP + "[" + OBJECT + I + ")" + Environment.TYPE,
-                false
-        );
-        // 复制结果，存储到局部变量（动态分配槽位）
-        mv.visitInsn(DUP);
-        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, envSlot);
-        // 将结果赋值给 this.environment（保持兼容性）
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitInsn(SWAP);
-        mv.visitFieldInsn(PUTFIELD, functionClassName, "environment", Environment.TYPE.getDescriptor());
-        // 设置使用局部变量
-        funcCtx.setEnvironmentLocalSlot(envSlot);
-        
-        // 生成函数体字节码
-        Type returnType;
-        Label start = new Label();
-        Label end = new Label();
-        Label handler = new Label();
-        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
-        mv.visitLabel(start);
-        if (funcDef.getBody() instanceof Statement) {
-            BytecodeUtils.emitLineNumber(funcDef.getBody(), mv);
-            returnType = generateStatementBytecode((Statement) funcDef.getBody(), funcCtx, mv);
-        } else {
-            BytecodeUtils.emitLineNumber((Expression) funcDef.getBody(), mv);
-            returnType = generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
-        }
-        // 如果函数体返回 void，则返回 null
-        if (returnType == VOID) {
-            mv.visitInsn(ACONST_NULL);
-        }
-        mv.visitLabel(end);
-        mv.visitInsn(ARETURN);
-        mv.visitLabel(handler);
-        // 异常处理器使用新的槽位（在 envSlot 之后）
-        int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, exceptionSlot);
-        mv.visitVarInsn(ALOAD, exceptionSlot);
-        loadSourceMetadata(mv, functionClassName);
-        mv.visitLdcInsn(externalName(functionClassName));
-        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
-        mv.visitInsn(ATHROW);
-        mv.visitMaxs(9, funcCtx.getLocalVarIndex() + 1);
-        mv.visitEnd();
-        lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
     }
 
     @Override
@@ -541,35 +123,4 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     public List<Object> getCommandDataList() {
         return lastCommandDataList;
     }
-
-    private void declareSourceMetadata(ClassWriter cw) {
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "__source", STRING.getDescriptor(), null, source);
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "__filename", STRING.getDescriptor(), null, fileName);
-    }
-
-    private void loadSourceMetadata(MethodVisitor mv, String ownerInternalName) {
-        mv.visitFieldInsn(GETSTATIC, ownerInternalName, "__source", STRING.getDescriptor());
-        mv.visitFieldInsn(GETSTATIC, ownerInternalName, "__filename", STRING.getDescriptor());
-    }
-
-    private String externalName(String internalName) {
-        return internalName.replace('/', '.');
-    }
-
-    private List<LambdaFunctionDefinition> getOwnedLambdas(String ownerClassName, List<LambdaFunctionDefinition> all) {
-        List<LambdaFunctionDefinition> owned = new ArrayList<>();
-        for (LambdaFunctionDefinition def : all) {
-            if (ownerClassName.equals(def.getOwnerClassName())) {
-                owned.add(def);
-            }
-        }
-        return owned;
-    }
-
-    private static final Type MAP = new Type(Map.class);
-    private static final Type LIST = new Type(List.class);
-    private static final Type ARRAYS = new Type(Arrays.class);
-    private static final Type ANNOTATION = new Type(Annotation.class);
-    private static final Type COLLECTIONS = new Type(Collections.class);
-    private static final Type OBJECT = new Type(Object.class);
 }
