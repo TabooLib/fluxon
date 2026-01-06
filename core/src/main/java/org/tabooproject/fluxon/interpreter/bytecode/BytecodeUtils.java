@@ -11,25 +11,23 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
-import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
-import static org.objectweb.asm.Opcodes.NEW;
-import static org.objectweb.asm.Opcodes.POP;
+import static org.objectweb.asm.Type.*;
+import static org.tabooproject.fluxon.runtime.Type.*;
+import static org.tabooproject.fluxon.runtime.Type.INT;
 import static org.tabooproject.fluxon.runtime.Type.OBJECT;
-import static org.tabooproject.fluxon.runtime.Type.STRING;
 
 public class BytecodeUtils {
 
     /**
      * 加载 environment 到栈顶
      * 根据 CodeContext 配置，从局部变量或字段加载
-     * 
+     *
      * @param mv  方法访问器
      * @param ctx 代码上下文
      */
@@ -58,7 +56,7 @@ public class BytecodeUtils {
             mv.visitLdcInsn(entry.getKey());   // 键
             mv.visitLdcInsn(entry.getValue()); // 值
             // 装箱
-            mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
+            mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
             // 调用 put 方法
             mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + OBJECT + OBJECT + ")" + OBJECT, true);
             // 丢弃 put 方法的返回值
@@ -158,7 +156,7 @@ public class BytecodeUtils {
     public static void generateTypeConversion(MethodVisitor mv, Class<?> targetType) {
         // 对象类型，直接类型转换
         if (!targetType.isPrimitive()) {
-            mv.visitTypeInsn(CHECKCAST, org.objectweb.asm.Type.getInternalName(targetType));
+            mv.visitTypeInsn(CHECKCAST, getInternalName(targetType));
             return;
         }
         String wrapperClass = getWrapperClassName(targetType);
@@ -264,7 +262,7 @@ public class BytecodeUtils {
     }
 
     /**
-     * 根据 SourceTrace 向字节码发射行号信息，方便运行时错误定位。
+     * 根据 SourceTrace 向字节码生成行号信息，方便运行时错误定位。
      */
     public static void emitLineNumber(ParseResult node, MethodVisitor mv) {
         if (node == null) {
@@ -349,15 +347,15 @@ public class BytecodeUtils {
         // 创建标签用于 null 检查和结果处理
         Label nullLabel = new Label();
         Label endLabel = new Label();
-        // 复制栈顶值用于 null 检查（栈：[obj] -> [obj, obj]）
+        // 复制栈顶值用于 null 检查
         mv.visitInsn(DUP);
-        // 检查是否为 null（栈：[obj, obj] -> [obj]）
+        // 检查是否为 null
         mv.visitJumpInsn(IFNULL, nullLabel);
-        // 非 null 情况：使用 INSTANCEOF 指令（栈：[obj] -> [int]）
-        String internalName = org.objectweb.asm.Type.getInternalName(targetClass);
+        // 非 null 情况：使用 INSTANCEOF 指令
+        String internalName = getInternalName(targetClass);
         mv.visitTypeInsn(INSTANCEOF, internalName);
         mv.visitJumpInsn(GOTO, endLabel);
-        // null 情况：弹出栈顶值并压入 0 (false)（栈：[obj] -> [int]）
+        // null 情况：弹出栈顶值并压入 0 (false)
         mv.visitLabel(nullLabel);
         mv.visitInsn(POP);
         mv.visitInsn(ICONST_0);
@@ -366,6 +364,116 @@ public class BytecodeUtils {
         // 栈上现在是 int (0 或 1)
     }
 
+    // ========== 异常生成 ==========
+
+    /**
+     * 生成抛出 IllegalArgumentException 的字节码
+     * throw new IllegalArgumentException(prefix + dynamicValue)
+     *
+     * @param mv          方法访问器
+     * @param prefix      静态前缀（如 "Unknown method: "）
+     * @param dynamicSlot 动态部分所在的局部变量槽位
+     */
+    public static void emitThrowIllegalArgument(MethodVisitor mv, String prefix, int dynamicSlot) {
+        mv.visitTypeInsn(NEW, "java/lang/IllegalArgumentException");
+        mv.visitInsn(DUP);
+        mv.visitTypeInsn(NEW, STRING_BUILDER.getPath());
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(prefix);
+        mv.visitMethodInsn(INVOKESPECIAL, STRING_BUILDER.getPath(), "<init>", "(" + STRING + ")V", false);
+        mv.visitVarInsn(ALOAD, dynamicSlot);
+        mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "append", "(" + STRING + ")" + STRING_BUILDER, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "toString", "()" + STRING, false);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/IllegalArgumentException", "<init>", "(" + STRING + ")V", false);
+        mv.visitInsn(ATHROW);
+    }
+
+    /**
+     * 生成抛出异常的字节码（静态消息）
+     *
+     * @param mv             方法访问器
+     * @param exceptionClass 异常类内部名称
+     * @param message        静态消息
+     */
+    public static void emitThrowException(MethodVisitor mv, String exceptionClass, String message) {
+        mv.visitTypeInsn(NEW, exceptionClass);
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(message);
+        mv.visitMethodInsn(INVOKESPECIAL, exceptionClass, "<init>", "(" + STRING + ")V", false);
+        mv.visitInsn(ATHROW);
+    }
+
+    // ========== Class 对象操作 ==========
+
+    /**
+     * 加载 Class 对象到栈顶（自动处理基本类型）
+     *
+     * @param mv   方法访问器
+     * @param type 要加载的类型
+     */
+    public static void emitLoadClass(MethodVisitor mv, Class<?> type) {
+        if (type.isPrimitive()) {
+            // 基本类型：使用包装类的 TYPE 字段
+            mv.visitFieldInsn(GETSTATIC, getWrapperClassName(type), "TYPE", CLASS.getDescriptor());
+        } else {
+            // 引用类型：使用 LDC 指令直接加载 Class 常量
+            mv.visitLdcInsn(getType(type));
+        }
+    }
+
+    /**
+     * 生成 Class[] 数组
+     *
+     * @param mv    方法访问器
+     * @param types 类型数组
+     */
+    public static void emitClassArray(MethodVisitor mv, Class<?>[] types) {
+        mv.visitLdcInsn(types.length);
+        mv.visitTypeInsn(ANEWARRAY, CLASS.getPath());
+        for (int i = 0; i < types.length; i++) {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            emitLoadClass(mv, types[i]);
+            mv.visitInsn(AASTORE);
+        }
+    }
+
+    // ========== 方法调用 ==========
+
+    /**
+     * 生成方法调用（自动区分接口/类）
+     *
+     * @param mv     方法访问器
+     * @param method 要调用的方法
+     */
+    public static void emitMethodCall(MethodVisitor mv, Method method) {
+        String owner = getInternalName(method.getDeclaringClass());
+        String methodDesc = getMethodDescriptor(method);
+        boolean isInterface = method.getDeclaringClass().isInterface();
+        if (isInterface) {
+            mv.visitMethodInsn(INVOKEINTERFACE, owner, method.getName(), methodDesc, true);
+        } else {
+            mv.visitMethodInsn(INVOKEVIRTUAL, owner, method.getName(), methodDesc, false);
+        }
+    }
+
+    /**
+     * 生成带返回值处理的方法调用（void→null，基本类型→装箱）
+     *
+     * @param mv     方法访问器
+     * @param method 要调用的方法
+     */
+    public static void emitMethodCallWithReturn(MethodVisitor mv, Method method) {
+        emitMethodCall(mv, method);
+        Class<?> returnType = method.getReturnType();
+        if (returnType == void.class) {
+            mv.visitInsn(ACONST_NULL);
+        } else if (returnType.isPrimitive()) {
+            generateBoxing(mv, returnType);
+        }
+    }
+
     private static final Type MAP = new Type(Map.class);
+    private static final Type STRING_BUILDER = new Type(StringBuilder.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
 }

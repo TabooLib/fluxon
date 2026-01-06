@@ -7,13 +7,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 类发射结果
+ * 类生成结果
  */
 public class EmitResult {
 
     private final byte[] bytecode;
     private final List<LambdaFunctionDefinition> lambdaDefinitions;
     private final CodeContext ctx;
+
+    /**
+     * 构造仅包含字节码的结果（用于不产生 Lambda 的生成器）
+     */
+    public EmitResult(byte[] bytecode) {
+        this(bytecode, null, null);
+    }
 
     public EmitResult(byte[] bytecode, List<LambdaFunctionDefinition> lambdaDefinitions) {
         this(bytecode, lambdaDefinitions, null);

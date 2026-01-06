@@ -1,5 +1,8 @@
 package org.tabooproject.fluxon.runtime.java;
 
+import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.BridgeClassEmitter;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.NativeFunction;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -11,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -19,6 +23,12 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings("UnusedReturnValue")
 public class ExportRegistry {
+
+    // 生成的类桥接器缓存 - 按类型缓存
+    private static final ConcurrentHashMap<Class<?>, ClassBridge> generatedBridges = new ConcurrentHashMap<>();
+
+    // 动态类加载器
+    private static final FluxonClassLoader fluxonClassLoader = new FluxonClassLoader(ExportRegistry.class.getClassLoader());
 
     // Fluxon 运行时实例
     private final FluxonRuntime runtime;
@@ -57,7 +67,6 @@ public class ExportRegistry {
         if (methods.length == 0) {
             throw new IllegalStateException("类 " + clazz.getName() + " 没有 @Export 方法");
         }
-
         // 转换为 ExportMethod 数组
         ExportMethod[] exportMethods = convertToExportMethods(methods);
         return registerClassMethods(clazz, namespace, exportMethods);
@@ -73,12 +82,9 @@ public class ExportRegistry {
      */
     public <T> ClassBridge registerClassMethods(Class<T> clazz, String namespace, ExportMethod[] exportMethods) {
         // 提取原始方法数组用于字节码生成
-        Method[] methods = Arrays.stream(exportMethods)
-                .map(ExportMethod::getMethod)
-                .toArray(Method[]::new);
-
+        Method[] methods = Arrays.stream(exportMethods).map(ExportMethod::getMethod).toArray(Method[]::new);
         // 为整个类生成或获取桥接器
-        ClassBridge bridge = ExportBytecodeGenerator.generateClassBridge(clazz, methods, clazz.getClassLoader());
+        ClassBridge bridge = generateClassBridge(clazz, methods);
         // 注册该类的所有导出方法
         registerClassMethods(clazz, namespace, exportMethods, bridge);
         return bridge;
@@ -119,10 +125,8 @@ public class ExportRegistry {
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
                 return bridge.invoke(methodName, target, args);
             };
-
             // 分析方法参数，获取支持的参数数量列表
             List<Integer> supportedCounts = analyzeMethodParameterCounts(method);
-
             // 注册扩展函数，传入支持的参数数量列表
             // 根据 exportMethod.isAsync() 和 exportMethod.isSync() 来处理不同类型的函数
             if (exportMethod.isAsync()) {
@@ -145,14 +149,12 @@ public class ExportRegistry {
         Parameter[] parameters = method.getParameters();
         int requiredCount = 0;
         int totalCount = parameters.length;
-
         // 计算必需参数数量（从后往前找第一个非可选参数）
         for (int i = 0; i < parameters.length; i++) {
             if (!parameters[i].isAnnotationPresent(Optional.class)) {
                 requiredCount = i + 1;
             }
         }
-
         // 生成支持的参数数量列表
         List<Integer> counts = new ArrayList<>();
         for (int i = requiredCount; i <= totalCount; i++) {
@@ -168,23 +170,71 @@ public class ExportRegistry {
      * @return ExportMethod 数组
      */
     private ExportMethod[] convertToExportMethods(Method[] methods) {
-        Set<String> originalNames = Arrays.stream(methods)
-                .map(Method::getName)
-                .collect(Collectors.toSet());
-
+        Set<String> originalNames = Arrays.stream(methods).map(Method::getName).collect(Collectors.toSet());
         ExportMethod[] exportMethods = new ExportMethod[methods.length];
         for (int i = 0; i < methods.length; i++) {
             Method method = methods[i];
             String transformedName = StringUtils.transformMethodName(method.getName());
-
             // 如果转换后的名称与其他原始方法名冲突，则使用原始名称
             if (originalNames.contains(transformedName) && !transformedName.equals(method.getName())) {
                 transformedName = method.getName();
             }
-
             exportMethods[i] = new ExportMethod(method, transformedName);
         }
         return exportMethods;
     }
 
+    /**
+     * 为指定的类生成优化的类桥接器
+     *
+     * @param targetClass   要生成桥接器的目标类
+     * @param exportMethods 导出方法数组
+     * @return 优化的类桥接器
+     * @throws RuntimeException 如果生成失败
+     */
+    @SuppressWarnings("unchecked")
+    public static ClassBridge generateClassBridge(Class<?> targetClass, Method[] exportMethods) {
+        // 检查缓存
+        ClassBridge cached = generatedBridges.get(targetClass);
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            // 使用 BridgeClassEmitter 生成字节码
+            BridgeClassEmitter emitter = new BridgeClassEmitter(exportMethods, targetClass.getClassLoader());
+            EmitResult result = emitter.emit();
+            // 加载生成的类并创建实例
+            Class<? extends ClassBridge> bridgeClass = (Class<? extends ClassBridge>) fluxonClassLoader.defineClass(emitter.getClassName().replace('/', '.'), result.getBytecode());
+            // 创建实例
+            ClassBridge bridge = bridgeClass.getDeclaredConstructor(String[].class).newInstance((Object) emitter.getMethodNames());
+            generatedBridges.put(targetClass, bridge);
+            return bridge;
+        } catch (Exception e) {
+            throw new RuntimeException("为类 " + targetClass.getName() + " 生成字节码桥接器失败", e);
+        }
+    }
+
+    /**
+     * 获取指定类的类桥接器（如果已注册）
+     *
+     * @param targetClass 目标类
+     * @return 类桥接器，如果未注册则返回 null
+     */
+    public static ClassBridge getClassBridge(Class<?> targetClass) {
+        return generatedBridges.get(targetClass);
+    }
+
+    /**
+     * 清除缓存
+     */
+    public static void clearCache() {
+        generatedBridges.clear();
+    }
+
+    /**
+     * 获取缓存统计信息
+     */
+    public static int getCacheSize() {
+        return generatedBridges.size();
+    }
 }

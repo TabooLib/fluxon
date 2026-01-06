@@ -4,7 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
-import org.tabooproject.fluxon.runtime.java.ExportBytecodeGenerator;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 import org.tabooproject.fluxon.type.TestObject;
 
@@ -29,13 +28,13 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
 
     @Test
     public void testClassBridgeGenerated() {
-        ClassBridge bridge = ExportBytecodeGenerator.getClassBridge(TestObject.class);
+        ClassBridge bridge = ExportRegistry.getClassBridge(TestObject.class);
         assertNotNull(bridge, "ClassBridge should be generated for TestObject");
     }
 
     @Test
     public void testClassBridgeSupportsExportedMethods() {
-        ClassBridge bridge = ExportBytecodeGenerator.getClassBridge(TestObject.class);
+        ClassBridge bridge = ExportRegistry.getClassBridge(TestObject.class);
         assertTrue(bridge.supportsMethod("bridgedAdd"), "Should support bridgedAdd");
         assertTrue(bridge.supportsMethod("bridgedMethod"), "Should support bridgedMethod");
         assertTrue(bridge.supportsMethod("bridgedMethodWithArg"), "Should support bridgedMethodWithArg");

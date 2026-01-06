@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.interpreter.member_access;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
-import org.tabooproject.fluxon.runtime.java.ExportBytecodeGenerator;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.type.TestObject;
@@ -285,7 +284,7 @@ public class ConsistencyTest extends MemberAccessTestBase {
         ExportRegistry registry = new ExportRegistry(FluxonRuntime.getInstance());
         registry.registerClass(TestObject.class);
 
-        ClassBridge bridge = ExportBytecodeGenerator.getClassBridge(TestObject.class);
+        ClassBridge bridge = ExportRegistry.getClassBridge(TestObject.class);
         assertNotNull(bridge);
 
         String[] sources = {

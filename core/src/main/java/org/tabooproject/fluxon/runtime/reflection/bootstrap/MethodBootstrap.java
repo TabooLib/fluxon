@@ -1,7 +1,7 @@
 package org.tabooproject.fluxon.runtime.reflection.bootstrap;
 
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
-import org.tabooproject.fluxon.runtime.java.ExportBytecodeGenerator;
+import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.reflection.resolve.MethodResolver;
 import org.tabooproject.fluxon.runtime.reflection.util.PolymorphicInlineCache;
@@ -48,7 +48,7 @@ public class MethodBootstrap {
         // 提取参数类型签名
         Class<?>[] argTypes = TypeCompatibility.extractArgTypes(args);
         // 1. 优先检查 ClassBridge（性能最优）
-        ClassBridge bridge = ExportBytecodeGenerator.getClassBridge(targetClass);
+        ClassBridge bridge = ExportRegistry.getClassBridge(targetClass);
         if (bridge != null && bridge.supportsMethod(memberName)) {
             MethodHandle bridgeHandle = createBridgeHandle(bridge, memberName, callSite.type());
             // ClassBridge 也受 PIC 深度限制，先检查是否可添加，创建成功后再增加深度
