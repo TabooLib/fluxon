@@ -133,11 +133,6 @@ public final class Intrinsics {
         if (environment.has(name, index)) {
             return environment.get(name, index);
         }
-        // 获取变量
-        Object var = environment.get(name, index);
-        if (var != null) {
-            return var;
-        }
         // 获取函数
         Function fun = environment.getFunctionOrNull(name);
         if (fun != null) {
