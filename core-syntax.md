@@ -37,7 +37,9 @@
 
 - 后缀：函数调用 `f(...)`、索引访问 `x[<i>]`
 - 成员访问（反射）：`obj.member`、`obj.method(...)`
+- 安全成员访问（反射）：`obj?.member`、`obj?.method(...)`（null 短路）
 - 上下文调用（扩展函数）：`target :: extFunc(...)` 或 `target :: { ... }`
+- 安全上下文调用：`target ?:: extFunc(...)` 或 `target ?:: { ... }`（null 短路）
 - 一元：`!<expr>`、`-<expr>`、`await <expr>`、`&name`/`&?name`
 - 乘除模：`*`、`/`、`%`
 - 加减：`+`、`-`
@@ -116,6 +118,9 @@
 - 形式：
   - `<targetExpr> :: <extensionFunctionCall>`
   - `<targetExpr> :: { <stmts> }`（块内的调用共享同一 target）
+- 安全形式（null 短路）：
+  - `<targetExpr> ?:: <extensionFunctionCall>`（target 为 null 时返回 null，不执行右侧）
+  - `<targetExpr> ?:: { <stmts> }`（target 为 null 时返回 null，不执行块）
 - 语法糖：当左侧是标识符且紧跟 `::` 时，允许省略 `()`：`time :: formatTimestamp(0L)` 等价于 `time() :: ...`
 - 命名空间函数/扩展函数通常需要先 `import '<namespace>'` 才能在解析期可见
 
@@ -123,6 +128,9 @@
 
 - `.` 基于 Java 反射，通常默认禁用（安全/性能考虑）。
 - console/REPL 默认启用；宿主集成时需显式开启 `allowReflectionAccess`。
+- 安全形式（null 短路）：
+  - `obj?.field`（target 为 null 时返回 null，不访问字段）
+  - `obj?.method(...)`（target 为 null 时返回 null，不调用方法）
 - 特殊处理：当 target 是 `Class` 对象时（如 `forName("...")` 返回），优先查找该类的静态方法，找不到时回退到 `java.lang.Class` 的实例方法。
 
 ## 静态成员访问 `static`

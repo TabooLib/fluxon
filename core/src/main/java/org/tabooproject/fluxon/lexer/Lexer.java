@@ -18,8 +18,10 @@ public class Lexer implements CompilationPhase<List<Token>> {
     public static final Map<String, TokenType> KEYWORDS;
     // 单字符映射表
     public static final Map<Character, TokenType> SINGLE_CHAR_TOKENS;
-    // 双字符映射表
-    public static final Map<String, TokenType> DOUBLE_CHAR_TOKENS;
+    // 多字符操作符映射表，支持双字符及可选的三字符延续，单次查询完成匹配
+    public static final Map<Integer, Long> MULTI_CHAR_TOKENS;
+    // TokenType 枚举值缓存，避免重复调用 values()
+    private static final TokenType[] TOKEN_TYPES = TokenType.values();
 
     private char[] sourceChars;
     private int sourceLength;
@@ -85,20 +87,23 @@ public class Lexer implements CompilationPhase<List<Token>> {
         SINGLE_CHAR_TOKENS.put('|', TokenType.PIPE);
         SINGLE_CHAR_TOKENS.put('@', TokenType.AT);
 
-        // 初始化双字符映射
-        DOUBLE_CHAR_TOKENS = new HashMap<>(32);
-        DOUBLE_CHAR_TOKENS.put("==", TokenType.EQUAL);
-        DOUBLE_CHAR_TOKENS.put("!=", TokenType.NOT_EQUAL);
-        DOUBLE_CHAR_TOKENS.put(">=", TokenType.GREATER_EQUAL);
-        DOUBLE_CHAR_TOKENS.put("<=", TokenType.LESS_EQUAL);
-        DOUBLE_CHAR_TOKENS.put("+=", TokenType.PLUS_ASSIGN);
-        DOUBLE_CHAR_TOKENS.put("-=", TokenType.MINUS_ASSIGN);
-        DOUBLE_CHAR_TOKENS.put("*=", TokenType.MULTIPLY_ASSIGN);
-        DOUBLE_CHAR_TOKENS.put("/=", TokenType.DIVIDE_ASSIGN);
-        DOUBLE_CHAR_TOKENS.put("%=", TokenType.MODULO_ASSIGN);
-        DOUBLE_CHAR_TOKENS.put("?:", TokenType.QUESTION_COLON);
-        DOUBLE_CHAR_TOKENS.put("..", TokenType.RANGE);
-        DOUBLE_CHAR_TOKENS.put("::", TokenType.CONTEXT_CALL);
+        // 初始化多字符操作符映射（双字符 + 可选三字符延续）
+        MULTI_CHAR_TOKENS = new HashMap<>(16);
+        // 纯双字符操作符（无延续）
+        MULTI_CHAR_TOKENS.put(charPairKey('=', '='), encode(TokenType.EQUAL));
+        MULTI_CHAR_TOKENS.put(charPairKey('!', '='), encode(TokenType.NOT_EQUAL));
+        MULTI_CHAR_TOKENS.put(charPairKey('>', '='), encode(TokenType.GREATER_EQUAL));
+        MULTI_CHAR_TOKENS.put(charPairKey('<', '='), encode(TokenType.LESS_EQUAL));
+        MULTI_CHAR_TOKENS.put(charPairKey('+', '='), encode(TokenType.PLUS_ASSIGN));
+        MULTI_CHAR_TOKENS.put(charPairKey('-', '='), encode(TokenType.MINUS_ASSIGN));
+        MULTI_CHAR_TOKENS.put(charPairKey('*', '='), encode(TokenType.MULTIPLY_ASSIGN));
+        MULTI_CHAR_TOKENS.put(charPairKey('/', '='), encode(TokenType.DIVIDE_ASSIGN));
+        MULTI_CHAR_TOKENS.put(charPairKey('%', '='), encode(TokenType.MODULO_ASSIGN));
+        MULTI_CHAR_TOKENS.put(charPairKey('?', '.'), encode(TokenType.QUESTION_DOT));
+        MULTI_CHAR_TOKENS.put(charPairKey(':', ':'), encode(TokenType.CONTEXT_CALL));
+        // 可延续的双字符操作符（.. → ..<, ?: → ?::）
+        MULTI_CHAR_TOKENS.put(charPairKey('.', '.'), encode(TokenType.RANGE, '<', TokenType.RANGE_EXCLUSIVE));
+        MULTI_CHAR_TOKENS.put(charPairKey('?', ':'), encode(TokenType.QUESTION_COLON, ':', TokenType.QUESTION_CONTEXT_CALL));
         // endregion
     }
 
@@ -134,15 +139,6 @@ public class Lexer implements CompilationPhase<List<Token>> {
         position = 0;
         line = 1;
         column = 1;
-
-        // 预加载第一个字符
-        if (sourceLength > 0) {
-            curr = sourceChars[0];
-            next = sourceLength > 1 ? sourceChars[1] : '\0';
-        } else {
-            curr = '\0';
-            next = '\0';
-        }
 
         while (position < sourceLength) {
             // 使用缓存的字符，避免调用 peek()
@@ -268,19 +264,30 @@ public class Lexer implements CompilationPhase<List<Token>> {
         char first = curr;
         char second = next;
 
-        // 检查双字符
+        // 检查多字符操作符（单次查询，支持双字符 + 可选三字符延续）
         if (second != '\0') {
-            String pair = String.valueOf(first) + second;
-            TokenType tokenType = DOUBLE_CHAR_TOKENS.get(pair);
-            if (tokenType != null) {
-                advance();
-                advance();
-                // 处理 ..< 三字符操作符
-                if (tokenType == TokenType.RANGE && curr == '<') {
-                    advance();
-                    return new Token(TokenType.RANGE_EXCLUSIVE, "..<", startLine, startColumn);
+            Long info = MULTI_CHAR_TOKENS.get(charPairKey(first, second));
+            if (info != null) {
+                // 解码延续信息（高 32 位）
+                int continuation = (int) (info >>> 32);
+                if (continuation != 0) {
+                    // 检查第三个字符是否匹配延续
+                    char expectedThird = (char) (continuation >>> 16);
+                    char third = position + 2 < sourceLength ? sourceChars[position + 2] : '\0';
+                    if (third == expectedThird) {
+                        // 匹配三字符操作符
+                        advance();
+                        advance();
+                        advance();
+                        TokenType extendedType = TOKEN_TYPES[continuation & 0xFFFF];
+                        return new Token(extendedType, new String(new char[]{first, second, third}), startLine, startColumn);
+                    }
                 }
-                return new Token(tokenType, pair, startLine, startColumn);
+                // 匹配双字符操作符
+                advance();
+                advance();
+                TokenType baseType = TOKEN_TYPES[(int) (info & 0xFFFF)];
+                return new Token(baseType, new String(new char[]{first, second}), startLine, startColumn);
             }
         }
 
@@ -362,11 +369,6 @@ public class Lexer implements CompilationPhase<List<Token>> {
         int startColumn = column;
         int start = position;
         boolean isDouble = false;
-
-        // 检查是否为负数
-        if (curr == '-') {
-            advance(); // 消费负号
-        }
 
         // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()，支持下划线分隔符
         while (position < sourceLength && (curr >= '0' && curr <= '9')) {
@@ -486,6 +488,31 @@ public class Lexer implements CompilationPhase<List<Token>> {
         next = position + 1 < sourceLength ? sourceChars[position + 1] : '\0';
     }
 
+    // 辅助方法 - 将两个字符组合为 int 复合键
+    private static int charPairKey(char first, char second) {
+        return (first << 16) | second;
+    }
+
+    // 编码双字符操作符（无延续）
+    private static long encode(TokenType baseType) {
+        return baseType.ordinal();
+    }
+
+    /**
+     * 编码双字符操作符（有三字符延续）
+     * <pre>
+     * 64-bit 编码格式:
+     * ┌───────────────────────────────┬──────────────────┐
+     * │ 高 32 位: 延续信息                低 16 位: 基础类型
+     * │ [thirdChar:16][extType:16]      [baseType:16]
+     * └───────────────────────────────┴──────────────────┘
+     * </pre>
+     */
+    private static long encode(TokenType baseType, char thirdChar, TokenType extendedType) {
+        long continuation = ((long) thirdChar << 16) | extendedType.ordinal();
+        return (continuation << 32) | baseType.ordinal();
+    }
+
     // 辅助方法 - 判断是否为中文字符
     private boolean isChineseChar(char c) {
         return c >= '一' && c <= '龥';
@@ -509,11 +536,6 @@ public class Lexer implements CompilationPhase<List<Token>> {
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    // 辅助方法 - 从缓冲区中提取整数（向后兼容）
-    private int parseInteger(int start, int end) {
-        return Integer.parseInt(removeUnderscores(new String(sourceChars, start, end - start)));
     }
 
     // 辅助方法 - 从缓冲区中提取长整数

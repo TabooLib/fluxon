@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 成员访问运算符 (.)
+ * 成员访问运算符 (. 和 ?.)
  * <p>
  * 绑定力: 115，左结合（高于 :: (110)，与属性访问相当）
  * <p>
@@ -19,6 +19,8 @@ import java.util.List;
  *   <li>{@code obj.field} - 字段访问</li>
  *   <li>{@code obj.method()} - 方法调用</li>
  *   <li>{@code obj.field.method().anotherField} - 链式调用</li>
+ *   <li>{@code obj?.field} - 安全字段访问（null 短路）</li>
+ *   <li>{@code obj?.method()} - 安全方法调用（null 短路）</li>
  * </ul>
  */
 public class MemberAccessInfixOperator implements InfixOperator {
@@ -30,7 +32,10 @@ public class MemberAccessInfixOperator implements InfixOperator {
 
     @Override
     public boolean matches(Parser parser) {
-        // 匹配 DOT，但排除范围操作符 (..)
+        // 匹配 DOT 或 SAFE_DOT，但排除范围操作符 (..)
+        if (parser.check(TokenType.QUESTION_DOT)) {
+            return true;
+        }
         return parser.check(TokenType.DOT) && !parser.peek(1).is(TokenType.DOT);
     }
 
@@ -40,16 +45,18 @@ public class MemberAccessInfixOperator implements InfixOperator {
         if (!parser.getContext().isAllowReflectionAccess()) {
             parser.error("Reflection access is not enabled. Use ctx.setEnableReflectionAccess(true) to enable the '.' operator for member access.");
         }
+        // 判断是否为安全访问
+        boolean safe = operator.is(TokenType.QUESTION_DOT);
         // 右侧必须是标识符（成员名）
         if (!parser.check(TokenType.IDENTIFIER)) {
-            parser.error("Expected member name after '.'");
+            parser.error("Expected member name after '" + (safe ? "?." : ".") + "'");
         }
-        Token memberToken = parser.consume(TokenType.IDENTIFIER, "Expected member name after '.'");
+        Token memberToken = parser.consume(TokenType.IDENTIFIER, "Expected member name after '" + (safe ? "?." : ".") + "'");
         String memberName = memberToken.getLexeme();
         // 检查是否为方法调用（后跟括号）
         ParseResult result;
         if (parser.match(TokenType.LEFT_PAREN)) {
-            // 方法调用：obj.method(args)
+            // 方法调用：obj.method(args) 或 obj?.method(args)
             List<ParseResult> args = new ArrayList<>();
             if (!parser.check(TokenType.RIGHT_PAREN)) {
                 do {
@@ -57,10 +64,10 @@ public class MemberAccessInfixOperator implements InfixOperator {
                 } while (parser.match(TokenType.COMMA));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after method arguments");
-            result = new MemberAccessExpression(left, memberName, args.toArray(new ParseResult[0]));
+            result = new MemberAccessExpression(left, memberName, args.toArray(new ParseResult[0]), safe);
         } else {
-            // 字段访问：obj.field
-            result = new MemberAccessExpression(left, memberName);
+            // 字段访问：obj.field 或 obj?.field
+            result = new MemberAccessExpression(left, memberName, safe);
         }
         // 附加源信息
         result = parser.attachSource(result, operator);

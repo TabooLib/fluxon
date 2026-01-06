@@ -81,12 +81,14 @@ public enum TokenType {
     LEFT_BRACKET("["),         // 左方括号
     RIGHT_BRACKET("]"),        // 右方括号
 
-    QUESTION("?"),             // 问号
-    QUESTION_COLON("?:"),      // Elvis 操作符
-    AMPERSAND("&"),            // 变量引用前缀
-    CONTEXT_CALL("::"),        // 上下文调用操作符
-    PIPE("|"),                 // 管道符，用于 lambda 参数分隔
-    AT("@"),                   // 注解符号
+    QUESTION("?"),                 // 问号
+    QUESTION_COLON("?:"),          // Elvis 操作符
+    QUESTION_DOT("?."),            // 安全成员访问操作符
+    QUESTION_CONTEXT_CALL("?::"),  // 安全上下文调用操作符
+    AMPERSAND("&"),                // 变量引用前缀
+    CONTEXT_CALL("::"),            // 上下文调用操作符
+    PIPE("|"),                     // 管道符，用于 lambda 参数分隔
+    AT("@"),                       // 注解符号
 
     // 其他
     EOF,        // 文件结束

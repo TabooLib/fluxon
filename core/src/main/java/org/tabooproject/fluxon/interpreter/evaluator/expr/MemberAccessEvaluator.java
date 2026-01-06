@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
@@ -25,6 +26,7 @@ import static org.tabooproject.fluxon.runtime.Type.STRING;
 /**
  * 成员访问表达式求值器
  * 处理形如 obj.field 或 obj.method(args) 的反射访问表达式
+ * 支持安全访问操作符 ?. 用于 null 短路
  */
 public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpression> {
 
@@ -37,7 +39,12 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
     public Object evaluate(Interpreter interpreter, MemberAccessExpression expression) {
         // 求值目标对象
         Object target = interpreter.evaluate(expression.getTarget());
+        // null 检查
         if (target == null) {
+            if (expression.isSafe()) {
+                // 安全访问（?.）：target 为 null 时返回 null
+                return null;
+            }
             throw new NullPointerException("Cannot access member '" + expression.getMemberName() + "' on null object");
         }
         try {
@@ -72,6 +79,24 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
         if (targetType.isPrimitive()) {
             boxing(targetType, mv);
         }
+
+        // 处理安全访问（?.）的 null 短路逻辑
+        Label endLabel = null;
+        if (expression.isSafe()) {
+            endLabel = new Label();
+            Label notNullLabel = new Label();
+            // 复制 target 引用用于 null 检查
+            mv.visitInsn(DUP);
+            // 检查是否为 null
+            mv.visitJumpInsn(IFNONNULL, notNullLabel);
+            // null 分支：弹出 target，压入 null 并跳转到结束
+            mv.visitInsn(POP);
+            mv.visitInsn(ACONST_NULL);
+            mv.visitJumpInsn(GOTO, endLabel);
+            // 非 null 分支
+            mv.visitLabel(notNullLabel);
+        }
+
         if (expression.isMethodCall()) {
             // 方法调用：生成 invokedynamic 指令
             // 2. 生成参数的字节码
@@ -115,6 +140,11 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
             );
             // 方法描述符：(Object)Object
             mv.visitInvokeDynamicInsn(expression.getMemberName(), "(" + OBJECT + ")" + OBJECT, bootstrapField);
+        }
+
+        // 安全访问的结束标签
+        if (endLabel != null) {
+            mv.visitLabel(endLabel);
         }
         return OBJECT;
     }
