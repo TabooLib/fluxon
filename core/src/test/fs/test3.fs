@@ -1,8 +1,8 @@
 _list = [1,2,3]!!
 print(&_list)
 _sum = 0
-for _i in 1..10 {
-    _sum += &_i
+for i in 1..10 {
+    _sum += &i
 }
 _sum += (1..10)::sumOf(|| &it)
 print(&_sum)

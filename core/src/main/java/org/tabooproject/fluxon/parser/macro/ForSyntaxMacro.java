@@ -61,7 +61,7 @@ public class ForSyntaxMacro implements SyntaxMacro {
         } else {
             // 单变量形式 - 使用轻量 SingleEntryMap 避免 LinkedHashMap 开销
             String variable = parser.consume(TokenType.IDENTIFIER, "Expected identifier after 'for'").getLexeme();
-            parser.defineVariable(variable);
+            parser.defineLocalVariable(variable);
             variables = new SingleEntryMap<>(variable, env.getLocalVariable(variable));
         }
 
@@ -82,12 +82,12 @@ public class ForSyntaxMacro implements SyntaxMacro {
         LinkedHashMap<String, Integer> variables = new LinkedHashMap<>();
         // 解析第一个变量
         String first = parser.consume(TokenType.IDENTIFIER, "Expected identifier in destructuring declaration").getLexeme();
-        parser.defineVariable(first);
+        parser.defineLocalVariable(first);
         variables.put(first, parser.getSymbolEnvironment().getLocalVariable(first));
         // 解析其余变量（以逗号分隔）
         while (parser.match(TokenType.COMMA)) {
             String name = parser.consume(TokenType.IDENTIFIER, "Expected identifier after ',' in destructuring declaration").getLexeme();
-            parser.defineVariable(name);
+            parser.defineLocalVariable(name);
             variables.put(name, parser.getSymbolEnvironment().getLocalVariable(name));
         }
         // 消费右括号

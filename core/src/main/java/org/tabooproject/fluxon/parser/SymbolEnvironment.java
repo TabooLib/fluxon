@@ -62,6 +62,17 @@ public class SymbolEnvironment {
     }
 
     /**
+     * 强制定义为局部变量（用于 for 循环、try-catch 等临时变量）
+     * 无论是否在函数内部，无论是否有 _ 前缀，都放入 localVariables
+     *
+     * @param name 变量名
+     */
+    public void defineLocalVariable(String name) {
+        String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
+        localVariables.computeIfAbsent(key, i -> new LinkedHashSet<>()).add(name);
+    }
+
+    /**
      * 定义全局变量
      *
      * @param variables 变量

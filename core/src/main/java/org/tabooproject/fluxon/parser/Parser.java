@@ -450,6 +450,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 强制定义为局部变量（用于 for 循环、try-catch 等临时变量）
+     *
+     * @param name 变量名
+     */
+    public void defineLocalVariable(String name) {
+        symbolEnvironment.defineLocalVariable(name);
+    }
+
+    /**
      * 定义局部变量
      *
      * @param names 变量名列表

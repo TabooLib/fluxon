@@ -46,7 +46,7 @@ public class TrySyntaxMacro implements SyntaxMacro {
             catchVarName = parser.consume(TokenType.IDENTIFIER, "Expected variable name in catch clause").getLexeme();
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after catch variable");
             SymbolEnvironment env = parser.getSymbolEnvironment();
-            env.defineVariable(catchVarName);
+            env.defineLocalVariable(catchVarName);
             position = env.getLocalVariable(catchVarName);
         } else {
             position = -1;
