@@ -7,8 +7,6 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,9 +18,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(5);
 
-        List<ParseResult> results = Fluxon.parse("while true {}", env);
+        ParsedScript script = Fluxon.parse("while true {}", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -31,9 +29,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(5);
 
-        List<ParseResult> results = Fluxon.parse("print('a')\nprint('b')", env);
+        ParsedScript script = Fluxon.parse("print('a')\nprint('b')", env);
 
-        interpreter.execute(results);
+        script.eval(interpreter);
         // 至少扣除了两步
         assertTrue(interpreter.getCostRemaining() <= 3);
     }
@@ -44,9 +42,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(2);
 
-        List<ParseResult> results = Fluxon.parse("while true print('a')", env);
+        ParsedScript script = Fluxon.parse("while true print('a')", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -55,9 +53,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(2);
 
-        List<ParseResult> results = Fluxon.parse("for x in [1,2,3] print(x)", env);
+        ParsedScript script = Fluxon.parse("for x in [1,2,3] print(x)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -66,9 +64,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(3);
 
-        List<ParseResult> results = Fluxon.parse("print(while true 1)", env);
+        ParsedScript script = Fluxon.parse("print(while true 1)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -77,9 +75,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(2);
 
-        List<ParseResult> results = Fluxon.parse("print(for x in [1,2,3] 1)", env);
+        ParsedScript script = Fluxon.parse("print(for x in [1,2,3] 1)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -88,9 +86,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(5);
 
-        List<ParseResult> results = Fluxon.parse("def loop() = loop()\nloop()", env);
+        ParsedScript script = Fluxon.parse("def loop() = loop()\nloop()", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -99,13 +97,13 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(5);
 
-        List<ParseResult> results = Fluxon.parse(
+        ParsedScript script = Fluxon.parse(
                 "def run(cb) = call(&cb)\n" +
                 "f = null\n" +
                 "f = || run(&f)\n" +
                 "run(&f)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -114,9 +112,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(3);
 
-        List<ParseResult> results = Fluxon.parse("for x in (while true {}) {}", env);
+        ParsedScript script = Fluxon.parse("for x in (while true {}) {}", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -125,9 +123,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(3);
 
-        List<ParseResult> results = Fluxon.parse("print(try 1 finally while true {})", env);
+        ParsedScript script = Fluxon.parse("print(try 1 finally while true {})", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -136,9 +134,9 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(3);
 
-        List<ParseResult> results = Fluxon.parse("print(try throw('x') catch while true 1)", env);
+        ParsedScript script = Fluxon.parse("print(try throw('x') catch while true 1)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 
     @Test
@@ -147,8 +145,8 @@ class ExecutionCostTest {
         Interpreter interpreter = new Interpreter(env);
         interpreter.setCostLimit(3);
 
-        List<ParseResult> results = Fluxon.parse("def run(cb) = call(&cb)\nrun(|| while true 1)", env);
+        ParsedScript script = Fluxon.parse("def run(cb) = call(&cb)\nrun(|| while true 1)", env);
 
-        assertThrows(ExecutionCostExceededError.class, () -> interpreter.execute(results));
+        assertThrows(ExecutionCostExceededError.class, () -> script.eval(interpreter));
     }
 }

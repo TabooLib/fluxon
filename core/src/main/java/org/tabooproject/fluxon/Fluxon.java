@@ -2,23 +2,18 @@ package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
-import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.List;
 
 /**
@@ -31,9 +26,9 @@ public class Fluxon {
      * 解析 Fluxon 源代码
      *
      * @param source Fluxon 源代码
-     * @return 解析结果列表
+     * @return 解析后的脚本对象
      */
-    public static List<ParseResult> parse(String source) {
+    public static ParsedScript parse(String source) {
         return parse(source, FluxonRuntime.getInstance().newEnvironment());
     }
 
@@ -41,28 +36,44 @@ public class Fluxon {
      * 解析 Fluxon 源代码
      *
      * @param source Fluxon 源代码
-     * @param env     环境对象
-     * @return 解析结果列表
+     * @param env    环境对象（用于获取预定义的变量和函数）
+     * @return 解析后的脚本对象
      */
-    public static List<ParseResult> parse(String source, Environment env) {
-        return parse(env, new CompilationContext(source));
+    public static ParsedScript parse(String source, Environment env) {
+        return parse(new CompilationContext(source), env);
     }
 
     /**
-     * 在特定环境中解析 Fluxon 源代码
+     * 解析 Fluxon 源代码
      *
-     * @param env     环境对象
      * @param context 编译上下文
-     * @return 解析结果列表
+     * @return 解析后的脚本对象
      */
-    public static List<ParseResult> parse(Environment env, CompilationContext context) {
-        // 词法分析
+    public static ParsedScript parse(CompilationContext context) {
+        return parse(context, FluxonRuntime.getInstance().newEnvironment());
+    }
+
+    /**
+     * 解析 Fluxon 源代码
+     *
+     * @param context 编译上下文
+     * @param env     环境对象（用于获取预定义的变量和函数）
+     * @return 解析后的脚本对象
+     */
+    public static ParsedScript parse(CompilationContext context, Environment env) {
+        List<ParseResult> results = doParse(env, context);
+        Integer rootLocalVarCount = context.getAttribute("rootLocalVariableCount");
+        return new ParsedScript(results, rootLocalVarCount != null ? rootLocalVarCount : 0, context);
+    }
+
+    /**
+     * 内部解析方法
+     */
+    static List<ParseResult> doParse(Environment env, CompilationContext context) {
         Lexer lexer = new Lexer();
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
-        // 语法分析
         Parser parser = new Parser();
-        // 传入上下文符号（变量和用户动态定义的函数）
         parser.defineRootVariables(env.getRootVariables());
         parser.defineUserFunction(env.getUserFunctions());
         return parser.process(context);
@@ -75,7 +86,7 @@ public class Fluxon {
      * @return 执行结果
      */
     public static Object eval(String source) {
-        return eval(parse(source));
+        return parse(source).eval();
     }
 
     /**
@@ -83,50 +94,7 @@ public class Fluxon {
      * 使用特定环境执行
      */
     public static Object eval(String source, Environment env) {
-        return eval(parse(source, env), env);
-    }
-
-    /**
-     * 解释执行 Fluxon 源代码
-     *
-     * @param parseResults Fluxon 解析结果
-     * @return 执行结果
-     */
-    public static Object eval(List<ParseResult> parseResults) {
-        Interpreter interpreter = new Interpreter(FluxonRuntime.getInstance().newEnvironment());
-        try {
-            return interpreter.execute(parseResults);
-        } catch (ReturnValue ex) {
-            return ex.getValue();
-        }
-    }
-
-    /**
-     * 解释执行 Fluxon 源代码
-     * 使用特定环境执行
-     *
-     * @param parseResults Fluxon 解析结果
-     * @return 执行结果
-     */
-    public static Object eval(List<ParseResult> parseResults, Environment env) {
-        Interpreter interpreter = new Interpreter(env);
-        try {
-            return interpreter.execute(parseResults);
-        } catch (ReturnValue ex) {
-            return ex.getValue();
-        }
-    }
-
-    /**
-     * 执行 Fluxon 源文件
-     *
-     * @param file Fluxon 源文件
-     * @return 执行结果
-     * @throws IOException 如果文件读取失败
-     */
-    public static Object evalFile(File file) throws IOException {
-        String source = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-        return eval(source);
+        return parse(source, env).eval(env);
     }
 
     /**
@@ -162,8 +130,7 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(String source, String className, Environment env, ClassLoader classLoader) {
-        CompilationContext context = new CompilationContext(source);
-        return compile(env, context, className, classLoader);
+        return doCompile(env, new CompilationContext(source), className, classLoader);
     }
 
     /**
@@ -175,7 +142,7 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(Environment env, CompilationContext context, String className) {
-        return compile(env, context, className, Fluxon.class.getClassLoader());
+        return doCompile(env, context, className, Fluxon.class.getClassLoader());
     }
 
     /**
@@ -188,18 +155,26 @@ public class Fluxon {
      * @return 编译结果
      */
     public static CompileResult compile(Environment env, CompilationContext context, String className, ClassLoader classLoader) {
-        // 创建字节码生成器
+        return doCompile(env, context, className, classLoader);
+    }
+
+    /**
+     * 内部编译方法
+     */
+    private static CompileResult doCompile(Environment env, CompilationContext context, String className, ClassLoader classLoader) {
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
         generator.setSourceContext(context.getSource(), context.getFileName());
-        // 解析源代码
-        for (ParseResult result : parse(env, context)) {
+        for (ParseResult result : doParse(env, context)) {
             if (result instanceof Statement) {
                 generator.addScriptBody((Statement) result);
             } else if (result instanceof Definition) {
                 generator.addScriptDefinition((Definition) result);
             }
         }
-        // 生成字节码
+        Integer rootLocalVarCount = context.getAttribute("rootLocalVariableCount");
+        if (rootLocalVarCount != null) {
+            generator.setRootLocalVariableCount(rootLocalVarCount);
+        }
         List<byte[]> bytecode = generator.generateClassBytecode(className, classLoader);
         return new CompileResult(context.getSource(), className, generator, bytecode);
     }

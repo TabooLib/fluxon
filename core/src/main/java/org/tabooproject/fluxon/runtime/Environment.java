@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.CommandRegistry;
 import org.tabooproject.fluxon.parser.DomainRegistry;
+import org.tabooproject.fluxon.runtime.collection.CopyOnWriteMap;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
@@ -43,12 +44,12 @@ public class Environment {
     // 根变量
     @Nullable
     protected final Map<String, Object> rootVariables;
-    // 局部变量
+    // 局部变量（非 final 以支持根层级延迟初始化）
     @Nullable
-    protected final Object[] localVariables;
+    protected Object[] localVariables;
     // 局部变量对照表
     @Nullable
-    protected final String[] localVariableNames;
+    protected String[] localVariableNames;
     // 上下文目标
     @Nullable
     protected Object target;
@@ -79,19 +80,33 @@ public class Environment {
             @NotNull Map<String, Object> values,
             @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
             @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions,
-            @NotNull ExtensionDispatchTable[] dispatchTables) {
+            @NotNull ExtensionDispatchTable[] dispatchTables,
+            int localVariableCount) {
         this.root = this;
         this.parent = null;
-        this.functions = new HashMap<>(functions);
+        this.functions = CopyOnWriteMap.wrap(functions);
         this.systemFunctions = systemFunctions;
         this.extensionFunctions = extensionFunctions;
         this.systemExtensionFunctions = systemExtensionFunctions;
         this.dispatchTables = dispatchTables;
-        this.rootVariables = new HashMap<>(values);
-        this.localVariables = null;
-        this.localVariableNames = null;
+        this.rootVariables = CopyOnWriteMap.wrap(values);
+        this.localVariables = localVariableCount > 0 ? new Object[localVariableCount] : null;
+        this.localVariableNames = localVariableCount > 0 ? new String[localVariableCount] : null;
         this.out = System.out;
         this.err = System.err;
+    }
+
+    /**
+     * 创建顶层环境（全局环境）- 无局部变量版本（向后兼容）
+     */
+    public Environment(
+            @NotNull Map<String, Function> functions,
+            @NotNull Function[] systemFunctions,
+            @NotNull Map<String, Object> values,
+            @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
+            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions,
+            @NotNull ExtensionDispatchTable[] dispatchTables) {
+        this(functions, systemFunctions, values, extensionFunctions, systemExtensionFunctions, dispatchTables, 0);
     }
 
     /**
@@ -303,6 +318,19 @@ public class Environment {
     // endregion
 
     // region 变量定义与获取
+
+    /**
+     * 初始化根层级局部变量数组（用于 _ 前缀变量）
+     * 仅在根环境上调用有效，且仅在未初始化时生效
+     *
+     * @param count 局部变量数量
+     */
+    public void initializeRootLocalVariables(int count) {
+        if (this == root && count > 0 && localVariables == null) {
+            this.localVariables = new Object[count];
+            this.localVariableNames = new String[count];
+        }
+    }
 
     /**
      * 在根环境中定义变量

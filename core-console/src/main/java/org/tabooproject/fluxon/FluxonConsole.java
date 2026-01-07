@@ -137,7 +137,7 @@ public class FluxonConsole {
         if (!line.isEmpty()) {
             // 如果脚本以 "$" 开头表示输出伪代码结构
             if (line.startsWith("$")) {
-                for (ParseResult parseResult : Fluxon.parse(line.substring(1))) {
+                for (ParseResult parseResult : Fluxon.parse(line.substring(1)).getResults()) {
                     printInfo(parseResult.toString());
                     printInfo(PseudoCodeFormatter.format(parseResult.toPseudoCode()));
                 }

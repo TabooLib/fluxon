@@ -6,7 +6,6 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -159,8 +158,7 @@ public class MethodOverloadCachingTest {
         env.defineRootVariable("testObj", testObj);
         env.defineRootVariable("items", items);
 
-        List<ParseResult> parseResults = Fluxon.parse(env, ctx);
-        Object result = Fluxon.eval(parseResults, env);
+        Object result = Fluxon.parse(ctx, env).eval(env);
 
         @SuppressWarnings("unchecked")
         List<String> results = (List<String>) result;
@@ -195,8 +193,7 @@ public class MethodOverloadCachingTest {
         Environment env1 = FluxonRuntime.getInstance().newEnvironment();
         env1.defineRootVariable("testObj", testObj);
         env1.defineRootVariable("items", items);
-        List<ParseResult> parseResults = Fluxon.parse(env1, ctx1);
-        Object interpretResult = Fluxon.eval(parseResults, env1);
+        Object interpretResult = Fluxon.parse(ctx1, env1).eval(env1);
 
         // 编译执行
         String className = "ConsistencyTest_" + CLASS_COUNTER.incrementAndGet();

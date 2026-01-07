@@ -72,7 +72,7 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
             // 应用执行成本限制
             applyCostLimit(interpreter, context);
             // 解析并执行脚本
-            Object result = interpreter.execute(Fluxon.parse(script, interpreter.getEnvironment()));
+            Object result = interpreter.execute(Fluxon.parse(script, interpreter.getEnvironment()).getResults());
             // 保存环境供 Invocable 使用（线程隔离）
             this.threadLocalEnvironment.set(interpreter.getEnvironment());
             // 从 Fluxon 环境中提取变量回到上下文

@@ -41,6 +41,16 @@ public interface BytecodeGenerator {
     void setSourceContext(String source, String fileName);
 
     /**
+     * 设置根层级局部变量数量（_ 前缀变量）
+     */
+    void setRootLocalVariableCount(int count);
+
+    /**
+     * 获取根层级局部变量数量
+     */
+    int getRootLocalVariableCount();
+
+    /**
      * 生成完整的类字节码
      */
     List<byte[]> generateClassBytecode(String className, ClassLoader classLoader);

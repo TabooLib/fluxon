@@ -150,7 +150,6 @@ public class JSR223Benchmark {
         fluxonEnv = FluxonRuntime.getInstance().newEnvironment();
         fluxonEnv.defineRootVariable("x", 10);
         fluxonEnv.defineRootVariable("y", 20);
-        fluxonInterpreter = new Interpreter(fluxonEnv);
 
         // 预编译
         fluxonCompileResult = Fluxon.compile(SIMPLE_EXPR, "BenchSimple");
@@ -162,7 +161,7 @@ public class JSR223Benchmark {
         fluxonCompiledWithVars = (RuntimeScriptBase) varsClass.getDeclaredConstructor().newInstance();
 
         // 定义函数
-        fluxonInterpreter.execute(Fluxon.parse(FUNC_DEF, fluxonEnv));
+        Fluxon.eval(FUNC_DEF, fluxonEnv);
         fluxonAddFunction = fluxonEnv.getFunction("add");
     }
 
@@ -175,9 +174,7 @@ public class JSR223Benchmark {
 
     @Benchmark
     public void fluxon_interpret_simple(Blackhole bh) {
-        Environment env = FluxonRuntime.getInstance().newEnvironment();
-        Interpreter interpreter = new Interpreter(env);
-        bh.consume(interpreter.execute(Fluxon.parse(SIMPLE_EXPR, env)));
+        bh.consume(Fluxon.eval(SIMPLE_EXPR));
     }
 
     // ==================== 简单表达式：编译执行 ====================
@@ -207,8 +204,7 @@ public class JSR223Benchmark {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("x", 10);
         env.defineRootVariable("y", 20);
-        Interpreter interpreter = new Interpreter(env);
-        bh.consume(interpreter.execute(Fluxon.parse(VAR_EXPR, env)));
+        bh.consume(Fluxon.eval(SIMPLE_EXPR, env));
     }
 
     // ==================== 带变量表达式：编译执行 ====================
@@ -273,8 +269,7 @@ public class JSR223Benchmark {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("x", 10);
         env.defineRootVariable("y", 20);
-        Interpreter interpreter = new Interpreter(env);
-        bh.consume(interpreter.execute(Fluxon.parse(VAR_EXPR, env)));
+        bh.consume(Fluxon.eval(VAR_EXPR, env));
     }
 
     // ==================== 主方法：可直接运行 ====================

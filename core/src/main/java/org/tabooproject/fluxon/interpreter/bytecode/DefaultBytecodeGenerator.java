@@ -34,6 +34,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private String source = "";
     // 脚本文件名
     private String fileName = "main";
+    // 根层级局部变量数量（_ 前缀变量）
+    private int rootLocalVariableCount = 0;
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
@@ -63,6 +65,16 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
         if (fileName != null && !fileName.isEmpty()) {
             this.fileName = fileName;
         }
+    }
+
+    @Override
+    public void setRootLocalVariableCount(int count) {
+        this.rootLocalVariableCount = count;
+    }
+
+    @Override
+    public int getRootLocalVariableCount() {
+        return rootLocalVariableCount;
     }
 
     @Override

@@ -37,6 +37,12 @@ public class BytecodeTest {
     }
 
     @Test
+    public void test3() throws Exception {
+        run(new File("src/test/fs/test3.fs"));
+        compile(new File("src/test/fs/test3.fs"));
+    }
+
+    @Test
     public void test4() throws Exception {
         run(new File("src/test/fs/test4.fs"));
         compile(new File("src/test/fs/test4.fs"));
@@ -62,31 +68,10 @@ public class BytecodeTest {
         List<String> strings = Files.readAllLines(file.toPath());
         String className = file.getName().replace(".fs", "");
         CompileResult result = Fluxon.compile(String.join("\n", strings), className);
-
-        // 输出脚本便于调试
-        File compiled = new File(file.getParentFile(), className + ".class");
-        compiled.createNewFile();
-        Files.write(compiled.toPath(), result.getMainClass());
-
-        // 输出用户函数类
-        int i = 0;
-        for (Definition definition : result.getGenerator().getDefinitions()) {
-            if (definition instanceof FunctionDefinition) {
-                FunctionDefinition funcDef = (FunctionDefinition) definition;
-                String functionClassName = className + funcDef.getName();
-                if (i < result.getInnerClasses().size()) {
-                    compiled = new File(file.getParentFile(), functionClassName + ".class");
-                    compiled.createNewFile();
-                    Files.write(compiled.toPath(), result.getInnerClasses().get(i));
-                    i++;
-                }
-            }
-        }
-
+        result.dump(new File(file.getParentFile(), className + ".class"));
         // 加载并执行
         Class<?> scriptClass = result.defineClass(new FluxonClassLoader());
         RuntimeScriptBase base = (RuntimeScriptBase) scriptClass.newInstance();
-
         // 使用注册中心初始化环境
         System.out.println("Result: " + base.eval(FluxonRuntime.getInstance().newEnvironment()));
     }

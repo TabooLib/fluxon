@@ -12,9 +12,11 @@ import java.util.*;
  */
 public class SymbolEnvironment {
 
+    // 根层级局部变量的特殊 key
+    private static final String ROOT_LOCAL_KEY = "";
+
     // 用户定义的函数
     private final Map<String, SymbolFunction> userFunctions = new HashMap<>();
-
     // 全局变量符号表
     private final Set<String> rootVariables = new LinkedHashSet<>();
     // 局部变量符号表
@@ -48,7 +50,12 @@ public class SymbolEnvironment {
      */
     public void defineVariable(String name) {
         if (currentFunction == null) {
-            rootVariables.add(name);
+            // 根层级：_ 前缀变量强制使用 localVariables（临时变量）
+            if (!name.isEmpty() && name.charAt(0) == '_') {
+                localVariables.computeIfAbsent(ROOT_LOCAL_KEY, i -> new LinkedHashSet<>()).add(name);
+            } else {
+                rootVariables.add(name);
+            }
         } else {
             localVariables.computeIfAbsent(currentFunction, i -> new LinkedHashSet<>()).add(name);
         }
@@ -108,11 +115,12 @@ public class SymbolEnvironment {
      * @return 是否存在
      */
     public boolean hasVariable(String name) {
+        // 检查普通根变量
         if (rootVariables.contains(name)) return true;
-        if (currentFunction != null) {
-            return localVariables.containsKey(currentFunction) && localVariables.get(currentFunction).contains(name);
-        }
-        return false;
+        // 检查局部变量（函数内或根层级 _ 前缀变量）
+        String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
+        Set<String> vars = localVariables.get(key);
+        return vars != null && vars.contains(name);
     }
 
     /**
@@ -122,16 +130,16 @@ public class SymbolEnvironment {
      * @return 返回变量索引
      */
     public int getLocalVariable(String name) {
-        if (currentFunction != null) {
-            Set<String> localVariables = this.localVariables.get(currentFunction);
-            if (localVariables != null) {
-                int index = 0;
-                for (String var : localVariables) {
-                    if (var.equals(name)) {
-                        return index;
-                    }
-                    index++;
+        // 确定要查找的 key：根层级用 ROOT_LOCAL_KEY，函数内用函数名
+        String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
+        Set<String> vars = this.localVariables.get(key);
+        if (vars != null) {
+            int index = 0;
+            for (String var : vars) {
+                if (var.equals(name)) {
+                    return index;
                 }
+                index++;
             }
         }
         return -1;
@@ -156,6 +164,14 @@ public class SymbolEnvironment {
      */
     public Map<String, Set<String>> getLocalVariables() {
         return localVariables;
+    }
+
+    /**
+     * 获取根层级局部变量数量（_ 前缀变量）
+     */
+    public int getRootLocalVariableCount() {
+        Set<String> rootLocals = localVariables.get(ROOT_LOCAL_KEY);
+        return rootLocals != null ? rootLocals.size() : 0;
     }
 
     /**

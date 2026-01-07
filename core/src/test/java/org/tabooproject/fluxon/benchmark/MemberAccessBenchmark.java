@@ -9,16 +9,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
-import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.type.TestObject;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -101,12 +98,12 @@ public class MemberAccessBenchmark {
     private TestObject testObject;
 
     // ========== 解释模式预解析结果 ==========
-    private List<ParseResult> parsedFieldAccess;
-    private List<ParseResult> parsedMethodNoArgs;
-    private List<ParseResult> parsedMethodWithArgs;
-    private List<ParseResult> parsedMethodOverload;
-    private List<ParseResult> parsedChainedAccess;
-    private List<ParseResult> parsedComplexChain;
+    private ParsedScript parsedFieldAccess;
+    private ParsedScript parsedMethodNoArgs;
+    private ParsedScript parsedMethodWithArgs;
+    private ParsedScript parsedMethodOverload;
+    private ParsedScript parsedChainedAccess;
+    private ParsedScript parsedComplexChain;
 
     // ========== 编译模式预编译脚本 ==========
     private RuntimeScriptBase compiledFieldAccess;
@@ -163,10 +160,10 @@ public class MemberAccessBenchmark {
         compiledComplexChain = compileExpression(EXPR_COMPLEX_CHAIN);
     }
 
-    private List<ParseResult> parseExpression(String source) {
+    private ParsedScript parseExpression(String source) {
         CompilationContext ctx = new CompilationContext(source);
         ctx.setAllowReflectionAccess(true);
-        return Fluxon.parse(interpretEnv, ctx);
+        return Fluxon.parse(ctx, interpretEnv);
     }
 
     private RuntimeScriptBase compileExpression(String source) throws Exception {
@@ -180,20 +177,11 @@ public class MemberAccessBenchmark {
         return (RuntimeScriptBase) scriptClass.newInstance();
     }
 
-    private Object interpretExecute(List<ParseResult> parsed) {
-        Interpreter interpreter = new Interpreter(interpretEnv);
-        try {
-            return interpreter.execute(parsed);
-        } catch (ReturnValue rv) {
-            return rv.getValue();
-        }
-    }
-
     // ========== 字段访问基准测试 ==========
 
     @Benchmark
     public void fieldAccess_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedFieldAccess));
+        bh.consume(parsedFieldAccess.eval(interpretEnv));
     }
 
     @Benchmark
@@ -205,7 +193,7 @@ public class MemberAccessBenchmark {
 
     @Benchmark
     public void methodNoArgs_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedMethodNoArgs));
+        bh.consume(parsedMethodNoArgs.eval(interpretEnv));
     }
 
     @Benchmark
@@ -217,7 +205,7 @@ public class MemberAccessBenchmark {
 
     @Benchmark
     public void methodWithArgs_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedMethodWithArgs));
+        bh.consume(parsedMethodWithArgs.eval(interpretEnv));
     }
 
     @Benchmark
@@ -229,7 +217,7 @@ public class MemberAccessBenchmark {
 
     @Benchmark
     public void methodOverload_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedMethodOverload));
+        bh.consume(parsedMethodOverload.eval(interpretEnv));
     }
 
     @Benchmark
@@ -241,7 +229,7 @@ public class MemberAccessBenchmark {
 
     @Benchmark
     public void chainedAccess_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedChainedAccess));
+        bh.consume(parsedChainedAccess.eval(interpretEnv));
     }
 
     @Benchmark
@@ -253,7 +241,7 @@ public class MemberAccessBenchmark {
 
     @Benchmark
     public void complexChain_Interpret(Blackhole bh) {
-        bh.consume(interpretExecute(parsedComplexChain));
+        bh.consume(parsedComplexChain.eval(interpretEnv));
     }
 
     @Benchmark

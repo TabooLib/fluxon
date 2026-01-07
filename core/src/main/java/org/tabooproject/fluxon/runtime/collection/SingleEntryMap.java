@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime.collection;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.*;
 
 /**
@@ -56,6 +58,7 @@ public final class SingleEntryMap<K, V> extends AbstractMap<K, V> {
         return Objects.equals(key, k) ? value : null;
     }
 
+    @NotNull
     @Override
     public Set<Entry<K, V>> entrySet() {
         if (entrySet == null) {
@@ -64,11 +67,13 @@ public final class SingleEntryMap<K, V> extends AbstractMap<K, V> {
         return entrySet;
     }
 
+    @NotNull
     @Override
     public Set<K> keySet() {
         return Collections.singleton(key);
     }
 
+    @NotNull
     @Override
     public Collection<V> values() {
         return Collections.singletonList(value);

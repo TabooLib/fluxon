@@ -3,6 +3,7 @@ package org.tabooproject.fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -229,7 +230,8 @@ public class FluxonTestUtil {
         ctxSetup.accept(interpretCtx);
         // 将 registry 从 ctx 同步到 env
         syncRegistries(interpretCtx, interpretEnv);
-        interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, interpretCtx), interpretEnv);
+        ParsedScript script = Fluxon.parse(interpretCtx, interpretEnv);
+        interpretResult = script.eval(interpretEnv);
         interpretTime = System.currentTimeMillis() - startInterpret;
 
         // 2. 编译（使用启用特性的上下文）
@@ -290,7 +292,7 @@ public class FluxonTestUtil {
         long startInterpret = System.currentTimeMillis();
         Environment interpretEnv = FluxonRuntime.getInstance().newEnvironment();
         CompilationContext ctx = createTestContext(source);
-        Object interpretResult = Fluxon.eval(Fluxon.parse(interpretEnv, ctx), interpretEnv);
+        Object interpretResult = Fluxon.parse(ctx, interpretEnv).eval(interpretEnv);
         long interpretTime = System.currentTimeMillis() - startInterpret;
         return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
     }

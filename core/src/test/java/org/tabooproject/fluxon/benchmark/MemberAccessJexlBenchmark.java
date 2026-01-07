@@ -10,16 +10,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
-import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.type.TestObject;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -87,11 +84,11 @@ public class MemberAccessJexlBenchmark {
     private JexlScript jexlComplexChain;
 
     // ========== Fluxon 解释模式 ==========
-    private List<ParseResult> fluxonParsedFieldAccess;
-    private List<ParseResult> fluxonParsedMethodNoArgs;
-    private List<ParseResult> fluxonParsedMethodWithArgs;
-    private List<ParseResult> fluxonParsedChainedAccess;
-    private List<ParseResult> fluxonParsedComplexChain;
+    private ParsedScript fluxonParsedFieldAccess;
+    private ParsedScript fluxonParsedMethodNoArgs;
+    private ParsedScript fluxonParsedMethodWithArgs;
+    private ParsedScript fluxonParsedChainedAccess;
+    private ParsedScript fluxonParsedComplexChain;
     private Environment fluxonInterpretEnv;
 
     // ========== Fluxon 编译模式 ==========
@@ -163,10 +160,10 @@ public class MemberAccessJexlBenchmark {
         fluxonCompiledComplexChain = compileFluxon(FLUXON_COMPLEX_CHAIN);
     }
 
-    private List<ParseResult> parseFluxon(String source) {
+    private ParsedScript parseFluxon(String source) {
         CompilationContext ctx = new CompilationContext(source);
         ctx.setAllowReflectionAccess(true);
-        return Fluxon.parse(fluxonInterpretEnv, ctx);
+        return Fluxon.parse(ctx, fluxonInterpretEnv);
     }
 
     private RuntimeScriptBase compileFluxon(String source) throws Exception {
@@ -178,15 +175,6 @@ public class MemberAccessJexlBenchmark {
         CompileResult result = Fluxon.compile(env, ctx, className);
         Class<?> scriptClass = result.defineClass(new FluxonClassLoader());
         return (RuntimeScriptBase) scriptClass.newInstance();
-    }
-
-    private Object interpretFluxon(List<ParseResult> parsed) {
-        Interpreter interpreter = new Interpreter(fluxonInterpretEnv);
-        try {
-            return interpreter.execute(parsed);
-        } catch (ReturnValue rv) {
-            return rv.getValue();
-        }
     }
 
     // ==================== 字段访问 ====================
@@ -203,7 +191,7 @@ public class MemberAccessJexlBenchmark {
 
     @Benchmark
     public void fieldAccess_FluxonInterpret(Blackhole bh) {
-        bh.consume(interpretFluxon(fluxonParsedFieldAccess));
+        bh.consume(fluxonParsedFieldAccess.eval(fluxonInterpretEnv));
     }
 
     @Benchmark
@@ -225,7 +213,7 @@ public class MemberAccessJexlBenchmark {
 
     @Benchmark
     public void methodNoArgs_FluxonInterpret(Blackhole bh) {
-        bh.consume(interpretFluxon(fluxonParsedMethodNoArgs));
+        bh.consume(fluxonParsedMethodNoArgs.eval(fluxonInterpretEnv));
     }
 
     @Benchmark
@@ -247,7 +235,7 @@ public class MemberAccessJexlBenchmark {
 
     @Benchmark
     public void methodWithArgs_FluxonInterpret(Blackhole bh) {
-        bh.consume(interpretFluxon(fluxonParsedMethodWithArgs));
+        bh.consume(fluxonParsedMethodWithArgs.eval(fluxonInterpretEnv));
     }
 
     @Benchmark
@@ -269,7 +257,7 @@ public class MemberAccessJexlBenchmark {
 
     @Benchmark
     public void chainedAccess_FluxonInterpret(Blackhole bh) {
-        bh.consume(interpretFluxon(fluxonParsedChainedAccess));
+        bh.consume(fluxonParsedChainedAccess.eval(fluxonInterpretEnv));
     }
 
     @Benchmark
@@ -291,7 +279,7 @@ public class MemberAccessJexlBenchmark {
 
     @Benchmark
     public void complexChain_FluxonInterpret(Blackhole bh) {
-        bh.consume(interpretFluxon(fluxonParsedComplexChain));
+        bh.consume(fluxonParsedComplexChain.eval(fluxonInterpretEnv));
     }
 
     @Benchmark

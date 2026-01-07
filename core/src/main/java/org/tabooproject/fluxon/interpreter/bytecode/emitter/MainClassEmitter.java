@@ -34,6 +34,7 @@ public class MainClassEmitter extends ClassEmitter {
     private final BytecodeGenerator generator;
     private final String fileName;
     private final String source;
+    private final int rootLocalVariableCount;
 
     public MainClassEmitter(String className, String superClassName, String fileName, String source, List<Statement> statements, List<Definition> definitions, BytecodeGenerator generator, ClassLoader classLoader) {
         super(className, superClassName, classLoader);
@@ -42,6 +43,7 @@ public class MainClassEmitter extends ClassEmitter {
         this.generator = generator;
         this.fileName = fileName;
         this.source = source;
+        this.rootLocalVariableCount = generator.getRootLocalVariableCount();
     }
 
     @Override
@@ -100,6 +102,12 @@ public class MainClassEmitter extends ClassEmitter {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, 1);
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        // 初始化根层级局部变量（_ 前缀变量）
+        if (rootLocalVariableCount > 0) {
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitLdcInsn(rootLocalVariableCount);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "initializeRootLocalVariables", "(I)V", false);
+        }
         // 设置 CodeContext
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.allocateLocalVar(Type.OBJECT);

@@ -6,14 +6,13 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -36,11 +35,10 @@ public class NewExpressionTest {
         interpretCtx.setAllowJavaConstruction(true);
         interpretCtx.setAllowReflectionAccess(true);  // 启用 member access (.)
         interpretCtx.setAllowInvalidReference(true);  // 允许延迟解析函数调用
-        List<ParseResult> parseResults = Fluxon.parse(interpretEnv, interpretCtx);
-        Interpreter interpreter = new Interpreter(interpretEnv);
+        ParsedScript script = Fluxon.parse(interpretCtx, interpretEnv);
         Object interpretResult;
         try {
-            interpretResult = interpreter.execute(parseResults);
+            interpretResult = script.eval(interpretEnv);
         } catch (ReturnValue rv) {
             interpretResult = rv.getValue();
         }
@@ -71,10 +69,9 @@ public class NewExpressionTest {
         ctx.setAllowJavaConstruction(true);
         ctx.setAllowReflectionAccess(true);  // 启用 member access (.)
         ctx.setAllowInvalidReference(true);  // 允许延迟解析函数调用
-        List<ParseResult> parseResults = Fluxon.parse(env, ctx);
-        Interpreter interpreter = new Interpreter(env);
+        ParsedScript script = Fluxon.parse(ctx, env);
         try {
-            return interpreter.execute(parseResults);
+            return script.eval(env);
         } catch (ReturnValue rv) {
             return rv.getValue();
         }
@@ -212,7 +209,7 @@ public class NewExpressionTest {
         assertFalse(ctx.isAllowJavaConstruction());
 
         assertThrows(Exception.class, () -> {
-            Fluxon.parse(env, ctx);
+            Fluxon.parse(ctx, env);
         }, "Should throw exception when Java construction is not enabled");
     }
 

@@ -4,7 +4,7 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -24,8 +24,8 @@ public class ComplexTest {
         List<String> lines = Files.readAllLines(new File("effect.fs").toPath());
 
         System.out.println("Run:");
-        List<ParseResult> parsed = Fluxon.parse(String.join("\n", lines).trim(), env);
-        Fluxon.eval(parsed, env);
+        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
+        script.eval(env);
 
         System.out.println("Compile:");
         CompileResult effect = Fluxon.compile(String.join("\n", lines).trim(), "effect", env);
@@ -37,7 +37,7 @@ public class ComplexTest {
             long time = System.currentTimeMillis();
             for (int j = 0; j < 1000; j++) {
 //                base.eval(env);
-                Fluxon.eval(parsed, env);
+                script.eval(env);
             }
             System.out.println((System.currentTimeMillis() - time) + "ms");
         }
@@ -45,7 +45,7 @@ public class ComplexTest {
         for (int i = 0; i < 10; i++) {
             long time = System.currentTimeMillis();
 //            base.eval(env);
-            Fluxon.eval(parsed, env);
+            script.eval(env);
             System.out.println((System.currentTimeMillis() - time) + "ms");
         }
     }

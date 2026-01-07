@@ -63,16 +63,18 @@ subprojects {
         options.compilerArgs.add("-Xlint:unchecked")
     }
 
-    configure<JavaPluginConvention> {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    java {
-        toolchain {
-            languageVersion.set(JavaLanguageVersion.of(8))
-        }
-    }
+//    // benchmark 模块使用 Java 17，其他模块使用 Java 8
+//    if (project.name != "core-benchmark") {
+//        configure<JavaPluginConvention> {
+//            sourceCompatibility = JavaVersion.VERSION_1_8
+//            targetCompatibility = JavaVersion.VERSION_1_8
+//        }
+//        java {
+//            toolchain {
+//                languageVersion.set(JavaLanguageVersion.of(8))
+//            }
+//        }
+//    }
 
     jmh {
         iterations.set(5)

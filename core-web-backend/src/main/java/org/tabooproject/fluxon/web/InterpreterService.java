@@ -38,7 +38,7 @@ public class InterpreterService {
             Interpreter interpreter = new Interpreter(env);
             interpreter.setCostLimit(config.getCostLimit());
             interpreter.setCostPerStep(config.getCostPerStep());
-            List<ParseResult> results = Fluxon.parse(source, env);
+            List<ParseResult> results = Fluxon.parse(source, env).getResults();
             Object value = interpreter.execute(results);
             streaming.println("RESULT: " + value);
         } catch (ReturnValue e) {

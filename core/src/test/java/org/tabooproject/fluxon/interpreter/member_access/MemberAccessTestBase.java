@@ -4,14 +4,13 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.type.TestObject;
 
 import java.io.File;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.reflect.Array.*;
@@ -41,8 +40,7 @@ public abstract class MemberAccessTestBase {
         ctx.setAllowReflectionAccess(true);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("obj", obj);
-        List<ParseResult> parsed = Fluxon.parse(env, ctx);
-        return Fluxon.eval(parsed, env);
+        return Fluxon.parse(ctx, env).eval(env);
     }
 
     /**
@@ -53,8 +51,7 @@ public abstract class MemberAccessTestBase {
         ctx.setAllowReflectionAccess(true);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         configurer.configure(env);
-        List<ParseResult> parsed = Fluxon.parse(env, ctx);
-        return Fluxon.eval(parsed, env);
+        return Fluxon.parse(ctx, env).eval(env);
     }
 
     /**
@@ -134,21 +131,21 @@ public abstract class MemberAccessTestBase {
     /**
      * 解析代码（不执行）
      */
-    protected List<ParseResult> parse(String source) {
+    protected ParsedScript parse(String source) {
         CompilationContext ctx = new CompilationContext(source);
         ctx.setAllowReflectionAccess(true);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
-        return Fluxon.parse(env, ctx);
+        return Fluxon.parse(ctx, env);
     }
 
     /**
      * 解析代码（禁用反射访问）
      */
-    protected List<ParseResult> parseWithoutReflection(String source) {
+    protected ParsedScript parseWithoutReflection(String source) {
         CompilationContext ctx = new CompilationContext(source);
         ctx.setAllowReflectionAccess(false);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
-        return Fluxon.parse(env, ctx);
+        return Fluxon.parse(ctx, env);
     }
 
     /**

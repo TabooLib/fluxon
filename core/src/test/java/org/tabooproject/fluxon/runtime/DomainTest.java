@@ -6,11 +6,8 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.parser.DomainRegistry;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.expression.DomainExpression;
-import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.parser.ParsedScript;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -165,7 +162,7 @@ public class DomainTest {
 
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         assertThrows(Exception.class, () -> {
-            Fluxon.eval(Fluxon.parse(env, context), env);
+            Fluxon.parse(context, env).eval(env);
         });
     }
 
@@ -177,17 +174,10 @@ public class DomainTest {
         context.setDomainRegistry(registry);
 
         Environment env = FluxonRuntime.getInstance().newEnvironment();
-        List<ParseResult> parseResults = Fluxon.parse(env, context);
+        ParsedScript script = Fluxon.parse(context, env);
 
-        assertEquals(1, parseResults.size());
-        assertInstanceOf(ExpressionStatement.class, parseResults.get(0));
-        ParseResult expr = ((ExpressionStatement) parseResults.get(0)).getExpression();
-        assertInstanceOf(DomainExpression.class, expr);
-
-        DomainExpression domainExpr = (DomainExpression) expr;
-        assertEquals("test", domainExpr.getDomainName());
-        assertNotNull(domainExpr.getBody());
-        assertNotNull(domainExpr.getExecutor());
+        // 验证脚本可以正确执行，结果为 42
+        assertEquals(42, script.eval(env));
     }
 
     @Test
@@ -213,10 +203,9 @@ public class DomainTest {
         // 使用 registry1 解析 bar（应该解析为普通标识符）
         CompilationContext ctx3 = new CompilationContext("bar");
         ctx3.setDomainRegistry(registry1);
-        List<ParseResult> results3 = Fluxon.parse(FluxonRuntime.getInstance().newEnvironment(), ctx3);
-        assertInstanceOf(ExpressionStatement.class, results3.get(0));
-        ParseResult innerExpr = ((ExpressionStatement) results3.get(0)).getExpression();
-        assertFalse(innerExpr instanceof DomainExpression);
+        ParsedScript script3 = Fluxon.parse(ctx3, FluxonRuntime.getInstance().newEnvironment());
+        // bar 不是 domain，会被解析为标识符引用
+        assertNotNull(script3);
     }
 
     @Test

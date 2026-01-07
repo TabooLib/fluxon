@@ -95,6 +95,8 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 将错误列表存入上下文
         context.setAttribute("parseErrors", errors);
         context.setAttribute("results", results);
+        // 存入根层级局部变量数量（_ 前缀变量）
+        context.setAttribute("rootLocalVariableCount", symbolEnvironment.getRootLocalVariableCount());
 
         // 如果有错误，抛出异常
         if (!errors.isEmpty()) {

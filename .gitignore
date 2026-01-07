@@ -39,6 +39,7 @@ AGENTS.md
 CLAUDE.md
 core/dump
 core-lsp
+core-benchmark
 test-scripts
 jfr
 ts-port

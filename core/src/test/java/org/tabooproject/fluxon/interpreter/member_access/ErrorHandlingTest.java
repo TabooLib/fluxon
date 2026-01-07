@@ -5,13 +5,10 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
-import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.type.TestObject;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,7 +28,7 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         ctx.setAllowReflectionAccess(false);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         try {
-            Fluxon.parse(env, ctx);
+            Fluxon.parse(ctx, env);
             fail("Should throw exception when reflection access is disabled");
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("Reflection access is not enabled")
@@ -45,7 +42,7 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         ctx.setAllowReflectionAccess(true);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         try {
-            Fluxon.parse(env, ctx);
+            Fluxon.parse(ctx, env);
             assertTrue(true);
         } catch (Exception e) {
             fail("Should be able to parse with reflection enabled: " + e.getMessage());
@@ -61,8 +58,7 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("nullObj", null);
         try {
-            List<ParseResult> parsed = Fluxon.parse(env, ctx);
-            Fluxon.eval(parsed, env);
+            Fluxon.parse(ctx, env).eval(env);
             fail("Should throw exception for null object");
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("null")
@@ -78,8 +74,7 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("nullObj", null);
         try {
-            List<ParseResult> parsed = Fluxon.parse(env, ctx);
-            Fluxon.eval(parsed, env);
+            Fluxon.parse(ctx, env).eval(env);
             fail("Should throw exception for null object method call");
         } catch (Exception e) {
             assertTrue(e.getMessage().contains("null")
@@ -305,8 +300,7 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         Exception compileException = null;
 
         try {
-            List<ParseResult> parsed = Fluxon.parse(env1, ctx);
-            Fluxon.eval(parsed, env1);
+            Fluxon.parse(ctx, env1).eval(env1);
         } catch (Exception e) {
             interpretException = e;
         }
