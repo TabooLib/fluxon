@@ -161,6 +161,14 @@ public class ExtensionIterable {
                 // 对每个元素应用函数并求最大值
                 .function("maxOf", 1, (context) -> compareElements(context, (current, candidate) ->
                         ((Comparable<Object>) candidate).compareTo(current) > 0
+                ))
+                // 根据选择器函数找到最小值对应的元素
+                .function("minBy", 1, (context) -> compareElementsBy(context, (current, candidate) ->
+                        ((Comparable<Object>) candidate).compareTo(current) < 0
+                ))
+                // 根据选择器函数找到最大值对应的元素
+                .function("maxBy", 1, (context) -> compareElementsBy(context, (current, candidate) ->
+                        ((Comparable<Object>) candidate).compareTo(current) > 0
                 ));
     }
 

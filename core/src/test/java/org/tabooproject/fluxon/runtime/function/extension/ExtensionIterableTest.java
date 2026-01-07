@@ -105,6 +105,20 @@ public class ExtensionIterableTest {
         assertBoth("6", "[1, 2, 3]::maxOf(|| &it * 2)");
     }
 
+    @Test
+    public void testMinBy() {
+        // 返回产生最小值的元素，而非最小值本身
+        // [3,1,2] 按 it*2 映射 -> [6,2,4]，最小值2对应元素1
+        assertBoth("1", "[3, 1, 2]::minBy(|| &it * 2)");
+    }
+
+    @Test
+    public void testMaxBy() {
+        // 返回产生最大值的元素，而非最大值本身
+        // [1,2,3] 按 -it 映射 -> [-1,-2,-3]，最大值-1对应元素1
+        assertBoth("1", "[1, 2, 3]::maxBy(|| -&it)");
+    }
+
     // ========== Grouping ==========
 
     @Test

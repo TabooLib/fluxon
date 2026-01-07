@@ -159,4 +159,39 @@ public class ExtensionBuilder<Target> {
             return result;
         }
     }
+
+    /**
+     * 辅助方法：遍历集合中的每个元素，应用 closure 并比较结果，找到产生极值的元素
+     * 与 compareElements 不同，此方法返回原始元素而非选择器的计算结果
+     *
+     * @param context    函数上下文
+     * @param comparator 比较器，决定是否用新值替换当前值
+     * @return 产生极值的元素，如果集合为空或所有元素不可比较则返回 null
+     */
+    @SuppressWarnings("unchecked")
+    public static Object compareElementsBy(FunctionContext<?> context, IterableComparator comparator) {
+        Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
+        Function closure = context.getFunction(0);
+        FunctionContextPool pool = FunctionContextPool.local();
+        try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
+            Object resultElement = null;
+            Object resultValue = null;
+            int index = 0;
+            for (Object element : iterable) {
+                Object callResult = closure.call(ctx.updateArguments(2, element, index, null, null));
+                // 只处理 Comparable 类型
+                if (callResult instanceof Comparable) {
+                    if (resultValue == null) {
+                        resultElement = element;
+                        resultValue = callResult;
+                    } else if (comparator.shouldReplace(resultValue, callResult)) {
+                        resultElement = element;
+                        resultValue = callResult;
+                    }
+                }
+                index++;
+            }
+            return resultElement;
+        }
+    }
 }
