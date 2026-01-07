@@ -11,9 +11,14 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
+import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
+import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -44,9 +49,79 @@ public class BytecodeUtils {
 
     /**
      * 生成创建和填充 Map<String, Integer> 的字节码
+     * <p>
+     * 优化策略：
+     * - size == 0: 使用 ImmutableMap.empty()
+     * - size == 1: 使用 SingleEntryMap（保持泛型类型）
+     * - size 2-4: 使用 ImmutableMap.of(...)
+     * - size > 4: 回退到 LinkedHashMap
      */
     public static void generateVariablePositionMap(MethodVisitor mv, Map<String, Integer> variables) {
-        // 创建 HashMap 实例
+        int size = variables.size();
+        if (size == 0) {
+            // ImmutableMap.empty()
+            mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_MAP.getPath(), "empty", "()" + IMMUTABLE_MAP, false);
+        } else if (size == 1) {
+            // SingleEntryMap 保持泛型类型兼容性
+            generateSingleEntryMap(mv, variables);
+        } else if (size <= 4) {
+            // ImmutableMap.of(...) 用于 2-4 个键值对
+            generateImmutableMap(mv, variables);
+        } else {
+            // LinkedHashMap 用于超过 4 个键值对
+            generateLinkedHashMap(mv, variables);
+        }
+    }
+
+    /**
+     * 生成 SingleEntryMap 构造（单个键值对）
+     */
+    private static void generateSingleEntryMap(MethodVisitor mv, Map<String, Integer> variables) {
+        Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
+        mv.visitTypeInsn(NEW, SINGLE_ENTRY_MAP.getPath());
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(entry.getKey());   // 键 (String)
+        mv.visitLdcInsn(entry.getValue()); // 值 (int)
+        mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
+        mv.visitMethodInsn(INVOKESPECIAL, SINGLE_ENTRY_MAP.getPath(), "<init>", "(" + OBJECT + OBJECT + ")V", false);
+    }
+
+    /**
+     * 生成 ImmutableMap.of(...) 调用（2-4 个键值对）
+     */
+    private static void generateImmutableMap(MethodVisitor mv, Map<String, Integer> variables) {
+        int size = variables.size();
+        // 将键值对按顺序压入栈
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(variables.entrySet());
+        for (int i = 0; i < size; i++) {
+            Map.Entry<String, Integer> entry = entries.get(i);
+            mv.visitLdcInsn(entry.getKey());   // 键 (String)
+            mv.visitLdcInsn(entry.getValue()); // 值 (int)
+            mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
+        }
+        // 根据大小调用对应的 ImmutableMap.of(...) 方法
+        String descriptor;
+        switch (size) {
+            case 2:
+                descriptor = "(" + OBJECT + OBJECT + OBJECT + OBJECT + ")" + IMMUTABLE_MAP;
+                break;
+            case 3:
+                descriptor = "(" + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + ")" + IMMUTABLE_MAP;
+                break;
+            case 4:
+                descriptor = "(" + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + OBJECT + ")" + IMMUTABLE_MAP;
+                break;
+            default:
+                throw new IllegalStateException("Unexpected size for ImmutableMap: " + size);
+        }
+        mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_MAP.getPath(), "of", descriptor, false);
+    }
+
+    /**
+     * 生成 LinkedHashMap 创建和填充（超过 4 个键值对时使用）
+     */
+    private static void generateLinkedHashMap(MethodVisitor mv, Map<String, Integer> variables) {
+        // 创建 LinkedHashMap 实例
         mv.visitTypeInsn(NEW, LINKED_HASH_MAP.getPath());
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, LINKED_HASH_MAP.getPath(), "<init>", "()V", false);
@@ -476,4 +551,6 @@ public class BytecodeUtils {
     private static final Type MAP = new Type(Map.class);
     private static final Type STRING_BUILDER = new Type(StringBuilder.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
+    private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
+    private static final Type SINGLE_ENTRY_MAP = new Type(SingleEntryMap.class);
 }
