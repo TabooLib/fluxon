@@ -18,6 +18,7 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -289,7 +290,7 @@ public class FluxonConsole {
      */
     public Object executeFile(Path scriptPath) {
         try {
-            String content = new String(Files.readAllBytes(scriptPath), java.nio.charset.StandardCharsets.UTF_8);
+            String content = new String(Files.readAllBytes(scriptPath), StandardCharsets.UTF_8);
             return scriptEngine.eval(content);
         } catch (Exception e) {
             printError("Execution error: ", e);
@@ -335,6 +336,37 @@ public class FluxonConsole {
     }
 
     /**
+     * 直接执行脚本文件（非交互模式，不初始化终端）
+     */
+    private static Object executeFileDirectly(Path scriptPath) {
+        try {
+            FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS = true;
+            FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION = true;
+            String content = new String(Files.readAllBytes(scriptPath), StandardCharsets.UTF_8);
+            return Fluxon.eval(content);
+        } catch (Exception e) {
+            System.err.println("Execution error: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 直接执行表达式（非交互模式，不初始化终端）
+     */
+    private static Object executeExpressionDirectly(String expression) {
+        try {
+            FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS = true;
+            FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION = true;
+            return Fluxon.eval(expression);
+        } catch (Exception e) {
+            System.err.println("Execution error: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
      * 程序入口
      */
     public static void main(String[] args) {
@@ -370,8 +402,8 @@ public class FluxonConsole {
                     if (i > 1) expr.append(" ");
                     expr.append(args[i]);
                 }
-                FluxonConsole console = new FluxonConsole();
-                Object result = console.executeExpression(expr.toString());
+                // 非交互模式：直接执行表达式，不初始化终端
+                Object result = executeExpressionDirectly(expr.toString());
                 if (result != null) {
                     System.out.println(result);
                 }
@@ -389,8 +421,8 @@ public class FluxonConsole {
                 System.exit(1);
                 return;
             }
-            FluxonConsole console = new FluxonConsole();
-            Object result = console.executeFile(scriptPath);
+            // 非交互模式：直接执行脚本，不初始化终端
+            Object result = executeFileDirectly(scriptPath);
             if (result != null) {
                 System.out.println(result);
             }

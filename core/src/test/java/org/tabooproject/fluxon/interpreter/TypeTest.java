@@ -5,6 +5,8 @@ import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.parser.error.ParseException;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.FluxonTestUtil.assertBothEqual;
+import static org.tabooproject.fluxon.FluxonTestUtil.runSilent;
 
 public class TypeTest {
 
@@ -274,5 +276,20 @@ public class TypeTest {
             "def describe(obj) { when (&obj) { is string -> \"text\"; is int -> \"number\"; is list -> \"list\"; else -> \"unknown\" } }; describe(\"hello\")"
         );
         FluxonTestUtil.assertBothEqual("text", result);
+    }
+
+    @Test
+    public void testWhenIsMultiline() {
+        FluxonTestUtil.TestResult result = runSilent(
+                "obj = \"hello\"\n" +
+                        "typeLabel = when (&obj) {\n" +
+                        "    is int -> \"integer\"\n" +
+                        "    is string -> \"text\"\n" +
+                        "    is list -> \"list\"\n" +
+                        "    else -> \"unknown\"\n" +
+                        "}\n" +
+                        "&typeLabel"
+        );
+        assertBothEqual("text", result);
     }
 }

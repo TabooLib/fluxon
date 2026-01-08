@@ -25,7 +25,8 @@ public class IsInfixOperator implements InfixOperator {
 
     @Override
     public boolean matches(Parser parser) {
-        return parser.check(TokenType.IS);
+        // 跨行时不作为中缀操作符匹配，避免 when 块中 "is" 开头的分支被误解析
+        return parser.check(TokenType.IS) && !parser.isStatementBoundary();
     }
 
     @Override

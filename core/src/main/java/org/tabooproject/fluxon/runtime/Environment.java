@@ -362,7 +362,7 @@ public class Environment {
             } else if (parent != null) {
                 parent.assign(name, value, index);
             } else {
-                throw new VariableNotFoundError(this, name, index, Arrays.asList(Objects.requireNonNull(localVariableNames)));
+                throw new VariableNotFoundError(this, name, index, Arrays.asList(Optional.ofNullable(localVariableNames).orElse(new String[0])));
             }
         }
     }

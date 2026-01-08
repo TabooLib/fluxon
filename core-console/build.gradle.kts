@@ -19,3 +19,11 @@ tasks.jar {
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
+
+tasks.register<JavaExec>("runSyntax") {
+    description = "Run core-syntax.fs to verify syntax examples"
+    group = "verification"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.tabooproject.fluxon.FluxonConsole")
+    args(rootProject.file("core-syntax.fs").absolutePath)
+}
