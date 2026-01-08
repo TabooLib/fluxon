@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.parser.type.PostfixParser;
 
 import java.util.ArrayList;
@@ -32,7 +33,15 @@ public class ReferencePrefixOperator implements PrefixOperator {
         parser.consume(); // consume &
         boolean isOptional = parser.match(TokenType.QUESTION);
         String name = parser.consume(TokenType.IDENTIFIER, "Expect variable name after '&'.").getLexeme();
-
+        // 检查是否为常量（常量内联）
+        Literal constantLiteral = parser.getSymbolEnvironment().getConstantLiteral(name);
+        if (constantLiteral != null && !isOptional) {
+            // 常量内联：直接返回字面量节点
+            ParseResult ref = constantLiteral;
+            // 处理后缀操作（函数调用、数组访问等）
+            ref = PostfixParser.parsePostfixOperations(parser, ref);
+            return continuation.apply(ref);
+        }
         ParseResult ref;
         if (isOptional) {
             ref = new ReferenceExpression(new Identifier(name), true, -1);
@@ -41,13 +50,20 @@ public class ReferencePrefixOperator implements PrefixOperator {
             if (captured != null) {
                 ref = new ReferenceExpression(new Identifier(name), false, captured);
             } else if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariable(name)) {
-                ref = new ReferenceExpression(new Identifier(name), parser.getContext().isAllowInvalidReference(),
-                        parser.getSymbolEnvironment().getLocalVariable(name));
+                ref = new ReferenceExpression(
+                        new Identifier(name),
+                        parser.getContext().isAllowInvalidReference(),
+                        parser.getSymbolEnvironment().getLocalVariable(name)
+                );
             } else {
                 Token token = parser.peek();
                 SourceExcerpt excerpt = SourceExcerpt.from(parser.getContext(), token);
-                throw new VariableNotFoundException(name,
-                        new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()), token, excerpt);
+                throw new VariableNotFoundException(
+                        name,
+                        new ArrayList<>(parser.getSymbolEnvironment().getLocalVariables().keySet()),
+                        token,
+                        excerpt
+                );
             }
         }
         // 处理后缀操作（函数调用、数组访问等）

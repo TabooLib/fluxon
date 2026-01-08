@@ -23,8 +23,9 @@ u3 = -&num1
 logical1 = true && false
 logical2 = true || false
 
+LIMIT=10
 sum = 0
-for i in 1..10 then {
+for i in 1..&LIMIT then {
     print &i
     if &i % 2 == 0 then {
         print("continue")
@@ -38,14 +39,14 @@ for i in 1..10 then {
 }
 
 i = 0
-while &i < 10 then {
+while &i < &LIMIT then {
     sum += &i
     i += 1
 }
 
 when &sum {
-    in 0..10 -> print("Sum is between 0 and 10")
-    in 10..100 -> print("Sum is between 10 and 100")
+    in 0..&LIMIT -> print("Sum is between 0 and 10")
+    in &LIMIT..100 -> print("Sum is between 10 and 100")
 }
 print("Sum: " + &sum)
 print("Random: " + random())

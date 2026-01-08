@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser;
 
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.Symbolic;
 
@@ -21,6 +22,8 @@ public class SymbolEnvironment {
     private final Set<String> rootVariables = new LinkedHashSet<>();
     // 局部变量符号表
     private final Map<String, Set<String>> localVariables = new HashMap<>();
+    // 常量符号表（名称 -> 字面量 AST 节点）
+    private final Map<String, Literal> constants = new LinkedHashMap<>();
 
     // 当前函数
     @Nullable
@@ -242,12 +245,71 @@ public class SymbolEnvironment {
         return isContextCall;
     }
 
+    /**
+     * 检查标识符是否为常量命名（全大写）
+     * 模式：[A-Z][A-Z0-9_]*
+     *
+     * @param name 标识符名称
+     * @return 是否为常量命名
+     */
+    public static boolean isConstantName(String name) {
+        if (name == null || name.isEmpty()) return false;
+        char first = name.charAt(0);
+        if (first < 'A' || first > 'Z') return false;
+        for (int i = 1; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 定义常量
+     *
+     * @param name  常量名
+     * @param value 字面量值
+     */
+    public void defineConstant(String name, Literal value) {
+        constants.put(name, value);
+    }
+
+    /**
+     * 检查是否为已定义的常量
+     *
+     * @param name 名称
+     * @return 是否为常量
+     */
+    public boolean isConstant(String name) {
+        return constants.containsKey(name);
+    }
+
+    /**
+     * 获取常量的字面量值
+     *
+     * @param name 常量名
+     * @return 字面量 AST 节点，不存在则返回 null
+     */
+    @Nullable
+    public Literal getConstantLiteral(String name) {
+        return constants.get(name);
+    }
+
+    /**
+     * 获取所有常量
+     */
+    public Map<String, Literal> getConstants() {
+        return constants;
+    }
+
     @Override
     public String toString() {
         return "SymbolEnvironment{" +
                 "userFunctions=" + userFunctions +
                 ", rootVariables=" + rootVariables +
                 ", localVariables=" + localVariables +
+                ", constants=" + constants +
                 ", currentFunction='" + currentFunction + '\'' +
                 ", isBreakable=" + isBreakable +
                 ", isContinuable=" + isContinuable +

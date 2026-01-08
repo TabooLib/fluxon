@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 
 /**
  * 赋值运算符 (=, +=, -=, *=, /=, %=)
@@ -38,8 +39,16 @@ public class AssignmentInfixOperator implements InfixOperator {
     public Trampoline<ParseResult> parse(Parser parser, ParseResult left, Token operator, Trampoline.Continuation<ParseResult> continuation) {
         AssignmentTarget target = prepareAssignmentTarget(parser, operator.getType(), left, operator);
         // 右结合：使用相同绑定力
-        return PrattParser.parseExpression(parser, bindingPower(), right ->
-                continuation.apply(parser.attachSource(new AssignExpression(target.expression(), operator, right, target.position()), operator)));
+        return PrattParser.parseExpression(parser, bindingPower(), right -> {
+            // 检查是否为常量定义（全大写标识符 + 字面量值 + 简单赋值）
+            if (operator.getType() == TokenType.ASSIGN && target.expression() instanceof Identifier) {
+                String name = ((Identifier) target.expression()).getValue();
+                if (SymbolEnvironment.isConstantName(name) && right instanceof Literal) {
+                    parser.getSymbolEnvironment().defineConstant(name, (Literal) right);
+                }
+            }
+            return continuation.apply(parser.attachSource(new AssignExpression(target.expression(), operator, right, target.position()), operator));
+        });
     }
 
     /**
@@ -52,6 +61,10 @@ public class AssignmentInfixOperator implements InfixOperator {
         }
         if (target instanceof Identifier) {
             String name = ((Identifier) target).getValue();
+            // 检查是否尝试重新赋值常量
+            if (parser.getSymbolEnvironment().isConstant(name)) {
+                throw parser.createParseException("Cannot reassign constant: " + name, operator);
+            }
             int position = parser.getSymbolEnvironment().getLocalVariable(name);
             Integer captured = parser.getCapturedIndex(name);
             if (captured != null) {
