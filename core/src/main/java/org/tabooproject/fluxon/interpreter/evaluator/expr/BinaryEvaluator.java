@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
@@ -43,6 +44,8 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             case LESS_EQUAL:    return isLessEqual(left, right);
             case EQUAL:         return isEqual(left, right);
             case NOT_EQUAL:     return !isEqual(left, right);
+            case IDENTICAL:     return left == right;
+            case NOT_IDENTICAL: return left != right;
             default:            throw new RuntimeException("Unknown binary operator: " + result.getOperator().getType());
         }
         // @formatter:on
@@ -56,8 +59,13 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (leftEval == null || rightEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for operands");
         }
+        // 特殊处理引用比较运算符（=== 和 !==）
+        TokenType opType = expr.getOperator().getType();
+        if (opType == TokenType.IDENTICAL || opType == TokenType.NOT_IDENTICAL) {
+            return generateIdentityComparison(expr, leftEval, rightEval, ctx, mv, opType == TokenType.NOT_IDENTICAL);
+        }
         // 获取 Operations 方法
-        BinaryOperator operator = OPERATORS.get(expr.getOperator().getType());
+        BinaryOperator operator = OPERATORS.get(opType);
         if (operator == null) {
             throw new RuntimeException("No operator found for binary expression");
         }
@@ -65,6 +73,37 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         generateOperator(expr, leftEval, rightEval, operator.name, operator.descriptor, ctx, mv, operator.xor);
         // 将结果装箱
         return boxing(operator.type, mv);
+    }
+
+    /**
+     * 生成引用比较字节码（=== 和 !==）
+     */
+    private Type generateIdentityComparison(
+            BinaryExpression expr,
+            Evaluator<ParseResult> leftEval,
+            Evaluator<ParseResult> rightEval,
+            CodeContext ctx,
+            MethodVisitor mv,
+            boolean negate
+    ) {
+        // 生成左右操作数的字节码
+        if (leftEval.generateBytecode(expr.getLeft(), ctx, mv) == Type.VOID) {
+            throw new VoidError("Void type is not allowed for binary expression left operand");
+        }
+        if (rightEval.generateBytecode(expr.getRight(), ctx, mv) == Type.VOID) {
+            throw new VoidError("Void type is not allowed for binary expression right operand");
+        }
+        // 生成引用比较：if (a == b) push true else push false
+        Label trueLabel = new Label();
+        Label endLabel = new Label();
+        mv.visitJumpInsn(negate ? IF_ACMPNE : IF_ACMPEQ, trueLabel);
+        mv.visitInsn(ICONST_0);
+        mv.visitJumpInsn(GOTO, endLabel);
+        mv.visitLabel(trueLabel);
+        mv.visitInsn(ICONST_1);
+        mv.visitLabel(endLabel);
+        // 装箱为 Boolean
+        return boxing(Type.Z, mv);
     }
 
     /**

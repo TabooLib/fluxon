@@ -489,6 +489,39 @@ public class LexerTest {
         }
 
         @Test
+        @DisplayName("测试引用相等操作符")
+        void testIdentityOperators() {
+            String source = "=== !==";
+            List<Token> tokens = getTokens(source);
+
+            assertEquals(3, tokens.size(), "应生成 3 个 token (2 个操作符 + EOF)");
+            assertEquals(TokenType.IDENTICAL, tokens.get(0).getType(), "第1个 token 应为 IDENTICAL");
+            assertEquals("===", tokens.get(0).getLexeme(), "IDENTICAL 文本应为 '==='");
+            assertEquals(TokenType.NOT_IDENTICAL, tokens.get(1).getType(), "第2个 token 应为 NOT_IDENTICAL");
+            assertEquals("!==", tokens.get(1).getLexeme(), "NOT_IDENTICAL 文本应为 '!=='");
+            assertEquals(TokenType.EOF, tokens.get(2).getType(), "第3个 token 应为 EOF");
+        }
+
+        @Test
+        @DisplayName("测试相等和引用相等操作符混用")
+        void testEqualityAndIdentityOperatorsMixed() {
+            String source = "a == b === c != d !== e";
+            List<Token> tokens = getTokens(source);
+
+            // 预期: IDENT EQUAL IDENT IDENTICAL IDENT NOT_EQUAL IDENT NOT_IDENTICAL IDENT EOF
+            assertEquals(TokenType.IDENTIFIER, tokens.get(0).getType());
+            assertEquals(TokenType.EQUAL, tokens.get(1).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(2).getType());
+            assertEquals(TokenType.IDENTICAL, tokens.get(3).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(4).getType());
+            assertEquals(TokenType.NOT_EQUAL, tokens.get(5).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(6).getType());
+            assertEquals(TokenType.NOT_IDENTICAL, tokens.get(7).getType());
+            assertEquals(TokenType.IDENTIFIER, tokens.get(8).getType());
+            assertEquals(TokenType.EOF, tokens.get(9).getType());
+        }
+
+        @Test
         @DisplayName("测试赋值操作符")
         void testAssignmentOperators() {
             String source = "= += -= *= /=";

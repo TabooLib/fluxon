@@ -52,6 +52,8 @@ public enum TokenType {
 
     EQUAL("=="),           // 等于
     NOT_EQUAL("!="),       // 不等于
+    IDENTICAL("==="),      // 引用相等（内存地址比较）
+    NOT_IDENTICAL("!=="),  // 引用不等
     GREATER(">"),          // 大于
     LESS("<"),             // 小于
     GREATER_EQUAL(">="),   // 大于等于
@@ -144,6 +146,8 @@ public enum TokenType {
             case MODULO:
             case EQUAL:
             case NOT_EQUAL:
+            case IDENTICAL:
+            case NOT_IDENTICAL:
             case LESS:
             case LESS_EQUAL:
             case GREATER:

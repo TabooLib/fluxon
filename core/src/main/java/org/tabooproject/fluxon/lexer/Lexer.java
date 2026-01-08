@@ -117,9 +117,9 @@ public class Lexer implements CompilationPhase<List<Token>> {
 
         // 初始化多字符操作符映射（双字符 + 可选三字符延续）
         MULTI_CHAR_TOKENS = new HashMap<>(16);
-        // 纯双字符操作符（无延续）
-        MULTI_CHAR_TOKENS.put(charPairKey('=', '='), encode(TokenType.EQUAL));
-        MULTI_CHAR_TOKENS.put(charPairKey('!', '='), encode(TokenType.NOT_EQUAL));
+        // 相等性操作符（== → ===, != → !==）
+        MULTI_CHAR_TOKENS.put(charPairKey('=', '='), encode(TokenType.EQUAL, '=', TokenType.IDENTICAL));
+        MULTI_CHAR_TOKENS.put(charPairKey('!', '='), encode(TokenType.NOT_EQUAL, '=', TokenType.NOT_IDENTICAL));
         MULTI_CHAR_TOKENS.put(charPairKey('>', '='), encode(TokenType.GREATER_EQUAL));
         MULTI_CHAR_TOKENS.put(charPairKey('<', '='), encode(TokenType.LESS_EQUAL));
         MULTI_CHAR_TOKENS.put(charPairKey('+', '='), encode(TokenType.PLUS_ASSIGN));

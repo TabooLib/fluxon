@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 
 /**
- * 相等性运算符 (==, !=)
+ * 相等性运算符 (==, !=, ===, !==)
  * <p>
  * 绑定力: 70，左结合
  */
@@ -14,7 +14,9 @@ public class EqualityInfixOperator implements InfixOperator {
 
     private static final TokenType[] OPERATORS = {
             TokenType.EQUAL,
-            TokenType.NOT_EQUAL
+            TokenType.NOT_EQUAL,
+            TokenType.IDENTICAL,
+            TokenType.NOT_IDENTICAL
     };
 
     @Override
