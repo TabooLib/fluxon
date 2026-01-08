@@ -215,7 +215,18 @@ public class ReflectionHelper {
         }
         // 创建优化的 MethodHandle
         try {
-            MethodHandle mh = LOOKUP.unreflect(best);
+            MethodHandle mh;
+            try {
+                mh = LOOKUP.unreflect(best);
+            } catch (IllegalAccessException e) {
+                // Fallback：对于非公开类的公开方法（如 Arrays$ArrayList.get），
+                // 需要找到在公开接口或父类中的声明
+                Method accessible = findAccessibleMethod(best);
+                if (accessible == null) {
+                    throw e;
+                }
+                mh = LOOKUP.unreflect(accessible);
+            }
             boolean isStatic = Modifier.isStatic(best.getModifiers());
             MethodHandle adapted;
             if (isStatic) {
@@ -288,5 +299,42 @@ public class ReflectionHelper {
             return handle.invoke();
         }
         return handle.invoke(args);
+    }
+
+    /**
+     * 查找可访问的方法声明
+     * 当方法声明在非公开类中时，尝试在公开的接口或父类中找到相同签名的方法
+     *
+     * @param method 原始方法
+     * @return 可访问的方法声明，如果找不到返回 null
+     */
+    private static Method findAccessibleMethod(Method method) {
+        Class<?> declaringClass = method.getDeclaringClass();
+        // 如果声明类是公开的，直接返回
+        if (Modifier.isPublic(declaringClass.getModifiers())) {
+            return method;
+        }
+        String name = method.getName();
+        Class<?>[] paramTypes = method.getParameterTypes();
+        // 遍历继承链，在公开接口或父类中查找方法
+        for (Class<?> current = declaringClass; current != null; current = current.getSuperclass()) {
+            // 检查当前类的所有接口（getMethod 会自动查找父接口）
+            for (Class<?> iface : current.getInterfaces()) {
+                if (Modifier.isPublic(iface.getModifiers())) {
+                    try {
+                        return iface.getMethod(name, paramTypes);
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+            }
+            // 检查父类本身
+            if (current != declaringClass && Modifier.isPublic(current.getModifiers())) {
+                try {
+                    return current.getMethod(name, paramTypes);
+                } catch (NoSuchMethodException ignored) {
+                }
+            }
+        }
+        return null;
     }
 }
