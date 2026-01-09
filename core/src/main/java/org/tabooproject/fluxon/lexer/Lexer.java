@@ -362,7 +362,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         ScanMode mode = (quote == '"') ? ScanMode.STRING_DOUBLE : ScanMode.STRING_SINGLE;
         // 消费引号
         advance();
-        // 扫描字符串内容
+        // 扫描字符串内容（支持嵌套插值）
         consumeStringContent(tokens, mode, quote, startLine, startColumn);
     }
 
@@ -375,7 +375,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         consumeStringContent(tokens, ctx.mode, quote, startLine, startColumn);
     }
 
-    // 扫描字符串内容（共用逻辑）
+    // 扫描字符串内容（共用逻辑，支持嵌套插值）
     private void consumeStringContent(List<Token> tokens, ScanMode mode, char quote, int startLine, int startColumn) {
         StringBuilder sb = new StringBuilder(Math.min(32, sourceLength - position));
         while (position < sourceLength && curr != quote) {
@@ -393,50 +393,14 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 $
                 advance(); // 消费 {
                 tokens.add(new Token(TokenType.INTERPOLATION_START, "${", interpLine, interpColumn));
-
-                // 压入或更新字符串上下文
-                if (stringStack.isEmpty() || stringStack.peek().braceDepth != 0) {
-                    stringStack.push(new StringContext(mode));
-                }
+                // 压入新的字符串上下文（支持嵌套插值）
+                stringStack.push(new StringContext(mode));
                 Objects.requireNonNull(stringStack.peek()).braceDepth = 1;
                 return; // 返回主循环处理插值内容
             }
             // 转义处理
-            if (c == '\\') {
-                advance();
-                if (position >= sourceLength) {
-                    break;
-                }
-                char escaped = this.curr;
-                advance();
-                switch (escaped) {
-                    case 'n':
-                        sb.append('\n');
-                        break;
-                    case 'r':
-                        sb.append('\r');
-                        break;
-                    case 't':
-                        sb.append('\t');
-                        break;
-                    case '\\':
-                        sb.append('\\');
-                        break;
-                    case '\'':
-                        sb.append('\'');
-                        break;
-                    case '"':
-                        sb.append('"');
-                        break;
-                    case '$':
-                        sb.append('$');
-                        break;
-                    default:
-                        sb.append(escaped);
-                }
-            } else {
-                sb.append(c);
-                advance();
+            if (!appendCharOrEscape(sb)) {
+                break;
             }
         }
         // 字符串结束
@@ -446,18 +410,61 @@ public class Lexer implements CompilationPhase<List<Token>> {
             advance(); // 消费结束引号
             endColumn = column;
         }
-        // 根据是否有插值选择 token 类型
-        if (!stringStack.isEmpty()) {
-            // 这是插值字符串的最后一个片段
+        // 根据调用来源选择 token 类型
+        if (!stringStack.isEmpty() && stringStack.peek().braceDepth == 0) {
+            // 通过 consumeStringContinuation 调用，是插值字符串的最后部分
             if (sb.length() > 0) {
                 tokens.add(new Token(TokenType.STRING_PART, sb.toString(), startLine, startColumn, endLine, endColumn));
             }
             // 字符串完全结束，弹出上下文
             stringStack.pop();
         } else {
-            // 普通字符串（无插值），保持兼容性使用 STRING 类型
+            // 普通字符串（无插值）或插值内部的独立字符串
             tokens.add(new Token(TokenType.STRING, sb.toString(), startLine, startColumn, endLine, endColumn));
         }
+    }
+
+    // 处理字符或转义序列，追加到 StringBuilder
+    // 返回 false 表示遇到文件末尾，应中断循环
+    private boolean appendCharOrEscape(StringBuilder sb) {
+        char c = this.curr;
+        if (c == '\\') {
+            advance();
+            if (position >= sourceLength) {
+                return false;
+            }
+            char escaped = this.curr;
+            advance();
+            switch (escaped) {
+                case 'n':
+                    sb.append('\n');
+                    break;
+                case 'r':
+                    sb.append('\r');
+                    break;
+                case 't':
+                    sb.append('\t');
+                    break;
+                case '\\':
+                    sb.append('\\');
+                    break;
+                case '\'':
+                    sb.append('\'');
+                    break;
+                case '"':
+                    sb.append('"');
+                    break;
+                case '$':
+                    sb.append('$');
+                    break;
+                default:
+                    sb.append(escaped);
+            }
+        } else {
+            sb.append(c);
+            advance();
+        }
+        return true;
     }
 
     // endregion
