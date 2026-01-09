@@ -393,9 +393,13 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 advance(); // 消费 $
                 advance(); // 消费 {
                 tokens.add(new Token(TokenType.INTERPOLATION_START, "${", interpLine, interpColumn));
-                // 压入新的字符串上下文（支持嵌套插值）
-                stringStack.push(new StringContext(mode));
-                Objects.requireNonNull(stringStack.peek()).braceDepth = 1;
+                // 压入或复用字符串上下文
+                // 只有当栈为空或栈顶在另一个插值内部（嵌套字符串）时，才压入新上下文
+                // 同一字符串的多个插值复用同一个上下文
+                if (stringStack.isEmpty() || stringStack.peek().braceDepth > 0) {
+                    stringStack.push(new StringContext(mode));
+                }
+                stringStack.peek().braceDepth = 1;
                 return; // 返回主循环处理插值内容
             }
             // 转义处理
