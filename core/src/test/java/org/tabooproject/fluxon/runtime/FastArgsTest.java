@@ -164,6 +164,7 @@ public class FastArgsTest {
 
         Environment environment = runtime.newEnvironment();
         Object result = Intrinsics.callFunctionFastArgs(
+                FunctionContextPool.local(),
                 environment, "fastArgsTest", 3,
                 "a", "b", "c", null,
                 -1, -1
@@ -183,6 +184,7 @@ public class FastArgsTest {
 
         Environment environment = runtime.newEnvironment();
         Object result = Intrinsics.callFunctionFastArgs(
+                FunctionContextPool.local(),
                 environment, "asyncFastArgsTest", 2,
                 "x", "y", null, null,
                 -1, -1
@@ -222,13 +224,14 @@ public class FastArgsTest {
         });
 
         Environment environment = runtime.newEnvironment();
+        FunctionContextPool pool = FunctionContextPool.local();
 
         // 测试 0-4 个参数
-        assertEquals(0, Intrinsics.callFunctionFastArgs(environment, "fastSum", 0, null, null, null, null, -1, -1));
-        assertEquals(1, Intrinsics.callFunctionFastArgs(environment, "fastSum", 1, 1, null, null, null, -1, -1));
-        assertEquals(3, Intrinsics.callFunctionFastArgs(environment, "fastSum", 2, 1, 2, null, null, -1, -1));
-        assertEquals(6, Intrinsics.callFunctionFastArgs(environment, "fastSum", 3, 1, 2, 3, null, -1, -1));
-        assertEquals(10, Intrinsics.callFunctionFastArgs(environment, "fastSum", 4, 1, 2, 3, 4, -1, -1));
+        assertEquals(0, Intrinsics.callFunctionFastArgs(pool, environment, "fastSum", 0, null, null, null, null, -1, -1));
+        assertEquals(1, Intrinsics.callFunctionFastArgs(pool, environment, "fastSum", 1, 1, null, null, null, -1, -1));
+        assertEquals(3, Intrinsics.callFunctionFastArgs(pool, environment, "fastSum", 2, 1, 2, null, null, -1, -1));
+        assertEquals(6, Intrinsics.callFunctionFastArgs(pool, environment, "fastSum", 3, 1, 2, 3, null, -1, -1));
+        assertEquals(10, Intrinsics.callFunctionFastArgs(pool, environment, "fastSum", 4, 1, 2, 3, 4, -1, -1));
     }
 
     /**

@@ -8,6 +8,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.parser.SourceTrace;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -45,6 +46,21 @@ public class BytecodeUtils {
             mv.visitVarInsn(ALOAD, 0);  // this
             mv.visitFieldInsn(GETFIELD, ctx.getClassName(), "environment", Environment.TYPE.getDescriptor());
         }
+    }
+
+    /**
+     * 加载 FunctionContextPool 到栈顶
+     * 从 CodeContext 中记录的局部变量槽位加载
+     *
+     * @param mv  方法访问器
+     * @param ctx 代码上下文
+     */
+    public static void loadPool(MethodVisitor mv, CodeContext ctx) {
+        int poolSlot = ctx.getPoolLocalSlot();
+        if (poolSlot < 0) {
+            throw new IllegalStateException("Pool local slot not set in CodeContext");
+        }
+        mv.visitVarInsn(ALOAD, poolSlot);
     }
 
     /**

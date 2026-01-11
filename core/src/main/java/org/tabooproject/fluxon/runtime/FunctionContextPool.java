@@ -10,6 +10,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class FunctionContextPool {
 
+    public static final Type TYPE = new Type(FunctionContextPool.class);
+
     private static final int MAX_POOL_SIZE = 32;
     private static final ThreadLocal<FunctionContextPool> LOCAL = ThreadLocal.withInitial(FunctionContextPool::new);
 

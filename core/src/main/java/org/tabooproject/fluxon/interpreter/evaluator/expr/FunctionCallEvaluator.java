@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -40,6 +41,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             arguments[i] = interpreter.evaluate(expressionArguments[i]);
         }
         return Intrinsics.callFunction(
+                FunctionContextPool.local(),
                 interpreter.getEnvironment(),
                 result.getFunctionName(),
                 arguments,
@@ -67,6 +69,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             arg3 = interpreter.evaluate(expressionArguments[3]);
         }
         return Intrinsics.callFunctionFastArgs(
+                FunctionContextPool.local(),
                 interpreter.getEnvironment(),
                 result.getFunctionName(),
                 argumentCount,
@@ -92,6 +95,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
      * fast-args 字节码生成：避免创建参数数组
      */
     private Type generateBytecodeFastArgs(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv, ParseResult[] arguments, int argumentCount) {
+        // 加载 pool（避免重复 ThreadLocal.get()）
+        BytecodeUtils.loadPool(mv, ctx);
         // 获取环境
         BytecodeUtils.loadEnvironment(mv, ctx);
         // 压入函数名
@@ -110,12 +115,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         mv.visitLdcInsn(result.getPositionIndex());
         mv.visitLdcInsn(result.getExtensionPositionIndex());
         // 调用 Intrinsics.callFunctionFastArgs 方法
-        // 签名: (Environment, String, int, Object, Object, Object, Object, int, int) -> Object
+        // 签名: (FunctionContextPool, Environment, String, int, Object, Object, Object, Object, int, int) -> Object
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
                 "callFunctionFastArgs",
-                "(" + Environment.TYPE + Type.STRING + Type.I + Type.OBJECT + Type.OBJECT + Type.OBJECT + Type.OBJECT + Type.I + Type.I + ")" + Type.OBJECT,
+                "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + Type.I + Type.OBJECT + Type.OBJECT + Type.OBJECT + Type.OBJECT + Type.I + Type.I + ")" + Type.OBJECT,
                 false
         );
         return Type.OBJECT;
@@ -126,6 +131,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
      */
     private Type generateBytecodeStandard(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv, ParseResult[] arguments, int argumentCount) {
         // 标准路径：创建参数数组
+        // 加载 pool（避免重复 ThreadLocal.get()）
+        BytecodeUtils.loadPool(mv, ctx);
         // 获取环境
         BytecodeUtils.loadEnvironment(mv, ctx);
         // 压入字符串
@@ -148,7 +155,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
                 "callFunction",
-                "(" + Environment.TYPE + Type.STRING + OBJECT_ARRAY + Type.I + Type.I + ")" + Type.OBJECT,
+                "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + OBJECT_ARRAY + Type.I + Type.I + ")" + Type.OBJECT,
                 false
         );
         return Type.OBJECT;

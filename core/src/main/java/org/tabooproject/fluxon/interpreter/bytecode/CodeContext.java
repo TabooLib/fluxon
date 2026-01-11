@@ -29,6 +29,9 @@ public class CodeContext {
     // environment 局部变量槽位索引 (-1 表示使用字段，>=0 表示使用局部变量)
     private int environmentLocalSlot = -1;
 
+    // FunctionContextPool 局部变量槽位索引（用于避免重复 ThreadLocal.get()）
+    private int poolLocalSlot = -1;
+
     // 循环标签栈管理
     private final Stack<LoopContext> loopStack = new Stack<>();
 
@@ -177,5 +180,21 @@ public class CodeContext {
      */
     public boolean useLocalEnvironment() {
         return environmentLocalSlot >= 0;
+    }
+
+    /**
+     * 设置 FunctionContextPool 局部变量槽位索引
+     * @param slot 局部变量槽位索引
+     */
+    public void setPoolLocalSlot(int slot) {
+        this.poolLocalSlot = slot;
+    }
+
+    /**
+     * 获取 FunctionContextPool 局部变量槽位索引
+     * @return 局部变量槽位索引，-1 表示未设置
+     */
+    public int getPoolLocalSlot() {
+        return poolLocalSlot;
     }
 }

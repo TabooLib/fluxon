@@ -147,6 +147,7 @@ public final class Intrinsics {
     /**
      * 执行函数调用
      *
+     * @param pool        函数上下文池（避免重复 ThreadLocal.get()，可为 null）
      * @param environment 脚本运行环境
      * @param name        函数名称
      * @param arguments   参数数组
@@ -154,16 +155,18 @@ public final class Intrinsics {
      * @param exPos       扩展函数位置
      * @return 函数调用结果
      */
-    public static Object callFunction(Environment environment, String name, Object[] arguments, int pos, int exPos) {
+    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
+        if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
         Function function = resolveFunction(environment, target, name, arguments, pos, exPos);
-        return callResolvedFunction(function, target, arguments, environment);
+        return callResolvedFunction(pool, function, target, arguments, environment);
     }
 
     /**
      * 执行函数调用（fast-args 路径，避免创建参数数组）
      * 仅在符合条件时使用 inline 路径，否则回退到标准路径
      *
+     * @param pool        函数上下文池（避免重复 ThreadLocal.get()，可为 null）
      * @param environment 脚本运行环境
      * @param name        函数名称
      * @param count       参数数量
@@ -176,6 +179,7 @@ public final class Intrinsics {
      * @return 函数调用结果
      */
     public static Object callFunctionFastArgs(
+            FunctionContextPool pool,
             Environment environment,
             String name,
             int count,
@@ -185,6 +189,7 @@ public final class Intrinsics {
             Object arg3,
             int pos,
             int exPos) {
+        if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
         // 先尝试解析函数
         Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
@@ -196,11 +201,11 @@ public final class Intrinsics {
         // 判断是否适用 fast-args 路径
         // 条件：同步 NativeFunction（非 async、非 primarySync）
         if (function instanceof NativeFunction && !function.isAsync() && !function.isPrimarySync()) {
-            return callSynchronouslyInline(function, target, count, arg0, arg1, arg2, arg3, environment);
+            return callSynchronouslyInline(pool, function, target, count, arg0, arg1, arg2, arg3, environment);
         }
         // 回退到标准路径：物化参数数组
         Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
-        return callResolvedFunction(function, target, arguments, environment);
+        return callResolvedFunction(pool, function, target, arguments, environment);
     }
 
     /**
@@ -236,20 +241,22 @@ public final class Intrinsics {
     /**
      * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
      */
-    public static Object callResolvedFunction(Function function, Object target, Object[] arguments, Environment environment) {
+    public static Object callResolvedFunction(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
+        if (pool == null) pool = FunctionContextPool.local();
         if (function.isAsync()) {
-            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(function, target, arguments, environment));
+            // 异步执行在不同线程，需要使用目标线程的 pool
+            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(FunctionContextPool.local(), function, target, arguments, environment));
         } else if (function.isPrimarySync()) {
+            // 主线程同步执行在不同线程，需要使用目标线程的 pool
             return callPrimarySync(function, target, arguments, environment);
         }
-        return callSynchronously(function, target, arguments, environment);
+        return callSynchronously(pool, function, target, arguments, environment);
     }
 
     /**
      * 执行函数调用并在当前线程池化上下文
      */
-    private static Object callSynchronously(Function function, Object target, Object[] arguments, Environment environment) {
-        FunctionContextPool pool = FunctionContextPool.local();
+    private static Object callSynchronously(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
         try (FunctionContext<?> context = pool.borrow(function, target, arguments, environment)) {
             return function.call(context);
         } catch (Throwable ex) {
@@ -265,6 +272,7 @@ public final class Intrinsics {
      * 使用 inline 参数执行同步函数调用
      */
     private static Object callSynchronouslyInline(
+            FunctionContextPool pool,
             Function function,
             Object target,
             int count,
@@ -273,7 +281,6 @@ public final class Intrinsics {
             Object arg2,
             Object arg3,
             Environment environment) {
-        FunctionContextPool pool = FunctionContextPool.local();
         try (FunctionContext<?> context = pool.borrowInline(function, target, count, arg0, arg1, arg2, arg3, environment)) {
             return function.call(context);
         } catch (Throwable ex) {
@@ -286,12 +293,14 @@ public final class Intrinsics {
 
     /**
      * 调用主线程同步函数
+     * 注意：在主线程执行，需要使用主线程的 FunctionContextPool
      */
     private static CompletableFuture<Object> callPrimarySync(Function function, Object target, Object[] arguments, Environment environment) {
         CompletableFuture<Object> future = new CompletableFuture<>();
         FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
             try {
-                future.complete(callSynchronously(function, target, arguments, environment));
+                // 使用主线程的 pool
+                future.complete(callSynchronously(FunctionContextPool.local(), function, target, arguments, environment));
             } catch (Throwable ex) {
                 // 如果函数有 except 注解，则打印异常栈
                 if (AnnotationAccess.hasAnnotation(function, "except")) {

@@ -66,12 +66,12 @@ public class FunctionContextPoolTest {
                 final int index = i;
                 asyncResults.add(CompletableFuture.supplyAsync(() -> {
                     Environment env = runtime.newEnvironment();
-                    Object result = Intrinsics.callFunction(env, "asyncPoolEcho", new Object[]{"A" + index}, -1, -1);
+                    Object result = Intrinsics.callFunction(FunctionContextPool.local(), env, "asyncPoolEcho", new Object[]{"A" + index}, -1, -1);
                     return Intrinsics.awaitValue(result).toString();
                 }, callers));
                 primaryResults.add(CompletableFuture.supplyAsync(() -> {
                     Environment env = runtime.newEnvironment();
-                    Object result = Intrinsics.callFunction(env, "primaryPoolEcho", new Object[]{"P" + index}, -1, -1);
+                    Object result = Intrinsics.callFunction(FunctionContextPool.local(), env, "primaryPoolEcho", new Object[]{"P" + index}, -1, -1);
                     return Intrinsics.awaitValue(result).toString();
                 }, callers));
             }

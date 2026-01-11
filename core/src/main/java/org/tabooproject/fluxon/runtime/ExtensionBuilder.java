@@ -89,7 +89,7 @@ public class ExtensionBuilder<Target> {
     public static void forEachElement(FunctionContext<?> context, @Nullable IterableProcessor processor) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
         Function closure = context.getFunction(0);
-        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             int index = 0;
             for (Object element : iterable) {
@@ -114,7 +114,7 @@ public class ExtensionBuilder<Target> {
     public static boolean testElements(FunctionContext<?> context, IterablePredicate predicate) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
         Function closure = context.getFunction(0);
-        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             int index = 0;
             for (Object element : iterable) {
@@ -140,7 +140,7 @@ public class ExtensionBuilder<Target> {
     public static Object compareElements(FunctionContext<?> context, IterableComparator comparator) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
         Function closure = context.getFunction(0);
-        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             Object result = null;
             int index = 0;
@@ -172,7 +172,7 @@ public class ExtensionBuilder<Target> {
     public static Object compareElementsBy(FunctionContext<?> context, IterableComparator comparator) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
         Function closure = context.getFunction(0);
-        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             Object resultElement = null;
             Object resultValue = null;

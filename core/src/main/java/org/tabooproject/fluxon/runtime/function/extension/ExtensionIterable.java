@@ -326,7 +326,7 @@ public class ExtensionIterable {
                     Function selector = context.getFunction(0);
                     Set<Object> seenKeys = new LinkedHashSet<>();
                     List<Object> result = new ArrayList<>();
-                    FunctionContextPool pool = FunctionContextPool.local();
+                    FunctionContextPool pool = context.getPool();
                     try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
                         for (Object item : iterable) {
                             Object key = selector.call(ctx.updateArguments(1, item, null, null, null));
@@ -394,7 +394,7 @@ public class ExtensionIterable {
         } else {
             // 使用选择器函数
             Function selector = context.getFunction(0);
-            FunctionContextPool pool = FunctionContextPool.local();
+            FunctionContextPool pool = context.getPool();
             try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
                 Map<Object, Object> keyCache = new HashMap<>();
                 list.sort((a, b) -> {

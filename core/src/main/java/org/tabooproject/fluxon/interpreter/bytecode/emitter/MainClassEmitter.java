@@ -11,6 +11,7 @@ import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
@@ -112,6 +113,11 @@ public class MainClassEmitter extends ClassEmitter {
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.setEnvironmentLocalSlot(1);
+        // 获取 FunctionContextPool 并存入局部变量（避免重复 ThreadLocal.get()）
+        mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
+        int poolSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, poolSlot);
+        ctx.setPoolLocalSlot(poolSlot);
         // 注册用户定义的函数到 environment
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {

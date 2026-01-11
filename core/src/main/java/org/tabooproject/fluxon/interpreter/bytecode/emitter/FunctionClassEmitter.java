@@ -172,6 +172,12 @@ public class FunctionClassEmitter extends ClassEmitter {
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 0: this
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext
+        // 从 FunctionContext 获取 pool 并存入局部变量（避免重复 ThreadLocal.get()）
+        mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getPool", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
+        int poolSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, poolSlot);
+        funcCtx.setPoolLocalSlot(poolSlot);
         // 绑定参数到环境
         emitParameterBinding(mv, funcCtx);
         // 生成函数体字节码
