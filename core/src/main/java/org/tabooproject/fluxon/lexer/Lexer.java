@@ -217,7 +217,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
                 tokens.add(consumeNumber());
             }
             // 标识符检查，扩展为支持中文字符
-            else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || Character.isIdeographic(c) || isChineseChar(c)) {
+            else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '#' || Character.isIdeographic(c) || isChineseChar(c)) {
                 tokens.add(consumeIdentifier());
             }
             // 插值模式下的大括号追踪
