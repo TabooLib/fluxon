@@ -303,7 +303,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         // 接下来的字符可以是字母、数字、下划线或中文字符
         do {
             advance();
-        } while (position < sourceLength && (isAlphabetChar(curr) || isNumberChar(curr) || isChineseChar(curr) || curr == '_' || curr == '-'));
+        } while (position < sourceLength && (isAlphabetChar(curr) || isNumberChar(curr) || isChineseChar(curr) || curr == '_' || curr == '-' || curr == '$'));
         // 提取标识符
         String identifier = new String(sourceChars, start, position - start);
         return new Token(getIdentifierType(identifier), identifier, startLine, startColumn);
