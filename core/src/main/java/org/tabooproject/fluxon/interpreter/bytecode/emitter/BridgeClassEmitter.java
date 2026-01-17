@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
 import org.tabooproject.fluxon.util.StringUtils;
 
@@ -72,7 +72,7 @@ public class BridgeClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "invoke", "(" + STRING + OBJECT + "[" + OBJECT + ")" + OBJECT, null, new String[]{"java/lang/Exception"});
         mv.visitCode();
         if (!dispatchStrategy.hasExportMethods()) {
-            BytecodeUtils.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
+            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
         } else {
             dispatchStrategy.emit(mv, this::emitSingleMethodCall);
         }
@@ -87,7 +87,7 @@ public class BridgeClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getParameterTypes", "(" + STRING + OBJECT + "[" + OBJECT + ")[" + CLASS, null, new String[]{"java/lang/Exception"});
         mv.visitCode();
         if (!dispatchStrategy.hasExportMethods()) {
-            BytecodeUtils.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
+            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
         } else {
             dispatchStrategy.emit(mv, this::emitSingleMethodParameterTypes);
         }
@@ -106,10 +106,10 @@ public class BridgeClassEmitter extends ClassEmitter {
         mv.visitTypeInsn(CHECKCAST, Type.getInternalName(method.getDeclaringClass()));
         // 为每个参数安全获取值
         for (int i = 0; i < paramTypes.length; i++) {
-            BytecodeUtils.generateSafeParameterAccess(mv, i, paramTypes[i], parameters[i]);
+            Instructions.emitSafeParameterAccess(mv, i, paramTypes[i], parameters[i]);
         }
         // 调用目标方法并处理返回值
-        BytecodeUtils.emitMethodCallWithReturn(mv, method);
+        Instructions.emitMethodCallWithReturn(mv, method);
         mv.visitInsn(ARETURN);
     }
 
@@ -118,7 +118,7 @@ public class BridgeClassEmitter extends ClassEmitter {
      */
     private void emitSingleMethodParameterTypes(MethodVisitor mv, Method method) {
         Class<?>[] paramTypes = method.getParameterTypes();
-        BytecodeUtils.emitClassArray(mv, paramTypes);
+        Instructions.emitClassArray(mv, paramTypes);
         mv.visitInsn(ARETURN);
     }
 }

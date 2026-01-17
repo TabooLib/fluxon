@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.DomainExecutor;
@@ -69,7 +69,7 @@ public class DomainEvaluator extends Evaluator<DomainExpression> {
         // 1. 加载 domain name
         mv.visitLdcInsn(domainName);
         // 2. 加载 environment
-        BytecodeUtils.loadEnvironment(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
         // 3. 加载 body function
         mv.visitFieldInsn(GETSTATIC, ctx.getClassName(), lambdaDef.getName(), "L" + lambdaClassName + ";");
         // 调用 Intrinsics.executeDomain(String, Environment, Function)

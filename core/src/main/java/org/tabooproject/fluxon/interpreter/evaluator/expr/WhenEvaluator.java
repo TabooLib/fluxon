@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -96,7 +96,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
                 // 加载 subject（栈：[] -> [obj]）
                 mv.visitVarInsn(ALOAD, subjectVar);
                 // 使用 BytecodeUtils 生成 INSTANCEOF 检查（栈：[obj] -> [int]）
-                BytecodeUtils.generateInstanceofCheck(mv, targetClass);
+                Instructions.emitInstanceofCheck(mv, targetClass);
                 // 如果匹配（int != 0），跳转到对应分支
                 mv.visitJumpInsn(IFNE, branchLabels[i]);
                 continue;

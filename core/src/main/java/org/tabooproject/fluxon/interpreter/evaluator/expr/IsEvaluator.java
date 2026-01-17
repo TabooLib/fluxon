@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -46,7 +46,7 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
             throw new VoidError("Void type is not allowed for is expression left operand");
         }
         // 使用 BytecodeUtils 生成 INSTANCEOF 检查字节码（栈：[obj] -> [int]）
-        BytecodeUtils.generateInstanceofCheck(mv, expr.getTargetClass());
+        Instructions.emitInstanceofCheck(mv, expr.getTargetClass());
         // 结果是原始 boolean 类型（int 0 或 1），需要装箱为 Boolean
         return boxing(Type.Z, mv);
     }

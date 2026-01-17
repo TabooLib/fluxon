@@ -372,6 +372,23 @@ public final class Intrinsics {
     }
 
     /**
+     * 为方法绑定参数（简化版，用于匿名类方法）
+     *
+     * @param parentEnv 父环境
+     * @param names     参数名数组
+     * @param args      参数值数组
+     * @return 绑定了参数的新环境
+     */
+    @NotNull
+    public static Environment bindMethodParameters(@NotNull Environment parentEnv, @NotNull String[] names, @NotNull Object[] args, int localVarCount) {
+        Environment env = new Environment(parentEnv, names.length + localVarCount);
+        for (int i = 0; i < names.length && i < args.length; i++) {
+            env.assign(names[i], args[i], i);
+        }
+        return env;
+    }
+
+    /**
      * 执行 When 分支匹配判断
      *
      * @param subject     主题对象（可能为 null）

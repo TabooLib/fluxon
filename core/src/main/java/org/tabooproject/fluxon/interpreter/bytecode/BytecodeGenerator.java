@@ -80,4 +80,9 @@ public interface BytecodeGenerator {
      * 获取 Command 解析数据列表
      */
     List<Object> getCommandDataList();
+
+    /**
+     * 获取匿名类数量
+     */
+    int getAnonymousClassCount();
 }

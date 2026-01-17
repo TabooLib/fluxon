@@ -90,6 +90,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Fork(value = 1, warmups = 1)
 @Warmup(iterations = 3, time = 1)
 @Measurement(iterations = 5, time = 1)
+@SuppressWarnings("deprecation")
 public class MemberAccessBenchmark {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);

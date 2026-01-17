@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.util.List;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
+@SuppressWarnings("deprecation")
 public class BytecodeTest {
 
     @BeforeEach

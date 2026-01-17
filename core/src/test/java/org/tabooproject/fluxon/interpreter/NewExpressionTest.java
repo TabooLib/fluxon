@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 测试 Java 对象构造语法: new fully.qualified.ClassName(args)
  */
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
+@SuppressWarnings("deprecation")
 public class NewExpressionTest {
 
     // ========== 辅助方法 ==========

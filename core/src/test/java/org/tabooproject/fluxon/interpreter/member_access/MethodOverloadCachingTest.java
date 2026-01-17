@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 5. null 参数处理
  * 6. 类型签名检查
  */
+@SuppressWarnings("deprecation")
 public class MethodOverloadCachingTest {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);

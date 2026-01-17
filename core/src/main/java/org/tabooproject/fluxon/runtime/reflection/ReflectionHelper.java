@@ -18,6 +18,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Field;
+import java.util.List;
 
 /**
  * 反射缓存门面类
@@ -332,6 +333,44 @@ public class ReflectionHelper {
                 try {
                     return current.getMethod(name, paramTypes);
                 } catch (NoSuchMethodException ignored) {
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 查找可覆写的方法
+     * 用于匿名类生成时查找父类/接口中需要覆写的方法
+     *
+     * @param clazz      父类
+     * @param interfaces 接口列表
+     * @param name       方法名
+     * @param paramCount 参数数量
+     * @return 可覆写的方法，如果找不到返回 null
+     */
+    public static Method findOverridableMethod(Class<?> clazz, List<Class<?>> interfaces, String name, int paramCount) {
+        // 从父类查找
+        if (clazz != Object.class) {
+            for (Method m : clazz.getMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == paramCount && !Modifier.isFinal(m.getModifiers())) {
+                    return m;
+                }
+            }
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (m.getName().equals(name)
+                        && m.getParameterCount() == paramCount
+                        && !Modifier.isFinal(m.getModifiers())
+                        && (Modifier.isAbstract(m.getModifiers()) || Modifier.isProtected(m.getModifiers()))) {
+                    return m;
+                }
+            }
+        }
+        // 从接口查找
+        for (Class<?> iface : interfaces) {
+            for (Method m : iface.getMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == paramCount) {
+                    return m;
                 }
             }
         }

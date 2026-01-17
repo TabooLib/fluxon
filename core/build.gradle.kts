@@ -4,6 +4,10 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
 }
 
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-XDignore.symbol.file")
+}
+
 tasks.register<JavaExec>("dumpFluxonCatalog") {
     group = "fluxon"
     description = "Generates the Fluxon function catalog JSON."

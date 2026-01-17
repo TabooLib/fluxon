@@ -1,6 +1,6 @@
 package org.tabooproject.fluxon.runtime.reflection.util;
 
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Primitives;
 
 import java.lang.reflect.Executable;
 import java.util.ArrayList;
@@ -69,8 +69,8 @@ public final class TypeCompatibility {
      * 检查原始类型兼容性（包括装箱和数值拓宽）
      */
     public static boolean isPrimitiveCompatible(Class<?> param, Class<?> arg) {
-        Class<?> paramBoxed = BytecodeUtils.boxToClass(param);
-        Class<?> argBoxed = BytecodeUtils.boxToClass(arg);
+        Class<?> paramBoxed = Primitives.boxToClass(param);
+        Class<?> argBoxed = Primitives.boxToClass(arg);
         if (paramBoxed == argBoxed) {
             return true;
         }

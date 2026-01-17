@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author sky
  */
+@SuppressWarnings("deprecation")
 public class InheritanceTest extends MemberAccessTestBase {
 
     // ========== 字段遮蔽测试辅助类 ==========

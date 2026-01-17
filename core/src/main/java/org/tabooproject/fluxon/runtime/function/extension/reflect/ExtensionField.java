@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Objects;
 
+@SuppressWarnings("deprecation")
 public class ExtensionField {
 
     public static void init(FluxonRuntime runtime) {

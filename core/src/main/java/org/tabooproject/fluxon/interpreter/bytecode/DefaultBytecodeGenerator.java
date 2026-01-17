@@ -1,12 +1,14 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.AnonymousClassEmitter;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.MainClassEmitter;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -30,6 +32,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private List<LambdaFunctionDefinition> lastLambdaDefinitions = new ArrayList<>();
     // 收集到的 Command 解析数据
     private List<Object> lastCommandDataList = new ArrayList<>();
+    // 匿名类数量
+    private int anonymousClassCount = 0;
     // 脚本源上下文
     private String source = "";
     // 脚本文件名
@@ -108,6 +112,19 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
             // Lambda 可能嵌套 Lambda，添加到列表末尾继续处理
             lambdaDefinitions.addAll(lambdaResult.getLambdaDefinitions());
         }
+        // 4. 为每个匿名类生成类
+        if (mainResult.getCtx() != null) {
+            List<AnonymousClassExpression> anonymousClasses = mainResult.getCtx().getAnonymousClassDefinitions();
+            this.anonymousClassCount = anonymousClasses.size();
+            for (int i = 0; i < anonymousClasses.size(); i++) {
+                AnonymousClassExpression anonExpr = anonymousClasses.get(i);
+                AnonymousClassEmitter anonEmitter = AnonymousClassEmitter.create(anonExpr, className, i, this, classLoader);
+                EmitResult anonResult = anonEmitter.emit();
+                byteList.add(anonResult.getBytecode());
+                // 匿名类也可能包含 Lambda
+                lambdaDefinitions.addAll(anonResult.getLambdaDefinitions());
+            }
+        }
         // 保存结果供后续查询
         this.lastLambdaDefinitions = lambdaDefinitions;
         if (mainResult.getCtx() != null) {
@@ -134,5 +151,10 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public List<Object> getCommandDataList() {
         return lastCommandDataList;
+    }
+
+    @Override
+    public int getAnonymousClassCount() {
+        return anonymousClassCount;
     }
 }

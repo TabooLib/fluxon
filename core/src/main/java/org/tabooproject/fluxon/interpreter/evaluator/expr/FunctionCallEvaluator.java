@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -96,9 +96,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
      */
     private Type generateBytecodeFastArgs(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv, ParseResult[] arguments, int argumentCount) {
         // 加载 pool（避免重复 ThreadLocal.get()）
-        BytecodeUtils.loadPool(mv, ctx);
+        Instructions.loadPool(mv, ctx);
         // 获取环境
-        BytecodeUtils.loadEnvironment(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
         // 压入函数名
         mv.visitLdcInsn(result.getFunctionName());
         // 压入参数数量
@@ -132,9 +132,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     private Type generateBytecodeStandard(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv, ParseResult[] arguments, int argumentCount) {
         // 标准路径：创建参数数组
         // 加载 pool（避免重复 ThreadLocal.get()）
-        BytecodeUtils.loadPool(mv, ctx);
+        Instructions.loadPool(mv, ctx);
         // 获取环境
-        BytecodeUtils.loadEnvironment(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
         // 压入字符串
         mv.visitLdcInsn(result.getFunctionName());
         // 创建参数数组

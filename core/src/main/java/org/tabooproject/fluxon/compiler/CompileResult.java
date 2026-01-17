@@ -55,6 +55,15 @@ public class CompileResult {
                 i++;
             }
         }
+        // 定义匿名类
+        int anonymousClassCount = generator.getAnonymousClassCount();
+        for (int j = 0; j < anonymousClassCount; j++) {
+            String anonymousClassName = className + "$" + j;
+            if (i < innerClasses.size()) {
+                loader.defineClass(anonymousClassName, innerClasses.get(i));
+                i++;
+            }
+        }
         return scriptClass;
     }
 
@@ -96,6 +105,16 @@ public class CompileResult {
             String lambdaClassName = lambdaDef.getOwnerClassName() + lambdaDef.getName();
             if (i < innerClasses.size()) {
                 File compiled = new File(file.getParentFile(), lambdaClassName + ".class");
+                compiled.createNewFile();
+                Files.write(compiled.toPath(), innerClasses.get(i));
+                i++;
+            }
+        }
+        int anonymousClassCount = generator.getAnonymousClassCount();
+        for (int j = 0; j < anonymousClassCount; j++) {
+            String anonymousClassName = className + "$" + j;
+            if (i < innerClasses.size()) {
+                File compiled = new File(file.getParentFile(), anonymousClassName + ".class");
                 compiled.createNewFile();
                 Files.write(compiled.toPath(), innerClasses.get(i));
                 i++;

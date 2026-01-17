@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
 
+@SuppressWarnings("deprecation")
 public class ComplexTest {
 
     public static void main(String[] args) throws IOException, InstantiationException, IllegalAccessException {

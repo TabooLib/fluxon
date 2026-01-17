@@ -1,16 +1,17 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
-import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.parser.SourceTrace;
+import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Optional;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
@@ -28,7 +29,53 @@ import static org.tabooproject.fluxon.runtime.Type.*;
 import static org.tabooproject.fluxon.runtime.Type.INT;
 import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 
-public class BytecodeUtils {
+public class Instructions {
+
+    private static final Type MAP = new Type(Map.class);
+    private static final Type STRING_BUILDER = new Type(StringBuilder.class);
+    private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
+    private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
+    private static final Type SINGLE_ENTRY_MAP = new Type(SingleEntryMap.class);
+
+    // region 类型工具
+
+    /**
+     * 生成 instanceof 类型检查的字节码
+     * <p>
+     * 输入栈：[obj]
+     * 输出栈：[int] (0 表示 false, 1 表示 true)
+     * <p>
+     * 处理逻辑：
+     * - 如果 obj 为 null，返回 0 (false)
+     * - 否则使用 INSTANCEOF 字节码指令进行类型检查
+     *
+     * @param mv          方法访问器
+     * @param targetClass 要检查的目标类型
+     */
+    public static void emitInstanceofCheck(MethodVisitor mv, Class<?> targetClass) {
+        // 创建标签用于 null 检查和结果处理
+        Label nullLabel = new Label();
+        Label endLabel = new Label();
+        // 复制栈顶值用于 null 检查
+        mv.visitInsn(DUP);
+        // 检查是否为 null
+        mv.visitJumpInsn(IFNULL, nullLabel);
+        // 非 null 情况：使用 INSTANCEOF 指令
+        String internalName = getInternalName(targetClass);
+        mv.visitTypeInsn(INSTANCEOF, internalName);
+        mv.visitJumpInsn(GOTO, endLabel);
+        // null 情况：弹出栈顶值并压入 0 (false)
+        mv.visitLabel(nullLabel);
+        mv.visitInsn(POP);
+        mv.visitInsn(ICONST_0);
+        // 结束标签
+        mv.visitLabel(endLabel);
+        // 栈上现在是 int (0 或 1)
+    }
+
+    // endregion
+
+    // region 环境加载
 
     /**
      * 加载 environment 到栈顶
@@ -63,6 +110,107 @@ public class BytecodeUtils {
         mv.visitVarInsn(ALOAD, poolSlot);
     }
 
+    // endregion
+
+    // region 参数处理
+
+    /**
+     * 生成安全的参数访问代码
+     * 如果参数不存在，使用默认值；如果参数存在，进行类型转换
+     */
+    public static void emitSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, Parameter parameter) {
+        if (parameter.isAnnotationPresent(Optional.class)) {
+            // 可选参数：检查数组长度，如果不存在则使用默认值
+            Label hasParam = new Label();
+            Label endLabel = new Label();
+            // if (args.length > paramIndex)
+            mv.visitVarInsn(ALOAD, 3); // args 数组
+            mv.visitInsn(ARRAYLENGTH);
+            mv.visitIntInsn(BIPUSH, paramIndex + 1);
+            mv.visitJumpInsn(IF_ICMPGE, hasParam);
+            // 参数不存在，使用默认值
+            emitDefaultValue(mv, paramType);
+            mv.visitJumpInsn(GOTO, endLabel);
+            // 参数存在，获取并转换
+            mv.visitLabel(hasParam);
+            mv.visitVarInsn(ALOAD, 3); // args 数组
+            mv.visitIntInsn(BIPUSH, paramIndex);
+            mv.visitInsn(AALOAD);
+            emitTypeConversion(mv, paramType);
+            mv.visitLabel(endLabel);
+        } else {
+            // 必需参数：直接获取并转换
+            mv.visitVarInsn(ALOAD, 3); // args 数组
+            mv.visitIntInsn(BIPUSH, paramIndex);
+            mv.visitInsn(AALOAD);
+            emitTypeConversion(mv, paramType);
+        }
+    }
+
+    /**
+     * 生成默认值
+     */
+    public static void emitDefaultValue(MethodVisitor mv, Class<?> type) {
+        if (type == boolean.class) {
+            mv.visitInsn(ICONST_0); // false
+        } else if (type == byte.class || type == short.class || type == int.class || type == char.class) {
+            mv.visitInsn(ICONST_0);
+        } else if (type == long.class) {
+            mv.visitInsn(LCONST_0);
+        } else if (type == float.class) {
+            mv.visitInsn(FCONST_0);
+        } else if (type == double.class) {
+            mv.visitInsn(DCONST_0);
+        } else {
+            // 对象类型，推送 null
+            mv.visitInsn(ACONST_NULL);
+        }
+    }
+
+    /**
+     * 生成类型转换和拆箱代码
+     */
+    public static void emitTypeConversion(MethodVisitor mv, Class<?> targetType) {
+        // 对象类型，直接类型转换
+        if (!targetType.isPrimitive()) {
+            mv.visitTypeInsn(CHECKCAST, getInternalName(targetType));
+            return;
+        }
+        String wrapperClass = Primitives.getWrapperClassName(targetType);
+        if (wrapperClass == null) {
+            throw new IllegalArgumentException("Unknown primitive type: " + targetType);
+        }
+        String unboxingMethod = Primitives.getUnboxingMethodName(targetType);
+        String descriptor = "()" + org.objectweb.asm.Type.getDescriptor(targetType);
+        // boolean 和 char 直接从包装类拆箱
+        if (targetType == boolean.class || targetType == char.class) {
+            mv.visitTypeInsn(CHECKCAST, wrapperClass);
+            mv.visitMethodInsn(INVOKEVIRTUAL, wrapperClass, unboxingMethod, descriptor, false);
+        } else {
+            // 其他数字类型通过 Number 拆箱
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", unboxingMethod, descriptor, false);
+        }
+    }
+
+    /**
+     * 生成基本类型装箱代码
+     */
+    public static void emitBoxing(MethodVisitor mv, Class<?> primitiveType) {
+        String wrapperClass = Primitives.getWrapperClassName(primitiveType);
+        if (wrapperClass == null) {
+            return; // 不是基本类型，无需装箱
+        }
+        // 获取基本类型的描述符
+        String primitiveDesc = org.objectweb.asm.Type.getDescriptor(primitiveType);
+        String wrapperDesc = "L" + wrapperClass + ";";
+        mv.visitMethodInsn(INVOKESTATIC, wrapperClass, "valueOf", "(" + primitiveDesc + ")" + wrapperDesc, false);
+    }
+
+    // endregion
+
+    // region Map 生成
+
     /**
      * 生成创建和填充 Map<String, Integer> 的字节码
      * <p>
@@ -72,27 +220,27 @@ public class BytecodeUtils {
      * - size 2-4: 使用 ImmutableMap.of(...)
      * - size > 4: 回退到 LinkedHashMap
      */
-    public static void generateVariablePositionMap(MethodVisitor mv, Map<String, Integer> variables) {
+    public static void emitVariablePositionMap(MethodVisitor mv, Map<String, Integer> variables) {
         int size = variables.size();
         if (size == 0) {
             // ImmutableMap.empty()
             mv.visitMethodInsn(INVOKESTATIC, IMMUTABLE_MAP.getPath(), "empty", "()" + IMMUTABLE_MAP, false);
         } else if (size == 1) {
             // SingleEntryMap 保持泛型类型兼容性
-            generateSingleEntryMap(mv, variables);
+            emitSingleEntryMap(mv, variables);
         } else if (size <= 4) {
             // ImmutableMap.of(...) 用于 2-4 个键值对
-            generateImmutableMap(mv, variables);
+            emitImmutableMap(mv, variables);
         } else {
             // LinkedHashMap 用于超过 4 个键值对
-            generateLinkedHashMap(mv, variables);
+            emitLinkedHashMap(mv, variables);
         }
     }
 
     /**
      * 生成 SingleEntryMap 构造（单个键值对）
      */
-    private static void generateSingleEntryMap(MethodVisitor mv, Map<String, Integer> variables) {
+    public static void emitSingleEntryMap(MethodVisitor mv, Map<String, Integer> variables) {
         Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
         mv.visitTypeInsn(NEW, SINGLE_ENTRY_MAP.getPath());
         mv.visitInsn(DUP);
@@ -105,7 +253,7 @@ public class BytecodeUtils {
     /**
      * 生成 ImmutableMap.of(...) 调用（2-4 个键值对）
      */
-    private static void generateImmutableMap(MethodVisitor mv, Map<String, Integer> variables) {
+    public static void emitImmutableMap(MethodVisitor mv, Map<String, Integer> variables) {
         int size = variables.size();
         // 将键值对按顺序压入栈
         List<Map.Entry<String, Integer>> entries = new ArrayList<>(variables.entrySet());
@@ -136,7 +284,7 @@ public class BytecodeUtils {
     /**
      * 生成 LinkedHashMap 创建和填充（超过 4 个键值对时使用）
      */
-    private static void generateLinkedHashMap(MethodVisitor mv, Map<String, Integer> variables) {
+    public static void emitLinkedHashMap(MethodVisitor mv, Map<String, Integer> variables) {
         // 创建 LinkedHashMap 实例
         mv.visitTypeInsn(NEW, LINKED_HASH_MAP.getPath());
         mv.visitInsn(DUP);
@@ -155,136 +303,51 @@ public class BytecodeUtils {
         }
     }
 
+    // endregion
+
+    // region Class 对象操作
+
     /**
-     * 生成安全的参数访问代码
-     * 如果参数不存在，使用默认值；如果参数存在，进行类型转换
+     * 加载 Class 对象到栈顶（自动处理基本类型）
+     *
+     * @param mv   方法访问器
+     * @param type 要加载的类型
      */
-    public static void generateSafeParameterAccess(MethodVisitor mv, int paramIndex, Class<?> paramType, Parameter parameter) {
-        if (parameter.isAnnotationPresent(Optional.class)) {
-            // 可选参数：检查数组长度，如果不存在则使用默认值
-            Label hasParam = new Label();
-            Label endLabel = new Label();
-            // if (args.length > paramIndex)
-            mv.visitVarInsn(ALOAD, 3); // args 数组
-            mv.visitInsn(ARRAYLENGTH);
-            mv.visitIntInsn(BIPUSH, paramIndex + 1);
-            mv.visitJumpInsn(IF_ICMPGE, hasParam);
-            // 参数不存在，使用默认值
-            generateDefaultValue(mv, paramType);
-            mv.visitJumpInsn(GOTO, endLabel);
-            // 参数存在，获取并转换
-            mv.visitLabel(hasParam);
-            mv.visitVarInsn(ALOAD, 3); // args 数组
-            mv.visitIntInsn(BIPUSH, paramIndex);
-            mv.visitInsn(AALOAD);
-            generateTypeConversion(mv, paramType);
-            mv.visitLabel(endLabel);
+    public static void emitLoadClass(MethodVisitor mv, Class<?> type) {
+        if (type.isPrimitive()) {
+            // 基本类型：使用包装类的 TYPE 字段
+            mv.visitFieldInsn(GETSTATIC, Primitives.getWrapperClassName(type), "TYPE", CLASS.getDescriptor());
         } else {
-            // 必需参数：直接获取并转换
-            mv.visitVarInsn(ALOAD, 3); // args 数组
-            mv.visitIntInsn(BIPUSH, paramIndex);
-            mv.visitInsn(AALOAD);
-            generateTypeConversion(mv, paramType);
+            // 引用类型：使用 LDC 指令直接加载 Class 常量
+            mv.visitLdcInsn(getType(type));
         }
     }
 
     /**
-     * 生成默认值
+     * 生成 Class[] 数组
+     *
+     * @param mv    方法访问器
+     * @param types 类型数组
      */
-    public static void generateDefaultValue(MethodVisitor mv, Class<?> type) {
-        if (type == boolean.class) {
-            mv.visitInsn(ICONST_0); // false
-        } else if (type == byte.class || type == short.class || type == int.class || type == char.class) {
-            mv.visitInsn(ICONST_0);
-        } else if (type == long.class) {
-            mv.visitInsn(LCONST_0);
-        } else if (type == float.class) {
-            mv.visitInsn(FCONST_0);
-        } else if (type == double.class) {
-            mv.visitInsn(DCONST_0);
-        } else {
-            // 对象类型，推送 null
-            mv.visitInsn(ACONST_NULL);
+    public static void emitClassArray(MethodVisitor mv, Class<?>[] types) {
+        mv.visitLdcInsn(types.length);
+        mv.visitTypeInsn(ANEWARRAY, CLASS.getPath());
+        for (int i = 0; i < types.length; i++) {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            emitLoadClass(mv, types[i]);
+            mv.visitInsn(AASTORE);
         }
     }
 
-    /**
-     * 获取基本类型对应的包装类内部名称
-     */
-    @Nullable
-    public static String getWrapperClassName(Class<?> primitiveType) {
-        if (primitiveType == int.class) return "java/lang/Integer";
-        if (primitiveType == long.class) return "java/lang/Long";
-        if (primitiveType == double.class) return "java/lang/Double";
-        if (primitiveType == float.class) return "java/lang/Float";
-        if (primitiveType == boolean.class) return "java/lang/Boolean";
-        if (primitiveType == byte.class) return "java/lang/Byte";
-        if (primitiveType == short.class) return "java/lang/Short";
-        if (primitiveType == char.class) return "java/lang/Character";
-        if (primitiveType == void.class) return "java/lang/Void";
-        return null;
-    }
+    // endregion
 
-    /**
-     * 获取基本类型对应的拆箱方法名
-     */
-    @Nullable
-    private static String getUnboxingMethodName(Class<?> primitiveType) {
-        if (primitiveType == boolean.class) return "booleanValue";
-        if (primitiveType == byte.class) return "byteValue";
-        if (primitiveType == short.class) return "shortValue";
-        if (primitiveType == int.class) return "intValue";
-        if (primitiveType == long.class) return "longValue";
-        if (primitiveType == float.class) return "floatValue";
-        if (primitiveType == double.class) return "doubleValue";
-        if (primitiveType == char.class) return "charValue";
-        return null;
-    }
-
-    /**
-     * 生成类型转换和拆箱代码
-     */
-    public static void generateTypeConversion(MethodVisitor mv, Class<?> targetType) {
-        // 对象类型，直接类型转换
-        if (!targetType.isPrimitive()) {
-            mv.visitTypeInsn(CHECKCAST, getInternalName(targetType));
-            return;
-        }
-        String wrapperClass = getWrapperClassName(targetType);
-        if (wrapperClass == null) {
-            throw new IllegalArgumentException("Unknown primitive type: " + targetType);
-        }
-        String unboxingMethod = getUnboxingMethodName(targetType);
-        String descriptor = "()" + org.objectweb.asm.Type.getDescriptor(targetType);
-        // boolean 和 char 直接从包装类拆箱
-        if (targetType == boolean.class || targetType == char.class) {
-            mv.visitTypeInsn(CHECKCAST, wrapperClass);
-            mv.visitMethodInsn(INVOKEVIRTUAL, wrapperClass, unboxingMethod, descriptor, false);
-        } else {
-            // 其他数字类型通过 Number 拆箱
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", unboxingMethod, descriptor, false);
-        }
-    }
-
-    /**
-     * 生成基本类型装箱代码
-     */
-    public static void generateBoxing(MethodVisitor mv, Class<?> primitiveType) {
-        String wrapperClass = getWrapperClassName(primitiveType);
-        if (wrapperClass == null) {
-            return; // 不是基本类型，无需装箱
-        }
-        // 获取基本类型的描述符
-        String primitiveDesc = org.objectweb.asm.Type.getDescriptor(primitiveType);
-        String wrapperDesc = "L" + wrapperClass + ";";
-        mv.visitMethodInsn(INVOKESTATIC, wrapperClass, "valueOf", "(" + primitiveDesc + ")" + wrapperDesc, false);
-    }
+    // region 注解生成
 
     /**
      * 生成注解的字节码
      */
-    public static void generateAnnotation(MethodVisitor mv, Annotation annotation) {
+    public static void emitAnnotation(MethodVisitor mv, Annotation annotation) {
         // 创建 Annotation 实例
         mv.visitTypeInsn(NEW, Annotation.TYPE.getPath());
         mv.visitInsn(DUP);
@@ -304,7 +367,7 @@ public class BytecodeUtils {
             for (Map.Entry<String, Object> entry : attributes.entrySet()) {
                 mv.visitInsn(DUP);               // 复制 Map 引用
                 mv.visitLdcInsn(entry.getKey()); // 键
-                generatePushValue(mv, entry.getValue()); // 值
+                emitPushValue(mv, entry.getValue()); // 值
                 // 调用 put 方法
                 mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "put", "(" + OBJECT + OBJECT + ")" + OBJECT, true);
                 mv.visitInsn(POP); // 丢弃返回值
@@ -317,14 +380,14 @@ public class BytecodeUtils {
     /**
      * 生成将对象值推送到栈上的字节码
      */
-    private static void generatePushValue(MethodVisitor mv, Object value) {
+    public static void emitPushValue(MethodVisitor mv, Object value) {
         if (value == null) {
             mv.visitInsn(ACONST_NULL);
         } else if (value instanceof String) {
             mv.visitLdcInsn(value);
         } else if (value instanceof Boolean) {
             mv.visitInsn((Boolean) value ? ICONST_1 : ICONST_0);
-            generateBoxing(mv, boolean.class);
+            emitBoxing(mv, boolean.class);
         } else if (value instanceof Integer) {
             int intValue = (Integer) value;
             if (intValue >= -1 && intValue <= 5) {
@@ -336,126 +399,25 @@ public class BytecodeUtils {
             } else {
                 mv.visitLdcInsn(intValue);
             }
-            generateBoxing(mv, int.class);
+            emitBoxing(mv, int.class);
         } else if (value instanceof Long) {
             mv.visitLdcInsn(value);
-            generateBoxing(mv, long.class);
+            emitBoxing(mv, long.class);
         } else if (value instanceof Double) {
             mv.visitLdcInsn(value);
-            generateBoxing(mv, double.class);
+            emitBoxing(mv, double.class);
         } else if (value instanceof Float) {
             mv.visitLdcInsn(value);
-            generateBoxing(mv, float.class);
+            emitBoxing(mv, float.class);
         } else {
             // 其他类型直接使用 LDC
             mv.visitLdcInsn(value);
         }
     }
 
-    /**
-     * 根据 SourceTrace 向字节码生成行号信息，方便运行时错误定位。
-     */
-    public static void emitLineNumber(ParseResult node, MethodVisitor mv) {
-        if (node == null) {
-            return;
-        }
-        SourceExcerpt excerpt = SourceTrace.get(node);
-        if (excerpt == null) {
-            return;
-        }
-        Label label = new Label();
-        mv.visitLabel(label);
-        mv.visitLineNumber(excerpt.getLine(), label);
-    }
+    // endregion
 
-    /**
-     * 将基本类型转换为对应的包装类
-     * 如果不是基本类型，则直接返回原类型
-     *
-     * @param type 要转换的类型
-     * @return 包装类或原类型
-     */
-    public static Class<?> boxToClass(Class<?> type) {
-        if (!type.isPrimitive()) return type;
-        if (type == int.class) return Integer.class;
-        if (type == long.class) return Long.class;
-        if (type == double.class) return Double.class;
-        if (type == float.class) return Float.class;
-        if (type == boolean.class) return Boolean.class;
-        if (type == byte.class) return Byte.class;
-        if (type == short.class) return Short.class;
-        if (type == char.class) return Character.class;
-        return type;
-    }
-
-    /**
-     * 计算类型的特异性分数（继承深度）
-     * 分数越高表示类型越具体，用于重载解析时的优先级排序
-     * <p>
-     * 分数规则：
-     * - null/Object: 0
-     * - 接口: 1（最通用的引用类型）
-     * - 具体类: 10 + 继承深度（确保比接口更具体）
-     * - 基本类型: 100（最具体）
-     *
-     * @param type 要计算特异性的类型
-     * @return 特异性分数
-     */
-    public static int getTypeSpecificity(Class<?> type) {
-        if (type == null || type == Object.class) {
-            return 0;
-        }
-        if (type.isPrimitive()) {
-            return 100;
-        }
-        if (type.isInterface()) {
-            return 1;
-        }
-        // 计算到 Object 的继承深度，基础分 10 确保比接口高
-        int depth = 10;
-        Class<?> current = type;
-        while (current != null && current != Object.class) {
-            depth++;
-            current = current.getSuperclass();
-        }
-        return depth;
-    }
-
-    /**
-     * 生成 instanceof 类型检查的字节码
-     * <p>
-     * 输入栈：[obj]
-     * 输出栈：[int] (0 表示 false, 1 表示 true)
-     * <p>
-     * 处理逻辑：
-     * - 如果 obj 为 null，返回 0 (false)
-     * - 否则使用 INSTANCEOF 字节码指令进行类型检查
-     *
-     * @param mv          方法访问器
-     * @param targetClass 要检查的目标类型
-     */
-    public static void generateInstanceofCheck(MethodVisitor mv, Class<?> targetClass) {
-        // 创建标签用于 null 检查和结果处理
-        Label nullLabel = new Label();
-        Label endLabel = new Label();
-        // 复制栈顶值用于 null 检查
-        mv.visitInsn(DUP);
-        // 检查是否为 null
-        mv.visitJumpInsn(IFNULL, nullLabel);
-        // 非 null 情况：使用 INSTANCEOF 指令
-        String internalName = getInternalName(targetClass);
-        mv.visitTypeInsn(INSTANCEOF, internalName);
-        mv.visitJumpInsn(GOTO, endLabel);
-        // null 情况：弹出栈顶值并压入 0 (false)
-        mv.visitLabel(nullLabel);
-        mv.visitInsn(POP);
-        mv.visitInsn(ICONST_0);
-        // 结束标签
-        mv.visitLabel(endLabel);
-        // 栈上现在是 int (0 或 1)
-    }
-
-    // ========== 异常生成 ==========
+    // region 异常生成
 
     /**
      * 生成抛出 IllegalArgumentException 的字节码
@@ -494,42 +456,9 @@ public class BytecodeUtils {
         mv.visitInsn(ATHROW);
     }
 
-    // ========== Class 对象操作 ==========
+    // endregion
 
-    /**
-     * 加载 Class 对象到栈顶（自动处理基本类型）
-     *
-     * @param mv   方法访问器
-     * @param type 要加载的类型
-     */
-    public static void emitLoadClass(MethodVisitor mv, Class<?> type) {
-        if (type.isPrimitive()) {
-            // 基本类型：使用包装类的 TYPE 字段
-            mv.visitFieldInsn(GETSTATIC, getWrapperClassName(type), "TYPE", CLASS.getDescriptor());
-        } else {
-            // 引用类型：使用 LDC 指令直接加载 Class 常量
-            mv.visitLdcInsn(getType(type));
-        }
-    }
-
-    /**
-     * 生成 Class[] 数组
-     *
-     * @param mv    方法访问器
-     * @param types 类型数组
-     */
-    public static void emitClassArray(MethodVisitor mv, Class<?>[] types) {
-        mv.visitLdcInsn(types.length);
-        mv.visitTypeInsn(ANEWARRAY, CLASS.getPath());
-        for (int i = 0; i < types.length; i++) {
-            mv.visitInsn(DUP);
-            mv.visitLdcInsn(i);
-            emitLoadClass(mv, types[i]);
-            mv.visitInsn(AASTORE);
-        }
-    }
-
-    // ========== 方法调用 ==========
+    // region 方法调用
 
     /**
      * 生成方法调用（自动区分接口/类）
@@ -560,7 +489,7 @@ public class BytecodeUtils {
         if (returnType == void.class) {
             mv.visitInsn(ACONST_NULL);
         } else if (returnType.isPrimitive()) {
-            generateBoxing(mv, returnType);
+            emitBoxing(mv, returnType);
         }
     }
 
@@ -583,7 +512,7 @@ public class BytecodeUtils {
             mv.visitInsn(RETURN);
         } else if (expectedReturnType.isPrimitive()) {
             if (!actualType.isPrimitive()) {
-                generateTypeConversion(mv, expectedReturnType);
+                emitTypeConversion(mv, expectedReturnType);
             }
             if (expectedReturnType == int.class || expectedReturnType == boolean.class || expectedReturnType == byte.class || expectedReturnType == short.class || expectedReturnType == char.class) {
                 mv.visitInsn(IRETURN);
@@ -605,9 +534,113 @@ public class BytecodeUtils {
         }
     }
 
-    private static final Type MAP = new Type(Map.class);
-    private static final Type STRING_BUILDER = new Type(StringBuilder.class);
-    private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
-    private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
-    private static final Type SINGLE_ENTRY_MAP = new Type(SingleEntryMap.class);
+    /**
+     * 加载局部变量并装箱为 Object
+     *
+     * @param mv        方法访问器
+     * @param slot      局部变量槽位
+     * @param paramType 参数类型
+     */
+    public static void loadAndBoxParameter(MethodVisitor mv, int slot, Class<?> paramType) {
+        if (paramType == long.class) {
+            mv.visitVarInsn(LLOAD, slot);
+            emitBoxing(mv, long.class);
+        } else if (paramType == double.class) {
+            mv.visitVarInsn(DLOAD, slot);
+            emitBoxing(mv, double.class);
+        } else if (paramType == float.class) {
+            mv.visitVarInsn(FLOAD, slot);
+            emitBoxing(mv, float.class);
+        } else if (paramType.isPrimitive()) {
+            mv.visitVarInsn(ILOAD, slot);
+            emitBoxing(mv, paramType);
+        } else {
+            mv.visitVarInsn(ALOAD, slot);
+        }
+    }
+
+    /**
+     * 创建子环境并绑定方法参数
+     * 生成: Environment childEnv = Intrinsics.bindMethodParameters(this.environment, names, args);
+     *
+     * @param mv             方法访问器
+     * @param ctx            代码上下文
+     * @param className      当前类名
+     * @param paramNames     参数名列表
+     * @param paramTypes     参数类型数组
+     * @param paramStartSlot 参数起始槽位（通常为 1）
+     * @param localVarCount  局部变量数量
+     */
+    public static void emitChildEnvironmentWithParams(MethodVisitor mv, CodeContext ctx, String className, List<String> paramNames, Class<?>[] paramTypes, int paramStartSlot, int localVarCount) {
+        int paramCount = Math.min(paramNames.size(), paramTypes.length);
+        // 参数1: this.environment
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn(GETFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        // 参数2: new String[] { "name1", "name2", ... }
+        mv.visitLdcInsn(paramCount);
+        mv.visitTypeInsn(ANEWARRAY, STRING.getPath());
+        for (int i = 0; i < paramCount; i++) {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            mv.visitLdcInsn(paramNames.get(i));
+            mv.visitInsn(AASTORE);
+        }
+        // 参数3: new Object[] { arg1, arg2, ... }
+        mv.visitLdcInsn(paramCount);
+        mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
+        for (int i = 0; i < paramCount; i++) {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            loadAndBoxParameter(mv, paramStartSlot + i, paramTypes[i]);
+            mv.visitInsn(AASTORE);
+        }
+        // 参数4: 局部变量数量
+        mv.visitLdcInsn(localVarCount);
+        // 调用 Intrinsics.bindMethodParameters
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "bindMethodParameters", "(" + Environment.TYPE + "[" + STRING + "[" + OBJECT + I + ")" + Environment.TYPE, false);
+        // 存入局部变量
+        int envSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, envSlot);
+        ctx.setEnvironmentLocalSlot(envSlot);
+    }
+
+    /**
+     * 生成方法体字节码
+     *
+     * @param generator 字节码生成器
+     * @param body      方法体（Statement 或 Expression）
+     * @param ctx       代码上下文
+     * @param mv        方法访问器
+     * @return 返回值类型
+     */
+    public static Type emitMethodBody(BytecodeGenerator generator, ParseResult body, CodeContext ctx, MethodVisitor mv) {
+        emitLineNumber(body, mv);
+        if (body instanceof Statement) {
+            return generator.generateStatementBytecode((Statement) body, ctx, mv);
+        } else {
+            return generator.generateExpressionBytecode((Expression) body, ctx, mv);
+        }
+    }
+
+    // endregion
+
+    // region 源码追踪
+
+    /**
+     * 根据 SourceTrace 向字节码生成行号信息，方便运行时错误定位。
+     */
+    public static void emitLineNumber(ParseResult node, MethodVisitor mv) {
+        if (node == null) {
+            return;
+        }
+        SourceExcerpt excerpt = SourceTrace.get(node);
+        if (excerpt == null) {
+            return;
+        }
+        Label label = new Label();
+        mv.visitLabel(label);
+        mv.visitLineNumber(excerpt.getLine(), label);
+    }
+
+    // endregion
 }

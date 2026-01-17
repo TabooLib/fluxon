@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
@@ -22,6 +23,8 @@ public class CodeContext {
     // 用户定义
     private final List<Definition> definitions = new ArrayList<>();
     private final List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
+    private final List<AnonymousClassExpression> anonymousClassDefinitions = new ArrayList<>();
+    private int anonymousClassIndex = 0;
 
     // 局部变量表
     private int localVarIndex = 0;
@@ -31,6 +34,9 @@ public class CodeContext {
 
     // FunctionContextPool 局部变量槽位索引（用于避免重复 ThreadLocal.get()）
     private int poolLocalSlot = -1;
+
+    // 方法期望的返回类型（用于匿名类方法等场景）
+    private Class<?> expectedReturnType = null;
 
     // 循环标签栈管理
     private final Stack<LoopContext> loopStack = new Stack<>();
@@ -64,6 +70,22 @@ public class CodeContext {
 
     public List<LambdaFunctionDefinition> getLambdaDefinitions() {
         return lambdaDefinitions;
+    }
+
+    public void addAnonymousClassDefinition(AnonymousClassExpression expression) {
+        anonymousClassDefinitions.add(expression);
+    }
+
+    public List<AnonymousClassExpression> getAnonymousClassDefinitions() {
+        return anonymousClassDefinitions;
+    }
+
+    public int getAnonymousClassIndex() {
+        return anonymousClassIndex;
+    }
+
+    public void incrementAnonymousClassIndex() {
+        anonymousClassIndex++;
     }
 
     public int addCommandData(Object data) {
@@ -196,5 +218,21 @@ public class CodeContext {
      */
     public int getPoolLocalSlot() {
         return poolLocalSlot;
+    }
+
+    /**
+     * 设置方法期望的返回类型
+     * @param returnType 期望的返回类型（null 表示默认为 Object）
+     */
+    public void setExpectedReturnType(Class<?> returnType) {
+        this.expectedReturnType = returnType;
+    }
+
+    /**
+     * 获取方法期望的返回类型
+     * @return 期望的返回类型，null 表示默认为 Object
+     */
+    public Class<?> getExpectedReturnType() {
+        return expectedReturnType;
     }
 }

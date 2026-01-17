@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author sky
  */
+@SuppressWarnings("deprecation")
 public class ErrorHandlingTest extends MemberAccessTestBase {
 
     // ========== 特性开关测试 ==========

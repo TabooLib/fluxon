@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -107,7 +107,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         // 如果有 catch 变量名，则将异常赋值给该变量
         if (result.getCatchName() != null) {
             // 加载 env
-            BytecodeUtils.loadEnvironment(mv, ctx);
+            Instructions.loadEnvironment(mv, ctx);
             // 加载变量名
             mv.visitLdcInsn(result.getCatchName());
             // 加载异常对象

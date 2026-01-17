@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -65,7 +65,7 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
         mv.visitInsn(DUP);
 
         // 将 result.getVariables() 转换为 Map
-        BytecodeUtils.generateVariablePositionMap(mv, result.getVariables());
+        Instructions.emitVariablePositionMap(mv, result.getVariables());
         mv.visitVarInsn(ASTORE, variablesMapVar);
 
         // 交换顺序：value, map -> map, value -> this, map, value

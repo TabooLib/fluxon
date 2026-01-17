@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 并发执行测试 - 验证脚本和函数支持多线程并发调用
  */
+@SuppressWarnings("deprecation")
 public class ConcurrentEvalTest {
 
     /**

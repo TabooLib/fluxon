@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -154,7 +154,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         TokenType type = result.getOperator().getType();
         if (type == TokenType.ASSIGN) {
             // env 对象
-            BytecodeUtils.loadEnvironment(mv, ctx);
+            Instructions.loadEnvironment(mv, ctx);
             // 写入变量
             mv.visitLdcInsn(name);
             if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
@@ -165,7 +165,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "assign", ASSIGN, false);
         } else {
             // env 对象
-            BytecodeUtils.loadEnvironment(mv, ctx);
+            Instructions.loadEnvironment(mv, ctx);
             // 压入变量名 -> 用于后续的写回操作
             mv.visitLdcInsn(name);
             // 复制栈顶的两个值用于进行操作

@@ -2,8 +2,8 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.interpreter.bytecode.Primitives;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.util.StringUtils;
 
@@ -73,7 +73,7 @@ public class DispatchStrategy {
         }
         // 4. 默认：抛出异常
         mv.visitLabel(defaultLabel);
-        BytecodeUtils.emitThrowIllegalArgument(mv, "Unknown method: ", 1);
+        Instructions.emitThrowIllegalArgument(mv, "Unknown method: ", 1);
         mv.visitLabel(endLabel);
     }
 
@@ -123,7 +123,7 @@ public class DispatchStrategy {
                 mv.visitJumpInsn(IF_ICMPNE, nextMethod);
                 // 参数类型兼容性检查
                 for (int i = 0; i < paramTypes.length; i++) {
-                    BytecodeUtils.emitLoadClass(mv, paramTypes[i]);
+                    Instructions.emitLoadClass(mv, paramTypes[i]);
                     mv.visitVarInsn(ALOAD, 3);
                     mv.visitIntInsn(BIPUSH, i);
                     mv.visitInsn(AALOAD);
@@ -210,7 +210,7 @@ public class DispatchStrategy {
     private static int calculateMethodSpecificity(Method method) {
         int score = 0;
         for (Class<?> paramType : method.getParameterTypes()) {
-            score += BytecodeUtils.getTypeSpecificity(paramType);
+            score += Primitives.getTypeSpecificity(paramType);
         }
         return score;
     }

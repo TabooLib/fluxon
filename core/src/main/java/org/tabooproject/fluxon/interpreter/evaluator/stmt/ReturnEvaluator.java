@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
@@ -44,7 +44,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                 mv.visitInsn(ACONST_NULL);
                 valueType = Type.OBJECT;
             }
-            BytecodeUtils.emitReturn(mv, expectedReturnType, valueType);
+            Instructions.emitReturn(mv, expectedReturnType, valueType);
         } else {
             if (expectedReturnType == void.class) {
                 mv.visitInsn(RETURN);

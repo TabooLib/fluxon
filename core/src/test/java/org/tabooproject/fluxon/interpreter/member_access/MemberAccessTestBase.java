@@ -21,6 +21,7 @@ import static java.lang.reflect.Array.*;
  *
  * @author sky
  */
+@SuppressWarnings("deprecation")
 public abstract class MemberAccessTestBase {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);

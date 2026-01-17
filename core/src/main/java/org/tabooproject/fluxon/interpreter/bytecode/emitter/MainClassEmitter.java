@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
@@ -130,7 +130,7 @@ public class MainClassEmitter extends ClassEmitter {
         // 生成脚本主体代码
         Type last = null;
         for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
-            BytecodeUtils.emitLineNumber(statements.get(i), mv);
+            Instructions.emitLineNumber(statements.get(i), mv);
             last = generator.generateStatementBytecode(statements.get(i), ctx, mv);
             if (i < statementsSize - 1 && last != VOID) {
                 mv.visitInsn(POP);
@@ -158,7 +158,7 @@ public class MainClassEmitter extends ClassEmitter {
      * 注册用户函数到环境
      */
     private void emitUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
-        BytecodeUtils.loadEnvironment(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
         mv.visitInsn(DUP);
         mv.visitLdcInsn(funcDef.getName());
         String functionClassName = className + funcDef.getName();

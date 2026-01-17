@@ -5,7 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -112,7 +112,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitVarInsn(ASTORE, iteratorVar);
 
         // 将 result.getVariables() 转换为 Map
-        BytecodeUtils.generateVariablePositionMap(mv, result.getVariables());
+        Instructions.emitVariablePositionMap(mv, result.getVariables());
         mv.visitVarInsn(ASTORE, variablesMapVar);
 
         // 注册循环上下文：break 跳到 whileEnd，continue 跳到 whileStart

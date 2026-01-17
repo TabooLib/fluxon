@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.BytecodeUtils;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
@@ -223,10 +223,10 @@ public class FunctionClassEmitter extends ClassEmitter {
         // 根据函数体类型生成字节码
         Type returnType;
         if (funcDef.getBody() instanceof Statement) {
-            BytecodeUtils.emitLineNumber(funcDef.getBody(), mv);
+            Instructions.emitLineNumber(funcDef.getBody(), mv);
             returnType = generator.generateStatementBytecode((Statement) funcDef.getBody(), funcCtx, mv);
         } else {
-            BytecodeUtils.emitLineNumber(funcDef.getBody(), mv);
+            Instructions.emitLineNumber(funcDef.getBody(), mv);
             returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
         }
         // 若无返回值则压入 null
@@ -251,7 +251,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
         // 初始化参数位置映射表: Map<String, Integer>
-        BytecodeUtils.generateVariablePositionMap(mv, funcDef.getParameters());
+        Instructions.emitVariablePositionMap(mv, funcDef.getParameters());
         mv.visitFieldInsn(PUTSTATIC, className, "parameters", MAP.getDescriptor());
         // 初始化注解列表
         emitAnnotationsInit(mv);
@@ -277,7 +277,7 @@ public class FunctionClassEmitter extends ClassEmitter {
                 Annotation annotation = annotations.get(i);
                 mv.visitInsn(DUP);           // 复制数组引用
                 mv.visitIntInsn(BIPUSH, i);  // 数组索引
-                BytecodeUtils.generateAnnotation(mv, annotation);
+                Instructions.emitAnnotation(mv, annotation);
                 mv.visitInsn(AASTORE);       // 存入数组
             }
             // 转换为不可变列表

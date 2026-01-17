@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.expr.IsEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.NewEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.StaticAccessEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.StringInterpolationEvaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.AnonymousClassEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
 
@@ -77,7 +78,9 @@ public enum ExpressionType {
     // New (Java 对象构造)
     NEW(new NewEvaluator()),
     // Static Access (Java 静态成员访问)
-    STATIC_ACCESS(new StaticAccessEvaluator());
+    STATIC_ACCESS(new StaticAccessEvaluator()),
+    // Anonymous Class (匿名类表达式)
+    ANONYMOUS_CLASS(new AnonymousClassEvaluator());
 
     public final Evaluator<ParseResult> evaluator;
 

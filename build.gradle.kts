@@ -60,7 +60,8 @@ subprojects {
 
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
-        options.compilerArgs.add("-Xlint:unchecked")
+        options.isDeprecation = false
+        options.isWarnings = false
     }
 
 //    // benchmark 模块使用 Java 17，其他模块使用 Java 8

@@ -12,7 +12,7 @@ import java.lang.reflect.Modifier;
  * Unsafe 访问工具类
  * 提供对 Unsafe 和 MethodHandles.Lookup 的安全访问
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "deprecation"})
 public final class UnsafeAccess {
 
     private static final Unsafe unsafe;
