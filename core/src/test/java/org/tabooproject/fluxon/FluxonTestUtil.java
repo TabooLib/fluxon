@@ -301,9 +301,11 @@ public class FluxonTestUtil {
      * 仅编译执行：只执行编译模式，不解释
      */
     public static TestResult compile(String source, String className) {
-        // 2. 编译
+        // 2. 编译（使用启用特性的上下文）
         long startCompile = System.currentTimeMillis();
-        CompileResult compileResultObj = Fluxon.compile(source, className);
+        Environment compileParseEnv = FluxonRuntime.getInstance().newEnvironment();
+        CompilationContext compileCtx = createTestContext(source);
+        CompileResult compileResultObj = Fluxon.compile(compileParseEnv, compileCtx, className);
         long compileTime = System.currentTimeMillis() - startCompile;
         // 输出编译字节码
         try {
