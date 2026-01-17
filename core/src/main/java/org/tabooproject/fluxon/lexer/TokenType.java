@@ -28,6 +28,8 @@ public enum TokenType {
     CONTINUE("continue"),
     NEW("new"),
     STATIC("static"),
+    IMPL("impl"),
+    OVERRIDE("override"),
 
     // 标识符和字面量
     IDENTIFIER,    // 标识符

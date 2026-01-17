@@ -564,6 +564,47 @@ public class BytecodeUtils {
         }
     }
 
+    /**
+     * 生成返回指令，处理原始类型拆箱
+     *
+     * @param mv                 方法访问器
+     * @param expectedReturnType 期望的返回类型（Java Class）
+     * @param actualType         实际栈上的类型
+     */
+    public static void emitReturn(MethodVisitor mv, Class<?> expectedReturnType, Type actualType) {
+        if (expectedReturnType == null) {
+            mv.visitInsn(ARETURN);
+            return;
+        }
+        if (expectedReturnType == void.class) {
+            if (actualType != Type.VOID) {
+                mv.visitInsn(POP);
+            }
+            mv.visitInsn(RETURN);
+        } else if (expectedReturnType.isPrimitive()) {
+            if (!actualType.isPrimitive()) {
+                generateTypeConversion(mv, expectedReturnType);
+            }
+            if (expectedReturnType == int.class || expectedReturnType == boolean.class || expectedReturnType == byte.class || expectedReturnType == short.class || expectedReturnType == char.class) {
+                mv.visitInsn(IRETURN);
+            } else if (expectedReturnType == long.class) {
+                mv.visitInsn(LRETURN);
+            } else if (expectedReturnType == float.class) {
+                mv.visitInsn(FRETURN);
+            } else if (expectedReturnType == double.class) {
+                mv.visitInsn(DRETURN);
+            }
+        } else {
+            if (actualType == Type.VOID) {
+                mv.visitInsn(ACONST_NULL);
+            } else if (expectedReturnType != Object.class) {
+                // 栈上是 Object，需要转换为期望的引用类型
+                mv.visitTypeInsn(CHECKCAST, expectedReturnType.getName().replace('.', '/'));
+            }
+            mv.visitInsn(ARETURN);
+        }
+    }
+
     private static final Type MAP = new Type(Map.class);
     private static final Type STRING_BUILDER = new Type(StringBuilder.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
