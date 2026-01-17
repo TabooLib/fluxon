@@ -9,11 +9,13 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 
 /**
  * 匿名类表达式求值器
@@ -22,8 +24,6 @@ import static org.objectweb.asm.Opcodes.*;
  * @author sky
  */
 public class AnonymousClassEvaluator extends ExpressionEvaluator<AnonymousClassExpression> {
-
-    private static final String ENV_DESC = "Lorg/tabooproject/fluxon/runtime/Environment;";
 
     @Override
     public ExpressionType getType() {
@@ -53,7 +53,7 @@ public class AnonymousClassEvaluator extends ExpressionEvaluator<AnonymousClassE
         if (superArgs != null && !superArgs.isEmpty()) {
             // 创建 Object[] 数组
             mv.visitLdcInsn(superArgs.size());
-            mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+            mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
             // 填充参数
             for (int i = 0; i < superArgs.size(); i++) {
                 mv.visitInsn(DUP);
@@ -67,13 +67,11 @@ public class AnonymousClassEvaluator extends ExpressionEvaluator<AnonymousClassE
                 mv.visitInsn(AASTORE);
             }
             // 调用构造函数: (Environment, Object[])
-            mv.visitMethodInsn(INVOKESPECIAL, anonymousClassName, "<init>",
-                    "(" + ENV_DESC + "[Ljava/lang/Object;)V", false);
+            mv.visitMethodInsn(INVOKESPECIAL, anonymousClassName, "<init>", "(" + Environment.TYPE + "[" + OBJECT + ")V", false);
         } else {
             // 调用构造函数: (Environment)
-            mv.visitMethodInsn(INVOKESPECIAL, anonymousClassName, "<init>",
-                    "(" + ENV_DESC + ")V", false);
+            mv.visitMethodInsn(INVOKESPECIAL, anonymousClassName, "<init>", "(" + Environment.TYPE + ")V", false);
         }
-        return Type.OBJECT;
+        return OBJECT;
     }
 }
