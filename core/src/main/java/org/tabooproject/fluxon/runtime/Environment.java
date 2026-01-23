@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.util.KV;
 
 import java.io.PrintStream;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 运行时环境
@@ -65,6 +66,12 @@ public class Environment {
     protected CommandRegistry commandRegistry;
     @Nullable
     protected DomainRegistry domainRegistry;
+
+    // 执行成本控制（存储在 root 环境上，所有子环境共享）
+    protected boolean costLimitEnabled = false;
+    protected long costLimit = Long.MAX_VALUE;
+    protected final AtomicLong costRemaining = new AtomicLong(Long.MAX_VALUE);
+    protected long costPerStep = 1L;
 
     // 根环境
     @NotNull
@@ -545,6 +552,65 @@ public class Environment {
      */
     public void setDomainRegistry(DomainRegistry domainRegistry) {
         root.domainRegistry = domainRegistry;
+    }
+
+    // endregion
+
+    // region 执行成本控制
+
+    /**
+     * 消耗执行成本一步（线程安全）
+     */
+    public void consumeCostStep() {
+        Environment r = this.root;
+        if (r.costLimitEnabled) {
+            long step = r.costPerStep;
+            long remaining = r.costRemaining.addAndGet(-step);
+            if (remaining < 0) {
+                r.costRemaining.addAndGet(step); // 回滚
+                throw new org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError(r.costLimit, remaining + step, step);
+            }
+        }
+    }
+
+    public void setCostLimit(long costLimit) {
+        if (costLimit <= 0) {
+            throw new IllegalArgumentException("costLimit must be positive");
+        }
+        Environment r = this.root;
+        r.costLimitEnabled = true;
+        r.costLimit = costLimit;
+        r.costRemaining.set(costLimit);
+    }
+
+    public void disableCostLimit() {
+        Environment r = this.root;
+        r.costLimitEnabled = false;
+        r.costLimit = Long.MAX_VALUE;
+        r.costRemaining.set(Long.MAX_VALUE);
+    }
+
+    public void setCostPerStep(long costPerStep) {
+        if (costPerStep <= 0) {
+            throw new IllegalArgumentException("costPerStep must be positive");
+        }
+        this.root.costPerStep = costPerStep;
+    }
+
+    public long getCostLimit() {
+        return root.costLimit;
+    }
+
+    public long getCostRemaining() {
+        return root.costRemaining.get();
+    }
+
+    public long getCostPerStep() {
+        return root.costPerStep;
+    }
+
+    public boolean isCostLimitEnabled() {
+        return root.costLimitEnabled;
     }
 
     // endregion

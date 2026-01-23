@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.parser.CommandExecutor;
 import org.tabooproject.fluxon.parser.CommandHandler;
@@ -140,10 +142,14 @@ public final class Intrinsics {
      * @return 函数调用结果
      */
     public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
+        return callFunction(pool, environment, name, arguments, pos, exPos, null);
+    }
+
+    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos, @Nullable Interpreter interpreter) {
         if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
         Function function = resolveFunction(environment, target, name, arguments, pos, exPos);
-        return callResolvedFunction(pool, function, target, arguments, environment);
+        return callResolvedFunction(pool, function, target, arguments, environment, interpreter);
     }
 
     /**
@@ -180,22 +186,27 @@ public final class Intrinsics {
      * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
      */
     public static Object callResolvedFunction(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
+        return callResolvedFunction(pool, function, target, arguments, environment, null);
+    }
+
+    public static Object callResolvedFunction(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
         if (pool == null) pool = FunctionContextPool.local();
         if (function.isAsync()) {
-            // 异步执行在不同线程，需要使用目标线程的 pool
-            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(FunctionContextPool.local(), function, target, arguments, environment));
+            // async：为目标线程创建 child interpreter 隔离 result slots
+            Interpreter child = interpreter != null ? interpreter.createChild() : null;
+            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(FunctionContextPool.local(), function, target, arguments, environment, child));
         } else if (function.isPrimarySync()) {
-            // 主线程同步执行在不同线程，需要使用目标线程的 pool
-            return callPrimarySync(function, target, arguments, environment);
+            return callPrimarySync(function, target, arguments, environment, interpreter);
         }
-        return callSynchronously(pool, function, target, arguments, environment);
+        return callSynchronously(pool, function, target, arguments, environment, interpreter);
     }
 
     /**
      * 执行函数调用并在当前线程池化上下文
      */
-    private static Object callSynchronously(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
+    private static Object callSynchronously(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
         try (FunctionContext<?> context = pool.borrow(function, target, arguments, environment)) {
+            context.setInterpreter(interpreter);
             function.call(context);
             return context.getReturnRef();
         } catch (Throwable ex) {
@@ -210,14 +221,13 @@ public final class Intrinsics {
      * 调用主线程同步函数
      * 注意：在主线程执行，需要使用主线程的 FunctionContextPool
      */
-    private static CompletableFuture<Object> callPrimarySync(Function function, Object target, Object[] arguments, Environment environment) {
+    private static CompletableFuture<Object> callPrimarySync(Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
+        Interpreter child = interpreter != null ? interpreter.createChild() : null;
         CompletableFuture<Object> future = new CompletableFuture<>();
         FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
             try {
-                // 使用主线程的 pool
-                future.complete(callSynchronously(FunctionContextPool.local(), function, target, arguments, environment));
+                future.complete(callSynchronously(FunctionContextPool.local(), function, target, arguments, environment, child));
             } catch (Throwable ex) {
-                // 如果函数有 except 注解，则打印异常栈
                 if (AnnotationAccess.hasAnnotation(function, "except")) {
                     ex.printStackTrace();
                 }

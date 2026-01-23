@@ -40,7 +40,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 result.getFunctionName(),
                 arguments,
                 result.getPositionIndex(),
-                result.getExtensionPositionIndex()
+                result.getExtensionPositionIndex(),
+                interpreter
         );
         return Type.OBJECT;
     }

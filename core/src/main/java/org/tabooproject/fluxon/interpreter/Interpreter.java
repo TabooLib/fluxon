@@ -10,7 +10,6 @@ import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 import java.util.IdentityHashMap;
@@ -19,7 +18,7 @@ import java.util.Map;
 
 /**
  * Fluxon 解释器
- * 负责执行 AST 节点
+ * 负责执行 AST 节点，线程私有的执行上下文
  */
 public class Interpreter {
 
@@ -33,14 +32,16 @@ public class Interpreter {
     // 缓存 lambda -> UserFunction，避免循环中重复创建实例
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
 
-    // 解释执行消耗
-    private boolean costLimitEnabled = false;
-    private long costLimit = Long.MAX_VALUE;
-    private long costRemaining = Long.MAX_VALUE;
-    private long costPerStep = 1L;
-
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
+    }
+
+    /**
+     * 创建子解释器（独立 result slots + lambdaCache，共享 environment）
+     * 用于异步执行时隔离线程间的 result 竞争
+     */
+    public Interpreter createChild() {
+        return new Interpreter(this.environment);
     }
 
     /**
@@ -188,83 +189,64 @@ public class Interpreter {
      * 消耗执行成本（如果启用且结果为语句）
      */
     private void consumeCostIfNeeded(ParseResult result) {
-        // 只对语句级别扣费，避免在表达式内部（如函数参数）重复扣费
-        if (costLimitEnabled && result instanceof Statement) {
-            consumeCostStep();
+        if (result instanceof Statement) {
+            environment.consumeCostStep();
         }
     }
 
     /**
-     * 消耗执行成本一步
+     * 消耗执行成本一步（委托给 environment）
      */
     public void consumeCostStep() {
-        if (costLimitEnabled) {
-            if (costPerStep <= 0) {
-                throw new IllegalStateException("costPerStep must be positive");
-            }
-            if (costRemaining < costPerStep) {
-                throw new ExecutionCostExceededError(costLimit, costRemaining, costPerStep);
-            }
-            costRemaining -= costPerStep;
-        }
+        environment.consumeCostStep();
     }
 
     /**
-     * 设置执行成本限制
+     * 设置执行成本限制（委托给 environment）
      */
     public void setCostLimit(long costLimit) {
-        if (costLimit <= 0) {
-            throw new IllegalArgumentException("costLimit must be positive");
-        }
-        this.costLimitEnabled = true;
-        this.costLimit = costLimit;
-        this.costRemaining = costLimit;
+        environment.setCostLimit(costLimit);
     }
 
     /**
-     * 禁用执行成本限制
+     * 禁用执行成本限制（委托给 environment）
      */
     public void disableCostLimit() {
-        this.costLimitEnabled = false;
-        this.costLimit = Long.MAX_VALUE;
-        this.costRemaining = Long.MAX_VALUE;
+        environment.disableCostLimit();
     }
 
     /**
-     * 设置每次执行成本消耗
+     * 设置每次执行成本消耗（委托给 environment）
      */
     public void setCostPerStep(long costPerStep) {
-        if (costPerStep <= 0) {
-            throw new IllegalArgumentException("costPerStep must be positive");
-        }
-        this.costPerStep = costPerStep;
+        environment.setCostPerStep(costPerStep);
     }
 
     /**
      * 获取执行成本限制
      */
     public long getCostLimit() {
-        return costLimit;
+        return environment.getCostLimit();
     }
 
     /**
      * 获取当前执行成本剩余
      */
     public long getCostRemaining() {
-        return costRemaining;
+        return environment.getCostRemaining();
     }
 
     /**
      * 获取每次执行成本消耗
      */
     public long getCostPerStep() {
-        return costPerStep;
+        return environment.getCostPerStep();
     }
 
     /**
      * 获取是否启用执行成本限制
      */
     public boolean isCostLimitEnabled() {
-        return costLimitEnabled;
+        return environment.isCostLimitEnabled();
     }
 }

@@ -25,6 +25,8 @@ public class FunctionContext<Target> implements AutoCloseable {
     private Environment environment;
     @Nullable
     private FunctionContextPool pool;
+    @Nullable
+    private Object interpreter; // Interpreter 实例，用于解释执行时传递执行上下文
 
     private long[] primitives;
     private Object[] refs;
@@ -198,6 +200,21 @@ public class FunctionContext<Target> implements AutoCloseable {
         return pool;
     }
 
+    /**
+     * 设置关联的解释器（解释执行时使用）
+     */
+    public void setInterpreter(@Nullable Object interpreter) {
+        this.interpreter = interpreter;
+    }
+
+    /**
+     * 获取关联的解释器
+     */
+    @Nullable
+    public Object getInterpreter() {
+        return interpreter;
+    }
+
     // ====================== 内部方法 ======================
 
     @SuppressWarnings("unchecked")
@@ -214,6 +231,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         this.returnPrimitive = 0;
         this.returnRef = null;
         this.returnType = null;
+        this.interpreter = null;
     }
 
     @SuppressWarnings("DataFlowIssue")
@@ -225,6 +243,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         this.returnPrimitive = 0;
         this.returnRef = null;
         this.returnType = null;
+        this.interpreter = null;
     }
 
     private void ensurePrimitivesCapacity(int index) {

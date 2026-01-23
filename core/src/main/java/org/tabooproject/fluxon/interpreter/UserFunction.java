@@ -70,18 +70,21 @@ public class UserFunction implements Function, Symbolic {
 
     @Override
     public void call(@NotNull final FunctionContext<?> context) {
+        // 优先使用调用链传递的 interpreter（async 场景下为 child），回退到定义时的 interpreter
+        Interpreter exec = (Interpreter) context.getInterpreter();
+        if (exec == null) exec = this.interpreter;
         Environment functionEnv = Intrinsics.bindFunctionParameters(
-                interpreter.getEnvironment(),
+                exec.getEnvironment(),
                 definition.getParameters(),
                 context,
                 definition.getLocalVariables().size()
         );
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
-            interpreter.consumeCostStep();
+            exec.consumeCostStep();
         }
         try {
-            Type t = interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
-            context.setReturnRef(interpreter.getResultBoxed(t));
+            Type t = exec.executeWithEnvironment(definition.getBody(), functionEnv);
+            context.setReturnRef(exec.getResultBoxed(t));
         } catch (ReturnValue returnValue) {
             context.setReturnRef(returnValue.getValue());
         }
