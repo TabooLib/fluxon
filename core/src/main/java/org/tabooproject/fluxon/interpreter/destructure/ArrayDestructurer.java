@@ -25,7 +25,7 @@ public class ArrayDestructurer extends AbstractDestructurer {
         int index = 0;
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
             if (index < array.length) {
-                environment.assign(entry.getKey(), array[index], entry.getValue());
+                DestructuringRegistry.assignVariable(environment, entry.getKey(), array[index], entry.getValue());
             } else {
                 break;
             }

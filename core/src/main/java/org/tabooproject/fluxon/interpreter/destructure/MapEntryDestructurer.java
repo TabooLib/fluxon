@@ -26,9 +26,9 @@ public class MapEntryDestructurer extends AbstractDestructurer {
         for (Map.Entry<String, Integer> varEntry : variables.entrySet()) {
             int index = varEntry.getValue();
             if (i == 0) {
-                environment.assign(varEntry.getKey(), entry.getKey(), index);
+                DestructuringRegistry.assignVariable(environment, varEntry.getKey(), entry.getKey(), index);
             } else if (i == 1) {
-                environment.assign(varEntry.getKey(), entry.getValue(), index);
+                DestructuringRegistry.assignVariable(environment, varEntry.getKey(), entry.getValue(), index);
             } else {
                 break;
             }

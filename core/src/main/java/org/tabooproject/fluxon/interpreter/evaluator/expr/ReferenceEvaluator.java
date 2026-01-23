@@ -28,20 +28,29 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
 
     @Override
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
-        // 获取环境
+        int position = result.getPosition();
         Instructions.loadEnvironment(mv, ctx);
-        // 变量名
-        mv.visitLdcInsn(result.getIdentifier().getValue());
-        // isOptional
-        mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
-        // 压入 index 参数
-        mv.visitLdcInsn(result.getPosition());
-        mv.visitMethodInsn(INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "getVariableOrFunction",
-                "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
-                false
-        );
+        if (position >= 0) {
+            // 局部变量直接索引访问: env.getLocalRef(index)
+            mv.visitLdcInsn(position);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                    Environment.TYPE.getPath(),
+                    "getLocalRef",
+                    "(" + Type.I + ")" + Type.OBJECT,
+                    false
+            );
+        } else {
+            // 根变量/函数查找: Intrinsics.getVariableOrFunction(env, name, optional, -1)
+            mv.visitLdcInsn(result.getIdentifier().getValue());
+            mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+            mv.visitLdcInsn(-1);
+            mv.visitMethodInsn(INVOKESTATIC,
+                    Intrinsics.TYPE.getPath(),
+                    "getVariableOrFunction",
+                    "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
+                    false
+            );
+        }
         return Type.OBJECT;
     }
 }

@@ -111,10 +111,11 @@ public final class Intrinsics {
      * @return 变量或函数对象
      */
     public static Object getVariableOrFunction(Environment environment, String name, boolean isOptional, int index) {
-        // 如果变量被定义
-        // 无论变量值是否为空，都返回变量值
-        if (environment.has(name, index)) {
-            return environment.get(name, index);
+        // 局部变量直接索引访问
+        if (index >= 0) return environment.getLocalRef(index);
+        // 根变量
+        if (environment.hasRootVariable(name)) {
+            return environment.getRootVariable(name);
         }
         // 获取函数
         Function fun = environment.getFunctionOrNull(name);
@@ -276,7 +277,8 @@ public final class Intrinsics {
         for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
             final int slot = entry.getValue();
             final Object value = (slot >= 0 && slot < len) ? context.getRef(slot) : null;
-            functionEnv.assign(entry.getKey(), value, slot);
+            functionEnv.setLocalRef(slot, value);
+            functionEnv.getLocalVariableNames()[slot] = entry.getKey();
         }
         return functionEnv;
     }
@@ -293,7 +295,8 @@ public final class Intrinsics {
     public static Environment bindMethodParameters(@NotNull Environment parentEnv, @NotNull String[] names, @NotNull Object[] args, int localVarCount) {
         Environment env = new Environment(parentEnv, names.length + localVarCount);
         for (int i = 0; i < names.length && i < args.length; i++) {
-            env.assign(names[i], args[i], i);
+            env.setLocalRef(i, args[i]);
+            env.getLocalVariableNames()[i] = names[i];
         }
         return env;
     }

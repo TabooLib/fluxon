@@ -23,7 +23,7 @@ public class SingleValueDestructurer extends AbstractDestructurer {
         }
         Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
         // 第一个变量为该值
-        environment.assign(entry.getKey(), element, entry.getValue());
+        DestructuringRegistry.assignVariable(environment, entry.getKey(), element, entry.getValue());
         // 设置剩余变量为 null
         fillRemainingVariables(environment, variables, 1);
     }

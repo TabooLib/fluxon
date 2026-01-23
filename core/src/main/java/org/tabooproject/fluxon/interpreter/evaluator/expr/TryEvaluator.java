@@ -31,7 +31,12 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
             value = interpreter.evaluate(result.getBody());
         } catch (Throwable ex) {
             if (result.getCatchName() != null) {
-                interpreter.getEnvironment().assign(result.getCatchName(), ex, result.getPosition());
+                int position = result.getPosition();
+                if (position >= 0) {
+                    interpreter.getEnvironment().setLocalRef(position, ex);
+                } else {
+                    interpreter.getEnvironment().setRootVariable(result.getCatchName(), ex);
+                }
             }
             if (result.getCatchBody() != null) {
                 value = interpreter.evaluate(result.getCatchBody());
@@ -105,16 +110,17 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         mv.visitVarInsn(ASTORE, exVar);
         // 如果有 catch 变量名，则将异常赋值给该变量
         if (result.getCatchName() != null) {
-            // 加载 env
+            int position = result.getPosition();
             Instructions.loadEnvironment(mv, ctx);
-            // 加载变量名
-            mv.visitLdcInsn(result.getCatchName());
-            // 加载异常对象
-            mv.visitVarInsn(ALOAD, exVar);
-            // 加载 position
-            mv.visitLdcInsn(result.getPosition());
-            // 调用 assign 方法
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "assign", "(" + STRING + OBJECT + I + ")" + VOID, false);
+            if (position >= 0) {
+                mv.visitLdcInsn(position);
+                mv.visitVarInsn(ALOAD, exVar);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")" + VOID, false);
+            } else {
+                mv.visitLdcInsn(result.getCatchName());
+                mv.visitVarInsn(ALOAD, exVar);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + STRING + OBJECT + ")" + VOID, false);
+            }
         }
         // 执行 catch body
         if (catchEval != null) {

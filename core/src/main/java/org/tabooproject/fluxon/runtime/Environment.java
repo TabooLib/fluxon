@@ -7,7 +7,6 @@ import org.tabooproject.fluxon.parser.DomainRegistry;
 import org.tabooproject.fluxon.runtime.collection.CopyOnWriteMap;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
-import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.util.KV;
 
@@ -44,9 +43,11 @@ public class Environment {
     // 根变量
     @Nullable
     protected final Map<String, Object> rootVariables;
-    // 局部变量（非 final 以支持根层级延迟初始化）
+    // 局部变量 - 原始类型
+    protected long[] localPrimitives;
+    // 局部变量 - 引用类型
     @Nullable
-    protected Object[] localVariables;
+    protected Object[] localRefs;
     // 局部变量对照表
     @Nullable
     protected String[] localVariableNames;
@@ -90,7 +91,8 @@ public class Environment {
         this.systemExtensionFunctions = systemExtensionFunctions;
         this.dispatchTables = dispatchTables;
         this.rootVariables = CopyOnWriteMap.wrap(values);
-        this.localVariables = localVariableCount > 0 ? new Object[localVariableCount] : null;
+        this.localPrimitives = localVariableCount > 0 ? new long[localVariableCount] : null;
+        this.localRefs = localVariableCount > 0 ? new Object[localVariableCount] : null;
         this.localVariableNames = localVariableCount > 0 ? new String[localVariableCount] : null;
         this.out = System.out;
         this.err = System.err;
@@ -123,7 +125,8 @@ public class Environment {
         this.systemExtensionFunctions = null;
         this.dispatchTables = null;
         this.rootVariables = null;
-        this.localVariables = localVariables > 0 ? new Object[localVariables] : null;
+        this.localPrimitives = localVariables > 0 ? new long[localVariables] : null;
+        this.localRefs = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
         this.target = parentEnv.target;
         this.out = null;
@@ -326,8 +329,9 @@ public class Environment {
      * @param count 局部变量数量
      */
     public void initializeRootLocalVariables(int count) {
-        if (this == root && count > 0 && localVariables == null) {
-            this.localVariables = new Object[count];
+        if (this == root && count > 0 && localRefs == null) {
+            this.localPrimitives = new long[count];
+            this.localRefs = new Object[count];
             this.localVariableNames = new String[count];
         }
     }
@@ -343,73 +347,98 @@ public class Environment {
     }
 
     /**
-     * 更新变量值
-     * 根据 position 参数决定更新局部变量还是根变量
+     * 获取根变量值
      *
-     * @param name  变量名
-     * @param value 新的变量值
-     * @param index 索引（-1 索引表示根变量）
-     */
-    public void assign(@NotNull String name, @Nullable Object value, int index) {
-        if (index == -1) {
-            Objects.requireNonNull(root.rootVariables).put(name, value);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                localVariables[index] = value;
-                if (localVariableNames != null) {
-                    localVariableNames[index] = name;
-                }
-            } else if (parent != null) {
-                parent.assign(name, value, index);
-            } else {
-                throw new VariableNotFoundError(this, name, index, Arrays.asList(Optional.ofNullable(localVariableNames).orElse(new String[0])));
-            }
-        }
-    }
-
-    /**
-     * 判断变量是否存在
-     *
-     * @param name  变量名
-     * @param index 索引（-1 索引表示根变量）
-     * @return 存在与否
-     */
-    public boolean has(@NotNull String name, int index) {
-        if (index == -1) {
-            return Objects.requireNonNull(root.rootVariables).containsKey(name);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                return true;
-            }
-            if (parent != null) {
-                return parent.has(name, index);
-            }
-            return false;
-        }
-    }
-
-    /**
-     * 获取变量值
-     * 根据 position 参数决定更新局部变量还是根变量
-     *
-     * @param name  变量名
-     * @param index 索引（-1 索引表示根变量）
+     * @param name 变量名
      * @return 变量值
      */
     @Nullable
-    public Object get(@NotNull String name, int index) {
-        if (index == -1) {
-            return Objects.requireNonNull(root.rootVariables).get(name);
-        } else {
-            if (localVariables != null && index < localVariables.length) {
-                return localVariables[index];
-            }
-            if (parent != null) {
-                return parent.get(name, index);
-            }
-            return null;
+    public Object getRootVariable(@NotNull String name) {
+        return Objects.requireNonNull(root.rootVariables).get(name);
+    }
+
+    /**
+     * 设置根变量值
+     *
+     * @param name  变量名
+     * @param value 新的变量值
+     */
+    public void setRootVariable(@NotNull String name, @Nullable Object value) {
+        Objects.requireNonNull(root.rootVariables).put(name, value);
+    }
+
+    /**
+     * 判断根变量是否存在
+     *
+     * @param name 变量名
+     * @return 存在与否
+     */
+    public boolean hasRootVariable(@NotNull String name) {
+        return Objects.requireNonNull(root.rootVariables).containsKey(name);
+    }
+
+    // region 局部变量 - 引用类型
+
+    /**
+     * 获取局部引用变量（支持闭包穿透：当索引超出当前环境时走父链）
+     *
+     * @param index 局部变量索引
+     * @return 变量值
+     */
+    @Nullable
+    public Object getLocalRef(int index) {
+        if (localRefs != null && index < localRefs.length) {
+            return localRefs[index];
+        }
+        if (parent != null) {
+            return parent.getLocalRef(index);
+        }
+        return null;
+    }
+
+    /**
+     * 设置局部引用变量（支持闭包穿透：当索引超出当前环境时走父链）
+     *
+     * @param index 局部变量索引
+     * @param value 变量值
+     */
+    public void setLocalRef(int index, @Nullable Object value) {
+        if (localRefs != null && index < localRefs.length) {
+            localRefs[index] = value;
+        } else if (parent != null) {
+            parent.setLocalRef(index, value);
         }
     }
+
+    // endregion
+
+    // region 局部变量 - 原始类型
+
+    public int getLocalInt(int index) {
+        return (int) localPrimitives[index];
+    }
+
+    public void setLocalInt(int index, int v) {
+        localPrimitives[index] = v;
+    }
+
+    public long getLocalLong(int index) {
+        return localPrimitives[index];
+    }
+
+    public void setLocalLong(int index, long v) {
+        localPrimitives[index] = v;
+    }
+
+    public double getLocalDouble(int index) {
+        return Double.longBitsToDouble(localPrimitives[index]);
+    }
+
+    public void setLocalDouble(int index, double v) {
+        localPrimitives[index] = Double.doubleToRawLongBits(v);
+    }
+
+    // endregion
 
     /**
      * 获取根环境中的所有变量
@@ -420,11 +449,11 @@ public class Environment {
     }
 
     /**
-     * 获取当前环境中的所有局部变量
+     * 获取当前环境中的局部引用变量数组
      */
     @Nullable
-    public Object[] getLocalVariables() {
-        return localVariables;
+    public Object[] getLocalRefs() {
+        return localRefs;
     }
 
     /**

@@ -21,7 +21,7 @@ public abstract class AbstractDestructurer implements Destructurer {
         int index = 0;
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
             if (index >= fromIndex) {
-                environment.assign(entry.getKey(), null, entry.getValue());
+                DestructuringRegistry.assignVariable(environment, entry.getKey(), null, entry.getValue());
             }
             index++;
         }

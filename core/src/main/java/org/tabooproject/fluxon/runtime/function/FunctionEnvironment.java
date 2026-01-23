@@ -15,8 +15,8 @@ public class FunctionEnvironment {
         runtime.getExportRegistry().registerClass(Environment.class);
         // 变量
         runtime.registerExtensionFunction(Environment.class, "localVariables", 0, context -> {
-            @Nullable Object[] localVariables = context.getTarget().getLocalVariables();
-            context.setReturnRef(localVariables != null ? Arrays.asList(localVariables) : null);
+            @Nullable Object[] localRefs = context.getTarget().getLocalRefs();
+            context.setReturnRef(localRefs != null ? Arrays.asList(localRefs) : null);
         });
         runtime.registerExtensionFunction(Environment.class, "localVariableNames", 0, context -> {
             @Nullable String[] localVariableNames = context.getTarget().getLocalVariableNames();

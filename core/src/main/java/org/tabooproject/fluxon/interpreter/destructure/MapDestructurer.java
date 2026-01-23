@@ -22,7 +22,7 @@ public class MapDestructurer extends AbstractDestructurer {
         }
         Map<?, ?> map = (Map<?, ?>) element;
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
-            environment.assign(entry.getKey(), map.get(entry.getKey()), entry.getValue());
+            DestructuringRegistry.assignVariable(environment, entry.getKey(), map.get(entry.getKey()), entry.getValue());
         }
     }
 } 

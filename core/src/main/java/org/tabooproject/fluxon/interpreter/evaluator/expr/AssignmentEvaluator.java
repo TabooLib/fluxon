@@ -41,14 +41,17 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         // 变量赋值
         if (target instanceof Identifier) {
             String name = ((Identifier) target).getValue();
+            int position = result.getPosition();
             // 根据赋值操作符类型处理赋值
-            if (result.getOperator().getType() == TokenType.ASSIGN) {
-                environment.assign(name, value, result.getPosition());
-            } else {
+            if (result.getOperator().getType() != TokenType.ASSIGN) {
                 // 处理复合赋值
-                Object current = environment.get(name, result.getPosition());
+                Object current = position >= 0 ? environment.getLocalRef(position) : environment.getRootVariable(name);
                 value = applyCompoundOperation(current, value, result.getOperator().getType());
-                environment.assign(name, value, result.getPosition());
+            }
+            if (position >= 0) {
+                environment.setLocalRef(position, value);
+            } else {
+                environment.setRootVariable(name, value);
             }
         }
         // 索引访问赋值
@@ -150,33 +153,48 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             CodeContext ctx,
             MethodVisitor mv
     ) {
+        int position = result.getPosition();
         TokenType type = result.getOperator().getType();
-        if (type == TokenType.ASSIGN) {
-            // env 对象
-            Instructions.loadEnvironment(mv, ctx);
-            // 写入变量
-            mv.visitLdcInsn(name);
-            if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
-                throw new VoidError("Void type is not allowed for assignment value");
+        if (position >= 0) {
+            // 局部变量赋值 -> env.setLocalRef(index, value)
+            if (type == TokenType.ASSIGN) {
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitLdcInsn(position);
+                if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+                    throw new VoidError("Void type is not allowed for assignment value");
+                }
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
+            } else {
+                // 复合赋值: env.setLocalRef(index, op(env.getLocalRef(index), newValue))
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitInsn(DUP);
+                mv.visitLdcInsn(position);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
+                generateCompoundOperation(result, valueEval, type, ctx, mv);
+                mv.visitLdcInsn(position);
+                mv.visitInsn(SWAP);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
             }
-            // 压入 index 参数
-            mv.visitLdcInsn(result.getPosition());
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "assign", ASSIGN, false);
         } else {
-            // env 对象
-            Instructions.loadEnvironment(mv, ctx);
-            // 压入变量名 -> 用于后续的写回操作
-            mv.visitLdcInsn(name);
-            // 复制栈顶的两个值用于进行操作
-            mv.visitInsn(DUP2);
-            // 压入 index 参数
-            mv.visitLdcInsn(result.getPosition());
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "get", GET, false);
-            // 执行复合操作
-            generateCompoundOperation(result, valueEval, type, ctx, mv);
-            // 压入 index 参数
-            mv.visitLdcInsn(result.getPosition());
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "assign", ASSIGN, false);
+            // 根变量赋值 -> env.setRootVariable(name, value)
+            if (type == TokenType.ASSIGN) {
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitLdcInsn(name);
+                if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+                    throw new VoidError("Void type is not allowed for assignment value");
+                }
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
+            } else {
+                // 复合赋值: env.setRootVariable(name, op(env.getRootVariable(name), newValue))
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitInsn(DUP);
+                mv.visitLdcInsn(name);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
+                generateCompoundOperation(result, valueEval, type, ctx, mv);
+                mv.visitLdcInsn(name);
+                mv.visitInsn(SWAP);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
+            }
         }
     }
 
@@ -264,8 +282,10 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         }
     }
 
-    private static final String ASSIGN = "(" + STRING + OBJECT + I + ")" + VOID;
-    private static final String GET = "(" + STRING + I + ")" + OBJECT;
+    private static final String SET_LOCAL_REF = "(" + I + OBJECT + ")" + VOID;
+    private static final String GET_LOCAL_REF = "(" + I + ")" + OBJECT;
+    private static final String SET_ROOT_VARIABLE = "(" + STRING + OBJECT + ")" + VOID;
+    private static final String GET_ROOT_VARIABLE = "(" + STRING + ")" + OBJECT;
 
     private static final Map<TokenType, String> OPERATORS = new HashMap<>();
 

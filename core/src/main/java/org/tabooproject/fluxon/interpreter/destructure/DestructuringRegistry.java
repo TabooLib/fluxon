@@ -92,10 +92,10 @@ public class DestructuringRegistry {
         if (variables.size() == 1) {
             if (variables instanceof SingleEntryMap) {
                 SingleEntryMap<String, Integer> single = (SingleEntryMap<String, Integer>) variables;
-                environment.assign(single.getKey(), element, single.getValue());
+                assignVariable(environment, single.getKey(), element, single.getValue());
             } else {
                 Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
-                environment.assign(entry.getKey(), element, entry.getValue());
+                assignVariable(environment, entry.getKey(), element, entry.getValue());
             }
             return;
         }
@@ -108,5 +108,16 @@ public class DestructuringRegistry {
         }
         // 如果没有找到合适的解构器，使用默认解构器
         defaultDestructurer.destructure(environment, variables, element);
+    }
+
+    /**
+     * 根据索引赋值变量（局部变量走 setLocalRef，根变量走 setRootVariable）
+     */
+    static void assignVariable(Environment environment, String name, Object value, int index) {
+        if (index >= 0) {
+            environment.setLocalRef(index, value);
+        } else {
+            environment.setRootVariable(name, value);
+        }
     }
 }

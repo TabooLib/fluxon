@@ -95,7 +95,7 @@ public class DomainTest {
     @Test
     void testDomainWithTargetContext() {
         registry.register("withContext", (env, body) -> {
-            env.assign("contextValue", "context-value", -1);
+            env.setRootVariable("contextValue", "context-value");
             return body.get();
         });
         assertBothEqual("context-value", FluxonTestUtil.runSilent(
@@ -108,12 +108,12 @@ public class DomainTest {
     @Test
     void testNestedDomains() {
         registry.register("outer", (env, body) -> {
-            env.assign("outerContext", "outer-context", -1);
+            env.setRootVariable("outerContext", "outer-context");
             return body.get();
         });
         registry.register("inner", (env, body) -> {
-            String outerContext = (String) env.get("outerContext", -1);
-            env.assign("innerContext", outerContext + ":inner-context", -1);
+            String outerContext = (String) env.getRootVariable("outerContext");
+            env.setRootVariable("innerContext", outerContext + ":inner-context");
             return body.get();
         });
         assertBothEqual("outer-context:inner-context", FluxonTestUtil.runSilent(

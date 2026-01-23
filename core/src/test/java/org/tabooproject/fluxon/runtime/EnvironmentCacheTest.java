@@ -141,7 +141,7 @@ public class EnvironmentCacheTest {
         env1.defineRootVariable("testVar", "value1");
 
         // 验证 env2 中没有这个变量
-        assertFalse(env2.has("testVar", -1),
+        assertFalse(env2.hasRootVariable("testVar"),
                 "不同环境的根变量应该是独立的");
 
         System.out.println("✓ 根变量隔离验证通过");

@@ -81,6 +81,10 @@ public class FunctionContext<Target> implements AutoCloseable {
         return primitives[index] != 0;
     }
 
+    public long getPrimitive(int index) {
+        return primitives[index];
+    }
+
     // ====================== 参数读取 - 引用类型 ======================
 
     public Object getRef(int index) {
