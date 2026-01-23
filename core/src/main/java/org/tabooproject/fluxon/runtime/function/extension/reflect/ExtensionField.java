@@ -50,7 +50,7 @@ public class ExtensionField {
                 // 设置可访问性
                 .function("setAccessible", 1, (context) -> {
                     Field field = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getRef(0);
+                    boolean accessible = (Boolean) context.getArgBoxed(0);
                     field.setAccessible(accessible);
                 })
                 // 检查是否可访问

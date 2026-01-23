@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -29,20 +30,37 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Type evaluate(Interpreter interpreter, FunctionCallExpression result) {
         ParseResult[] expressionArguments = result.getArguments();
         int argumentCount = expressionArguments.length;
-        Object[] arguments = new Object[argumentCount];
-        for (int i = 0; i < argumentCount; i++) {
-            Type t = interpreter.evaluate(expressionArguments[i]);
-            arguments[i] = interpreter.getResultBoxed(t);
-        }
-        interpreter.resultRef = Intrinsics.callFunction(
+        FunctionContext<?> ctx = Intrinsics.prepareCall(
                 FunctionContextPool.local(),
                 interpreter.getEnvironment(),
                 result.getFunctionName(),
-                arguments,
+                argumentCount,
                 result.getPositionIndex(),
-                result.getExtensionPositionIndex(),
-                interpreter
+                result.getExtensionPositionIndex()
         );
+        for (int i = 0; i < argumentCount; i++) {
+            Type t = interpreter.evaluate(expressionArguments[i]);
+            if (t.isPrimitive()) {
+                switch (t.getDescriptor()) {
+                    case "I":
+                    case "Z":
+                        ctx.setInt(i, (int) interpreter.resultPrimitive);
+                        break;
+                    case "J":
+                        ctx.setLong(i, interpreter.resultPrimitive);
+                        break;
+                    case "F":
+                        ctx.setFloat(i, Float.intBitsToFloat((int) interpreter.resultPrimitive));
+                        break;
+                    case "D":
+                        ctx.setDouble(i, Double.longBitsToDouble(interpreter.resultPrimitive));
+                        break;
+                }
+            } else {
+                ctx.setRef(i, interpreter.resultRef);
+            }
+        }
+        interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
         return Type.OBJECT;
     }
 
@@ -50,50 +68,68 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Type generateBytecode(FunctionCallExpression result, CodeContext ctx, MethodVisitor mv) {
         ParseResult[] arguments = result.getArguments();
         int argumentCount = arguments.length;
-        // 加载 pool
+        int savedLocalVar = ctx.getLocalVarIndex();
+        // 1. 调用 prepareCall → FunctionContext
         Instructions.loadPool(mv, ctx);
-        // 加载环境
         Instructions.loadEnvironment(mv, ctx);
-        // 压入函数名
         mv.visitLdcInsn(result.getFunctionName());
-        // 创建参数数组
         mv.visitLdcInsn(argumentCount);
-        mv.visitTypeInsn(ANEWARRAY, Type.OBJECT.getPath());
-        // 填充参数数组
-        for (int i = 0; i < argumentCount; i++) {
-            mv.visitInsn(DUP);
-            mv.visitLdcInsn(i);
-            generateArgumentBytecode(ctx, mv, arguments[i]);
-            mv.visitInsn(AASTORE);
-        }
-        // 压入位置参数
         mv.visitLdcInsn(result.getPositionIndex());
         mv.visitLdcInsn(result.getExtensionPositionIndex());
-        // 调用 Intrinsics.callFunction
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
-                "callFunction",
-                "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + OBJECT_ARRAY + Type.I + Type.I + ")" + Type.OBJECT,
+                "prepareCall",
+                "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + "III)" + FunctionContext.TYPE,
                 false
         );
+        // 2. 存入局部变量
+        int ctxSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, ctxSlot);
+        // 3. 逐个设置参数
+        for (int i = 0; i < argumentCount; i++) {
+            mv.visitVarInsn(ALOAD, ctxSlot);
+            mv.visitLdcInsn(i);
+            Evaluator<ParseResult> argEval = ctx.getEvaluator(arguments[i]);
+            if (argEval == null) {
+                throw new EvaluatorNotFoundError("No evaluator found for argument expression");
+            }
+            Type t = argEval.generateBytecode(arguments[i], ctx, mv);
+            if (t == Type.VOID) {
+                throw new VoidError("Void type is not allowed for function arguments");
+            }
+            emitSetArg(t, mv);
+        }
+        // 4. 调用 finishCall
+        mv.visitVarInsn(ALOAD, ctxSlot);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Intrinsics.TYPE.getPath(),
+                "finishCall",
+                "(" + FunctionContext.TYPE + ")" + Type.OBJECT,
+                false
+        );
+        // 释放临时变量槽位
+        ctx.restoreLocalVarIndex(savedLocalVar);
         return Type.OBJECT;
     }
 
     /**
-     * 生成单个参数表达式的字节码
+     * 根据参数类型生成对应的 FunctionContext setter 调用
      */
-    private void generateArgumentBytecode(CodeContext ctx, MethodVisitor mv, ParseResult argument) {
-        Evaluator<ParseResult> argEval = ctx.getEvaluator(argument);
-        if (argEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for argument expression");
+    private static void emitSetArg(Type t, MethodVisitor mv) {
+        String ctxPath = FunctionContext.TYPE.getPath();
+        if (t == Type.I || t == Type.Z) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
+        } else if (t == Type.J) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setLong", "(IJ)V", false);
+        } else if (t == Type.F) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
+        } else if (t == Type.D) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
+        } else {
+            // Object 类型
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
         }
-        Type t = argEval.generateBytecode(argument, ctx, mv);
-        if (t == Type.VOID) {
-            throw new VoidError("Void type is not allowed for function arguments");
-        }
-        boxing(t, mv);
     }
-
-    private static final Type OBJECT_ARRAY = new Type(Object.class, 1);
 }

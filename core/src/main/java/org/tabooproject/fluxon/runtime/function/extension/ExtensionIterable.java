@@ -219,7 +219,7 @@ public class ExtensionIterable {
                 // 将元素按指定大小分块
                 .function("chunked", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int size = ((Number) context.getRef(0)).intValue();
+                    int size = context.getAsInt(0);
                     if (size <= 0) throw new IllegalArgumentException("Chunk size must be positive");
                     List<List<Object>> result = new ArrayList<>();
                     List<Object> currentChunk = new ArrayList<>(size);
@@ -275,7 +275,7 @@ public class ExtensionIterable {
                 // 取前 n 个元素
                 .function("take", 1, (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
-                    int n = ((Number) context.getRef(0)).intValue();
+                    int n = context.getAsInt(0);
                     // 如果 n <= 0 丢弃所有元素
                     if (n <= 0) {
                         context.setReturnRef(new ArrayList<>());
@@ -295,7 +295,7 @@ public class ExtensionIterable {
                 // 丢弃前 n 个元素
                 .function("drop", 1, (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
-                    int n = ((Number) context.getRef(0)).intValue();
+                    int n = context.getAsInt(0);
                     // 如果 n <= 0 保留所有元素
                     if (n <= 0) {
                         context.setReturnRef(list);
@@ -314,7 +314,7 @@ public class ExtensionIterable {
                 // 取后 n 个元素
                 .function("takeLast", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int n = ((Number) context.getRef(0)).intValue();
+                    int n = context.getAsInt(0);
                     // 如果 n <= 0 丢弃所有元素
                     if (n <= 0) {
                         context.setReturnRef(new ArrayList<>());
@@ -334,7 +334,7 @@ public class ExtensionIterable {
                 // 丢弃后 n 个元素
                 .function("dropLast", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int n = ((Number) context.getRef(0)).intValue();
+                    int n = context.getAsInt(0);
                     // 如果 n <= 0 保留所有元素
                     if (n <= 0) {
                         context.setReturnRef(iterable);

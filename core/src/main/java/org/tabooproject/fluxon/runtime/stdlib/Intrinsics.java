@@ -131,35 +131,111 @@ public final class Intrinsics {
     }
 
     /**
-     * 执行函数调用
+     * 准备函数调用：解析函数并从池中借用 FunctionContext
+     * 调用方随后通过 ctx.setInt/setRef 等方法设置参数，最后调用 finishCall
      *
-     * @param pool        函数上下文池（避免重复 ThreadLocal.get()，可为 null）
+     * @param pool        函数上下文池
      * @param environment 脚本运行环境
      * @param name        函数名称
-     * @param arguments   参数数组
+     * @param argCount    参数数量
      * @param pos         函数位置
      * @param exPos       扩展函数位置
-     * @return 函数调用结果
+     * @return 准备好的 FunctionContext
      */
-    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
-        return callFunction(pool, environment, name, arguments, pos, exPos, null);
-    }
-
-    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos, @Nullable Interpreter interpreter) {
+    public static FunctionContext<?> prepareCall(FunctionContextPool pool, Environment environment, String name, int argCount, int pos, int exPos) {
         if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
-        Function function = resolveFunction(environment, target, name, arguments, pos, exPos);
-        return callResolvedFunction(pool, function, target, arguments, environment, interpreter);
+        Function function = resolveFunction(environment, target, name, argCount, pos, exPos);
+        return pool.borrow(function, target, argCount, environment);
+    }
+
+    /**
+     * 执行函数调用（兼容旧版 Object[] 参数签名，用于测试和外部调用）
+     */
+    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
+        if (pool == null) pool = FunctionContextPool.local();
+        Object target = environment.getTarget();
+        Function function = resolveFunction(environment, target, name, arguments.length, pos, exPos);
+        FunctionContext<?> ctx = pool.borrow(function, target, arguments, environment);
+        // finishCall handles close internally for sync, and detachFromPool for async
+        return finishCall(ctx, null);
+    }
+
+    /**
+     * 完成函数调用（无 interpreter）
+     */
+    public static Object finishCall(FunctionContext<?> ctx) {
+        return finishCall(ctx, null);
+    }
+
+    /**
+     * 完成函数调用：处理 sync/async/primarySync
+     */
+    public static Object finishCall(FunctionContext<?> ctx, @Nullable Interpreter interpreter) {
+        Function function = ctx.getFunction();
+        if (function.isAsync()) {
+            FunctionContextPool pool = ctx.getPool();
+            Interpreter child = interpreter != null ? interpreter.createChild() : null;
+            ctx.setInterpreter(child);
+            ctx.detachFromPool();
+            return ThreadPoolManager.getInstance().submitAsync(() -> {
+                try {
+                    function.call(ctx);
+                    return ctx.getReturnRef();
+                } finally {
+                    // 归还到原借出线程的池
+                    if (pool != null) {
+                        pool.returnFromOtherThread(ctx);
+                    }
+                }
+            });
+        } else if (function.isPrimarySync()) {
+            FunctionContextPool pool = ctx.getPool();
+            Interpreter child = interpreter != null ? interpreter.createChild() : null;
+            ctx.setInterpreter(child);
+            ctx.detachFromPool();
+            CompletableFuture<Object> future = new CompletableFuture<>();
+            FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
+                try {
+                    function.call(ctx);
+                    future.complete(ctx.getReturnRef());
+                } catch (Throwable ex) {
+                    if (AnnotationAccess.hasAnnotation(function, "except")) {
+                        ex.printStackTrace();
+                    }
+                    future.completeExceptionally(ex);
+                } finally {
+                    // 归还到原借出线程的池
+                    if (pool != null) {
+                        pool.returnFromOtherThread(ctx);
+                    }
+                }
+            });
+            return future;
+        }
+        // sync
+        try {
+            ctx.setInterpreter(interpreter);
+            function.call(ctx);
+            Object result = ctx.getReturnRef();
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            if (AnnotationAccess.hasAnnotation(function, "except")) {
+                ex.printStackTrace();
+            }
+            throw ex;
+        }
     }
 
     /**
      * 解析函数引用，若找不到则抛出 FunctionNotFoundError
      */
-    public static Function resolveFunction(Environment environment, Object target, String name, Object[] arguments, int pos, int exPos) {
+    public static Function resolveFunction(Environment environment, Object target, String name, int argCount, int pos, int exPos) {
         Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
-        // 如果函数不存在
         if (function == null) {
-            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
+            throw new FunctionNotFoundError(environment, target, name, argCount, pos, exPos);
         }
         return function;
     }
@@ -180,61 +256,6 @@ public final class Intrinsics {
             }
         }
         return function;
-    }
-
-    /**
-     * 在已解析函数的情况下执行调用（处理 async/primarySync 等逻辑）
-     */
-    public static Object callResolvedFunction(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
-        return callResolvedFunction(pool, function, target, arguments, environment, null);
-    }
-
-    public static Object callResolvedFunction(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
-        if (pool == null) pool = FunctionContextPool.local();
-        if (function.isAsync()) {
-            // async：为目标线程创建 child interpreter 隔离 result slots
-            Interpreter child = interpreter != null ? interpreter.createChild() : null;
-            return ThreadPoolManager.getInstance().submitAsync(() -> callSynchronously(FunctionContextPool.local(), function, target, arguments, environment, child));
-        } else if (function.isPrimarySync()) {
-            return callPrimarySync(function, target, arguments, environment, interpreter);
-        }
-        return callSynchronously(pool, function, target, arguments, environment, interpreter);
-    }
-
-    /**
-     * 执行函数调用并在当前线程池化上下文
-     */
-    private static Object callSynchronously(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
-        try (FunctionContext<?> context = pool.borrow(function, target, arguments, environment)) {
-            context.setInterpreter(interpreter);
-            function.call(context);
-            return context.getReturnRef();
-        } catch (Throwable ex) {
-            if (AnnotationAccess.hasAnnotation(function, "except")) {
-                ex.printStackTrace();
-            }
-            throw ex;
-        }
-    }
-
-    /**
-     * 调用主线程同步函数
-     * 注意：在主线程执行，需要使用主线程的 FunctionContextPool
-     */
-    private static CompletableFuture<Object> callPrimarySync(Function function, Object target, Object[] arguments, Environment environment, @Nullable Interpreter interpreter) {
-        Interpreter child = interpreter != null ? interpreter.createChild() : null;
-        CompletableFuture<Object> future = new CompletableFuture<>();
-        FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
-            try {
-                future.complete(callSynchronously(FunctionContextPool.local(), function, target, arguments, environment, child));
-            } catch (Throwable ex) {
-                if (AnnotationAccess.hasAnnotation(function, "except")) {
-                    ex.printStackTrace();
-                }
-                future.completeExceptionally(ex);
-            }
-        });
-        return future;
     }
 
     /**
@@ -286,7 +307,7 @@ public final class Intrinsics {
         final int len = context.getArgumentCount();
         for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
             final int slot = entry.getValue();
-            final Object value = (slot >= 0 && slot < len) ? context.getRef(slot) : null;
+            final Object value = (slot >= 0 && slot < len) ? context.getArgBoxed(slot) : null;
             functionEnv.setLocalRef(slot, value);
             functionEnv.getLocalVariableNames()[slot] = entry.getKey();
         }

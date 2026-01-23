@@ -97,7 +97,7 @@ public class ExtensionPath {
                 // 递归遍历目录树
                 .function("walk", Arrays.asList(0, 1), (context) -> {
                     Path path = Objects.requireNonNull(context.getTarget());
-                    int maxDepth = 0 < context.getArgumentCount() ? Coerce.asInteger(context.getRef(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
+                    int maxDepth = 0 < context.getArgumentCount() ? Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
                     try (Stream<Path> stream = Files.walk(path, maxDepth)) {
                         context.setReturnRef(stream.collect(Collectors.toList()));
                     } catch (IOException e) {

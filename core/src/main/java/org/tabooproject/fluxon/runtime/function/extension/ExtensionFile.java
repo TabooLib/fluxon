@@ -228,7 +228,7 @@ public class ExtensionFile {
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
                         if (1 < context.getArgumentCount()) {
-                            boolean replaceExisting = Coerce.asBoolean(context.getRef(1)).orElse(false);
+                            boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
                             if (replaceExisting) {
                                 Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                             } else {
@@ -249,7 +249,7 @@ public class ExtensionFile {
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
                         if (1 < context.getArgumentCount()) {
-                            boolean replaceExisting = Coerce.asBoolean(context.getRef(1)).orElse(false);
+                            boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
                             if (replaceExisting) {
                                 Files.move(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                             } else {
@@ -273,7 +273,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = 1 < context.getArgumentCount() ? Coerce.asBoolean(context.getRef(1)).orElse(false) : false;
+                    boolean replaceExisting = 1 < context.getArgumentCount() ? Coerce.asBoolean(context.getArgBoxed(1)).orElse(false) : false;
                     try {
                         copyRecursively(file.toPath(), target.toPath(), replaceExisting);
                         context.setReturnRef(target);
@@ -298,7 +298,7 @@ public class ExtensionFile {
                 // 遍历目录树
                 .function("walk", Arrays.asList(0, 1), (context) -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    int maxDepth = 0 < context.getArgumentCount() ? Coerce.asInteger(context.getRef(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
+                    int maxDepth = 0 < context.getArgumentCount() ? Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
                     try (Stream<Path> stream = Files.walk(file.toPath(), maxDepth)) {
                         context.setReturnRef(stream.map(Path::toFile).collect(Collectors.toList()));
                     } catch (IOException e) {

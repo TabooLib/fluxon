@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.interpreter.Interpreter;
 
 /**
  * 函数调用上下文
@@ -16,6 +17,7 @@ public class FunctionContext<Target> implements AutoCloseable {
     private static final int INITIAL_CAPACITY = 8;
     private static final Object[] EMPTY_REFS = new Object[0];
     private static final long[] EMPTY_PRIMITIVES = new long[0];
+    private static final byte[] EMPTY_ARG_TYPES = new byte[0];
 
     @NotNull
     private Function function;
@@ -26,10 +28,11 @@ public class FunctionContext<Target> implements AutoCloseable {
     @Nullable
     private FunctionContextPool pool;
     @Nullable
-    private Object interpreter; // Interpreter 实例，用于解释执行时传递执行上下文
+    private Interpreter interpreter; // Interpreter 实例，用于解释执行时传递执行上下文
 
     private long[] primitives;
     private Object[] refs;
+    private byte[] argTypes; // 0=ref, 'I'/'J'/'F'/'D'/'Z'=primitive
     private int argumentCount;
 
     public long returnPrimitive;
@@ -57,6 +60,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         this.refs = refs;
         this.argumentCount = refs.length;
         this.primitives = EMPTY_PRIMITIVES;
+        this.argTypes = EMPTY_ARG_TYPES;
         this.environment = environment;
         this.pool = pool;
     }
@@ -97,27 +101,102 @@ public class FunctionContext<Target> implements AutoCloseable {
 
     public void setInt(int index, int v) {
         ensurePrimitivesCapacity(index);
+        ensureArgTypesCapacity(index);
         primitives[index] = v;
+        argTypes[index] = (byte) 'I';
     }
 
     public void setLong(int index, long v) {
         ensurePrimitivesCapacity(index);
+        ensureArgTypesCapacity(index);
         primitives[index] = v;
+        argTypes[index] = (byte) 'J';
     }
 
     public void setDouble(int index, double v) {
         ensurePrimitivesCapacity(index);
+        ensureArgTypesCapacity(index);
         primitives[index] = Double.doubleToRawLongBits(v);
+        argTypes[index] = (byte) 'D';
     }
 
     public void setFloat(int index, float v) {
         ensurePrimitivesCapacity(index);
+        ensureArgTypesCapacity(index);
         primitives[index] = Float.floatToRawIntBits(v);
+        argTypes[index] = (byte) 'F';
+    }
+
+    public void setBool(int index, boolean v) {
+        ensurePrimitivesCapacity(index);
+        ensureArgTypesCapacity(index);
+        primitives[index] = v ? 1 : 0;
+        argTypes[index] = (byte) 'Z';
     }
 
     public void setRef(int index, Object v) {
         ensureRefsCapacity(index);
+        ensureArgTypesCapacity(index);
         refs[index] = v;
+        argTypes[index] = 0;
+    }
+
+    // ====================== 参数类型查询 ======================
+
+    public boolean isArgPrimitive(int index) {
+        return index < argTypes.length && argTypes[index] != 0;
+    }
+
+    public byte getArgType(int index) {
+        return index < argTypes.length ? argTypes[index] : 0;
+    }
+
+    // ====================== 便捷读取 ======================
+
+    public double getAsDouble(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : 0;
+        if (t == 0) return ((Number) refs[index]).doubleValue();
+        switch (t) {
+            case 'J': return (double) primitives[index];
+            case 'F': return Float.intBitsToFloat((int) primitives[index]);
+            case 'D': return Double.longBitsToDouble(primitives[index]);
+            default: return (int) primitives[index]; // I, Z
+        }
+    }
+
+    public int getAsInt(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : 0;
+        if (t == 0) return ((Number) refs[index]).intValue();
+        switch (t) {
+            case 'J': return (int) primitives[index];
+            case 'F': return (int) Float.intBitsToFloat((int) primitives[index]);
+            case 'D': return (int) Double.longBitsToDouble(primitives[index]);
+            default: return (int) primitives[index]; // I, Z
+        }
+    }
+
+    public long getAsLong(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : 0;
+        if (t == 0) return ((Number) refs[index]).longValue();
+        switch (t) {
+            case 'I': return (int) primitives[index]; // sign-extend
+            case 'F': return (long) Float.intBitsToFloat((int) primitives[index]);
+            case 'D': return (long) Double.longBitsToDouble(primitives[index]);
+            default: return primitives[index]; // J, Z
+        }
+    }
+
+    public Object getArgBoxed(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : 0;
+        if (t == 0) return refs[index];
+        switch (t) {
+            case 'I': return (int) primitives[index];
+            case 'J': return primitives[index];
+            case 'F': return Float.intBitsToFloat((int) primitives[index]);
+            case 'D': return Double.longBitsToDouble(primitives[index]);
+            case 'Z': return primitives[index] != 0;
+        }
+        return refs[index];
     }
 
     // ====================== 返回值写入 ======================
@@ -203,7 +282,7 @@ public class FunctionContext<Target> implements AutoCloseable {
     /**
      * 设置关联的解释器（解释执行时使用）
      */
-    public void setInterpreter(@Nullable Object interpreter) {
+    public void setInterpreter(@Nullable Interpreter interpreter) {
         this.interpreter = interpreter;
     }
 
@@ -211,7 +290,7 @@ public class FunctionContext<Target> implements AutoCloseable {
      * 获取关联的解释器
      */
     @Nullable
-    public Object getInterpreter() {
+    public Interpreter getInterpreter() {
         return interpreter;
     }
 
@@ -234,9 +313,34 @@ public class FunctionContext<Target> implements AutoCloseable {
         this.interpreter = null;
     }
 
+    @SuppressWarnings("unchecked")
+    void reset(
+            @NotNull Function function,
+            @Nullable Object target,
+            int argCount,
+            @NotNull Environment environment) {
+        this.function = function;
+        this.target = (Target) target;
+        this.refs = argCount > 0 ? new Object[argCount] : EMPTY_REFS;
+        this.argumentCount = argCount;
+        this.environment = environment;
+        this.returnPrimitive = 0;
+        this.returnRef = null;
+        this.returnType = null;
+        this.interpreter = null;
+    }
+
+    /**
+     * 从池中分离，close() 变为 no-op（用于 async 转移所有权）
+     */
+    public void detachFromPool() {
+        this.pool = null;
+    }
+
     @SuppressWarnings("DataFlowIssue")
     void clearForPooling() {
         this.refs = EMPTY_REFS;
+        this.argTypes = EMPTY_ARG_TYPES;
         this.argumentCount = 0;
         this.target = null;
         this.environment = null;
@@ -264,6 +368,15 @@ public class FunctionContext<Target> implements AutoCloseable {
             if (argumentCount < newCap) {
                 argumentCount = newCap;
             }
+        }
+    }
+
+    private void ensureArgTypesCapacity(int index) {
+        if (argTypes.length <= index) {
+            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
+            byte[] newArr = new byte[newCap];
+            System.arraycopy(argTypes, 0, newArr, 0, argTypes.length);
+            argTypes = newArr;
         }
     }
 

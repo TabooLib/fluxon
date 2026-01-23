@@ -14,19 +14,19 @@ public class FunctionMath {
 
         // 最大最小值
         runtime.registerFunction("min", 2, context -> {
-            Number num0 = (Number) context.getRef(0);
-            Number num1 = (Number) context.getRef(1);
+            Number num0 = (Number) context.getArgBoxed(0);
+            Number num1 = (Number) context.getArgBoxed(1);
             context.setReturnRef(Operations.compareNumbers(num0, num1) < 0 ? num0 : num1);
         });
         runtime.registerFunction("max", 2, context -> {
-            Number num0 = (Number) context.getRef(0);
-            Number num1 = (Number) context.getRef(1);
+            Number num0 = (Number) context.getArgBoxed(0);
+            Number num1 = (Number) context.getArgBoxed(1);
             context.setReturnRef(Operations.compareNumbers(num0, num1) > 0 ? num0 : num1);
         });
         runtime.registerFunction("clamp", 3, context -> {
-            Number num = (Number) context.getRef(0);
-            Number min = (Number) context.getRef(1);
-            Number max = (Number) context.getRef(2);
+            Number num = (Number) context.getArgBoxed(0);
+            Number min = (Number) context.getArgBoxed(1);
+            Number max = (Number) context.getArgBoxed(2);
             double clamped = Math.max(min.doubleValue(), Math.min(num.doubleValue(), max.doubleValue()));
             if (num instanceof Integer && min instanceof Integer && max instanceof Integer) {
                 context.setReturnRef((int) clamped);
@@ -41,7 +41,7 @@ public class FunctionMath {
 
         // 绝对值
         runtime.registerFunction("abs", 1, context -> {
-            Number num = (Number) context.getRef(0);
+            Number num = (Number) context.getArgBoxed(0);
             double result = Math.abs(num.doubleValue());
             if (num instanceof Integer) {
                 int intValue = num.intValue();
@@ -64,49 +64,45 @@ public class FunctionMath {
 
         // 取整函数
         runtime.registerFunction("round", 1, context -> {
-            Number num = (Number) context.getRef(0);
-            long result = Math.round(num.doubleValue());
+            long result = Math.round(context.getAsDouble(0));
             context.setReturnRef(preserveIntegerType(result));
         });
         runtime.registerFunction("floor", 1, context -> {
-            Number num = (Number) context.getRef(0);
-            double result = Math.floor(num.doubleValue());
+            double result = Math.floor(context.getAsDouble(0));
             context.setReturnRef(preserveIntegerTypeFromDouble(result));
         });
         runtime.registerFunction("ceil", 1, context -> {
-            Number num = (Number) context.getRef(0);
-            double result = Math.ceil(num.doubleValue());
+            double result = Math.ceil(context.getAsDouble(0));
             context.setReturnRef(preserveIntegerTypeFromDouble(result));
         });
 
         // 三角函数
-        runtime.registerFunction("sin", 1, context -> context.setReturnRef(Math.sin(((Number) context.getRef(0)).doubleValue())));
-        runtime.registerFunction("cos", 1, context -> context.setReturnRef(Math.cos(((Number) context.getRef(0)).doubleValue())));
-        runtime.registerFunction("tan", 1, context -> context.setReturnRef(Math.tan(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("sin", 1, context -> context.setReturnRef(Math.sin(context.getAsDouble(0))));
+        runtime.registerFunction("cos", 1, context -> context.setReturnRef(Math.cos(context.getAsDouble(0))));
+        runtime.registerFunction("tan", 1, context -> context.setReturnRef(Math.tan(context.getAsDouble(0))));
         runtime.registerFunction("asin", 1, context -> {
-            double value = ((Number) context.getRef(0)).doubleValue();
+            double value = context.getAsDouble(0);
             validateRange(value, -1.0, 1.0, "asin input must be between -1 and 1");
             context.setReturnRef(Math.asin(value));
         });
         runtime.registerFunction("acos", 1, context -> {
-            double value = ((Number) context.getRef(0)).doubleValue();
+            double value = context.getAsDouble(0);
             validateRange(value, -1.0, 1.0, "acos input must be between -1 and 1");
             context.setReturnRef(Math.acos(value));
         });
-        runtime.registerFunction("atan", 1, context -> context.setReturnRef(Math.atan(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("atan", 1, context -> context.setReturnRef(Math.atan(context.getAsDouble(0))));
 
         // 指数与对数
-        runtime.registerFunction("exp", 1, context -> context.setReturnRef(Math.exp(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("exp", 1, context -> context.setReturnRef(Math.exp(context.getAsDouble(0))));
         runtime.registerFunction("log", 1, context -> {
-            double value = ((Number) context.getRef(0)).doubleValue();
+            double value = context.getAsDouble(0);
             validatePositive(value, "log input must be positive");
             context.setReturnRef(Math.log(value));
         });
         runtime.registerFunction("pow", 2, context -> {
-            Number base = (Number) context.getRef(0);
-            Number exponent = (Number) context.getRef(1);
-            double result = Math.pow(base.doubleValue(), exponent.doubleValue());
-            double expValue = exponent.doubleValue();
+            double baseVal = context.getAsDouble(0);
+            double expValue = context.getAsDouble(1);
+            double result = Math.pow(baseVal, expValue);
             if (expValue == Math.rint(expValue) && result == Math.rint(result) && !Double.isInfinite(result)) {
                 context.setReturnRef(preserveIntegerTypeFromDouble(result));
             } else {
@@ -114,7 +110,7 @@ public class FunctionMath {
             }
         });
         runtime.registerFunction("sqrt", 1, context -> {
-            double value = ((Number) context.getRef(0)).doubleValue();
+            double value = context.getAsDouble(0);
             validatePositive(value, "Cannot take square root of negative number");
             context.setReturnRef(Math.sqrt(value));
         });
@@ -127,10 +123,10 @@ public class FunctionMath {
                     context.setReturnRef(Math.random());
                     break;
                 case 1:
-                    context.setReturnRef(generateRandomSingle(context.getRef(0)));
+                    context.setReturnRef(generateRandomSingle(context.getArgBoxed(0)));
                     break;
                 case 2:
-                    context.setReturnRef(generateRandomRange(context.getRef(0), context.getRef(1)));
+                    context.setReturnRef(generateRandomRange(context.getArgBoxed(0), context.getArgBoxed(1)));
                     break;
                 default:
                     throw new IllegalArgumentException("random function accepts 0, 1, or 2 arguments, got " + argCount);
@@ -138,15 +134,15 @@ public class FunctionMath {
         });
 
         // 角度与弧度转换
-        runtime.registerFunction("rad", 1, context -> context.setReturnRef(Math.toRadians(((Number) context.getRef(0)).doubleValue())));
-        runtime.registerFunction("deg", 1, context -> context.setReturnRef(Math.toDegrees(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("rad", 1, context -> context.setReturnRef(Math.toRadians(context.getAsDouble(0))));
+        runtime.registerFunction("deg", 1, context -> context.setReturnRef(Math.toDegrees(context.getAsDouble(0))));
 
         // 插值
         runtime.registerFunction("lerp", 3, context -> {
-            Number start = (Number) context.getRef(0);
-            Number end = (Number) context.getRef(1);
-            Number t = (Number) context.getRef(2);
-            context.setReturnRef(start.doubleValue() + (end.doubleValue() - start.doubleValue()) * t.doubleValue());
+            double start = context.getAsDouble(0);
+            double end = context.getAsDouble(1);
+            double t = context.getAsDouble(2);
+            context.setReturnRef(start + (end - start) * t);
         });
     }
 

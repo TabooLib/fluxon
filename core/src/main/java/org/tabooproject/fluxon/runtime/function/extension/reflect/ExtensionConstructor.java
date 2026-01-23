@@ -41,7 +41,7 @@ public class ExtensionConstructor {
                 // 设置可访问性
                 .function("setAccessible", 1, (context) -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getRef(0);
+                    boolean accessible = (Boolean) context.getArgBoxed(0);
                     constructor.setAccessible(accessible);
                 })
                 // 检查是否可访问

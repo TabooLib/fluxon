@@ -137,7 +137,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundError(this, null, name, new Object[0], -1, -1);
+        throw new FunctionNotFoundError(this, null, name, 0, -1, -1);
     }
 
     /**
@@ -166,7 +166,7 @@ public class Environment {
         if (function != null) {
             return function;
         }
-        throw new FunctionNotFoundError(this, extensionClass, name, new Object[0], -1, index);
+        throw new FunctionNotFoundError(this, extensionClass, name, 0, -1, index);
     }
 
     /**

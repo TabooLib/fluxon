@@ -21,7 +21,7 @@ public class ExtensionCollection {
                 // 检查是否包含某个元素
                 .function("contains", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.contains(context.getRef(0)));
+                    context.setReturnRef(list.contains(context.getArgBoxed(0)));
                 })
                 // 转换为数组
                 .function("toArray", 0, (context) -> {
@@ -29,11 +29,11 @@ public class ExtensionCollection {
                     context.setReturnRef(list.toArray());
                 })
                 // 添加元素
-                .function("add", 1, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).add(context.getRef(0))))
+                .function("add", 1, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).add(context.getArgBoxed(0))))
                 // 移除元素
                 .function("remove", 1, (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.remove(context.getRef(0)));
+                    context.setReturnRef(list.remove(context.getArgBoxed(0)));
                 })
                 // 添加所有元素
                 .function("addAll", 1, (context) -> {
@@ -63,7 +63,7 @@ public class ExtensionCollection {
                 // 转换为字符串
                 .function("join", Arrays.asList(0, 1), (context) -> {
                     // 获取分隔符参数，默认值为 ", "
-                    String delimiter = Coerce.asString(Objects.toString(context.getRef(0), null)).orElse(", ");
+                    String delimiter = Coerce.asString(Objects.toString(context.getArgBoxed(0), null)).orElse(", ");
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(delimiter)));
                 })
@@ -81,7 +81,7 @@ public class ExtensionCollection {
                         return;
                     }
                     // 如果有参数，返回指定数量的不重复随机元素
-                    int count = ((Number) context.getRef(0)).intValue();
+                    int count = context.getAsInt(0);
                     if (count <= 0) {
                         return;
                     }

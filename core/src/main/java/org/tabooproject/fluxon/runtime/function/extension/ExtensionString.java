@@ -63,9 +63,9 @@ public class ExtensionString {
                 // 获取子字符串
                 .function("substring", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int start = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int start = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     if (1 < context.getArgumentCount()) {
-                        int end = Coerce.asInteger(context.getRef(1)).orElse(str.length());
+                        int end = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
                         context.setReturnRef(str.substring(start, Math.min(end, str.length())));
                         return;
                     }
@@ -76,7 +76,7 @@ public class ExtensionString {
                     String str = Objects.requireNonNull(context.getTarget());
                     String searchStr = Coerce.asString(context.getRef(0)).orElse("");
                     if (1 < context.getArgumentCount()) {
-                        int fromIndex = Coerce.asInteger(context.getRef(1)).orElse(0);
+                        int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
                         context.setReturnRef(str.indexOf(searchStr, fromIndex));
                         return;
                     }
@@ -87,7 +87,7 @@ public class ExtensionString {
                     String str = Objects.requireNonNull(context.getTarget());
                     String searchStr = Coerce.asString(context.getRef(0)).orElse("");
                     if (1 < context.getArgumentCount()) {
-                        int fromIndex = Coerce.asInteger(context.getRef(1)).orElse(str.length());
+                        int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
                         context.setReturnRef(str.lastIndexOf(searchStr, fromIndex));
                         return;
                     }
@@ -108,7 +108,7 @@ public class ExtensionString {
                     String str = Objects.requireNonNull(context.getTarget());
                     String prefix = Coerce.asString(context.getRef(0)).orElse("");
                     if (1 < context.getArgumentCount()) {
-                        int offset = Coerce.asInteger(context.getRef(1)).orElse(0);
+                        int offset = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
                         context.setReturnRef(str.startsWith(prefix, offset));
                         return;
                     }
@@ -123,7 +123,7 @@ public class ExtensionString {
                 // 左填充
                 .function("padLeft", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int totalLength = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     String padChar = 1 < context.getArgumentCount() ? Coerce.asString(context.getRef(1)).orElse(" ") : " ";
                     if (padChar.isEmpty()) padChar = " ";
                     StringBuilder result = new StringBuilder(str);
@@ -135,7 +135,7 @@ public class ExtensionString {
                 // 右填充
                 .function("padRight", Arrays.asList(1, 2), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int totalLength = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     String padChar = 1 < context.getArgumentCount() ? Coerce.asString(context.getRef(1)).orElse(" ") : " ";
                     if (padChar.isEmpty()) padChar = " ";
                     StringBuilder result = new StringBuilder(str);
@@ -159,7 +159,7 @@ public class ExtensionString {
                 // 重复字符串
                 .function("repeat", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int count = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int count = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     if (count <= 0) {
                         context.setReturnRef("");
                         return;
@@ -173,7 +173,7 @@ public class ExtensionString {
                 // 获取字符
                 .function("charAt", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int index = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }
@@ -182,7 +182,7 @@ public class ExtensionString {
                 // 获取字符编码
                 .function("charCodeAt", 1, (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getRef(0)).orElse(0);
+                    int index = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }

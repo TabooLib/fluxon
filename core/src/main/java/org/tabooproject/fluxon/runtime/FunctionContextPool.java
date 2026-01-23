@@ -3,10 +3,11 @@ package org.tabooproject.fluxon.runtime;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 /**
  * 线程本地的 FunctionContext 简单池，避免在高频调用路径上重复分配。
- * 仅在单线程借用/归还的情况下使用，不涉及跨线程共享。
- * 由于使用 ThreadLocal 存储，每个线程自动获得独立的池实例，无需额外的线程检查。
+ * 支持跨线程归还：async 任务完成后可将 context 归还到原借出线程的池。
  */
 public final class FunctionContextPool {
 
@@ -17,6 +18,7 @@ public final class FunctionContextPool {
     private static final Object[] EMPTY_REFS = new Object[0];
 
     private final FunctionContext<?>[] pool = new FunctionContext<?>[MAX_POOL_SIZE];
+    private final ConcurrentLinkedQueue<FunctionContext<?>> pendingReturns = new ConcurrentLinkedQueue<>();
     private int size;
 
     private FunctionContextPool() {
@@ -34,13 +36,36 @@ public final class FunctionContextPool {
      * 从线程本地池借用一个 FunctionContext 实例
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
-        FunctionContext<?> context;
+        FunctionContext<?> context = tryReclaimPending();
+        if (context != null) {
+            context.reset(function, target, refs, environment);
+            return context;
+        }
         if (size > 0) {
             context = pool[--size];
             pool[size] = null;
             context.reset(function, target, refs, environment);
         } else {
             context = new FunctionContext<>(function, target, refs, environment, this);
+        }
+        return context;
+    }
+
+    /**
+     * 从线程本地池借用一个 FunctionContext 实例（按参数数量，不分配 Object[] 参数数组）
+     */
+    public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, int argCount, @NotNull Environment environment) {
+        FunctionContext<?> context = tryReclaimPending();
+        if (context != null) {
+            context.reset(function, target, argCount, environment);
+            return context;
+        }
+        if (size > 0) {
+            context = pool[--size];
+            pool[size] = null;
+            context.reset(function, target, argCount, environment);
+        } else {
+            context = new FunctionContext<>(function, target, argCount > 0 ? new Object[argCount] : EMPTY_REFS, environment, this);
         }
         return context;
     }
@@ -53,7 +78,7 @@ public final class FunctionContextPool {
     }
 
     /**
-     * 归还一个 FunctionContext 实例到线程本地池
+     * 归还一个 FunctionContext 实例到线程本地池（仅限同线程调用）
      */
     public void release(FunctionContext<?> context) {
         if (context == null) {
@@ -64,5 +89,24 @@ public final class FunctionContextPool {
             return;
         }
         pool[size++] = context;
+    }
+
+    /**
+     * 从其他线程归还 context 到此池（线程安全）
+     * async 任务完成后调用此方法将 context 归还到原借出线程
+     */
+    public void returnFromOtherThread(FunctionContext<?> context) {
+        if (context == null) {
+            return;
+        }
+        context.clearForPooling();
+        pendingReturns.offer(context);
+    }
+
+    /**
+     * 尝试从跨线程归还队列回收一个 context
+     */
+    private FunctionContext<?> tryReclaimPending() {
+        return pendingReturns.poll();
     }
 }

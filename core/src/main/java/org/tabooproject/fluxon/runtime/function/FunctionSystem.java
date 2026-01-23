@@ -11,20 +11,20 @@ public class FunctionSystem {
     public static void init(FluxonRuntime runtime) {
         runtime.registerFunction("print", 1, context -> {
             if (0 < context.getArgumentCount()) {
-                context.getEnvironment().getOut().println(context.getRef(0));
+                context.getEnvironment().getOut().println(context.getArgBoxed(0));
             } else {
                 context.getEnvironment().getOut().println();
             }
         });
         runtime.registerFunction("error", 1, context -> {
             if (0 < context.getArgumentCount()) {
-                context.getEnvironment().getErr().println(context.getRef(0));
+                context.getEnvironment().getErr().println(context.getArgBoxed(0));
             } else {
                 context.getEnvironment().getErr().println();
             }
         });
         runtime.registerFunction("sleep", 1, context -> {
-            int sleepMillis = ((Number) context.getRef(0)).intValue();
+            int sleepMillis = context.getAsInt(0);
             try {
                 Thread.sleep(sleepMillis);
             } catch (InterruptedException e) {
@@ -72,7 +72,7 @@ public class FunctionSystem {
             context.setReturnRef(target);
         });
         runtime.registerFunction("throw", 1, context -> {
-            Object o = context.getRef(0);
+            Object o = context.getArgBoxed(0);
             if (o instanceof Error) {
                 throw (Error) o;
             } else {

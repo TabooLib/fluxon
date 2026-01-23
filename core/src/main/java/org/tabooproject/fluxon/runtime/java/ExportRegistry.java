@@ -121,7 +121,7 @@ public class ExportRegistry {
             NativeFunction.NativeCallable<T> callable = context -> {
                 int argCount = context.getArgumentCount();
                 Object[] args = new Object[argCount];
-                for (int i = 0; i < argCount; i++) args[i] = context.getRef(i);
+                for (int i = 0; i < argCount; i++) args[i] = context.getArgBoxed(i);
                 Object target = context.getTarget();
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
                 context.setReturnRef(bridge.invoke(methodName, target, args));

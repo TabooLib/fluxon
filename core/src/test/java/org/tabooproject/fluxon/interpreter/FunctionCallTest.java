@@ -371,7 +371,7 @@ public class FunctionCallTest {
             );
             throw new RuntimeException("Should throw FunctionNotFoundError");
         } catch (FunctionNotFoundError e) {
-            assertTrue(e.getMessage().contains("Double::replace([a, b])"));
+            assertTrue(e.getMessage().contains("Double::replace(args=2)"));
         }
     }
 }
