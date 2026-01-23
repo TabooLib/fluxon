@@ -129,6 +129,13 @@ public class CodeContext {
         return localVarIndex;
     }
 
+    /**
+     * 恢复局部变量索引，用于释放临时变量槽位
+     */
+    public void restoreLocalVarIndex(int savedIndex) {
+        this.localVarIndex = savedIndex;
+    }
+
     public Evaluator<ParseResult> getEvaluator(ParseResult result) {
         if (result instanceof Expression) {
             return ((Expression) result).getExpressionType().evaluator;
