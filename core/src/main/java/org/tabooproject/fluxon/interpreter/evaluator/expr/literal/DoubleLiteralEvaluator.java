@@ -17,13 +17,13 @@ public class DoubleLiteralEvaluator extends ExpressionEvaluator<DoubleLiteral> {
 
     @Override
     public Type evaluate(Interpreter interpreter, DoubleLiteral expr) {
-        interpreter.resultRef = expr.getBoxedValue();
-        return Type.DOUBLE;
+        interpreter.resultPrimitive = Double.doubleToRawLongBits(expr.getValue());
+        return Type.D;
     }
 
     @Override
     public Type generateBytecode(DoubleLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        return boxing(Type.D, mv);
+        return Type.D;
     }
 }

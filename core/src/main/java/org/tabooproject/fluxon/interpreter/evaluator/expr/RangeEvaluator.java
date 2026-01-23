@@ -40,17 +40,21 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         if (startEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for start expression");
         }
-        if (startEval.generateBytecode(result.getStart(), ctx, mv) == Type.VOID) {
+        Type st = startEval.generateBytecode(result.getStart(), ctx, mv);
+        if (st == Type.VOID) {
             throw new VoidError("Void type is not allowed for range start");
         }
+        boxing(st, mv);
         // 生成 end 表达式的字节码
         Evaluator<ParseResult> endEval = ctx.getEvaluator(result.getEnd());
         if (endEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for end expression");
         }
-        if (endEval.generateBytecode(result.getEnd(), ctx, mv) == Type.VOID) {
+        Type et = endEval.generateBytecode(result.getEnd(), ctx, mv);
+        if (et == Type.VOID) {
             throw new VoidError("Void type is not allowed for range end");
         }
+        boxing(et, mv);
         // 压入 isInclusive 参数
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)" + IntRange.TYPE, false);

@@ -96,12 +96,16 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             boolean negate
     ) {
         // 生成左右操作数的字节码
-        if (leftEval.generateBytecode(expr.getLeft(), ctx, mv) == Type.VOID) {
+        Type lt = leftEval.generateBytecode(expr.getLeft(), ctx, mv);
+        if (lt == Type.VOID) {
             throw new VoidError("Void type is not allowed for binary expression left operand");
         }
-        if (rightEval.generateBytecode(expr.getRight(), ctx, mv) == Type.VOID) {
+        boxing(lt, mv);
+        Type rt = rightEval.generateBytecode(expr.getRight(), ctx, mv);
+        if (rt == Type.VOID) {
             throw new VoidError("Void type is not allowed for binary expression right operand");
         }
+        boxing(rt, mv);
         // 生成引用比较：if (a == b) push true else push false
         Label trueLabel = new Label();
         Label endLabel = new Label();
@@ -129,12 +133,16 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             boolean xor
     ) {
         // 生成左右操作数的字节码
-        if (leftEval.generateBytecode(expr.getLeft(), ctx, mv) == Type.VOID) {
+        Type lt = leftEval.generateBytecode(expr.getLeft(), ctx, mv);
+        if (lt == Type.VOID) {
             throw new VoidError("Void type is not allowed for binary expression left operand");
         }
-        if (rightEval.generateBytecode(expr.getRight(), ctx, mv) == Type.VOID) {
+        boxing(lt, mv);
+        Type rt = rightEval.generateBytecode(expr.getRight(), ctx, mv);
+        if (rt == Type.VOID) {
             throw new VoidError("Void type is not allowed for binary expression right operand");
         }
+        boxing(rt, mv);
         // 调用 Operations 方法
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), method, descriptor, false);
         // 是否取反结果

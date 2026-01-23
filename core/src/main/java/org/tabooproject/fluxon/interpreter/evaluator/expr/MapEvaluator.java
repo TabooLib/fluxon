@@ -143,9 +143,11 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
         if (keyEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for key");
         }
-        if (keyEval.generateBytecode(key, ctx, mv) == Type.VOID) {
+        Type t = keyEval.generateBytecode(key, ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for map key");
         }
+        boxing(t, mv);
     }
 
     private void emitValue(CodeContext ctx, MethodVisitor mv, ParseResult value) {
@@ -153,9 +155,11 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
         if (valueEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for value");
         }
-        if (valueEval.generateBytecode(value, ctx, mv) == Type.VOID) {
+        Type t = valueEval.generateBytecode(value, ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for map value");
         }
+        boxing(t, mv);
     }
 
     private static final Type MAP = new Type(Map.class);

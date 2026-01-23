@@ -88,9 +88,11 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         if (argEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for argument expression");
         }
-        if (argEval.generateBytecode(argument, ctx, mv) == Type.VOID) {
+        Type t = argEval.generateBytecode(argument, ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for function arguments");
         }
+        boxing(t, mv);
     }
 
     private static final Type OBJECT_ARRAY = new Type(Object.class, 1);

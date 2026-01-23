@@ -14,8 +14,7 @@ import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
-import static org.objectweb.asm.Opcodes.GOTO;
-import static org.objectweb.asm.Opcodes.POP;
+import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
@@ -94,7 +93,7 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
         // 如果循环体有返回值，则丢弃它
         if (bodyType != Type.VOID) {
-            mv.visitInsn(POP);
+            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
         }
         // 跳回循环开始
         mv.visitJumpInsn(GOTO, whileStart);

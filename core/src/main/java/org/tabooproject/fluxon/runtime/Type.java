@@ -79,11 +79,11 @@ public class Type {
      * 将 long 位模式装箱为对应的包装类型
      */
     public static Object box(long bits, Type type) {
-        if (type == INT) return (int) bits;
-        if (type == LONG) return bits;
-        if (type == DOUBLE) return Double.longBitsToDouble(bits);
-        if (type == FLOAT) return Float.intBitsToFloat((int) bits);
-        if (type == BOOLEAN) return bits != 0;
+        if (type == I) return (int) bits;
+        if (type == J) return bits;
+        if (type == D) return Double.longBitsToDouble(bits);
+        if (type == F) return Float.intBitsToFloat((int) bits);
+        if (type == Z) return bits != 0;
         throw new IllegalArgumentException("Cannot box type: " + type);
     }
 

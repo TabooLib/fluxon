@@ -75,6 +75,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         if (targetType == Type.VOID) {
             throw new VoidError("Void type is not allowed for context call target");
         }
+        boxing(targetType, mv);
 
         // 处理安全调用（?::）的 null 短路逻辑
         Label endLabel = null;
@@ -112,6 +113,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         // 处理结果（如果不是 void）
         int resultIndex = -1;
         if (resultType != Type.VOID) {
+            boxing(resultType, mv);
             resultIndex = ctx.allocateLocalVar(Type.OBJECT);
             mv.visitVarInsn(ASTORE, resultIndex);
         }

@@ -37,9 +37,11 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
             throw new EvaluatorNotFoundError("No evaluator found for await expression");
         }
         // 生成内部表达式的字节码
-        if (eval.generateBytecode(result.getExpression(), ctx, mv) == Type.VOID) {
+        Type t = eval.generateBytecode(result.getExpression(), ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for await expression");
         }
+        boxing(t, mv);
         // 调用 Operations.awaitValue 方法
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
         return Type.OBJECT;

@@ -56,12 +56,16 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
                 if (rightType == Type.BOOLEAN) {
                     mv.visitMethodInsn(INVOKEVIRTUAL, Type.BOOLEAN.getPath(), "booleanValue", "()Z", false);
                 } else if (rightType != Type.Z) {
+                    if (rightType.isPrimitive()) {
+                        boxing(rightType, mv);
+                    }
                     mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "isTrue", "(" + Type.OBJECT + ")Z", false);
                 }
                 mv.visitInsn(ICONST_1);
                 mv.visitInsn(IXOR);
                 return boxing(Type.Z, mv);
             case MINUS:
+                boxing(rightType, mv);
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
                 mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "negateNumber", "(" + Type.NUMBER + ")" + Type.NUMBER, false);
                 return Type.NUMBER;

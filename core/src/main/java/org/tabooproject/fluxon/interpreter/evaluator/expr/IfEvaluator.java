@@ -73,9 +73,11 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         generateCondition(ctx, mv, result.getCondition(), conditionEval, elseLabel);
 
         // then 分支代码
-        if (thenEval.generateBytecode(result.getThenBranch(), ctx, mv) == Type.VOID) {
-            // 压入空对象
+        Type thenType = thenEval.generateBytecode(result.getThenBranch(), ctx, mv);
+        if (thenType == Type.VOID) {
             mv.visitInsn(ACONST_NULL);
+        } else {
+            boxing(thenType, mv);
         }
         mv.visitVarInsn(ASTORE, storeId);
         mv.visitJumpInsn(GOTO, endLabel);
@@ -84,9 +86,11 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         mv.visitLabel(elseLabel);
         // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
-            if (elseEval.generateBytecode(result.getElseBranch(), ctx, mv) == Type.VOID) {
-                // 压入空对象
+            Type elseType = elseEval.generateBytecode(result.getElseBranch(), ctx, mv);
+            if (elseType == Type.VOID) {
                 mv.visitInsn(ACONST_NULL);
+            } else {
+                boxing(elseType, mv);
             }
             mv.visitVarInsn(ASTORE, storeId);
         } else {

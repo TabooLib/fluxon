@@ -31,7 +31,7 @@ public abstract class Evaluator<T extends ParseResult> {
      * @param type 类型
      * @return 装箱后的类型
      */
-    protected Type boxing(Type type, MethodVisitor mv) {
+    protected static Type boxing(Type type, MethodVisitor mv) {
         switch (type.getDescriptor()) {
             case "I":
                 mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);

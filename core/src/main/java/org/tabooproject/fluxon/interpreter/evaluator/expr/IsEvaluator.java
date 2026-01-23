@@ -46,6 +46,7 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
         if (leftType == Type.VOID) {
             throw new VoidError("Void type is not allowed for is expression left operand");
         }
+        boxing(leftType, mv);
         // 使用 BytecodeUtils 生成 INSTANCEOF 检查字节码（栈：[obj] -> [int]）
         Instructions.emitInstanceofCheck(mv, expr.getTargetClass());
         // 结果是原始 boolean 类型（int 0 或 1），需要装箱为 Boolean

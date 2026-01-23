@@ -65,6 +65,7 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
         if (targetType == Type.VOID) {
             throw new VoidError("Void type is not allowed for index access target");
         }
+        boxing(targetType, mv);
         List<ParseResult> indices = expr.getIndices();
         // 对每个索引依次调用 Intrinsics.getIndex
         for (ParseResult indexExpr : indices) {
@@ -78,6 +79,7 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
             if (indexType == Type.VOID) {
                 throw new VoidError("Void type is not allowed for index");
             }
+            boxing(indexType, mv);
             // 调用 Intrinsics.getIndex(Object target, Object index)
             mv.visitMethodInsn(
                     INVOKESTATIC,

@@ -102,6 +102,8 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
             Type tryType = tryEval.generateBytecode(result.getBody(), ctx, mv);
             if (tryType == Type.VOID) {
                 mv.visitInsn(ACONST_NULL);
+            } else {
+                boxing(tryType, mv);
             }
             mv.visitVarInsn(ASTORE, valueVar);
         }
@@ -134,6 +136,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
                 mv.visitInsn(ACONST_NULL);
                 mv.visitVarInsn(ASTORE, valueVar);
             } else {
+                boxing(catchType, mv);
                 // 使用临时变量存储 catch body 的结果，避免直接赋值导致的字节码验证问题
                 // 这种"冗余"操作确保了控制流合并点的类型信息清晰，使反编译器能正确处理
                 int catchVar = ctx.allocateLocalVar(Type.OBJECT);
@@ -148,7 +151,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
             Type finallyType = finallyEval.generateBytecode(result.getFinallyBody(), ctx, mv);
             if (finallyType != Type.VOID) {
                 // 丢弃 finally 的返回值
-                mv.visitInsn(POP);
+                mv.visitInsn((finallyType == Type.J || finallyType == Type.D) ? POP2 : POP);
             }
         }
         // 返回 value

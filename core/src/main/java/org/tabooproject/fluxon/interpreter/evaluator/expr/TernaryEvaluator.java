@@ -61,8 +61,11 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
         generateCondition(ctx, mv, result.getCondition(), conditionEval, falseLabel);
 
         // true 分支代码
-        if (trueExprEval.generateBytecode(result.getTrueExpr(), ctx, mv) == Type.VOID) {
+        Type trueType = trueExprEval.generateBytecode(result.getTrueExpr(), ctx, mv);
+        if (trueType == Type.VOID) {
             mv.visitInsn(ACONST_NULL);
+        } else {
+            boxing(trueType, mv);
         }
         mv.visitVarInsn(ASTORE, storeId);
         mv.visitJumpInsn(GOTO, endLabel);
@@ -70,8 +73,11 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
         // false 分支标签
         mv.visitLabel(falseLabel);
         // 生成 false 分支的字节码
-        if (falseExprEval.generateBytecode(result.getFalseExpr(), ctx, mv) == Type.VOID) {
+        Type falseType = falseExprEval.generateBytecode(result.getFalseExpr(), ctx, mv);
+        if (falseType == Type.VOID) {
             mv.visitInsn(ACONST_NULL);
+        } else {
+            boxing(falseType, mv);
         }
         mv.visitVarInsn(ASTORE, storeId);
 

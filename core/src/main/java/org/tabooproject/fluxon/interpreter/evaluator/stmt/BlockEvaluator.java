@@ -12,7 +12,7 @@ import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
-import static org.objectweb.asm.Opcodes.POP;
+import static org.objectweb.asm.Opcodes.*;
 
 public class BlockEvaluator extends StatementEvaluator<Block> {
 
@@ -44,7 +44,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
             last = eval.generateBytecode(statement, ctx, mv);
             // 如果不是最后一条语句，并且有返回值，则丢弃它
             if (i < statementsSize - 1 && last != Type.VOID) {
-                mv.visitInsn(POP);
+                mv.visitInsn((last == Type.J || last == Type.D) ? POP2 : POP);
             }
         }
         return last;

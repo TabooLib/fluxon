@@ -69,6 +69,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             if (subjectType == VOID) {
                 throw new VoidError("Void type is not allowed for when expression subject");
             }
+            boxing(subjectType, mv);
         } else {
             mv.visitInsn(ACONST_NULL);
         }
@@ -116,6 +117,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             if (conditionType == VOID) {
                 throw new VoidError("Void type is not allowed for when expression condition");
             }
+            boxing(conditionType, mv);
             // 加载 matchType
             mv.visitFieldInsn(GETSTATIC, MATCH_TYPE.getPath(), branch.getMatchType().name(), MATCH_TYPE.getDescriptor());
             // 传递 null 作为 targetClass（非 IS 类型不需要）
@@ -144,6 +146,8 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             // 如果分支返回 void，则推送 null 作为返回值
             if (branchType == VOID) {
                 mv.visitInsn(ACONST_NULL);
+            } else {
+                boxing(branchType, mv);
             }
             mv.visitJumpInsn(GOTO, endLabel);
         }

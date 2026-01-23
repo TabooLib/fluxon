@@ -109,9 +109,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Label whileEnd = new Label();
 
         // 评估集合表达式并创建迭代器
-        if (collectionEval.generateBytecode(result.getCollection(), ctx, mv) == Type.VOID) {
+        Type ct = collectionEval.generateBytecode(result.getCollection(), ctx, mv);
+        if (ct == Type.VOID) {
             throw new VoidError("Void type is not allowed for for loop collection");
         }
+        boxing(ct, mv);
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createIterator", "(" + Type.OBJECT + ")" + ITERATOR, false);
         mv.visitVarInsn(ASTORE, iteratorVar);
 
@@ -146,8 +148,9 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
-        if (bodyEval.generateBytecode(result.getBody(), ctx, mv) != Type.VOID) {
-            mv.visitInsn(POP);
+        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (bodyType != Type.VOID) {
+            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
         }
         // 跳回循环开始
         mv.visitJumpInsn(GOTO, whileStart);

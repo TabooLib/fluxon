@@ -49,6 +49,7 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
         if (conditionType == Type.VOID) {
             throw new VoidError("Void type is not allowed for elvis condition");
         }
+        boxing(conditionType, mv);
 
         // 检查条件表达式结果是否为 null
         mv.visitInsn(DUP);                      // 复制栈顶值用于后续使用
@@ -61,6 +62,8 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
             // 若分支不返回值，则压入 null 以保持栈平衡；对 break/continue/return 等跳转分支则不会执行到此处
             mv.visitInsn(ACONST_NULL);
             alternativeType = Type.OBJECT;
+        } else {
+            boxing(alternativeType, mv);
         }
         
         // 结束标签

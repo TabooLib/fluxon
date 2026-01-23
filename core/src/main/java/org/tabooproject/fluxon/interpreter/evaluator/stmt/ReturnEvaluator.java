@@ -47,6 +47,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                 if (valueType == Type.VOID) {
                     mv.visitInsn(RETURN);
                 } else {
+                    boxing(valueType, mv);
                     mv.visitVarInsn(ALOAD, 1);  // load FunctionContext (slot 1)
                     mv.visitInsn(SWAP);
                     mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
@@ -55,6 +56,9 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             } else {
                 if (valueType == Type.VOID) {
                     mv.visitInsn(ACONST_NULL);
+                    valueType = Type.OBJECT;
+                } else if (valueType.isPrimitive() && !expectedReturnType.isPrimitive()) {
+                    boxing(valueType, mv);
                     valueType = Type.OBJECT;
                 }
                 Instructions.emitReturn(mv, expectedReturnType, valueType);

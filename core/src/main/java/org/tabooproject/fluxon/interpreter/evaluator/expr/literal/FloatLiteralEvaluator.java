@@ -17,13 +17,13 @@ public class FloatLiteralEvaluator extends ExpressionEvaluator<FloatLiteral> {
 
     @Override
     public Type evaluate(Interpreter interpreter, FloatLiteral expr) {
-        interpreter.resultRef = expr.getBoxedValue();
-        return Type.FLOAT;
+        interpreter.resultPrimitive = Float.floatToRawIntBits(expr.getValue());
+        return Type.F;
     }
 
     @Override
     public Type generateBytecode(FloatLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        return boxing(Type.F, mv);
+        return Type.F;
     }
 }

@@ -59,9 +59,11 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
         int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);
 
         // 评估右侧表达式
-        if (valueEval.generateBytecode(result.getValue(), ctx, mv) == Type.VOID) {
+        Type t = valueEval.generateBytecode(result.getValue(), ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for destructuring assignment");
         }
+        boxing(t, mv);
 
         // 复制栈顶值（用于返回）
         mv.visitInsn(DUP);

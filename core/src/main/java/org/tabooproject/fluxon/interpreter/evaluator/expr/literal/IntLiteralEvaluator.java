@@ -17,13 +17,13 @@ public class IntLiteralEvaluator extends ExpressionEvaluator<IntLiteral> {
 
     @Override
     public Type evaluate(Interpreter interpreter, IntLiteral expr) {
-        interpreter.resultRef = expr.getBoxedValue();
-        return Type.INT;
+        interpreter.resultPrimitive = expr.getValue();
+        return Type.I;
     }
 
     @Override
     public Type generateBytecode(IntLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
-        return boxing(Type.I, mv);
+        return Type.I;
     }
 }

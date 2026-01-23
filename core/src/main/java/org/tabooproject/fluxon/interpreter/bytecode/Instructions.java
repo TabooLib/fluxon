@@ -193,6 +193,19 @@ public class Instructions {
     }
 
     /**
+     * 生成基本类型装箱代码（按 Type 描述符）
+     */
+    public static void emitBoxing(MethodVisitor mv, Type type) {
+        switch (type.getDescriptor()) {
+            case "I": emitBoxing(mv, int.class); break;
+            case "J": emitBoxing(mv, long.class); break;
+            case "F": emitBoxing(mv, float.class); break;
+            case "D": emitBoxing(mv, double.class); break;
+            case "Z": emitBoxing(mv, boolean.class); break;
+        }
+    }
+
+    /**
      * 生成基本类型装箱代码
      */
     public static void emitBoxing(MethodVisitor mv, Class<?> primitiveType) {

@@ -230,6 +230,9 @@ public class FunctionClassEmitter extends ClassEmitter {
         }
         // 若有返回值则写入 context.setReturnRef
         if (returnType != VOID) {
+            if (returnType.isPrimitive()) {
+                Instructions.emitBoxing(mv, returnType);
+            }
             mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
             mv.visitInsn(SWAP);         // swap: context, result -> result, context
             mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);

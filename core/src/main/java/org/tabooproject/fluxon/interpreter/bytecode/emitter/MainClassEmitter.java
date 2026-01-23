@@ -128,11 +128,13 @@ public class MainClassEmitter extends ClassEmitter {
             Instructions.emitLineNumber(statements.get(i), mv);
             last = generator.generateStatementBytecode(statements.get(i), ctx, mv);
             if (i < statementsSize - 1 && last != VOID) {
-                mv.visitInsn(POP);
+                mv.visitInsn((last == J || last == D) ? POP2 : POP);
             }
         }
         if (last == null || last == VOID) {
             mv.visitInsn(ACONST_NULL);
+        } else if (last.isPrimitive()) {
+            Instructions.emitBoxing(mv, last);
         }
         mv.visitLabel(end);
         mv.visitInsn(ARETURN);

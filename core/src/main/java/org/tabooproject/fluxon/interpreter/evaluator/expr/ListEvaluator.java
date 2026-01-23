@@ -118,9 +118,11 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
         if (eval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for element");
         }
-        if (eval.generateBytecode(element, ctx, mv) == Type.VOID) {
+        Type t = eval.generateBytecode(element, ctx, mv);
+        if (t == Type.VOID) {
             throw new VoidError("Void type is not allowed for list element");
         }
+        boxing(t, mv);
     }
 
     private static final Type ARRAY_LIST = new Type(ArrayList.class);

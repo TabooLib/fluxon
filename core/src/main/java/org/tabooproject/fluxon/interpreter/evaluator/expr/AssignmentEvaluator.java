@@ -137,9 +137,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             MethodVisitor mv
     ) {
         // 生成新值的字节码
-        if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+        Type t = valueEval.generateBytecode(result.getValue(), ctx, mv);
+        if (t == VOID) {
             throw new VoidError("Void type is not allowed for assignment value");
         }
+        boxing(t, mv);
         // 执行操作
         String operatorName = OPERATORS.get(operatorType);
         if (operatorName == null) {
@@ -165,9 +167,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             if (type == TokenType.ASSIGN) {
                 Instructions.loadEnvironment(mv, ctx);
                 mv.visitLdcInsn(position);
-                if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+                Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
+                if (vt == VOID) {
                     throw new VoidError("Void type is not allowed for assignment value");
                 }
+                boxing(vt, mv);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
             } else {
                 // 复合赋值: env.setLocalRef(index, op(env.getLocalRef(index), newValue))
@@ -185,9 +189,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             if (type == TokenType.ASSIGN) {
                 Instructions.loadEnvironment(mv, ctx);
                 mv.visitLdcInsn(name);
-                if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+                Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
+                if (vt == VOID) {
                     throw new VoidError("Void type is not allowed for assignment value");
                 }
+                boxing(vt, mv);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
             } else {
                 // 复合赋值: env.setRootVariable(name, op(env.getRootVariable(name), newValue))
@@ -220,18 +226,22 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         if (targetEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for index access target");
         }
-        if (targetEval.generateBytecode(idx.getTarget(), ctx, mv) == VOID) {
+        Type tt = targetEval.generateBytecode(idx.getTarget(), ctx, mv);
+        if (tt == VOID) {
             throw new VoidError("Void type is not allowed for index access target");
         }
+        boxing(tt, mv);
         // 处理多索引：前 n-1 个索引用于导航到目标容器
         for (int i = 0; i < indices.size() - 1; i++) {
             Evaluator<ParseResult> indexEval = ctx.getEvaluator(indices.get(i));
             if (indexEval == null) {
                 throw new EvaluatorNotFoundError("No evaluator found for index expression");
             }
-            if (indexEval.generateBytecode(indices.get(i), ctx, mv) == VOID) {
+            Type it = indexEval.generateBytecode(indices.get(i), ctx, mv);
+            if (it == VOID) {
                 throw new VoidError("Void type is not allowed for index");
             }
+            boxing(it, mv);
             // 调用 Intrinsics.getIndex 导航到下一层
             mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "getIndex", "(" + OBJECT + OBJECT + ")" + OBJECT, false);
         }
@@ -243,13 +253,17 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         }
         // 简单赋值：container[index] = value
         if (operatorType == TokenType.ASSIGN) {
-            if (lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv) == VOID) {
+            Type lit = lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv);
+            if (lit == VOID) {
                 throw new VoidError("Void type is not allowed for index");
             }
+            boxing(lit, mv);
             // 栈：container, index
-            if (valueEval.generateBytecode(result.getValue(), ctx, mv) == VOID) {
+            Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
+            if (vt == VOID) {
                 throw new VoidError("Void type is not allowed for assignment value");
             }
+            boxing(vt, mv);
             // 栈：container, index, value
             // 调用 Intrinsics.setIndex(container, index, value)
             mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "setIndex", "(" + OBJECT + OBJECT + OBJECT + ")" + VOID, false);
@@ -263,9 +277,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             mv.visitInsn(DUP);
             // 栈：container, container
 
-            if (lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv) == VOID) {
+            Type lit = lastIndexEval.generateBytecode(lastIndexExpr, ctx, mv);
+            if (lit == VOID) {
                 throw new VoidError("Void type is not allowed for index");
             }
+            boxing(lit, mv);
             // 栈：container, container, index
 
             // 使用 DUP_X1 复制索引到第二个位置

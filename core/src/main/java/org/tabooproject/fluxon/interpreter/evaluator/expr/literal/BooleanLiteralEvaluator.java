@@ -20,13 +20,13 @@ public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral>
 
     @Override
     public Type evaluate(Interpreter interpreter, BooleanLiteral expr) {
-        interpreter.resultRef = expr.getValue();
-        return Type.BOOLEAN;
+        interpreter.resultPrimitive = expr.getValue() ? 1 : 0;
+        return Type.Z;
     }
 
     @Override
     public Type generateBytecode(BooleanLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitInsn(result.getValue() ? ICONST_1 : ICONST_0);
-        return boxing(Type.Z, mv);
+        return Type.Z;
     }
 }
