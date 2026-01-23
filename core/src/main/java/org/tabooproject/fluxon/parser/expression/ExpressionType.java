@@ -2,12 +2,6 @@ package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.DestructuringAssignmentEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.IsEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.NewEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.StaticAccessEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.StringInterpolationEvaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.AnonymousClassEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
 

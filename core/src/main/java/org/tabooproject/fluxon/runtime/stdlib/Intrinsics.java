@@ -8,13 +8,12 @@ import org.tabooproject.fluxon.parser.DomainExecutor;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
-import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.error.IndexAccessError;
 import org.tabooproject.fluxon.runtime.error.VariableNotFoundError;
-import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 import org.tabooproject.fluxon.runtime.index.IndexAccessorRegistry;
+import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -164,7 +163,7 @@ public final class Intrinsics {
 
     /**
      * 执行函数调用（fast-args 路径，避免创建参数数组）
-     * 仅在符合条件时使用 inline 路径，否则回退到标准路径
+     * 物化参数后走标准路径
      *
      * @param pool        函数上下文池（避免重复 ThreadLocal.get()，可为 null）
      * @param environment 脚本运行环境
@@ -191,20 +190,11 @@ public final class Intrinsics {
             int exPos) {
         if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
-        // 先尝试解析函数
         Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
+        Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
         if (function == null) {
-            // 函数未找到，物化参数数组用于错误信息
-            Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
             throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
         }
-        // 判断是否适用 fast-args 路径
-        // 条件：同步 NativeFunction（非 async、非 primarySync）
-        if (function instanceof NativeFunction && !function.isAsync() && !function.isPrimarySync()) {
-            return callSynchronouslyInline(pool, function, target, count, arg0, arg1, arg2, arg3, environment);
-        }
-        // 回退到标准路径：物化参数数组
-        Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
         return callResolvedFunction(pool, function, target, arguments, environment);
     }
 
@@ -258,31 +248,8 @@ public final class Intrinsics {
      */
     private static Object callSynchronously(FunctionContextPool pool, Function function, Object target, Object[] arguments, Environment environment) {
         try (FunctionContext<?> context = pool.borrow(function, target, arguments, environment)) {
-            return function.call(context);
-        } catch (Throwable ex) {
-            // 如果函数有 except 注解，则打印异常栈
-            if (AnnotationAccess.hasAnnotation(function, "except")) {
-                ex.printStackTrace();
-            }
-            throw ex;
-        }
-    }
-
-    /**
-     * 使用 inline 参数执行同步函数调用
-     */
-    private static Object callSynchronouslyInline(
-            FunctionContextPool pool,
-            Function function,
-            Object target,
-            int count,
-            Object arg0,
-            Object arg1,
-            Object arg2,
-            Object arg3,
-            Environment environment) {
-        try (FunctionContext<?> context = pool.borrowInline(function, target, count, arg0, arg1, arg2, arg3, environment)) {
-            return function.call(context);
+            function.call(context);
+            return context.getReturnRef();
         } catch (Throwable ex) {
             if (AnnotationAccess.hasAnnotation(function, "except")) {
                 ex.printStackTrace();
@@ -347,25 +314,21 @@ public final class Intrinsics {
      * 为函数调用绑定参数到新环境中
      *
      * @param parentEnv      父环境
-     * @param parameters     参数名到slot的映射
-     * @param args           参数值数组
+     * @param parameters     参数名到 slot 的映射
+     * @param context        函数上下文（从中读取参数）
      * @param localVariables 局部变量数量
      * @return 绑定了参数的新环境
      */
     @NotNull
-    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, Integer> parameters, @NotNull Object[] args, int localVariables) {
+    public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, Integer> parameters, @NotNull FunctionContext<?> context, int localVariables) {
         Environment functionEnv = new Environment(parentEnv, localVariables);
-        // 快速路径：无参数直接返回
         if (parameters == null || parameters.isEmpty()) {
             return functionEnv;
         }
-        // 预取 args 长度，避免多次访问数组长度字段
-        final int len = args.length;
-        // 按 slot 直接从 args 取值并绑定，避免依赖 Map 遍历顺序
+        final int len = context.getArgumentCount();
         for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
             final int slot = entry.getValue();
-            // 使用三元运算符减少分支预测失败
-            final Object value = (slot >= 0 && slot < len) ? args[slot] : null;
+            final Object value = (slot >= 0 && slot < len) ? context.getRef(slot) : null;
             functionEnv.assign(entry.getKey(), value, slot);
         }
         return functionEnv;
@@ -636,11 +599,11 @@ public final class Intrinsics {
             throw new RuntimeException("Domain not found: " + domainName);
         }
         try {
-            // 创建 Supplier 包装 Function
             Supplier<Object> body = () -> {
                 FunctionContextPool pool = FunctionContextPool.local();
-                try (FunctionContext<?> ctx = pool.borrowInline(bodyFunc, null, environment)) {
-                    return bodyFunc.call(ctx);
+                try (FunctionContext<?> ctx = pool.borrow(bodyFunc, null, EMPTY_ARGS, environment)) {
+                    bodyFunc.call(ctx);
+                    return ctx.getReturnRef();
                 }
             };
             return executor.execute(environment, body);

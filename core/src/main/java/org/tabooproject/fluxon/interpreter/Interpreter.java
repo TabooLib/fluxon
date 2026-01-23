@@ -9,8 +9,8 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError;
+import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 import java.util.IdentityHashMap;
 import java.util.List;

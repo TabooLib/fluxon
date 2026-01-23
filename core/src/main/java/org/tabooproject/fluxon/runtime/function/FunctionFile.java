@@ -12,27 +12,29 @@ public class FunctionFile {
 
     public static void init(FluxonRuntime runtime) {
         // 创建 Path 对象
-        runtime.registerFunction("fs:io", "path", Arrays.asList(1, 2), (context) -> {
+        runtime.registerFunction("fs:io", "path", Arrays.asList(1, 2), context -> {
             if (context.getArgumentCount() == 1) {
-                return Paths.get(Coerce.asString(context.getArgument(0)).orElse(""));
+                context.setReturnRef(Paths.get(Coerce.asString(context.getRef(0)).orElse("")));
             } else {
-                return Paths.get(Objects.requireNonNull(context.getString(0)), Objects.requireNonNull(context.getString(1)));
+                context.setReturnRef(Paths.get(
+                        Objects.requireNonNull(Objects.toString(context.getRef(0), null)),
+                        Objects.requireNonNull(Objects.toString(context.getRef(1), null))
+                ));
             }
         });
         // 创建 File 对象
-        runtime.registerFunction("fs:io", "file", Arrays.asList(1, 2), (context) -> {
+        runtime.registerFunction("fs:io", "file", Arrays.asList(1, 2), context -> {
             if (context.getArgumentCount() == 1) {
-                return new File(Objects.requireNonNull(context.getString(0)));
+                context.setReturnRef(new File(Objects.requireNonNull(Objects.toString(context.getRef(0), null))));
             } else {
-                Object parent = Objects.requireNonNull(context.getArgument(0));
-                String child = Objects.requireNonNull(context.getString(1));
+                Object parent = Objects.requireNonNull(context.getRef(0));
+                String child = Objects.requireNonNull(Objects.toString(context.getRef(1), null));
                 if (parent instanceof File) {
-                    return new File((File) parent, child);
+                    context.setReturnRef(new File((File) parent, child));
                 } else {
-                    return new File(parent.toString(), child);
+                    context.setReturnRef(new File(parent.toString(), child));
                 }
             }
         });
     }
 }
-

@@ -32,7 +32,7 @@ public final class FunctionJvm {
     // ==================== 模块初始化 ====================
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("fs:jvm", "jvm", 0, ctx -> INSTANCE);
+        runtime.registerFunction("fs:jvm", "jvm", 0, ctx -> ctx.setReturnRef(INSTANCE));
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", Arrays.asList(2, 3), FunctionJvm::inject);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "restore", 1, FunctionJvm::restore);
         runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "injections", 0, FunctionJvm::injections);
@@ -49,42 +49,45 @@ public final class FunctionJvm {
      *
      * @return 注入 ID
      */
-    private static Object inject(FunctionContext<?> ctx) {
-        TargetMethod method = parseTarget(Objects.requireNonNull(ctx.getString(0)));
+    private static void inject(FunctionContext<?> ctx) {
+        Object arg0 = ctx.getRef(0);
+        TargetMethod method = parseTarget(Objects.requireNonNull(Objects.toString(arg0, null)));
         InjectionType type;
         if (ctx.getArgumentCount() >= 2) {
-            type = parseType(ctx.getString(1));
+            Object arg1 = ctx.getRef(1);
+            type = parseType(arg1 != null ? arg1.toString() : null);
         } else {
             type = InjectionType.BEFORE;
         }
-        Function handler = asFunction(ctx.getArgument(ctx.getArgumentCount() - 1));
+        Function handler = asFunction(ctx.getRef(ctx.getArgumentCount() - 1));
         InjectionSpec spec = new InjectionSpec(method.className, method.methodName, method.descriptor, type);
         CallbackDispatcher.register(spec.getId(), handler, ctx.getEnvironment());
-        return InjectionRegistry.getInstance().register(spec);
+        ctx.setReturnRef(InjectionRegistry.getInstance().register(spec));
     }
 
     /**
      * jvm()::restore(idOrTarget)
      */
-    private static Object restore(FunctionContext<?> ctx) {
-        String idOrTarget = ctx.getString(0);
-        // 尝试作为 ID 撤销
+    private static void restore(FunctionContext<?> ctx) {
+        Object arg0 = ctx.getRef(0);
+        String idOrTarget = arg0 != null ? arg0.toString() : null;
         if (InjectionRegistry.getInstance().unregister(idOrTarget)) {
             CallbackDispatcher.unregister(idOrTarget);
-            return true;
+            ctx.setReturnRef(true);
+            return;
         }
-        // 尝试作为目标撤销
         if (Objects.requireNonNull(idOrTarget).contains("::")) {
             TargetMethod method = parseTarget(idOrTarget);
-            return InjectionRegistry.getInstance().unregisterByTarget(method.className, method.methodName, method.descriptor);
+            ctx.setReturnRef(InjectionRegistry.getInstance().unregisterByTarget(method.className, method.methodName, method.descriptor));
+            return;
         }
-        return false;
+        ctx.setReturnRef(false);
     }
 
     /**
      * jvm()::injections()
      */
-    private static Object injections(FunctionContext<?> ctx) {
+    private static void injections(FunctionContext<?> ctx) {
         List<Map<String, Object>> result = new ArrayList<>();
         for (InjectionSpec spec : InjectionRegistry.getInstance().getAllSpecs()) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -93,7 +96,7 @@ public final class FunctionJvm {
             item.put("type", spec.getType().name().toLowerCase());
             result.add(item);
         }
-        return result;
+        ctx.setReturnRef(result);
     }
 
     // ==================== 解析逻辑 ====================

@@ -3,13 +3,14 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.parser.statement.StatementType;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
@@ -40,13 +41,25 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                 throw new EvaluatorNotFoundError("No evaluator found for return value expression");
             }
             Type valueType = valueEval.generateBytecode(result.getValue(), ctx, mv);
-            if (valueType == Type.VOID) {
-                mv.visitInsn(ACONST_NULL);
-                valueType = Type.OBJECT;
+            if (expectedReturnType == null) {
+                // Fluxon 函数体：通过 context.setReturnRef 写入返回值
+                if (valueType == Type.VOID) {
+                    mv.visitInsn(RETURN);
+                } else {
+                    mv.visitVarInsn(ALOAD, 1);  // load FunctionContext (slot 1)
+                    mv.visitInsn(SWAP);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
+                    mv.visitInsn(RETURN);
+                }
+            } else {
+                if (valueType == Type.VOID) {
+                    mv.visitInsn(ACONST_NULL);
+                    valueType = Type.OBJECT;
+                }
+                Instructions.emitReturn(mv, expectedReturnType, valueType);
             }
-            Instructions.emitReturn(mv, expectedReturnType, valueType);
         } else {
-            if (expectedReturnType == void.class) {
+            if (expectedReturnType == null || expectedReturnType == void.class) {
                 mv.visitInsn(RETURN);
             } else {
                 mv.visitInsn(ACONST_NULL);

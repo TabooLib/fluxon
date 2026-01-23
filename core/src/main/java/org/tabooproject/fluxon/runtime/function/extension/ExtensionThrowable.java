@@ -6,12 +6,9 @@ public class ExtensionThrowable {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Throwable.class)
-                .function("message", 0, (context) -> context.getTarget().getMessage())
-                .function("localizedMessage", 0, (context) -> context.getTarget().getLocalizedMessage())
-                .function("cause", 0, (context) -> context.getTarget().getCause())
-                .function("printStackTrace", 0, (context) -> {
-                    context.getTarget().printStackTrace();
-                    return null;
-                });
+                .function("message", 0, context -> context.setReturnRef(context.getTarget().getMessage()))
+                .function("localizedMessage", 0, context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
+                .function("cause", 0, context -> context.setReturnRef(context.getTarget().getCause()))
+                .function("printStackTrace", 0, context -> context.getTarget().printStackTrace());
     }
 }

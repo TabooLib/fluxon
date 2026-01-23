@@ -3,26 +3,20 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.statement.Statement;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.FunctionContextPool;
-import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
-import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.Type.OBJECT;
-import static org.tabooproject.fluxon.runtime.Type.STRING;
-import static org.tabooproject.fluxon.runtime.Type.VOID;
+import static org.tabooproject.fluxon.runtime.Type.*;
 
 /**
  * 主脚本类生成器
@@ -113,6 +107,7 @@ public class MainClassEmitter extends ClassEmitter {
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.setEnvironmentLocalSlot(1);
+        ctx.setExpectedReturnType(Object.class);
         // 获取 FunctionContextPool 并存入局部变量（避免重复 ThreadLocal.get()）
         mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
         int poolSlot = ctx.allocateLocalVar(Type.OBJECT);

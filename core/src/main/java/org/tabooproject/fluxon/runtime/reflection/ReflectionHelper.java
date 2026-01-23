@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime.reflection;
 
+import org.tabooproject.fluxon.runtime.error.MemberAccessError;
+import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
 import org.tabooproject.fluxon.runtime.reflection.cache.ConstructorCache;
 import org.tabooproject.fluxon.runtime.reflection.cache.FieldCache;
 import org.tabooproject.fluxon.runtime.reflection.cache.MethodCache;
@@ -8,16 +10,14 @@ import org.tabooproject.fluxon.runtime.reflection.resolve.FieldResolver;
 import org.tabooproject.fluxon.runtime.reflection.resolve.MethodResolver;
 import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 import org.tabooproject.fluxon.runtime.reflection.util.VarargsHandler;
-import org.tabooproject.fluxon.runtime.error.MemberAccessError;
-import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Field;
 import java.util.List;
 
 /**

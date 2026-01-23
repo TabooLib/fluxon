@@ -9,9 +9,7 @@ import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.StaticAccessExpression;
 import org.tabooproject.fluxon.parser.type.PostfixParser;
 
-import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseArgumentList;
-import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseQualifiedName;
-import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.QualifiedNameResult;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.*;
 
 /**
  * static 表达式语法宏

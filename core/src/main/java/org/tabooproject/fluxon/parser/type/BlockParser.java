@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.parser.type;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolEnvironment;
 import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.statement.Block;
 

@@ -29,7 +29,9 @@ class LibraryLoaderTest {
 
             Function libHello = runtime.getSystemFunctions().get("libHello");
             Environment env = runtime.newEnvironment();
-            Object direct = libHello.call(new FunctionContext<>(libHello, null, new Object[]{"Fluxon"}, env));
+            FunctionContext<?> ctx = new FunctionContext<>(libHello, null, new Object[]{"Fluxon"}, env);
+            libHello.call(ctx);
+            Object direct = ctx.getReturnRef();
             assertEquals("Hello, Fluxon", direct);
 
             // 通过运行时调用导出的函数

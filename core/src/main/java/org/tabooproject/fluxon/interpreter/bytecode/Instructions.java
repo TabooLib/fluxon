@@ -2,19 +2,18 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.parser.SourceTrace;
+import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.java.Optional;
-import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
-
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
+import org.tabooproject.fluxon.runtime.java.Optional;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;

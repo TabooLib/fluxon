@@ -12,9 +12,9 @@ public class FunctionTime {
 
     public static void init(FluxonRuntime runtime) {
         // 获取当前时间戳（毫秒）
-        runtime.registerFunction("now", 0, (context) -> System.currentTimeMillis());
+        runtime.registerFunction("now", 0, context -> context.setReturnRef(System.currentTimeMillis()));
         // 获取时间对象
-        runtime.registerFunction("fs:time", "time", 0, (context) -> TimeObject.INSTANCE);
+        runtime.registerFunction("fs:time", "time", 0, context -> context.setReturnRef(TimeObject.INSTANCE));
         // 注册时间相关的对象实例
         runtime.getExportRegistry().registerClass(TimeObject.class, "fs:time");
     }

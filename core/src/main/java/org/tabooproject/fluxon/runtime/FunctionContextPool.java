@@ -14,6 +14,7 @@ public final class FunctionContextPool {
 
     private static final int MAX_POOL_SIZE = 32;
     private static final ThreadLocal<FunctionContextPool> LOCAL = ThreadLocal.withInitial(FunctionContextPool::new);
+    private static final Object[] EMPTY_REFS = new Object[0];
 
     private final FunctionContext<?>[] pool = new FunctionContext<?>[MAX_POOL_SIZE];
     private int size;
@@ -22,7 +23,7 @@ public final class FunctionContextPool {
     }
 
     /**
-     * 获取当前线程的池实例，避免在热点路径上重复访问 ThreadLocal 字段
+     * 获取当前线程的池实例
      */
     @NotNull
     public static FunctionContextPool local() {
@@ -32,65 +33,24 @@ public final class FunctionContextPool {
     /**
      * 从线程本地池借用一个 FunctionContext 实例
      */
-    public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, Object[] arguments, @NotNull Environment environment) {
+    public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
         FunctionContext<?> context;
         if (size > 0) {
             context = pool[--size];
             pool[size] = null;
-            context.reset(function, target, arguments, environment);
+            context.reset(function, target, refs, environment);
         } else {
-            context = new FunctionContext<>(function, target, arguments, environment, this);
+            context = new FunctionContext<>(function, target, refs, environment, this);
         }
         return context;
     }
 
     /**
-     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
+     * 从线程本地池借用一个 FunctionContext 实例（复制已有 context 的函数/目标/环境）
      */
-    public FunctionContext<?> borrowCopy(@NotNull FunctionContext<?> context, @Nullable Object[] parameters) {
-        if (parameters == null) {
-            return borrowInline(context.getFunction(), context.getTarget(), context.getEnvironment());
-        } else {
-            return borrow(context.getFunction(), context.getTarget(), parameters, context.getEnvironment());
-        }
+    public FunctionContext<?> borrowCopy(@NotNull FunctionContext<?> context, @Nullable Object[] refs) {
+        return borrow(context.getFunction(), context.getTarget(), refs != null ? refs : EMPTY_REFS, context.getEnvironment());
     }
-
-    /**
-     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
-     */
-    public FunctionContext<?> borrowInline(
-            @NotNull Function function,
-            @Nullable Object target,
-            @NotNull Environment environment
-    ) {
-        return borrowInline(function, target, 0, null, null, null, null, environment);
-    }
-
-    /**
-     * 从线程本地池借用一个 FunctionContext 实例（inline 模式，避免创建参数数组）
-     */
-    public FunctionContext<?> borrowInline(
-            @NotNull Function function,
-            @Nullable Object target,
-            int count,
-            @Nullable Object arg0,
-            @Nullable Object arg1,
-            @Nullable Object arg2,
-            @Nullable Object arg3,
-            @NotNull Environment environment
-    ) {
-        FunctionContext<?> context;
-        if (size > 0) {
-            context = pool[--size];
-            pool[size] = null;
-        } else {
-            context = new FunctionContext<>(function, target, EMPTY_ARGUMENTS, environment, this);
-        }
-        context.resetInline(function, target, count, arg0, arg1, arg2, arg3, environment);
-        return context;
-    }
-
-    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
     /**
      * 归还一个 FunctionContext 实例到线程本地池

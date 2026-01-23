@@ -87,54 +87,60 @@ public class TestRuntime {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         // checkGrade 函数
         runtime.registerFunction("checkGrade", 1, (context) -> {
-            Object[] args = context.getArguments();
-            if (args.length > 0 && args[0] instanceof Number) {
-                int score = ((Number) args[0]).intValue();
-                if (score >= 90) return "Excellent";
-                if (score >= 80) return "Good";
-                if (score >= 70) return "Fair";
-                if (score >= 60) return "Pass";
-                return "Fail";
+            Object arg0 = context.getRef(0);
+            if (arg0 instanceof Number) {
+                int score = ((Number) arg0).intValue();
+                if (score >= 90) { context.setReturnRef("Excellent"); return; }
+                if (score >= 80) { context.setReturnRef("Good"); return; }
+                if (score >= 70) { context.setReturnRef("Fair"); return; }
+                if (score >= 60) { context.setReturnRef("Pass"); return; }
+                context.setReturnRef("Fail");
+                return;
             }
             throw new RuntimeException("checkGrade function requires a numeric argument");
         });
         // player 函数 - 支持多种参数数量
         runtime.registerFunction("player", Arrays.asList(1, 3), (context) -> {
-            Object[] args = context.getArguments();
-            if (args.length >= 1) {
-                String playerName = String.valueOf(args[0]);
-                if (args.length >= 3) {
-                    return "Player " + playerName + " HP: " + args[1] + ", Level: " + args[2];
+            int argc = context.getArgumentCount();
+            if (argc >= 1) {
+                String playerName = String.valueOf(context.getRef(0));
+                if (argc >= 3) {
+                    context.setReturnRef("Player " + playerName + " HP: " + context.getRef(1) + ", Level: " + context.getRef(2));
+                    return;
                 }
-                return "Player " + playerName;
+                context.setReturnRef("Player " + playerName);
+                return;
             }
             throw new RuntimeException("player function requires at least one argument");
         });
         // fetch 函数
         runtime.registerFunction("fetch", 1, (context) -> {
-            Object[] args = context.getArguments();
-            if (args.length > 0) {
-                String url = String.valueOf(args[0]);
-                return "Fetching data from " + url;
+            Object arg0 = context.getRef(0);
+            if (arg0 != null) {
+                String url = String.valueOf(arg0);
+                context.setReturnRef("Fetching data from " + url);
+                return;
             }
             throw new RuntimeException("fetch function requires a URL parameter");
         });
         runtime.registerFunction("location", 3, (context) -> {
-            Object[] args = context.getArguments();
-            return new TestLocation(
-                    args[0] instanceof Number ? ((Number) args[0]).doubleValue() : 0,
-                    args[1] instanceof Number ? ((Number) args[1]).doubleValue() : 0,
-                    args[2] instanceof Number ? ((Number) args[2]).doubleValue() : 0
-            );
+            Object a0 = context.getRef(0);
+            Object a1 = context.getRef(1);
+            Object a2 = context.getRef(2);
+            context.setReturnRef(new TestLocation(
+                    a0 instanceof Number ? ((Number) a0).doubleValue() : 0,
+                    a1 instanceof Number ? ((Number) a1).doubleValue() : 0,
+                    a2 instanceof Number ? ((Number) a2).doubleValue() : 0
+            ));
         });
-        runtime.registerExtensionFunction(TestAudience.class, "location", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation());
-        runtime.registerExtensionFunction(TestAudience.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getY());
-        runtime.registerExtensionFunction(TestAudience.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getZ());
-        runtime.registerExtensionFunction(TestAudience.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getLocation().getZ());
-        runtime.registerExtensionFunction(TestLocation.class, "x", 0, (context) -> Objects.requireNonNull(context.getTarget()).getY());
-        runtime.registerExtensionFunction(TestLocation.class, "y", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
-        runtime.registerExtensionFunction(TestLocation.class, "z", 0, (context) -> Objects.requireNonNull(context.getTarget()).getZ());
-        runtime.registerExtensionFunction(TestLocation.class, "yaw", 0, (context) -> Objects.requireNonNull(context.getTarget()).getYaw());
-        runtime.registerExtensionFunction(TestLocation.class, "pitch", 0, (context) -> Objects.requireNonNull(context.getTarget()).getPitch());
+        runtime.registerExtensionFunction(TestAudience.class, "location", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation()));
+        runtime.registerExtensionFunction(TestAudience.class, "x", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getY()));
+        runtime.registerExtensionFunction(TestAudience.class, "y", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()));
+        runtime.registerExtensionFunction(TestAudience.class, "z", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()));
+        runtime.registerExtensionFunction(TestLocation.class, "x", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getY()));
+        runtime.registerExtensionFunction(TestLocation.class, "y", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()));
+        runtime.registerExtensionFunction(TestLocation.class, "z", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()));
+        runtime.registerExtensionFunction(TestLocation.class, "yaw", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getYaw()));
+        runtime.registerExtensionFunction(TestLocation.class, "pitch", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getPitch()));
     }
 }

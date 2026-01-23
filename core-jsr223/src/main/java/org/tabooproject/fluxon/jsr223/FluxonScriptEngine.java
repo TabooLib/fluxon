@@ -276,7 +276,8 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
             Object[] arguments = args != null ? args : new Object[0];
             FunctionContextPool pool = FunctionContextPool.local();
             try (FunctionContext<?> ctx = pool.borrow(function, thiz, arguments, env)) {
-                return function.call(ctx);
+                function.call(ctx);
+                return ctx.getReturnRef();
             }
         } catch (FluxonRuntimeError e) {
             throw toScriptException(e);
@@ -344,7 +345,8 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
             Object[] arguments = args != null ? args : new Object[0];
             FunctionContextPool pool = FunctionContextPool.local();
             try (FunctionContext<?> ctx = pool.borrow(function, thiz, arguments, env)) {
-                return function.call(ctx);
+                function.call(ctx);
+                return ctx.getReturnRef();
             }
         }
     }

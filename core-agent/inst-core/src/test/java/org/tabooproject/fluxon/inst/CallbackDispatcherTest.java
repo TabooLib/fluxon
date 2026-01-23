@@ -21,16 +21,16 @@ class CallbackDispatcherTest {
 
     @Test
     void testRegisterAndDispatch() {
-        // 创建 mock 回调
         Function mockCallback = mock(Function.class);
         Environment mockEnv = mock(Environment.class);
-        when(mockCallback.call(any())).thenReturn("result");
+        doAnswer(inv -> {
+            ((FunctionContext<?>) inv.getArgument(0)).setReturnRef("result");
+            return null;
+        }).when(mockCallback).call(any());
 
-        // 注册
         CallbackDispatcher.register("test_id", mockCallback, mockEnv);
         assertTrue(CallbackDispatcher.hasCallback("test_id"));
 
-        // 分发
         Object[] args = new Object[]{"arg1", 42};
         Object result = CallbackDispatcher.dispatch("test_id", args);
 
@@ -49,14 +49,17 @@ class CallbackDispatcherTest {
         Function mockCallback = mock(Function.class);
         Environment mockEnv = mock(Environment.class);
 
-        // 返回 null 表示继续执行
-        when(mockCallback.call(any())).thenReturn(null);
+        // returnRef = null → dispatch returns PROCEED → dispatchBefore returns true
+        doNothing().when(mockCallback).call(any());
         CallbackDispatcher.register("before_id", mockCallback, mockEnv);
 
         assertTrue(CallbackDispatcher.dispatchBefore("before_id", new Object[]{}));
 
-        // 返回 SKIP 表示跳过原方法
-        when(mockCallback.call(any())).thenReturn(CallbackDispatcher.SKIP);
+        // returnRef = SKIP → dispatch returns SKIP → dispatchBefore returns false
+        doAnswer(inv -> {
+            ((FunctionContext<?>) inv.getArgument(0)).setReturnRef(CallbackDispatcher.SKIP);
+            return null;
+        }).when(mockCallback).call(any());
         assertFalse(CallbackDispatcher.dispatchBefore("before_id", new Object[]{}));
     }
 
@@ -64,7 +67,10 @@ class CallbackDispatcherTest {
     void testDispatchReplace() {
         Function mockCallback = mock(Function.class);
         Environment mockEnv = mock(Environment.class);
-        when(mockCallback.call(any())).thenReturn("replaced");
+        doAnswer(inv -> {
+            ((FunctionContext<?>) inv.getArgument(0)).setReturnRef("replaced");
+            return null;
+        }).when(mockCallback).call(any());
 
         CallbackDispatcher.register("replace_id", mockCallback, mockEnv);
 

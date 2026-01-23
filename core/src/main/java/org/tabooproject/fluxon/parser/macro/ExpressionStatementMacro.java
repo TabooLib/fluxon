@@ -5,11 +5,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.StatementMacro;
 import org.tabooproject.fluxon.parser.Trampoline;
-import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
-
-import java.util.List;
 
 /**
  * 表达式语句宏

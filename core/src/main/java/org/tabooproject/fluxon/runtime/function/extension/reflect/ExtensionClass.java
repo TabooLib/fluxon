@@ -18,129 +18,129 @@ public class ExtensionClass {
                 // 获取类名
                 .function("name", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getName();
+                    context.setReturnRef(clazz.getName());
                 })
                 // 获取简单类名
                 .function("simpleName", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getSimpleName();
+                    context.setReturnRef(clazz.getSimpleName());
                 })
                 // 获取规范名
                 .function("canonicalName", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getCanonicalName();
+                    context.setReturnRef(clazz.getCanonicalName());
                 })
                 // 获取类型名
                 .function("typeName", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getTypeName();
+                    context.setReturnRef(clazz.getTypeName());
                 });
         runtime.registerExtension(Class.class, "fs:reflect")
                 // 检查是否是接口
                 .function("isInterface", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isInterface();
+                    context.setReturnRef(clazz.isInterface());
                 })
                 // 检查是否是数组
                 .function("isArray", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isArray();
+                    context.setReturnRef(clazz.isArray());
                 })
                 // 检查是否是原始类型
                 .function("isPrimitive", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isPrimitive();
+                    context.setReturnRef(clazz.isPrimitive());
                 })
                 // 检查是否是注解
                 .function("isAnnotation", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isAnnotation();
+                    context.setReturnRef(clazz.isAnnotation());
                 })
                 // 检查是否是枚举
                 .function("isEnum", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isEnum();
+                    context.setReturnRef(clazz.isEnum());
                 })
                 // 检查是否可以从某个类赋值
                 .function("isAssignableFrom", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    Class<?> other = (Class<?>) context.getArgument(0);
-                    return clazz.isAssignableFrom(other);
+                    Class<?> other = (Class<?>) context.getRef(0);
+                    context.setReturnRef(clazz.isAssignableFrom(other));
                 })
                 // 检查是否是某个对象的实例
                 .function("isInstance", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.isInstance(context.getArgument(0));
+                    context.setReturnRef(clazz.isInstance(context.getRef(0)));
                 })
                 // 获取父类
                 .function("superclass", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getSuperclass();
+                    context.setReturnRef(clazz.getSuperclass());
                 })
                 // 获取接口
                 .function("interfaces", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getInterfaces());
+                    context.setReturnRef(Arrays.asList(clazz.getInterfaces()));
                 })
                 // 获取包
                 .function("package", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getPackage();
+                    context.setReturnRef(clazz.getPackage());
                 })
                 // 获取包名
                 .function("packageName", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getPackage().getName();
+                    context.setReturnRef(clazz.getPackage().getName());
                 })
                 // 获取类加载器
                 .function("classLoader", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getClassLoader();
+                    context.setReturnRef(clazz.getClassLoader());
                 })
                 // 获取修饰符
                 .function("modifiers", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getModifiers();
+                    context.setReturnRef(clazz.getModifiers());
                 })
                 // 检查是否是公共类
                 .function("isPublic", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isPublic(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isPublic(clazz.getModifiers()));
                 })
                 // 检查是否是私有类
                 .function("isPrivate", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isPrivate(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isPrivate(clazz.getModifiers()));
                 })
                 // 检查是否是受保护类
                 .function("isProtected", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isProtected(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isProtected(clazz.getModifiers()));
                 })
                 // 检查是否是抽象类
                 .function("isAbstract", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isAbstract(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isAbstract(clazz.getModifiers()));
                 })
                 // 检查是否是最终类
                 .function("isFinal", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isFinal(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isFinal(clazz.getModifiers()));
                 })
                 // 检查是否是静态类
                 .function("isStatic", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Modifier.isStatic(clazz.getModifiers());
+                    context.setReturnRef(Modifier.isStatic(clazz.getModifiers()));
                 })
                 // 获取组件类型（数组用）
                 .function("componentType", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.getComponentType();
+                    context.setReturnRef(clazz.getComponentType());
                 })
                 // 强制类型转换
                 .function("cast", 1, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return clazz.cast(context.getArgument(0));
+                    context.setReturnRef(clazz.cast(context.getRef(0)));
                 })
                 // 创建实例（无参构造器）
                 .function("newInstance", 0, (context) -> {
@@ -148,7 +148,7 @@ public class ExtensionClass {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         Constructor<?> constructor = clazz.getDeclaredConstructor();
                         constructor.setAccessible(true);
-                        return constructor.newInstance();
+                        context.setReturnRef(constructor.newInstance());
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
                     }
@@ -156,45 +156,45 @@ public class ExtensionClass {
                 // 获取所有构造器
                 .function("constructors", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getConstructors());
+                    context.setReturnRef(Arrays.asList(clazz.getConstructors()));
                 })
                 // 获取所有声明的构造器
                 .function("declaredConstructors", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getDeclaredConstructors());
+                    context.setReturnRef(Arrays.asList(clazz.getDeclaredConstructors()));
                 })
                 // 获取所有方法
                 .function("methods", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getMethods());
+                    context.setReturnRef(Arrays.asList(clazz.getMethods()));
                 })
                 // 获取所有声明的方法
                 .function("declaredMethods", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getDeclaredMethods());
+                    context.setReturnRef(Arrays.asList(clazz.getDeclaredMethods()));
                 })
                 // 获取所有字段
                 .function("fields", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getFields());
+                    context.setReturnRef(Arrays.asList(clazz.getFields()));
                 })
                 // 获取所有声明的字段
                 .function("declaredFields", 0, (context) -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                    return Arrays.asList(clazz.getDeclaredFields());
+                    context.setReturnRef(Arrays.asList(clazz.getDeclaredFields()));
                 })
                 // 获取特定名称的方法（可能有多个重载）
                 .function("method", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String methodName = context.getString(0);
+                        String methodName = Objects.toString(context.getRef(0), null);
                         List<Method> methods = new ArrayList<>();
                         for (Method method : clazz.getMethods()) {
                             if (method.getName().equals(methodName)) {
                                 methods.add(method);
                             }
                         }
-                        return methods.size() == 1 ? methods.get(0) : methods;
+                        context.setReturnRef(methods.size() == 1 ? methods.get(0) : methods);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get method: " + e.getMessage(), e);
                     }
@@ -203,14 +203,14 @@ public class ExtensionClass {
                 .function("declaredMethod", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String methodName = context.getString(0);
+                        String methodName = Objects.toString(context.getRef(0), null);
                         List<Method> methods = new ArrayList<>();
                         for (Method method : clazz.getDeclaredMethods()) {
                             if (method.getName().equals(methodName)) {
                                 methods.add(method);
                             }
                         }
-                        return methods.size() == 1 ? methods.get(0) : methods;
+                        context.setReturnRef(methods.size() == 1 ? methods.get(0) : methods);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get declared method: " + e.getMessage(), e);
                     }
@@ -219,9 +219,9 @@ public class ExtensionClass {
                 .function("field", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String fieldName = context.getString(0);
-                        if (fieldName == null) return null;
-                        return clazz.getField(fieldName);
+                        String fieldName = Objects.toString(context.getRef(0), null);
+                        if (fieldName == null) return;
+                        context.setReturnRef(clazz.getField(fieldName));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get field: " + e.getMessage(), e);
                     }
@@ -230,9 +230,9 @@ public class ExtensionClass {
                 .function("declaredField", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        String fieldName = context.getString(0);
-                        if (fieldName == null) return null;
-                        return clazz.getDeclaredField(fieldName);
+                        String fieldName = Objects.toString(context.getRef(0), null);
+                        if (fieldName == null) return;
+                        context.setReturnRef(clazz.getDeclaredField(fieldName));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get declared field: " + e.getMessage(), e);
                     }
@@ -241,9 +241,10 @@ public class ExtensionClass {
                 .function("constructor", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        List<Object> paramTypes = context.getArgumentByType(0, List.class);
+                        List<Object> paramTypes = (List<Object>) context.getRef(0);
                         if (paramTypes == null) {
-                            return clazz.getConstructor();
+                            context.setReturnRef(clazz.getConstructor());
+                            return;
                         }
                         Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
                         for (int i = 0; i < paramTypes.size(); i++) {
@@ -253,7 +254,7 @@ public class ExtensionClass {
                                 paramClasses[i] = paramTypes.get(i).getClass();
                             }
                         }
-                        return clazz.getConstructor(paramClasses);
+                        context.setReturnRef(clazz.getConstructor(paramClasses));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get constructor: " + e.getMessage(), e);
                     }
@@ -262,9 +263,10 @@ public class ExtensionClass {
                 .function("declaredConstructor", 1, (context) -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
-                        List<Object> paramTypes = context.getArgumentByType(0, List.class);
+                        List<Object> paramTypes = (List<Object>) context.getRef(0);
                         if (paramTypes == null) {
-                            return clazz.getDeclaredConstructor();
+                            context.setReturnRef(clazz.getDeclaredConstructor());
+                            return;
                         }
                         Class<?>[] paramClasses = new Class<?>[paramTypes.size()];
                         for (int i = 0; i < paramTypes.size(); i++) {
@@ -274,7 +276,7 @@ public class ExtensionClass {
                                 paramClasses[i] = paramTypes.get(i).getClass();
                             }
                         }
-                        return clazz.getDeclaredConstructor(paramClasses);
+                        context.setReturnRef(clazz.getDeclaredConstructor(paramClasses));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to get declared constructor: " + e.getMessage(), e);
                     }

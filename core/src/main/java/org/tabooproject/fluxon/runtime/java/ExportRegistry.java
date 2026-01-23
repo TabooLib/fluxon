@@ -119,11 +119,12 @@ public class ExportRegistry {
             Method method = exportMethod.getMethod();
             String methodName = exportMethod.getTransformedName();
             NativeFunction.NativeCallable<T> callable = context -> {
-                Object[] args = context.getArguments();
+                int argCount = context.getArgumentCount();
+                Object[] args = new Object[argCount];
+                for (int i = 0; i < argCount; i++) args[i] = context.getRef(i);
                 Object target = context.getTarget();
-                // 检查参数类型是否匹配
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
-                return bridge.invoke(methodName, target, args);
+                context.setReturnRef(bridge.invoke(methodName, target, args));
             };
             // 分析方法参数，获取支持的参数数量列表
             List<Integer> supportedCounts = analyzeMethodParameterCounts(method);

@@ -3,8 +3,8 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
@@ -165,8 +165,8 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     private void emitCallMethod(List<LambdaFunctionDefinition> lambdaDefinitions) {
-        // 生成 Function.call(FunctionContext) 方法
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")" + OBJECT, null, null);
+        // 生成 Function.call(FunctionContext) 方法（void 返回）
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")V", null, null);
         mv.visitCode();
         // 初始化代码上下文，预留 slot 0 (this) 和 slot 1 (FunctionContext 参数)
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
@@ -195,13 +195,12 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
         // 参数2: 参数位置映射表
         mv.visitFieldInsn(GETSTATIC, className, "parameters", MAP.getDescriptor());
-        // 参数3: 实参数组 (context.getArguments())
+        // 参数3: FunctionContext 本身
         mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArguments", "()[" + OBJECT, false);
         // 参数4: 局部变量数量
         mv.visitLdcInsn(funcDef.getLocalVariables().size());
         // 调用绑定方法，创建新的函数环境
-        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "bindFunctionParameters", "(" + Environment.TYPE + MAP + "[" + OBJECT + I + ")" + Environment.TYPE, false);
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "bindFunctionParameters", "(" + Environment.TYPE + MAP + FunctionContext.TYPE + I + ")" + Environment.TYPE, false);
         // 复制环境引用：一份存入局部变量，一份设置到实例字段
         mv.visitInsn(DUP);
         int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
@@ -229,13 +228,15 @@ public class FunctionClassEmitter extends ClassEmitter {
             Instructions.emitLineNumber(funcDef.getBody(), mv);
             returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
         }
-        // 若无返回值则压入 null
-        if (returnType == VOID) {
-            mv.visitInsn(ACONST_NULL);
+        // 若有返回值则写入 context.setReturnRef
+        if (returnType != VOID) {
+            mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
+            mv.visitInsn(SWAP);         // swap: context, result -> result, context
+            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);
         }
         // 正常返回路径
         mv.visitLabel(end);
-        mv.visitInsn(ARETURN);
+        mv.visitInsn(RETURN);
         // 异常处理：附加源码位置信息后重新抛出
         mv.visitLabel(handler);
         int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);

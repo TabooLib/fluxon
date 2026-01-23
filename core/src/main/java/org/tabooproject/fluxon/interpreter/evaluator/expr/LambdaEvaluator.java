@@ -10,7 +10,7 @@ import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.Type;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
 
 /**
  * Lambda 表达式求值/生成

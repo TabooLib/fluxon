@@ -1,12 +1,7 @@
 package org.tabooproject.fluxon.runtime.collection;
 
 import java.io.Serializable;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 轻量不可变 Map，支持 inline 模式（最多 4 个键值对）和数组模式。

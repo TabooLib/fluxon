@@ -1,10 +1,6 @@
 package org.tabooproject.fluxon.runtime.function;
 
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.FunctionContext;
-import org.tabooproject.fluxon.runtime.FunctionContextPool;
+import org.tabooproject.fluxon.runtime.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -13,73 +9,70 @@ public class FunctionSystem {
 
     @SuppressWarnings({"DataFlowIssue"})
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("print", 1, (context) -> {
-            if (context.hasArgument(0)) {
-                context.getEnvironment().getOut().println(context.getArgument(0));
+        runtime.registerFunction("print", 1, context -> {
+            if (0 < context.getArgumentCount()) {
+                context.getEnvironment().getOut().println(context.getRef(0));
             } else {
                 context.getEnvironment().getOut().println();
             }
-            return null;
         });
-        runtime.registerFunction("error", 1, (context) -> {
-            if (context.hasArgument(0)) {
-                context.getEnvironment().getErr().println(context.getArgument(0));
+        runtime.registerFunction("error", 1, context -> {
+            if (0 < context.getArgumentCount()) {
+                context.getEnvironment().getErr().println(context.getRef(0));
             } else {
                 context.getEnvironment().getErr().println();
             }
-            return null;
         });
-        runtime.registerFunction("sleep", 1, (context) -> {
-            int sleepMillis = context.getNumber(0).intValue();
+        runtime.registerFunction("sleep", 1, context -> {
+            int sleepMillis = ((Number) context.getRef(0)).intValue();
             try {
                 Thread.sleep(sleepMillis);
             } catch (InterruptedException e) {
                 throw new RuntimeException("Sleep function interrupted", e);
             }
-            return null;
         });
-        runtime.registerFunction("forName", 1, (context) -> {
-            String className = context.getString(0);
+        runtime.registerFunction("forName", 1, context -> {
+            Object arg = context.getRef(0);
+            String className = arg != null ? arg.toString() : null;
             try {
-                return Class.forName(className);
+                context.setReturnRef(Class.forName(className));
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException("Class not found: " + className, e);
             }
         });
-        runtime.registerFunction("call", Arrays.asList(1, 2), (context) -> {
-            Object func = context.getArgument(0);
-            // 获取可选的参数
+        runtime.registerFunction("call", Arrays.asList(1, 2), context -> {
+            Object func = context.getRef(0);
             Object[] parameters;
-            if (context.hasArgument(1)) {
-                parameters = context.getArgumentByType(1, List.class).toArray();
+            if (1 < context.getArgumentCount()) {
+                parameters = ((List<?>) context.getRef(1)).toArray();
             } else {
                 parameters = new Object[0];
             }
-            // 调用函数
+            FunctionContextPool pool = context.getPool();
             if (func instanceof Function) {
-                FunctionContextPool pool = context.getPool();
                 try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
-                    return ((Function) func).call(borrowed);
+                    ((Function) func).call(borrowed);
+                    context.setReturnRef(borrowed.getReturnRef());
                 }
             } else {
                 Function function = context.getEnvironment().getFunction(func.toString());
-                FunctionContextPool pool = context.getPool();
                 try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
-                    return function.call(borrowed);
+                    function.call(borrowed);
+                    context.setReturnRef(borrowed.getReturnRef());
                 }
             }
         });
-        runtime.registerFunction("this", 0, (context) -> {
+        runtime.registerFunction("this", 0, context -> {
             Environment environment = context.getEnvironment();
-            Object target = context.getEnvironment().getTarget();
+            Object target = environment.getTarget();
             while (target == null && environment.getParent() != null) {
                 environment = environment.getParent();
                 target = environment.getTarget();
             }
-            return target;
+            context.setReturnRef(target);
         });
-        runtime.registerFunction("throw", 1, (context) -> {
-            Object o = context.getArgument(0);
+        runtime.registerFunction("throw", 1, context -> {
+            Object o = context.getRef(0);
             if (o instanceof Error) {
                 throw (Error) o;
             } else {

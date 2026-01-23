@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.operator.CallPostfixOperator;
 import org.tabooproject.fluxon.parser.operator.IndexAccessPostfixOperator;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

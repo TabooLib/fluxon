@@ -2,10 +2,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
-import org.tabooproject.fluxon.runtime.error.VoidError;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -16,6 +14,8 @@ import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.HashMap;
@@ -24,7 +24,6 @@ import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.runtime.Type.*;
-import static org.tabooproject.fluxon.runtime.Type.I;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
 public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {

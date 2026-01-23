@@ -28,7 +28,7 @@ public class ExtensionIterable {
         runtime.registerExtension(Iterable.class)
                 .function("each", 1, (context) -> {
                     forEachElement(context, null);
-                    return context.getTarget();
+                    context.setReturnRef(context.getTarget());
                 });
     }
 
@@ -38,7 +38,7 @@ public class ExtensionIterable {
                 .function("map", 1, (context) -> {
                     List<Object> result = new ArrayList<>();
                     forEachElement(context, (element, callResult) -> result.add(callResult));
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 对每个元素应用函数并展平结果
                 .function("flatMap", 1, (context) -> {
@@ -52,7 +52,7 @@ public class ExtensionIterable {
                             result.add(callResult);
                         }
                     });
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 根据键函数创建映射，元素作为值
                 .function("associateBy", 1, (context) -> {
@@ -60,13 +60,13 @@ public class ExtensionIterable {
                     forEachElement(context, (element, callResult) -> {
                         result.put(callResult, element);
                     });
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 根据值函数创建映射，元素作为键
                 .function("associateWith", 1, (context) -> {
                     Map<Object, Object> result = new HashMap<>();
                     forEachElement(context, result::put);
-                    return result;
+                    context.setReturnRef(result);
                 });
     }
 
@@ -78,18 +78,24 @@ public class ExtensionIterable {
                     forEachElement(context, (element, callResult) -> {
                         if (Operations.isTrue(callResult)) result.add(element);
                     });
-                    return result;
+                    context.setReturnRef(result);
                 });
     }
 
     public static void initChecking(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 检查是否有任意元素满足条件
-                .function("any", 1, (context) -> !testElements(context, (element, callResult) -> !Operations.isTrue(callResult)))
+                .function("any", 1, (context) -> {
+                    context.setReturnRef(!testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
+                })
                 // 检查是否所有元素都满足条件
-                .function("all", 1, (context) -> testElements(context, (element, callResult) -> Operations.isTrue(callResult)))
+                .function("all", 1, (context) -> {
+                    context.setReturnRef(testElements(context, (element, callResult) -> Operations.isTrue(callResult)));
+                })
                 // 检查是否没有元素满足条件
-                .function("none", 1, (context) -> testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
+                .function("none", 1, (context) -> {
+                    context.setReturnRef(testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
+                });
     }
 
     public static void initRetrieving(FluxonRuntime runtime) {
@@ -104,34 +110,41 @@ public class ExtensionIterable {
                         }
                         return true; // 继续查找
                     });
-                    return found[0];
+                    context.setReturnRef(found[0]);
                 })
                 // 取第一个元素
                 .function("first", 0, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
                     if (iterable instanceof List) {
                         List<Object> list = (List<Object>) iterable;
-                        if (list.isEmpty()) return null;
-                        return list.get(0);
+                        if (list.isEmpty()) {
+                            context.setReturnRef(null);
+                            return;
+                        }
+                        context.setReturnRef(list.get(0));
+                        return;
                     }
-                    return iterable.iterator().next();
+                    context.setReturnRef(iterable.iterator().next());
                 })
                 // 取最后一个元素
                 .function("last", 0, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
                     if (iterable instanceof List) {
                         List<Object> list = (List<Object>) iterable;
-                        if (list.isEmpty()) return null;
-                        return list.get(list.size() - 1);
+                        if (list.isEmpty()) {
+                            context.setReturnRef(null);
+                            return;
+                        }
+                        context.setReturnRef(list.get(list.size() - 1));
+                        return;
                     }
                     Iterator<Object> iterator = iterable.iterator();
                     Object last = null;
                     while (iterator.hasNext()) {
                         last = iterator.next();
                     }
-                    return last;
-                })
-        ;
+                    context.setReturnRef(last);
+                });
     }
 
     public static void initAggregation(FluxonRuntime runtime) {
@@ -142,7 +155,7 @@ public class ExtensionIterable {
                     forEachElement(context, (element, callResult) -> {
                         if (Operations.isTrue(callResult)) count[0]++;
                     });
-                    return count[0];
+                    context.setReturnRef(count[0]);
                 })
                 // 对每个元素应用函数并求和
                 .function("sumOf", 1, (context) -> {
@@ -152,24 +165,32 @@ public class ExtensionIterable {
                             sum[0] += ((Number) callResult).doubleValue();
                         }
                     });
-                    return sum[0];
+                    context.setReturnRef(sum[0]);
                 })
                 // 对每个元素应用函数并求最小值
-                .function("minOf", 1, (context) -> compareElements(context, (current, candidate) ->
-                        ((Comparable<Object>) candidate).compareTo(current) < 0
-                ))
+                .function("minOf", 1, (context) -> {
+                    context.setReturnRef(compareElements(context, (current, candidate) ->
+                            ((Comparable<Object>) candidate).compareTo(current) < 0
+                    ));
+                })
                 // 对每个元素应用函数并求最大值
-                .function("maxOf", 1, (context) -> compareElements(context, (current, candidate) ->
-                        ((Comparable<Object>) candidate).compareTo(current) > 0
-                ))
+                .function("maxOf", 1, (context) -> {
+                    context.setReturnRef(compareElements(context, (current, candidate) ->
+                            ((Comparable<Object>) candidate).compareTo(current) > 0
+                    ));
+                })
                 // 根据选择器函数找到最小值对应的元素
-                .function("minBy", 1, (context) -> compareElementsBy(context, (current, candidate) ->
-                        ((Comparable<Object>) candidate).compareTo(current) < 0
-                ))
+                .function("minBy", 1, (context) -> {
+                    context.setReturnRef(compareElementsBy(context, (current, candidate) ->
+                            ((Comparable<Object>) candidate).compareTo(current) < 0
+                    ));
+                })
                 // 根据选择器函数找到最大值对应的元素
-                .function("maxBy", 1, (context) -> compareElementsBy(context, (current, candidate) ->
-                        ((Comparable<Object>) candidate).compareTo(current) > 0
-                ));
+                .function("maxBy", 1, (context) -> {
+                    context.setReturnRef(compareElementsBy(context, (current, candidate) ->
+                            ((Comparable<Object>) candidate).compareTo(current) > 0
+                    ));
+                });
     }
 
     public static void initGrouping(FluxonRuntime runtime) {
@@ -180,7 +201,7 @@ public class ExtensionIterable {
                     forEachElement(context, (element, callResult) -> {
                         result.computeIfAbsent(callResult, k -> new ArrayList<>()).add(element);
                     });
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 根据断言将元素分为两组
                 .function("partition", 1, (context) -> {
@@ -193,12 +214,12 @@ public class ExtensionIterable {
                             unmatched.add(element);
                         }
                     });
-                    return ImmutableMap.of(true, matched, false, unmatched);
+                    context.setReturnRef(ImmutableMap.of(true, matched, false, unmatched));
                 })
                 // 将元素按指定大小分块
                 .function("chunked", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int size = context.getNumber(0).intValue();
+                    int size = ((Number) context.getRef(0)).intValue();
                     if (size <= 0) throw new IllegalArgumentException("Chunk size must be positive");
                     List<List<Object>> result = new ArrayList<>();
                     List<Object> currentChunk = new ArrayList<>(size);
@@ -213,31 +234,39 @@ public class ExtensionIterable {
                     if (!currentChunk.isEmpty()) {
                         result.add(currentChunk);
                     }
-                    return result;
+                    context.setReturnRef(result);
                 });
     }
 
     public static void initOrdering(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 自然顺序升序排序
-                .function("sorted", 0, (context) -> sortElements(context, false, false))
+                .function("sorted", 0, (context) -> {
+                    context.setReturnRef(sortElements(context, false, false));
+                })
                 // 自然顺序降序排序
-                .function("sortedDescending", 0, (context) -> sortElements(context, true, false))
+                .function("sortedDescending", 0, (context) -> {
+                    context.setReturnRef(sortElements(context, true, false));
+                })
                 // 根据选择器函数升序排序
-                .function("sortedBy", 1, (context) -> sortElements(context, false, true))
+                .function("sortedBy", 1, (context) -> {
+                    context.setReturnRef(sortElements(context, false, true));
+                })
                 // 根据选择器函数降序排序
-                .function("sortedDescendingBy", 1, (context) -> sortElements(context, true, true))
+                .function("sortedDescendingBy", 1, (context) -> {
+                    context.setReturnRef(sortElements(context, true, true));
+                })
                 // 反转顺序
                 .function("reversed", 0, (context) -> {
                     List<Object> list = CollectionUtils.copyList((Iterable<Object>) Objects.requireNonNull(context.getTarget()));
                     Collections.reverse(list);
-                    return list;
+                    context.setReturnRef(list);
                 })
                 // 随机打乱顺序
                 .function("shuffled", 0, (context) -> {
                     List<Object> list = CollectionUtils.copyList((Iterable<Object>) Objects.requireNonNull(context.getTarget()));
                     Collections.shuffle(list);
-                    return list;
+                    context.setReturnRef(list);
                 });
     }
 
@@ -246,9 +275,12 @@ public class ExtensionIterable {
                 // 取前 n 个元素
                 .function("take", 1, (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
-                    int n = context.getNumber(0).intValue();
+                    int n = ((Number) context.getRef(0)).intValue();
                     // 如果 n <= 0 丢弃所有元素
-                    if (n <= 0) return new ArrayList<>();
+                    if (n <= 0) {
+                        context.setReturnRef(new ArrayList<>());
+                        return;
+                    }
                     List<Object> result = new ArrayList<>(n);
                     int count = 0;
                     for (Object object : list) {
@@ -258,14 +290,17 @@ public class ExtensionIterable {
                         result.add(object);
                         count++;
                     }
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 丢弃前 n 个元素
                 .function("drop", 1, (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
-                    int n = context.getNumber(0).intValue();
+                    int n = ((Number) context.getRef(0)).intValue();
                     // 如果 n <= 0 保留所有元素
-                    if (n <= 0) return list;
+                    if (n <= 0) {
+                        context.setReturnRef(list);
+                        return;
+                    }
                     List<Object> result = new ArrayList<>();
                     int count = 0;
                     for (Object object : list) {
@@ -274,67 +309,87 @@ public class ExtensionIterable {
                         }
                         count++;
                     }
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 取后 n 个元素
                 .function("takeLast", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int n = context.getNumber(0).intValue();
+                    int n = ((Number) context.getRef(0)).intValue();
                     // 如果 n <= 0 丢弃所有元素
-                    if (n <= 0) return new ArrayList<>();
+                    if (n <= 0) {
+                        context.setReturnRef(new ArrayList<>());
+                        return;
+                    }
                     List<Object> list = new ArrayList<>();
                     for (Object object : iterable) {
                         list.add(object);
                     }
                     int size = list.size();
-                    if (n >= size) return list;
-                    return list.subList(size - n, size);
+                    if (n >= size) {
+                        context.setReturnRef(list);
+                        return;
+                    }
+                    context.setReturnRef(list.subList(size - n, size));
                 })
                 // 丢弃后 n 个元素
                 .function("dropLast", 1, (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
-                    int n = context.getNumber(0).intValue();
+                    int n = ((Number) context.getRef(0)).intValue();
                     // 如果 n <= 0 保留所有元素
-                    if (n <= 0) return iterable;
+                    if (n <= 0) {
+                        context.setReturnRef(iterable);
+                        return;
+                    }
                     List<Object> list = new ArrayList<>();
                     for (Object object : iterable) {
                         list.add(object);
                     }
                     int size = list.size();
-                    if (n >= size) return new ArrayList<>();
-                    return list.subList(0, size - n);
+                    if (n >= size) {
+                        context.setReturnRef(new ArrayList<>());
+                        return;
+                    }
+                    context.setReturnRef(list.subList(0, size - n));
                 })
                 // 并集：合并两个集合，去重
                 .function("union", 1, (context) -> {
                     Iterable<Object> first = Objects.requireNonNull(context.getTarget());
-                    Iterable<Object> second = Objects.requireNonNull(context.getArgumentByType(0, Iterable.class));
+                    Iterable<Object> second = Objects.requireNonNull((Iterable<Object>) context.getRef(0));
                     Set<Object> result = toLinkedSet(first);
                     for (Object item : second) {
                         result.add(item);
                     }
-                    return result;
+                    context.setReturnRef(result);
                 })
                 // 交集：返回两个集合共有的元素
-                .function("intersect", 1, (context) -> filterBySet(context, true))
+                .function("intersect", 1, (context) -> {
+                    context.setReturnRef(filterBySet(context, true));
+                })
                 // 差集：从第一个集合中移除第二个集合的元素
-                .function("subtract", 1, (context) -> filterBySet(context, false))
+                .function("subtract", 1, (context) -> {
+                    context.setReturnRef(filterBySet(context, false));
+                })
                 // 去重：移除重复元素
-                .function("distinct", 0, (context) -> toLinkedSet(Objects.requireNonNull(context.getTarget())))
+                .function("distinct", 0, (context) -> {
+                    context.setReturnRef(toLinkedSet(Objects.requireNonNull(context.getTarget())));
+                })
                 // 根据选择器函数去重
                 .function("distinctBy", 1, (context) -> {
                     Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-                    Function selector = context.getFunction(0);
+                    Function selector = (Function) context.getRef(0);
                     Set<Object> seenKeys = new LinkedHashSet<>();
                     List<Object> result = new ArrayList<>();
                     FunctionContextPool pool = context.getPool();
                     try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
                         for (Object item : iterable) {
-                            Object key = selector.call(ctx.updateArguments(1, item, null, null, null));
+                            ctx.updateRefs(item);
+                            selector.call(ctx);
+                            Object key = ctx.getReturnRef();
                             if (seenKeys.add(key)) {
                                 result.add(item);
                             }
                         }
-                        return result;
+                        context.setReturnRef(result);
                     }
                 });
     }
@@ -360,7 +415,7 @@ public class ExtensionIterable {
      */
     static Set<Object> filterBySet(FunctionContext<?> context, boolean retain) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-        Iterable<Object> second = Objects.requireNonNull(context.getArgumentByType(0, Iterable.class));
+        Iterable<Object> second = Objects.requireNonNull((Iterable<Object>) context.getRef(0));
         Set<Object> secondSet = toLinkedSet(second);
         Set<Object> result = new LinkedHashSet<>();
         for (Object item : iterable) {
@@ -393,13 +448,21 @@ public class ExtensionIterable {
             });
         } else {
             // 使用选择器函数
-            Function selector = context.getFunction(0);
+            Function selector = (Function) context.getRef(0);
             FunctionContextPool pool = context.getPool();
             try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
                 Map<Object, Object> keyCache = new HashMap<>();
                 list.sort((a, b) -> {
-                    Object keyA = keyCache.computeIfAbsent(a, k -> selector.call(ctx.updateArguments(1, k, null, null, null)));
-                    Object keyB = keyCache.computeIfAbsent(b, k -> selector.call(ctx.updateArguments(1, k, null, null, null)));
+                    Object keyA = keyCache.computeIfAbsent(a, k -> {
+                        ctx.updateRefs(k);
+                        selector.call(ctx);
+                        return ctx.getReturnRef();
+                    });
+                    Object keyB = keyCache.computeIfAbsent(b, k -> {
+                        ctx.updateRefs(k);
+                        selector.call(ctx);
+                        return ctx.getReturnRef();
+                    });
                     if (keyA instanceof Comparable && keyB instanceof Comparable) {
                         int cmp = ((Comparable<Object>) keyA).compareTo(keyB);
                         return descending ? -cmp : cmp;

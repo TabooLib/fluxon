@@ -2,8 +2,8 @@ package org.tabooproject.fluxon.interpreter;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
@@ -68,24 +68,21 @@ public class UserFunction implements Function, Symbolic {
     }
 
     @Override
-    public Object call(@NotNull final FunctionContext<?> context) {
-        // 使用 Operations.bindFunctionParameters 统一参数绑定逻辑
+    public void call(@NotNull final FunctionContext<?> context) {
         Environment functionEnv = Intrinsics.bindFunctionParameters(
                 interpreter.getEnvironment(),
                 definition.getParameters(),
-                context.getArguments(),
+                context,
                 definition.getLocalVariables().size()
         );
-        // 对表达式体的函数调用也计费，避免递归或复杂表达式体绕过 cost
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
             interpreter.consumeCostStep();
         }
         try {
-            // 执行函数体
-            return interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
+            Object result = interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
+            context.setReturnRef(result);
         } catch (ReturnValue returnValue) {
-            // 捕获返回值
-            return returnValue.getValue();
+            context.setReturnRef(returnValue.getValue());
         }
     }
 

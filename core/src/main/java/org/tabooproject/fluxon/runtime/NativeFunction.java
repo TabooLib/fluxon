@@ -80,8 +80,8 @@ public class NativeFunction<Target> implements Function, Symbolic {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Object call(@NotNull final FunctionContext<?> context) {
-        return callable.call((FunctionContext<Target>) context);
+    public void call(@NotNull final FunctionContext<?> context) {
+        callable.call((FunctionContext<Target>) context);
     }
 
     @Override
@@ -111,8 +111,7 @@ public class NativeFunction<Target> implements Function, Symbolic {
          * 调用原生函数
          *
          * @param context 函数上下文，包含调用目标、参数列表和环境
-         * @return 返回值
          */
-        Object call(@NotNull FunctionContext<Target> context);
+        void call(@NotNull FunctionContext<Target> context);
     }
 } 

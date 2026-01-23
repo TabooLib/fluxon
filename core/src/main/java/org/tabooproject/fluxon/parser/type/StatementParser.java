@@ -1,13 +1,7 @@
 package org.tabooproject.fluxon.parser.type;
 
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.Trampoline;
-import org.tabooproject.fluxon.parser.StatementMacro;
-import org.tabooproject.fluxon.parser.StatementMacroRegistry;
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
-
-import java.util.Collections;
 
 /**
  * 语句解析器 - 委托给 StatementMacroRegistry

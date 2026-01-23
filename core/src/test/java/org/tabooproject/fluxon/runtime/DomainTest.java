@@ -85,7 +85,7 @@ public class DomainTest {
                     if (count < 3) {
                         throw new RuntimeException("Attempt " + count + " failed");
                     }
-                    return "success";
+                    ctx.setReturnRef("success");
                 }))
         );
         assertEquals("success", result.getInterpretResult());
@@ -147,7 +147,7 @@ public class DomainTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "lazy { increment() }",
                 ctx -> ctx.setDomainRegistry(registry),
-                env -> env.defineRootFunction("increment", new NativeFunction<>(null, ctx -> counter.incrementAndGet()))
+                env -> env.defineRootFunction("increment", new NativeFunction<>(null, ctx -> ctx.setReturnRef(counter.incrementAndGet())))
         );
         assertEquals(0, result.getInterpretResult());
         // 编译模式会创建新的 env，counter 会重置，所以只验证解释模式

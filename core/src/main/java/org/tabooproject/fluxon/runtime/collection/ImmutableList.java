@@ -3,7 +3,10 @@ package org.tabooproject.fluxon.runtime.collection;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.AbstractList;
+import java.util.List;
+import java.util.Objects;
+import java.util.RandomAccess;
 
 /**
  * 简单的不可变列表实现，支持 inline 模式（最多 4 个元素）和数组模式。

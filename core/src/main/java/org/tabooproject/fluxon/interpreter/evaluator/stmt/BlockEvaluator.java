@@ -4,15 +4,15 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
-import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.StatementType;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.POP;
 
 public class BlockEvaluator extends StatementEvaluator<Block> {
 

@@ -2,15 +2,10 @@ package org.tabooproject.fluxon.parser.macro;
 
 import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.Parser;
-import org.tabooproject.fluxon.parser.SymbolEnvironment;
-import org.tabooproject.fluxon.parser.SyntaxMacro;
-import org.tabooproject.fluxon.parser.Trampoline;
+import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.parser.type.BlockParser;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
-
 import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
 
 import java.util.Collections;

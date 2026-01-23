@@ -248,7 +248,8 @@ public class JSR223Benchmark {
     public void fluxon_callFunction(Blackhole bh) {
         FunctionContextPool pool = FunctionContextPool.local();
         try (FunctionContext<?> ctx = pool.borrow(fluxonAddFunction, null, new Object[]{1, 2}, fluxonEnv)) {
-            bh.consume(fluxonAddFunction.call(ctx));
+            fluxonAddFunction.call(ctx);
+            bh.consume(ctx.getReturnRef());
         }
     }
 

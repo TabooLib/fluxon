@@ -64,8 +64,6 @@ public interface Function {
      * 执行函数
      *
      * @param context 函数上下文
-     * @return 返回值
      */
-    @Nullable
-    Object call(@NotNull final FunctionContext<?> context);
+    void call(@NotNull final FunctionContext<?> context);
 }

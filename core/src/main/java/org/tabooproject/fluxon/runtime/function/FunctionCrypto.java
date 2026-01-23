@@ -18,10 +18,10 @@ public class FunctionCrypto {
 
     public static void init(FluxonRuntime runtime) {
         // 获取编码对象
-        runtime.registerFunction("fs:crypto", "hash", 0, (context) -> HashObject.INSTANCE);
-        runtime.registerFunction("fs:crypto", "base64", 0, (context) -> Base64Object.INSTANCE);
-        runtime.registerFunction("fs:crypto", "unicode", 0, (context) -> UnicodeObject.INSTANCE);
-        runtime.registerFunction("fs:crypto", "hex", 0, (context) -> HexObject.INSTANCE);
+        runtime.registerFunction("fs:crypto", "hash", 0, context -> context.setReturnRef(HashObject.INSTANCE));
+        runtime.registerFunction("fs:crypto", "base64", 0, context -> context.setReturnRef(Base64Object.INSTANCE));
+        runtime.registerFunction("fs:crypto", "unicode", 0, context -> context.setReturnRef(UnicodeObject.INSTANCE));
+        runtime.registerFunction("fs:crypto", "hex", 0, context -> context.setReturnRef(HexObject.INSTANCE));
 
         // 注册编码相关的对象实例
         ExportRegistry exportRegistry = runtime.getExportRegistry();

@@ -1,12 +1,7 @@
 package org.tabooproject.fluxon.compiler;
 
 import org.jetbrains.annotations.NotNull;
-import org.tabooproject.fluxon.parser.CommandRegistry;
-import org.tabooproject.fluxon.parser.DomainRegistry;
-import org.tabooproject.fluxon.parser.StatementMacroRegistry;
-import org.tabooproject.fluxon.parser.SyntaxMacroRegistry;
-import org.tabooproject.fluxon.parser.OperatorRegistry;
-import org.tabooproject.fluxon.parser.PostfixOperatorRegistry;
+import org.tabooproject.fluxon.parser.*;
 
 import java.util.HashMap;
 import java.util.List;

@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime.reflection.resolve;
 
 import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
-import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.reflection.cache.MethodCache;
 import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 

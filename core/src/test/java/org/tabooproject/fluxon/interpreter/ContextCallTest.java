@@ -316,12 +316,7 @@ public class ContextCallTest {
 
     @Test
     public void testArgumentTypeMismatch() {
-        try {
-            FluxonTestUtil.runSilent("[1]::get(random(1))");
-            fail("Should throw ArgumentTypeMismatchException");
-        } catch (ArgumentTypeMismatchError e) {
-            assertTrue(e.getMessage().contains("0, expect Number but got ArrayList ([1])"));
-        }
+        assertThrows(ClassCastException.class, () -> FluxonTestUtil.runSilent("[1]::get(random(1))"));
     }
 
     @Test

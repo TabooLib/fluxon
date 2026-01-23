@@ -10,10 +10,10 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.MemberAccessExpression;
-import org.tabooproject.fluxon.runtime.reflection.ReflectionBootstrap;
-import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.reflection.ReflectionBootstrap;
+import org.tabooproject.fluxon.runtime.reflection.ReflectionHelper;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandles;

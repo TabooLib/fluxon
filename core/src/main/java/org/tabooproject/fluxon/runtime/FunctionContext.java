@@ -2,17 +2,20 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
-import org.tabooproject.fluxon.runtime.stdlib.Coerce;
-import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
+ *
+ * @author sky
  */
 public class FunctionContext<Target> implements AutoCloseable {
 
     public static final Type TYPE = new Type(FunctionContext.class);
+
+    private static final int INITIAL_CAPACITY = 8;
+    private static final Object[] EMPTY_REFS = new Object[0];
+    private static final long[] EMPTY_PRIMITIVES = new long[0];
 
     @NotNull
     private Function function;
@@ -23,362 +26,222 @@ public class FunctionContext<Target> implements AutoCloseable {
     @Nullable
     private FunctionContextPool pool;
 
-    // ====================== 参数数组模式 ======================
-    private Object[] arguments;
+    private long[] primitives;
+    private Object[] refs;
     private int argumentCount;
 
-    // ====================== inline 参数槽位（fast-args）======================
-    // 当 inlineMode 为 true 时，参数存储在 inlineArg0..inlineArg3 中，arguments 为 null
-    private boolean inlineMode;
-    private int inlineCount;
-    private Object inlineArg0;
-    private Object inlineArg1;
-    private Object inlineArg2;
-    private Object inlineArg3;
-
-    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+    public long returnPrimitive;
+    public Object returnRef;
+    public Type returnType;
 
     public FunctionContext(
             @NotNull Function function,
             @Nullable Target target,
-            Object[] arguments,
+            @NotNull Object[] refs,
             @NotNull Environment environment
     ) {
-        this(function, target, arguments, environment, null);
+        this(function, target, refs, environment, null);
     }
 
     public FunctionContext(
             @NotNull Function function,
             @Nullable Target target,
-            Object[] arguments,
+            @NotNull Object[] refs,
             @NotNull Environment environment,
             @Nullable FunctionContextPool pool
     ) {
         this.function = function;
         this.target = target;
-        this.arguments = arguments;
-        this.argumentCount = arguments.length;
+        this.refs = refs;
+        this.argumentCount = refs.length;
+        this.primitives = EMPTY_PRIMITIVES;
         this.environment = environment;
         this.pool = pool;
     }
 
-    /**
-     * 判断指定索引的参数是否为指定类型
-     *
-     * @param index 参数索引
-     * @param type  目标类型
-     * @return 如果索引有效且参数类型兼容则返回true，否则返回false
-     */
-    public boolean isType(int index, @NotNull Class<?> type) {
-        Object argument = getArgument(index);
-        return argument != null && Intrinsics.isCompatibleType(type, argument);
+    // ====================== 参数读取 - 原始类型 ======================
+
+    public int getInt(int index) {
+        return (int) primitives[index];
+    }
+
+    public long getLong(int index) {
+        return primitives[index];
+    }
+
+    public double getDouble(int index) {
+        return Double.longBitsToDouble(primitives[index]);
+    }
+
+    public float getFloat(int index) {
+        return Float.intBitsToFloat((int) primitives[index]);
+    }
+
+    public boolean getBool(int index) {
+        return primitives[index] != 0;
+    }
+
+    // ====================== 参数读取 - 引用类型 ======================
+
+    public Object getRef(int index) {
+        return refs[index];
+    }
+
+    // ====================== 参数写入 ======================
+
+    public void setInt(int index, int v) {
+        ensurePrimitivesCapacity(index);
+        primitives[index] = v;
+    }
+
+    public void setLong(int index, long v) {
+        ensurePrimitivesCapacity(index);
+        primitives[index] = v;
+    }
+
+    public void setDouble(int index, double v) {
+        ensurePrimitivesCapacity(index);
+        primitives[index] = Double.doubleToRawLongBits(v);
+    }
+
+    public void setFloat(int index, float v) {
+        ensurePrimitivesCapacity(index);
+        primitives[index] = Float.floatToRawIntBits(v);
+    }
+
+    public void setRef(int index, Object v) {
+        ensureRefsCapacity(index);
+        refs[index] = v;
+    }
+
+    // ====================== 返回值写入 ======================
+
+    public void setReturnInt(int v) {
+        returnPrimitive = v;
+        returnType = Type.I;
+    }
+
+    public void setReturnLong(long v) {
+        returnPrimitive = v;
+        returnType = Type.J;
+    }
+
+    public void setReturnDouble(double v) {
+        returnPrimitive = Double.doubleToRawLongBits(v);
+        returnType = Type.D;
+    }
+
+    public void setReturnFloat(float v) {
+        returnPrimitive = Float.floatToRawIntBits(v);
+        returnType = Type.F;
+    }
+
+    public void setReturnBool(boolean v) {
+        returnPrimitive = v ? 1 : 0;
+        returnType = Type.Z;
+    }
+
+    public void setReturnRef(Object v) {
+        returnRef = v;
+        returnType = Type.OBJECT;
+    }
+
+    // ====================== 返回值读取 ======================
+
+    public long getReturnPrimitive() {
+        return returnPrimitive;
+    }
+
+    public Object getReturnRef() {
+        return returnRef;
+    }
+
+    public Type getReturnType() {
+        return returnType;
+    }
+
+    // ====================== 通用 ======================
+
+    public int getArgumentCount() {
+        return argumentCount;
     }
 
     /**
-     * 判断是否存在指定索引的参数
-     *
-     * @param index 参数索引
-     * @return 如果索引有效则返回true，否则返回false
+     * 热循环复用 context，更新引用参数
      */
-    public boolean hasArgument(int index) {
-        return index < getArgumentCount();
+    public void updateRefs(Object... args) {
+        this.refs = args;
+        this.argumentCount = args.length;
     }
 
-    /**
-     * 获取指定索引的参数值
-     *
-     * @param index 参数索引
-     * @return 如果索引有效则返回参数值，否则返回null
-     */
-    @Nullable
-    public Object getArgument(int index) {
-        if (inlineMode) {
-            if (index >= inlineCount) {
-                return null;
-            }
-            // @formatter:off
-            switch (index) {
-                case 0: return inlineArg0;
-                case 1: return inlineArg1;
-                case 2: return inlineArg2;
-                case 3: return inlineArg3;
-                default: return null;
-            }
-            // @formatter:on
-        }
-        if (index >= argumentCount) {
-            return null;
-        }
-        return arguments[index];
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为指定类型
-     *
-     * @param index 参数索引
-     * @param type  目标类型
-     * @param <T>   目标类型参数
-     * @return 如果索引有效且参数类型兼容则返回转换后的参数值，否则抛出异常
-     */
-    @Nullable
-    public <T> T getArgumentByType(int index, @NotNull Class<T> type) {
-        Object argument = getArgument(index);
-        if (argument == null) return null;
-        // 修复：传入对象本身，而不是 Class 对象
-        if (Intrinsics.isCompatibleType(type, argument)) {
-            return type.cast(argument);
-        }
-        throw new ArgumentTypeMismatchError(this, index, type, argument);
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 Number 类型
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 Number 值，否则抛出异常
-     */
-    @NotNull
-    public Number getNumber(int index) {
-        Object argument = getArgument(index);
-        if (argument instanceof Number) {
-            return ((Number) argument);
-        }
-        throw new ArgumentTypeMismatchError(this, index, Number.class, argument);
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 Number 类型，若失败则返回 null
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 Number 值，否则返回 null
-     */
-    @Nullable
-    public Number getNumberOrNull(int index) {
-        return getArgumentByType(index, Number.class);
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 Boolean 类型，若失败则返回 false
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 Boolean 值，否则返回 false
-     */
-    public boolean getBoolean(int index) {
-        Object argument = getArgument(index);
-        return Coerce.asBoolean(argument).orElse(false);
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 String 类型，若失败则返回 null
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 String 值，否则返回 null
-     */
-    @Nullable
-    public String getString(int index) {
-        Object argument = getArgument(index);
-        if (argument == null) return null;
-        return argument.toString();
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 Function 类型
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 Function 值，否则抛出异常
-     */
-    @NotNull
-    public Function getFunction(int index) {
-        Object argument = getArgument(index);
-        if (argument instanceof Function) {
-            return (Function) argument;
-        }
-        throw new ArgumentTypeMismatchError(this, index, Function.class, argument);
-    }
-
-    /**
-     * 获取指定索引的参数值，并尝试将其转换为 Function 类型，若失败则返回 null
-     *
-     * @param index 参数索引
-     * @return 如果索引有效且参数类型兼容则返回转换后的 Function 名称，否则返回 null
-     */
-    @Nullable
-    public String getFunctionOrNull(int index) {
-        Object argument = getArgument(index);
-        if (argument instanceof Function) {
-            return ((Function) argument).getName();
-        }
-        return null;
-    }
-
-    /**
-     * 获取当前函数上下文关联的函数实例
-     *
-     * @return 函数实例
-     */
     @NotNull
     public Function getFunction() {
         return function;
     }
 
-    /**
-     * 获取当前函数上下文关联的目标实例
-     *
-     * @return 目标实例
-     */
     @Nullable
     public Target getTarget() {
         return target;
     }
 
-    /**
-     * 获取当前函数上下文关联的参数数组
-     * 在 inline 模式下，会惰性创建数组并缓存
-     *
-     * @return 参数数组
-     */
-    public Object[] getArguments() {
-        if (inlineMode) {
-            // 惰性物化：创建数组并缓存
-            Object[] materialized = Intrinsics.materializeArgs(inlineCount, inlineArg0, inlineArg1, inlineArg2, inlineArg3);
-            // 切换到数组模式，避免重复物化
-            this.arguments = materialized;
-            this.argumentCount = inlineCount;
-            this.inlineMode = false;
-            return materialized;
-        }
-        return arguments;
-    }
-
-    /**
-     * 获取当前函数上下文关联的参数数量
-     *
-     * @return 参数数量
-     */
-    public int getArgumentCount() {
-        return inlineMode ? inlineCount : argumentCount;
-    }
-
-    /**
-     * 获取当前函数上下文关联的环境实例
-     *
-     * @return 环境实例
-     */
     @NotNull
     public Environment getEnvironment() {
         return environment;
     }
 
-    /**
-     * 获取当前函数上下文所属的池实例（如果有的话）
-     */
     @Nullable
     public FunctionContextPool getPool() {
         return pool;
     }
 
-    /**
-     * 更新当前函数上下文关联的参数数组和参数数量
-     * 用于在高频调用时避免重复创建函数上下文实例
-     * 注意：此方法会清除 inline 模式
-     */
-    public FunctionContext<Target> updateArguments(Object[] arguments) {
-        this.arguments = arguments;
-        this.argumentCount = arguments.length;
-        this.inlineMode = false;
-        clearInlineSlots();
-        return this;
-    }
+    // ====================== 内部方法 ======================
 
-    /**
-     * 更新当前函数上下文关联的 inline 参数槽位
-     * 用于在高频调用时避免重复创建函数上下文实例和参数数组
-     * 注意：此方法会启用 inline 模式
-     */
-    public FunctionContext<Target> updateArguments(
-            int count,
-            @Nullable Object arg0,
-            @Nullable Object arg1,
-            @Nullable Object arg2,
-            @Nullable Object arg3
-    ) {
-        this.arguments = null;
-        this.argumentCount = 0;
-        this.inlineMode = true;
-        this.inlineCount = count;
-        this.inlineArg0 = arg0;
-        this.inlineArg1 = arg1;
-        this.inlineArg2 = arg2;
-        this.inlineArg3 = arg3;
-        return this;
-    }
-
-    /**
-     * 仅供内部池化使用的重置方法，用于避免重复创建 FunctionContext 实例
-     */
     @SuppressWarnings("unchecked")
     void reset(
             @NotNull Function function,
             @Nullable Object target,
-            @NotNull Object[] arguments,
+            @NotNull Object[] refs,
             @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
-        this.arguments = arguments;
-        this.argumentCount = arguments.length;
+        this.refs = refs;
+        this.argumentCount = refs.length;
         this.environment = environment;
-        this.inlineMode = false;
-        clearInlineSlots();
+        this.returnPrimitive = 0;
+        this.returnRef = null;
+        this.returnType = null;
     }
 
-    /**
-     * 仅供内部池化使用的 inline 模式重置方法
-     */
-    @SuppressWarnings("unchecked")
-    void resetInline(
-            @NotNull Function function,
-            @Nullable Object target,
-            int count,
-            @Nullable Object arg0,
-            @Nullable Object arg1,
-            @Nullable Object arg2,
-            @Nullable Object arg3,
-            @NotNull Environment environment) {
-        this.function = function;
-        this.target = (Target) target;
-        this.arguments = null;
-        this.argumentCount = 0;
-        this.environment = environment;
-        this.inlineMode = true;
-        this.inlineCount = count;
-        this.inlineArg0 = arg0;
-        this.inlineArg1 = arg1;
-        this.inlineArg2 = arg2;
-        this.inlineArg3 = arg3;
-    }
-
-    /**
-     * 池化归还时清理对参数、目标和环境的引用，便于 GC 及时回收
-     */
     @SuppressWarnings("DataFlowIssue")
     void clearForPooling() {
-        this.arguments = EMPTY_ARGUMENTS;
+        this.refs = EMPTY_REFS;
         this.argumentCount = 0;
         this.target = null;
         this.environment = null;
-        this.inlineMode = false;
-        clearInlineSlots();
+        this.returnPrimitive = 0;
+        this.returnRef = null;
+        this.returnType = null;
     }
 
-    /**
-     * 清理 inline 槽位引用，便于 GC
-     */
-    private void clearInlineSlots() {
-        this.inlineCount = 0;
-        this.inlineArg0 = null;
-        this.inlineArg1 = null;
-        this.inlineArg2 = null;
-        this.inlineArg3 = null;
+    private void ensurePrimitivesCapacity(int index) {
+        if (primitives.length <= index) {
+            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
+            long[] newArr = new long[newCap];
+            System.arraycopy(primitives, 0, newArr, 0, primitives.length);
+            primitives = newArr;
+        }
+    }
+
+    private void ensureRefsCapacity(int index) {
+        if (refs.length <= index) {
+            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
+            Object[] newArr = new Object[newCap];
+            System.arraycopy(refs, 0, newArr, 0, refs.length);
+            refs = newArr;
+            if (argumentCount < newCap) {
+                argumentCount = newCap;
+            }
+        }
     }
 
     @Override
@@ -386,8 +249,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         return "FunctionContext{" +
                 "function=" + function.getName() +
                 ", target=" + target +
-                ", arguments=" + getArgumentCount() +
-                ", inline=" + inlineMode +
+                ", arguments=" + argumentCount +
                 '}';
     }
 

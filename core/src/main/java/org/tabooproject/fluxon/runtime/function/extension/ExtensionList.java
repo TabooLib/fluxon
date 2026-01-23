@@ -13,44 +13,44 @@ public class ExtensionList {
                 // 获取指定索引的元素
                 .function("get", 1, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getNumber(0).intValue();
-                    return list.get(index);
+                    int index = ((Number) context.getRef(0)).intValue();
+                    context.setReturnRef(list.get(index));
                 })
                 // 设置指定索引的元素
                 .function("set", 2, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getNumber(0).intValue();
-                    return list.set(index, context.getArgument(1));
+                    int index = ((Number) context.getRef(0)).intValue();
+                    context.setReturnRef(list.set(index, context.getRef(1)));
                 })
                 // 在指定位置添加元素
                 .function("insert", 2, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getNumber(0).intValue();
-                    list.add(index, context.getArgument(1));
-                    return list;
+                    int index = ((Number) context.getRef(0)).intValue();
+                    list.add(index, context.getRef(1));
+                    context.setReturnRef(list);
                 })
                 // 移除指定索引的元素
                 .function("removeAt", 1, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getNumber(0).intValue();
-                    return list.remove(index);
+                    int index = ((Number) context.getRef(0)).intValue();
+                    context.setReturnRef(list.remove(index));
                 })
                 // 获取元素的索引
                 .function("indexOf", 1, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    return list.indexOf(context.getArgument(0));
+                    context.setReturnRef(list.indexOf(context.getRef(0)));
                 })
                 // 获取元素的最后索引
                 .function("lastIndexOf", 1, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    return list.lastIndexOf(context.getArgument(0));
+                    context.setReturnRef(list.lastIndexOf(context.getRef(0)));
                 })
                 // 获取子列表
                 .function("subList", 2, (context) -> {
                     List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int fromIndex = context.getNumber(0).intValue();
-                    int toIndex = context.getNumber(1).intValue();
-                    return list.subList(fromIndex, toIndex);
+                    int fromIndex = ((Number) context.getRef(0)).intValue();
+                    int toIndex = ((Number) context.getRef(1)).intValue();
+                    context.setReturnRef(list.subList(fromIndex, toIndex));
                 });
     }
 }

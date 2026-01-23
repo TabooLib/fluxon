@@ -13,184 +13,164 @@ public class FunctionMath {
         runtime.registerVariable("E", Math.E);
 
         // 最大最小值
-        runtime.registerFunction("min", 2, (context) -> {
-            Number num0 = context.getNumber(0);
-            Number num1 = context.getNumber(1);
-            if (Operations.compareNumbers(num0, num1) < 0) {
-                return num0;
-            }
-            return num1;
+        runtime.registerFunction("min", 2, context -> {
+            Number num0 = (Number) context.getRef(0);
+            Number num1 = (Number) context.getRef(1);
+            context.setReturnRef(Operations.compareNumbers(num0, num1) < 0 ? num0 : num1);
         });
-        runtime.registerFunction("max", 2, (context) -> {
-            Number num0 = context.getNumber(0);
-            Number num1 = context.getNumber(1);
-            if (Operations.compareNumbers(num0, num1) > 0) {
-                return num0;
-            }
-            return num1;
+        runtime.registerFunction("max", 2, context -> {
+            Number num0 = (Number) context.getRef(0);
+            Number num1 = (Number) context.getRef(1);
+            context.setReturnRef(Operations.compareNumbers(num0, num1) > 0 ? num0 : num1);
         });
-        runtime.registerFunction("clamp", 3, (context) -> {
-            Number num = context.getNumber(0);
-            Number min = context.getNumber(1);
-            Number max = context.getNumber(2);
+        runtime.registerFunction("clamp", 3, context -> {
+            Number num = (Number) context.getRef(0);
+            Number min = (Number) context.getRef(1);
+            Number max = (Number) context.getRef(2);
             double clamped = Math.max(min.doubleValue(), Math.min(num.doubleValue(), max.doubleValue()));
-            // 尝试保持原始类型
             if (num instanceof Integer && min instanceof Integer && max instanceof Integer) {
-                return (int) clamped;
+                context.setReturnRef((int) clamped);
             } else if (num instanceof Long && min instanceof Long && max instanceof Long) {
-                return (long) clamped;
+                context.setReturnRef((long) clamped);
             } else if (num instanceof Float && min instanceof Float && max instanceof Float) {
-                return (float) clamped;
+                context.setReturnRef((float) clamped);
+            } else {
+                context.setReturnRef(clamped);
             }
-            return clamped;
         });
 
         // 绝对值
-        runtime.registerFunction("abs", 1, (context) -> {
-            Number num = context.getNumber(0);
-            double value = num.doubleValue();
-            double result = Math.abs(value);
-            // 尝试保持原始类型
+        runtime.registerFunction("abs", 1, context -> {
+            Number num = (Number) context.getRef(0);
+            double result = Math.abs(num.doubleValue());
             if (num instanceof Integer) {
                 int intValue = num.intValue();
                 if (intValue != Integer.MIN_VALUE) {
-                    return Math.abs(intValue);
+                    context.setReturnRef(Math.abs(intValue));
+                    return;
                 }
             } else if (num instanceof Long) {
                 long longValue = num.longValue();
                 if (longValue != Long.MIN_VALUE) {
-                    return Math.abs(longValue);
+                    context.setReturnRef(Math.abs(longValue));
+                    return;
                 }
             } else if (num instanceof Float) {
-                return (float) result;
+                context.setReturnRef((float) result);
+                return;
             }
-            return result;
+            context.setReturnRef(result);
         });
 
         // 取整函数
-        runtime.registerFunction("round", 1, (context) -> {
-            Number num = context.getNumber(0);
+        runtime.registerFunction("round", 1, context -> {
+            Number num = (Number) context.getRef(0);
             long result = Math.round(num.doubleValue());
-            return preserveIntegerType(result);
+            context.setReturnRef(preserveIntegerType(result));
         });
-        runtime.registerFunction("floor", 1, (context) -> {
-            Number num = context.getNumber(0);
+        runtime.registerFunction("floor", 1, context -> {
+            Number num = (Number) context.getRef(0);
             double result = Math.floor(num.doubleValue());
-            return preserveIntegerTypeFromDouble(result);
+            context.setReturnRef(preserveIntegerTypeFromDouble(result));
         });
-        runtime.registerFunction("ceil", 1, (context) -> {
-            Number num = context.getNumber(0);
+        runtime.registerFunction("ceil", 1, context -> {
+            Number num = (Number) context.getRef(0);
             double result = Math.ceil(num.doubleValue());
-            return preserveIntegerTypeFromDouble(result);
+            context.setReturnRef(preserveIntegerTypeFromDouble(result));
         });
 
         // 三角函数
-        runtime.registerFunction("sin", 1, (context) -> Math.sin(context.getNumber(0).doubleValue()));
-        runtime.registerFunction("cos", 1, (context) -> Math.cos(context.getNumber(0).doubleValue()));
-        runtime.registerFunction("tan", 1, (context) -> Math.tan(context.getNumber(0).doubleValue()));
-        runtime.registerFunction("asin", 1, (context) -> {
-            Number num = context.getNumber(0);
-            double value = num.doubleValue();
+        runtime.registerFunction("sin", 1, context -> context.setReturnRef(Math.sin(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("cos", 1, context -> context.setReturnRef(Math.cos(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("tan", 1, context -> context.setReturnRef(Math.tan(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("asin", 1, context -> {
+            double value = ((Number) context.getRef(0)).doubleValue();
             validateRange(value, -1.0, 1.0, "asin input must be between -1 and 1");
-            return Math.asin(value);
+            context.setReturnRef(Math.asin(value));
         });
-        runtime.registerFunction("acos", 1, (context) -> {
-            Number num = context.getNumber(0);
-            double value = num.doubleValue();
+        runtime.registerFunction("acos", 1, context -> {
+            double value = ((Number) context.getRef(0)).doubleValue();
             validateRange(value, -1.0, 1.0, "acos input must be between -1 and 1");
-            return Math.acos(value);
+            context.setReturnRef(Math.acos(value));
         });
-        runtime.registerFunction("atan", 1, (context) -> Math.atan(context.getNumber(0).doubleValue()));
+        runtime.registerFunction("atan", 1, context -> context.setReturnRef(Math.atan(((Number) context.getRef(0)).doubleValue())));
 
         // 指数与对数
-        runtime.registerFunction("exp", 1, (context) -> Math.exp(context.getNumber(0).doubleValue()));
-        runtime.registerFunction("log", 1, (context) -> {
-            double value = context.getNumber(0).doubleValue();
+        runtime.registerFunction("exp", 1, context -> context.setReturnRef(Math.exp(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("log", 1, context -> {
+            double value = ((Number) context.getRef(0)).doubleValue();
             validatePositive(value, "log input must be positive");
-            return Math.log(value);
+            context.setReturnRef(Math.log(value));
         });
-        runtime.registerFunction("pow", 2, (context) -> {
-            Number base = context.getNumber(0);
-            Number exponent = context.getNumber(1);
+        runtime.registerFunction("pow", 2, context -> {
+            Number base = (Number) context.getRef(0);
+            Number exponent = (Number) context.getRef(1);
             double result = Math.pow(base.doubleValue(), exponent.doubleValue());
-            // 如果指数是整数且结果是整数，尝试返回整数类型
             double expValue = exponent.doubleValue();
             if (expValue == Math.rint(expValue) && result == Math.rint(result) && !Double.isInfinite(result)) {
-                return preserveIntegerTypeFromDouble(result);
+                context.setReturnRef(preserveIntegerTypeFromDouble(result));
+            } else {
+                context.setReturnRef(result);
             }
-            return result;
         });
-        runtime.registerFunction("sqrt", 1, (context) -> {
-            double value = context.getNumber(0).doubleValue();
+        runtime.registerFunction("sqrt", 1, context -> {
+            double value = ((Number) context.getRef(0)).doubleValue();
             validatePositive(value, "Cannot take square root of negative number");
-            return Math.sqrt(value);
+            context.setReturnRef(Math.sqrt(value));
         });
 
         // 随机数生成函数
-        // random() / random(end) / random(start, end)
-        runtime.registerFunction("random", Arrays.asList(0, 1, 2),(context) -> {
+        runtime.registerFunction("random", Arrays.asList(0, 1, 2), context -> {
             int argCount = context.getArgumentCount();
             switch (argCount) {
                 case 0:
-                    return Math.random();
+                    context.setReturnRef(Math.random());
+                    break;
                 case 1:
-                    return generateRandomSingle(context.getArgument(0));
+                    context.setReturnRef(generateRandomSingle(context.getRef(0)));
+                    break;
                 case 2:
-                    return generateRandomRange(context.getArgument(0), context.getArgument(1));
+                    context.setReturnRef(generateRandomRange(context.getRef(0), context.getRef(1)));
+                    break;
                 default:
                     throw new IllegalArgumentException("random function accepts 0, 1, or 2 arguments, got " + argCount);
             }
         });
 
         // 角度与弧度转换
-        runtime.registerFunction("rad", 1, (context) -> Math.toRadians(context.getNumber(0).doubleValue()));
-        runtime.registerFunction("deg", 1, (context) -> Math.toDegrees(context.getNumber(0).doubleValue()));
+        runtime.registerFunction("rad", 1, context -> context.setReturnRef(Math.toRadians(((Number) context.getRef(0)).doubleValue())));
+        runtime.registerFunction("deg", 1, context -> context.setReturnRef(Math.toDegrees(((Number) context.getRef(0)).doubleValue())));
 
         // 插值
-        runtime.registerFunction("lerp", 3, (context) -> {
-            Number start = context.getNumber(0);
-            Number end = context.getNumber(1);
-            Number t = context.getNumber(2);
-            return start.doubleValue() + (end.doubleValue() - start.doubleValue()) * t.doubleValue();
+        runtime.registerFunction("lerp", 3, context -> {
+            Number start = (Number) context.getRef(0);
+            Number end = (Number) context.getRef(1);
+            Number t = (Number) context.getRef(2);
+            context.setReturnRef(start.doubleValue() + (end.doubleValue() - start.doubleValue()) * t.doubleValue());
         });
     }
 
-    /**
-     * 验证参数是数字并返回 Number 对象
-     */
     private static Number validateAndGetNumber(Object arg) {
         Operations.checkNumberOperand(arg);
         return (Number) arg;
     }
 
-    /**
-     * 验证数值为正数
-     */
     private static void validatePositive(double value, String message) {
         if (value <= 0) {
             throw new ArithmeticException(message);
         }
     }
 
-    /**
-     * 验证数值在指定范围内
-     */
     private static void validateRange(double value, double min, double max, String message) {
         if (value < min || value > max) {
             throw new ArithmeticException(message);
         }
     }
 
-    /**
-     * 判断数字是否为整数类型
-     */
     private static boolean isIntegerType(Number n) {
         return n instanceof Integer || n instanceof Long || n instanceof Short || n instanceof Byte;
     }
 
-    /**
-     * 尝试将 long 结果保持为整数类型
-     */
     private static Number preserveIntegerType(long result) {
         if (result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE) {
             return (int) result;
@@ -198,9 +178,6 @@ public class FunctionMath {
         return result;
     }
 
-    /**
-     * 尝试将 double 结果保持为整数类型（如果是整数值）
-     */
     private static Number preserveIntegerTypeFromDouble(double result) {
         if (result == Math.rint(result) && !Double.isInfinite(result)) {
             long longResult = (long) result;
@@ -209,9 +186,6 @@ public class FunctionMath {
         return result;
     }
 
-    /**
-     * 尝试保持两个数字的共同类型
-     */
     private static Number preserveCommonType(Number result, Number original1, Number original2) {
         if (original1 instanceof Integer && original2 instanceof Integer) {
             long longResult = result.longValue();
@@ -225,9 +199,6 @@ public class FunctionMath {
         return result;
     }
 
-    /**
-     * 根据原始类型保持结果类型
-     */
     private static Number preserveOriginalType(Number result, Number original) {
         if (original instanceof Integer) {
             long longResult = result.longValue();
@@ -240,9 +211,6 @@ public class FunctionMath {
         return result;
     }
 
-    /**
-     * 生成单参数随机数 random(end)
-     */
     private static Number generateRandomSingle(Object endArg) {
         Number end = validateAndGetNumber(endArg);
         if (isIntegerType(end)) {
@@ -262,13 +230,9 @@ public class FunctionMath {
         }
     }
 
-    /**
-     * 生成范围随机数 random(start, end)
-     */
     private static Number generateRandomRange(Object startArg, Object endArg) {
         Number start = validateAndGetNumber(startArg);
         Number end = validateAndGetNumber(endArg);
-        // 检查范围有效性
         if (Operations.compare(start, end) >= 0) {
             throw new IllegalArgumentException("random start value must be less than end value");
         }

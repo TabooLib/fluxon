@@ -39,7 +39,7 @@ class AfterInjectionIntegrationTest {
     // ==================== 测试目标类 ====================
 
     public static class TestTarget {
-        
+
         public int instanceValue = 0;
 
         /** 返回基本类型 */
@@ -77,30 +77,25 @@ class AfterInjectionIntegrationTest {
 
     @Test
     void testAfterCapturesReturnValue() {
-        // 记录捕获到的返回值
         AtomicReference<Object> captured = new AtomicReference<>();
-        
+
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            // 最后一个参数是返回值
-            Object returnValue = ctx.getArgument(ctx.getArgumentCount() - 1);
+            Object returnValue = ctx.getRef(ctx.getArgumentCount() - 1);
             captured.set(returnValue);
             return null; // 不修改返回值
-        });
+        }).when(callback).call(any());
 
-        // 注入 AFTER
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "add", "(II)I", InjectionType.AFTER
         );
         CallbackDispatcher.register(spec.getId(), callback, FluxonRuntime.getInstance().newEnvironment());
         InjectionRegistry.getInstance().register(spec);
 
-        // 执行目标方法
         TestTarget target = new TestTarget();
         int result = target.add(3, 5);
 
-        // 验证
         assertEquals(8, result, "原返回值应该保持不变");
         assertEquals(8, captured.get(), "回调应该捕获到返回值 8");
         verify(callback, times(1)).call(any());
@@ -109,12 +104,12 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterModifiesReturnValue() {
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            // 获取原返回值并修改
-            Integer original = (Integer) ctx.getArgument(ctx.getArgumentCount() - 1);
-            return original + 10; // 返回值加 10
-        });
+            Integer original = (Integer) ctx.getRef(ctx.getArgumentCount() - 1);
+            ctx.setReturnRef(original + 10);
+            return null;
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "add", "(II)I", InjectionType.AFTER
@@ -131,18 +126,17 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterCapturesArguments() {
         AtomicReference<Object[]> capturedArgs = new AtomicReference<>();
-        
+
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            // 捕获所有参数：this, arg1, arg2, returnValue
             Object[] args = new Object[ctx.getArgumentCount()];
             for (int i = 0; i < args.length; i++) {
-                args[i] = ctx.getArgument(i);
+                args[i] = ctx.getRef(i);
             }
             capturedArgs.set(args);
             return null;
-        });
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "add", "(II)I", InjectionType.AFTER
@@ -165,15 +159,16 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterWithStringReturnValue() {
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            String original = (String) ctx.getArgument(ctx.getArgumentCount() - 1);
-            return original + "!"; // 添加感叹号
-        });
+            String original = (String) ctx.getRef(ctx.getArgumentCount() - 1);
+            ctx.setReturnRef(original + "!");
+            return null;
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
-            TestTarget.class.getName(), "concat", 
-            "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", 
+            TestTarget.class.getName(), "concat",
+            "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
             InjectionType.AFTER
         );
         CallbackDispatcher.register(spec.getId(), callback, FluxonRuntime.getInstance().newEnvironment());
@@ -189,15 +184,14 @@ class AfterInjectionIntegrationTest {
     void testAfterWithVoidMethod() {
         AtomicInteger callCount = new AtomicInteger(0);
         AtomicReference<Object> capturedReturnValue = new AtomicReference<>();
-        
+
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
             callCount.incrementAndGet();
-            // void 方法的返回值应该是 null
-            capturedReturnValue.set(ctx.getArgument(ctx.getArgumentCount() - 1));
+            capturedReturnValue.set(ctx.getRef(ctx.getArgumentCount() - 1));
             return null;
-        });
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "increment", "()V", InjectionType.AFTER
@@ -216,17 +210,17 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterWithStaticMethod() {
         AtomicReference<Object[]> capturedArgs = new AtomicReference<>();
-        
+
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
             Object[] args = new Object[ctx.getArgumentCount()];
             for (int i = 0; i < args.length; i++) {
-                args[i] = ctx.getArgument(i);
+                args[i] = ctx.getRef(i);
             }
             capturedArgs.set(args);
             return null;
-        });
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "multiply", "(II)I", InjectionType.AFTER
@@ -237,10 +231,9 @@ class AfterInjectionIntegrationTest {
         int result = TestTarget.multiply(4, 5);
 
         assertEquals(20, result, "原返回值应该保持不变");
-        
+
         Object[] args = capturedArgs.get();
         assertNotNull(args);
-        // 静态方法没有 this，所以参数是：arg1, arg2, returnValue
         assertEquals(3, args.length, "静态方法应该有 3 个参数：2 个入参 + 返回值");
         assertEquals(4, args[0], "第一个参数应该是 a=4");
         assertEquals(5, args[1], "第二个参数应该是 b=5");
@@ -250,30 +243,26 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterCapturesException() {
         AtomicReference<Object> capturedException = new AtomicReference<>();
-        
+
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            // 最后一个参数应该是异常对象
-            Object lastArg = ctx.getArgument(ctx.getArgumentCount() - 1);
+            Object lastArg = ctx.getRef(ctx.getArgumentCount() - 1);
             capturedException.set(lastArg);
-            return null; // 不替换异常，继续抛出
-        });
+            return null; // 不替换异常
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
-            TestTarget.class.getName(), "throwError", 
-            "(Ljava/lang/String;)Ljava/lang/String;", 
+            TestTarget.class.getName(), "throwError",
+            "(Ljava/lang/String;)Ljava/lang/String;",
             InjectionType.AFTER
         );
         CallbackDispatcher.register(spec.getId(), callback, FluxonRuntime.getInstance().newEnvironment());
         InjectionRegistry.getInstance().register(spec);
 
         TestTarget target = new TestTarget();
-        
-        // 方法应该仍然抛出异常
         assertThrows(RuntimeException.class, () -> target.throwError("test error"));
-        
-        // 验证回调捕获到了异常
+
         Object captured = capturedException.get();
         assertNotNull(captured, "应该捕获到异常");
         assertTrue(captured instanceof RuntimeException, "应该是 RuntimeException");
@@ -283,29 +272,26 @@ class AfterInjectionIntegrationTest {
     @Test
     void testAfterReplacesException() {
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            Object lastArg = ctx.getArgument(ctx.getArgumentCount() - 1);
+            Object lastArg = ctx.getRef(ctx.getArgumentCount() - 1);
             if (lastArg instanceof RuntimeException) {
-                // 将 RuntimeException 替换为 IllegalStateException
-                return new IllegalStateException("Replaced exception");
+                ctx.setReturnRef(new IllegalStateException("Replaced exception"));
             }
             return null;
-        });
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
-            TestTarget.class.getName(), "throwError", 
-            "(Ljava/lang/String;)Ljava/lang/String;", 
+            TestTarget.class.getName(), "throwError",
+            "(Ljava/lang/String;)Ljava/lang/String;",
             InjectionType.AFTER
         );
         CallbackDispatcher.register(spec.getId(), callback, FluxonRuntime.getInstance().newEnvironment());
         InjectionRegistry.getInstance().register(spec);
 
         TestTarget target = new TestTarget();
-        
-        // 应该抛出替换后的异常
         IllegalStateException thrown = assertThrows(
-            IllegalStateException.class, 
+            IllegalStateException.class,
             () -> target.throwError("original")
         );
         assertEquals("Replaced exception", thrown.getMessage());
@@ -315,15 +301,14 @@ class AfterInjectionIntegrationTest {
     @org.junit.jupiter.api.Disabled("异常抑制功能需要更复杂的字节码实现，暂时跳过")
     void testAfterSuppressesException() {
         Function callback = mock(Function.class);
-        when(callback.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             FunctionContext<?> ctx = invocation.getArgument(0);
-            Object lastArg = ctx.getArgument(ctx.getArgumentCount() - 1);
+            Object lastArg = ctx.getRef(ctx.getArgumentCount() - 1);
             if (lastArg instanceof ArithmeticException) {
-                // 返回一个默认值，抑制异常
-                return 0;
+                ctx.setReturnRef(0);
             }
             return null;
-        });
+        }).when(callback).call(any());
 
         InjectionSpec spec = new InjectionSpec(
             TestTarget.class.getName(), "divide", "(II)I", InjectionType.AFTER
@@ -332,8 +317,6 @@ class AfterInjectionIntegrationTest {
         InjectionRegistry.getInstance().register(spec);
 
         TestTarget target = new TestTarget();
-        
-        // 除以 0 通常会抛出 ArithmeticException，但被回调抑制了
         int result = target.divide(10, 0);
         assertEquals(0, result, "异常应该被抑制并返回默认值 0");
     }
@@ -342,27 +325,26 @@ class AfterInjectionIntegrationTest {
     void testMultipleAfterInjections() {
         AtomicInteger firstCallCount = new AtomicInteger(0);
         AtomicInteger secondCallCount = new AtomicInteger(0);
-        
+
         Function callback1 = mock(Function.class);
-        when(callback1.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             firstCallCount.incrementAndGet();
             return null;
-        });
+        }).when(callback1).call(any());
 
         Function callback2 = mock(Function.class);
-        when(callback2.call(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             secondCallCount.incrementAndGet();
             return null;
-        });
+        }).when(callback2).call(any());
 
-        // 注册两个 AFTER 注入
         InjectionSpec spec1 = new InjectionSpec(
             "spec1", TestTarget.class.getName(), "add", "(II)I", InjectionType.AFTER
         );
         InjectionSpec spec2 = new InjectionSpec(
             "spec2", TestTarget.class.getName(), "add", "(II)I", InjectionType.AFTER
         );
-        
+
         CallbackDispatcher.register(spec1.getId(), callback1, FluxonRuntime.getInstance().newEnvironment());
         CallbackDispatcher.register(spec2.getId(), callback2, FluxonRuntime.getInstance().newEnvironment());
         InjectionRegistry.getInstance().register(spec1);
@@ -371,9 +353,7 @@ class AfterInjectionIntegrationTest {
         TestTarget target = new TestTarget();
         target.add(1, 2);
 
-        // 注意：当前实现只支持一个方法一个注入（后注册的会覆盖）
-        // 这个测试验证当前行为
-        assertTrue(firstCallCount.get() + secondCallCount.get() >= 1, 
+        assertTrue(firstCallCount.get() + secondCallCount.get() >= 1,
             "至少有一个回调应该被调用");
     }
 }

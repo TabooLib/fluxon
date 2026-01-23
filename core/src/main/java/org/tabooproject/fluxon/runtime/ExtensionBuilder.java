@@ -2,7 +2,8 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 
 public class ExtensionBuilder<Target> {
 
@@ -88,12 +89,14 @@ public class ExtensionBuilder<Target> {
     @SuppressWarnings("unchecked")
     public static void forEachElement(FunctionContext<?> context, @Nullable IterableProcessor processor) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-        Function closure = context.getFunction(0);
+        Function closure = (Function) context.getRef(0);
         FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             int index = 0;
             for (Object element : iterable) {
-                Object callResult = closure.call(ctx.updateArguments(2, element, index, null, null));
+                ctx.updateRefs(element, index);
+                closure.call(ctx);
+                Object callResult = ctx.getReturnRef();
                 if (processor != null) {
                     processor.process(element, callResult);
                 }
@@ -113,12 +116,14 @@ public class ExtensionBuilder<Target> {
     @SuppressWarnings("unchecked")
     public static boolean testElements(FunctionContext<?> context, IterablePredicate predicate) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-        Function closure = context.getFunction(0);
+        Function closure = (Function) context.getRef(0);
         FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             int index = 0;
             for (Object element : iterable) {
-                Object callResult = closure.call(ctx.updateArguments(2, element, index, null, null));
+                ctx.updateRefs(element, index);
+                closure.call(ctx);
+                Object callResult = ctx.getReturnRef();
                 if (!predicate.test(element, callResult)) {
                     return false;
                 }
@@ -139,14 +144,15 @@ public class ExtensionBuilder<Target> {
     @SuppressWarnings("unchecked")
     public static Object compareElements(FunctionContext<?> context, IterableComparator comparator) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-        Function closure = context.getFunction(0);
+        Function closure = (Function) context.getRef(0);
         FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             Object result = null;
             int index = 0;
             for (Object element : iterable) {
-                Object callResult = closure.call(ctx.updateArguments(2, element, index, null, null));
-                // 只处理 Comparable 类型
+                ctx.updateRefs(element, index);
+                closure.call(ctx);
+                Object callResult = ctx.getReturnRef();
                 if (callResult instanceof Comparable) {
                     if (result == null) {
                         result = callResult;
@@ -171,15 +177,16 @@ public class ExtensionBuilder<Target> {
     @SuppressWarnings("unchecked")
     public static Object compareElementsBy(FunctionContext<?> context, IterableComparator comparator) {
         Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-        Function closure = context.getFunction(0);
+        Function closure = (Function) context.getRef(0);
         FunctionContextPool pool = context.getPool();
         try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
             Object resultElement = null;
             Object resultValue = null;
             int index = 0;
             for (Object element : iterable) {
-                Object callResult = closure.call(ctx.updateArguments(2, element, index, null, null));
-                // 只处理 Comparable 类型
+                ctx.updateRefs(element, index);
+                closure.call(ctx);
+                Object callResult = ctx.getReturnRef();
                 if (callResult instanceof Comparable) {
                     if (resultValue == null) {
                         resultElement = element;

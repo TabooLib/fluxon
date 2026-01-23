@@ -29,7 +29,8 @@ public abstract class RuntimeScriptBase {
         Function function = environment.getFunction(name);
         FunctionContextPool pool = FunctionContextPool.local();
         try (FunctionContext<?> context = pool.borrow(function, target, args, environment)) {
-            return function.call(context);
+            function.call(context);
+            return context.getReturnRef();
         }
     }
 

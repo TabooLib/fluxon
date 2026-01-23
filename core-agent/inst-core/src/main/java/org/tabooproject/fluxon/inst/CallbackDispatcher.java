@@ -77,9 +77,9 @@ public class CallbackDispatcher {
             return PROCEED;
         }
         try {
-            // 创建 FunctionContext 并调用 Fluxon 函数
             FunctionContext<?> context = new FunctionContext<>(callback, null, args, environment);
-            Object result = callback.call(context);
+            callback.call(context);
+            Object result = context.getReturnRef();
             return result != null ? result : PROCEED;
         } catch (Exception e) {
             LOGGER.severe("回调执行失败: " + specId + ", 错误: " + e.getMessage());
@@ -125,7 +125,8 @@ public class CallbackDispatcher {
         }
         try {
             FunctionContext<?> context = new FunctionContext<>(callback, null, args, environment);
-            return callback.call(context); // 直接返回回调结果，包括 null
+            callback.call(context);
+            return context.getReturnRef();
         } catch (Exception e) {
             throw new RuntimeException("Fluxon AFTER 回调执行失败: " + e.getMessage(), e);
         }

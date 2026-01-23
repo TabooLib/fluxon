@@ -2,21 +2,24 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.DomainExecutor;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.DomainExpression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
-import org.tabooproject.fluxon.runtime.*;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 import static org.tabooproject.fluxon.runtime.Type.STRING;
 

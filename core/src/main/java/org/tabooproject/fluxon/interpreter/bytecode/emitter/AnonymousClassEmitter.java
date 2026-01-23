@@ -2,8 +2,8 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.MethodDefinition;
 import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;

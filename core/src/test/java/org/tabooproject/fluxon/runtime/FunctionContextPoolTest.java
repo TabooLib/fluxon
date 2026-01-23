@@ -31,7 +31,7 @@ public class FunctionContextPoolTest {
     public void closeFromOtherThreadIsIgnored() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>(new SymbolFunction(null, "poolGuard", 0), ctx -> null);
+        Function function = new NativeFunction<>(new SymbolFunction(null, "poolGuard", 0), ctx -> {});
         FunctionContextPool pool = currentThreadPool();
         FunctionContext<?> context = pool.borrow(function, null, new Object[0], environment);
         int afterBorrow = getPoolSize(pool);
@@ -49,8 +49,8 @@ public class FunctionContextPoolTest {
     @Test
     public void asyncAndPrimaryCallsStayThreadLocal() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerAsyncFunction("asyncPoolEcho", 1, ctx -> Thread.currentThread().getName() + ":" + ctx.getArgument(0));
-        runtime.registerPrimarySyncFunction("primaryPoolEcho", 1, ctx -> Thread.currentThread().getName() + ":" + ctx.getArgument(0));
+        runtime.registerAsyncFunction("asyncPoolEcho", 1, ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
+        runtime.registerPrimarySyncFunction("primaryPoolEcho", 1, ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
 
         Executor previousPrimary = runtime.getPrimaryThreadExecutor();
         ExecutorService primaryExecutor = Executors.newSingleThreadExecutor(r -> new Thread(r, "primary-pool-test"));

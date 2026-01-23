@@ -1,11 +1,14 @@
 package org.tabooproject.fluxon.parser.type;
 
 import org.tabooproject.fluxon.lexer.TokenType;
-import org.tabooproject.fluxon.parser.*;
+import org.tabooproject.fluxon.parser.FunctionInfo;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FunctionCallParser {
 

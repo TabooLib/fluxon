@@ -7,7 +7,6 @@ import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,138 +16,44 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FastArgsTest {
 
     /**
-     * 测试 FunctionContext 的 inline 模式基本功能
+     * 测试 FunctionContext 的基本参数访问
      */
     @Test
-    void testFunctionContextInlineMode() {
+    void testFunctionContextBasicAccess() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>(new SymbolFunction(null, "testInline", 4), ctx -> {
-            // 验证 inline 模式下的参数访问
+        Function function = new NativeFunction<>(new SymbolFunction(null, "testBasic", 4), ctx -> {
             assertEquals(4, ctx.getArgumentCount());
-            assertEquals("a", ctx.getArgument(0));
-            assertEquals("b", ctx.getArgument(1));
-            assertEquals("c", ctx.getArgument(2));
-            assertEquals("d", ctx.getArgument(3));
-            assertNull(ctx.getArgument(4));
-            assertTrue(ctx.hasArgument(0));
-            assertTrue(ctx.hasArgument(3));
-            assertFalse(ctx.hasArgument(4));
-            return "ok";
+            assertEquals("a", ctx.getRef(0));
+            assertEquals("b", ctx.getRef(1));
+            assertEquals("c", ctx.getRef(2));
+            assertEquals("d", ctx.getRef(3));
+            ctx.setReturnRef("ok");
         });
 
         FunctionContextPool pool = FunctionContextPool.local();
-        FunctionContext<?> context = pool.borrowInline(function, null, 4, "a", "b", "c", "d", environment);
-        try {
-            Object result = function.call(context);
-            assertEquals("ok", result);
-        } finally {
-            pool.release(context);
+        try (FunctionContext<?> context = pool.borrow(function, null, new Object[]{"a", "b", "c", "d"}, environment)) {
+            function.call(context);
+            assertEquals("ok", context.getReturnRef());
         }
     }
 
     /**
-     * 测试 FunctionContext 的 getArguments() 惰性物化
+     * 测试空参数
      */
     @Test
-    void testFunctionContextLazyMaterialization() {
+    void testZeroArgs() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        AtomicReference<Object[]> capturedArgs = new AtomicReference<>();
-
-        Function function = new NativeFunction<>(new SymbolFunction(null, "testMaterialize", 3), ctx -> {
-            // 调用 getArguments() 触发物化
-            Object[] args = ctx.getArguments();
-            capturedArgs.set(args);
-            // 物化后应该切换到数组模式
-            assertEquals(3, args.length);
-            assertEquals("x", args[0]);
-            assertEquals("y", args[1]);
-            assertEquals("z", args[2]);
-            // 再次调用应该返回同一个数组
-            assertSame(args, ctx.getArguments());
-            return "ok";
-        });
-
-        FunctionContextPool pool = FunctionContextPool.local();
-        FunctionContext<?> context = pool.borrowInline(function, null, 3, "x", "y", "z", null, environment);
-        try {
-            Object result = function.call(context);
-            assertEquals("ok", result);
-            assertNotNull(capturedArgs.get());
-        } finally {
-            pool.release(context);
-        }
-    }
-
-    /**
-     * 测试 inline 模式与数组模式的参数一致性
-     */
-    @Test
-    void testInlineVsArrayConsistency() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
-        Environment environment = runtime.newEnvironment();
-        List<Object> inlineResults = new ArrayList<>();
-        List<Object> arrayResults = new ArrayList<>();
-
-        Function function = new NativeFunction<>(new SymbolFunction(null, "testConsistency", 4), ctx -> {
-            List<Object> results = new ArrayList<>();
-            results.add(ctx.getArgumentCount());
-            for (int i = 0; i < 5; i++) {
-                results.add(ctx.getArgument(i));
-            }
-            results.add(ctx.hasArgument(0));
-            results.add(ctx.hasArgument(3));
-            results.add(ctx.hasArgument(4));
-            return results;
-        });
-
-        FunctionContextPool pool = FunctionContextPool.local();
-
-        // 测试 inline 模式
-        FunctionContext<?> inlineCtx = pool.borrowInline(function, null, 4, 1, 2, 3, 4, environment);
-        try {
-            inlineResults.addAll((List<?>) function.call(inlineCtx));
-        } finally {
-            pool.release(inlineCtx);
-        }
-
-        // 测试数组模式
-        FunctionContext<?> arrayCtx = pool.borrow(function, null, new Object[]{1, 2, 3, 4}, environment);
-        try {
-            arrayResults.addAll((List<?>) function.call(arrayCtx));
-        } finally {
-            pool.release(arrayCtx);
-        }
-
-        // 验证一致性
-        assertEquals(inlineResults, arrayResults, "Inline mode and array mode should produce identical results");
-    }
-
-    /**
-     * 测试空参数的 inline 模式
-     */
-    @Test
-    void testInlineModeZeroArgs() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
-        Environment environment = runtime.newEnvironment();
-
         Function function = new NativeFunction<>(new SymbolFunction(null, "testZeroArgs", 0), ctx -> {
             assertEquals(0, ctx.getArgumentCount());
-            assertNull(ctx.getArgument(0));
-            assertFalse(ctx.hasArgument(0));
-            Object[] args = ctx.getArguments();
-            assertEquals(0, args.length);
-            return "ok";
+            ctx.setReturnRef("ok");
         });
 
         FunctionContextPool pool = FunctionContextPool.local();
-        FunctionContext<?> context = pool.borrowInline(function, null, 0, null, null, null, null, environment);
-        try {
-            Object result = function.call(context);
-            assertEquals("ok", result);
-        } finally {
-            pool.release(context);
+        try (FunctionContext<?> context = pool.borrow(function, null, new Object[0], environment)) {
+            function.call(context);
+            assertEquals("ok", context.getReturnRef());
         }
     }
 
@@ -159,7 +64,7 @@ public class FastArgsTest {
     void testCallFunctionFastArgsWithNativeFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         runtime.registerFunction("fastArgsTest", 3, ctx -> {
-            return ctx.getArgument(0) + "-" + ctx.getArgument(1) + "-" + ctx.getArgument(2);
+            ctx.setReturnRef(ctx.getRef(0) + "-" + ctx.getRef(1) + "-" + ctx.getRef(2));
         });
 
         Environment environment = runtime.newEnvironment();
@@ -179,7 +84,7 @@ public class FastArgsTest {
     void testCallFunctionFastArgsWithAsyncFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         runtime.registerAsyncFunction("asyncFastArgsTest", 2, ctx -> {
-            return ctx.getArgument(0) + "+" + ctx.getArgument(1);
+            ctx.setReturnRef(ctx.getRef(0) + "+" + ctx.getRef(1));
         });
 
         Environment environment = runtime.newEnvironment();
@@ -210,17 +115,16 @@ public class FastArgsTest {
      */
     @Test
     void testFastArgsEnabled() throws Exception {
-        // 使用内置函数测试（NativeFunction）
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         runtime.registerFunction("fastSum", 4, ctx -> {
             int sum = 0;
             for (int i = 0; i < ctx.getArgumentCount(); i++) {
-                Object arg = ctx.getArgument(i);
+                Object arg = ctx.getRef(i);
                 if (arg instanceof Number) {
                     sum += ((Number) arg).intValue();
                 }
             }
-            return sum;
+            ctx.setReturnRef(sum);
         });
 
         Environment environment = runtime.newEnvironment();
