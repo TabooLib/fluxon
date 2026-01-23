@@ -31,7 +31,7 @@ public class AnonymousClassEvaluator extends ExpressionEvaluator<AnonymousClassE
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, AnonymousClassExpression expression) {
+    public Type evaluate(Interpreter interpreter, AnonymousClassExpression expression) {
         throw new UnsupportedOperationException("Anonymous class expressions are only supported in compilation mode");
     }
 

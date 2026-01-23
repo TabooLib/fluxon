@@ -24,10 +24,11 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ReturnStatement result) {
+    public Type evaluate(Interpreter interpreter, ReturnStatement result) {
         Object value = null;
         if (result.getValue() != null) {
-            value = interpreter.evaluate(result.getValue());
+            Type t = interpreter.evaluate(result.getValue());
+            value = interpreter.getResultBoxed(t);
         }
         throw new ReturnValue(value);
     }

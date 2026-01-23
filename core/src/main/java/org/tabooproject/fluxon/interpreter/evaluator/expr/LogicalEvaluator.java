@@ -24,14 +24,25 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, LogicalExpression result) {
-        Object left = interpreter.evaluate(result.getLeft());
-        // 逻辑或
+    public Type evaluate(Interpreter interpreter, LogicalExpression result) {
+        Type lt = interpreter.evaluate(result.getLeft());
+        Object left = interpreter.getResultBoxed(lt);
         if (result.getOperator().getType() == TokenType.OR) {
-            return isTrue(left) || isTrue(interpreter.evaluate(result.getRight()));
+            if (isTrue(left)) {
+                interpreter.resultRef = true;
+            } else {
+                Type rt = interpreter.evaluate(result.getRight());
+                interpreter.resultRef = isTrue(interpreter.getResultBoxed(rt));
+            }
         } else {
-            return isTrue(left) && isTrue(interpreter.evaluate(result.getRight()));
+            if (!isTrue(left)) {
+                interpreter.resultRef = false;
+            } else {
+                Type rt = interpreter.evaluate(result.getRight());
+                interpreter.resultRef = isTrue(interpreter.getResultBoxed(rt));
+            }
         }
+        return Type.BOOLEAN;
     }
 
     @SuppressWarnings("DuplicatedCode")

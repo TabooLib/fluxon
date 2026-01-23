@@ -23,9 +23,10 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, AwaitExpression result) {
-        // 使用 Operations.awaitValue 处理异步值
-        return Intrinsics.awaitValue(interpreter.evaluate(result.getExpression()));
+    public Type evaluate(Interpreter interpreter, AwaitExpression result) {
+        Type t = interpreter.evaluate(result.getExpression());
+        interpreter.resultRef = Intrinsics.awaitValue(interpreter.getResultBoxed(t));
+        return Type.OBJECT;
     }
 
     @Override

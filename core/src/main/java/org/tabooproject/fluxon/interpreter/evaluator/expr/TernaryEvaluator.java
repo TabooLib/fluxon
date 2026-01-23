@@ -26,9 +26,9 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, TernaryExpression result) {
-        Object conditionValue = interpreter.evaluate(result.getCondition());
-        if (isTrue(conditionValue)) {
+    public Type evaluate(Interpreter interpreter, TernaryExpression result) {
+        Type ct = interpreter.evaluate(result.getCondition());
+        if (isTrue(interpreter.getResultBoxed(ct))) {
             return interpreter.evaluate(result.getTrueExpr());
         } else {
             return interpreter.evaluate(result.getFalseExpr());

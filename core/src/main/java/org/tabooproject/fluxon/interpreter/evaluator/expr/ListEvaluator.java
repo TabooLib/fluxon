@@ -26,41 +26,35 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ListExpression result) {
+    public Type evaluate(Interpreter interpreter, ListExpression result) {
         List<ParseResult> elements = result.getElements();
         int size = elements.size();
         if (result.isImmutable()) {
-            // 使用 inline 工厂方法避免数组分配
-            switch (size) {
-                case 0: return ImmutableList.empty();
-                case 1: return ImmutableList.of(
-                        interpreter.evaluate(elements.get(0)));
-                case 2: return ImmutableList.of(
-                        interpreter.evaluate(elements.get(0)),
-                        interpreter.evaluate(elements.get(1)));
-                case 3: return ImmutableList.of(
-                        interpreter.evaluate(elements.get(0)),
-                        interpreter.evaluate(elements.get(1)),
-                        interpreter.evaluate(elements.get(2)));
-                case 4: return ImmutableList.of(
-                        interpreter.evaluate(elements.get(0)),
-                        interpreter.evaluate(elements.get(1)),
-                        interpreter.evaluate(elements.get(2)),
-                        interpreter.evaluate(elements.get(3)));
-                default:
-                    // >4 元素回退到数组模式
-                    Object[] values = new Object[size];
-                    for (int i = 0; i < size; i++) {
-                        values[i] = interpreter.evaluate(elements.get(i));
-                    }
-                    return ImmutableList.of(values);
+            if (size == 0) {
+                interpreter.resultRef = ImmutableList.empty();
+                return Type.OBJECT;
             }
+            Object[] values = new Object[size];
+            for (int i = 0; i < size; i++) {
+                Type t = interpreter.evaluate(elements.get(i));
+                values[i] = interpreter.getResultBoxed(t);
+            }
+            switch (size) {
+                case 1: interpreter.resultRef = ImmutableList.of(values[0]); break;
+                case 2: interpreter.resultRef = ImmutableList.of(values[0], values[1]); break;
+                case 3: interpreter.resultRef = ImmutableList.of(values[0], values[1], values[2]); break;
+                case 4: interpreter.resultRef = ImmutableList.of(values[0], values[1], values[2], values[3]); break;
+                default: interpreter.resultRef = ImmutableList.of(values); break;
+            }
+            return Type.OBJECT;
         }
         List<Object> list = new ArrayList<>(size);
         for (ParseResult element : elements) {
-            list.add(interpreter.evaluate(element));
+            Type t = interpreter.evaluate(element);
+            list.add(interpreter.getResultBoxed(t));
         }
-        return list;
+        interpreter.resultRef = list;
+        return Type.OBJECT;
     }
 
     @Override

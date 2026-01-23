@@ -27,10 +27,11 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, IsExpression expr) {
-        // 求值左侧表达式
-        Object obj = interpreter.evaluate(expr.getLeft());
-        return Intrinsics.isInstanceOf(obj, expr.getTargetClass());
+    public Type evaluate(Interpreter interpreter, IsExpression expr) {
+        Type t = interpreter.evaluate(expr.getLeft());
+        Object obj = interpreter.getResultBoxed(t);
+        interpreter.resultRef = Intrinsics.isInstanceOf(obj, expr.getTargetClass());
+        return Type.BOOLEAN;
     }
 
     @Override

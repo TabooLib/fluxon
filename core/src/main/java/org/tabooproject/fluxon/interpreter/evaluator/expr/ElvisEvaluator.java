@@ -23,12 +23,14 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ElvisExpression result) {
-        Object object = interpreter.evaluate(result.getCondition());
+    public Type evaluate(Interpreter interpreter, ElvisExpression result) {
+        Type ct = interpreter.evaluate(result.getCondition());
+        Object object = interpreter.getResultBoxed(ct);
         if (object == null) {
             return interpreter.evaluate(result.getAlternative());
         }
-        return object;
+        interpreter.resultRef = object;
+        return Type.OBJECT;
     }
 
     @Override

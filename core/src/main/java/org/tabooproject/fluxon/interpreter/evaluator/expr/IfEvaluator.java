@@ -23,13 +23,15 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, IfExpression result) {
-        if (isTrue(interpreter.evaluate(result.getCondition()))) {
+    public Type evaluate(Interpreter interpreter, IfExpression result) {
+        Type ct = interpreter.evaluate(result.getCondition());
+        if (isTrue(interpreter.getResultBoxed(ct))) {
             return interpreter.evaluate(result.getThenBranch());
         } else if (result.getElseBranch() != null) {
             return interpreter.evaluate(result.getElseBranch());
         } else {
-            return null;
+            interpreter.resultRef = null;
+            return Type.OBJECT;
         }
     }
 

@@ -84,7 +84,8 @@ public class ParsedScript {
         }
         Interpreter interpreter = new Interpreter(env);
         try {
-            return interpreter.execute(results);
+            interpreter.execute(results);
+            return interpreter.resultRef;
         } catch (ReturnValue ex) {
             return ex.getValue();
         }
@@ -100,7 +101,8 @@ public class ParsedScript {
             env.initializeRootLocalVariables(rootLocalVariableCount);
         }
         try {
-            return interpreter.execute(results);
+            interpreter.execute(results);
+            return interpreter.resultRef;
         } catch (ReturnValue ex) {
             return ex.getValue();
         }

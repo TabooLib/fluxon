@@ -30,13 +30,14 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ContextCallExpression expression) {
+    public Type evaluate(Interpreter interpreter, ContextCallExpression expression) {
         // 求值目标表达式
-        Object targetValue = interpreter.evaluate(expression.getTarget());
+        Type tt = interpreter.evaluate(expression.getTarget());
+        Object targetValue = interpreter.getResultBoxed(tt);
         // null 检查（安全调用）
         if (targetValue == null && expression.isSafe()) {
-            // 安全调用（?::）：target 为 null 时返回 null，不执行上下文表达式
-            return null;
+            interpreter.resultRef = null;
+            return Type.OBJECT;
         }
         // 获取之前的目标
         Object before = interpreter.getEnvironment().getTarget();

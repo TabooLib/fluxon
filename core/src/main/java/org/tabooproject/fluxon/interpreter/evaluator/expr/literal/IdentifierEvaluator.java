@@ -16,8 +16,9 @@ public class IdentifierEvaluator extends ExpressionEvaluator<Identifier> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, Identifier expr) {
-        return expr.getValue();
+    public Type evaluate(Interpreter interpreter, Identifier expr) {
+        interpreter.resultRef = expr.getValue();
+        return Type.STRING;
     }
 
     @Override

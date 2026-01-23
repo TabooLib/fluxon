@@ -32,9 +32,10 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, DestructuringAssignExpression result) {
+    public Type evaluate(Interpreter interpreter, DestructuringAssignExpression result) {
         // 评估右侧表达式
-        Object value = interpreter.evaluate(result.getValue());
+        Type vt = interpreter.evaluate(result.getValue());
+        Object value = interpreter.getResultBoxed(vt);
         // 使用解构器注册表执行解构
         DestructuringRegistry.getInstance().destructure(
                 interpreter.getEnvironment(),
@@ -42,7 +43,8 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
                 value
         );
         // 返回被解构的值
-        return value;
+        interpreter.resultRef = value;
+        return Type.OBJECT;
     }
 
     @Override

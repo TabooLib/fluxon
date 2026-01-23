@@ -23,8 +23,9 @@ public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, LambdaExpression expr) {
-        return interpreter.getOrCreateLambda(expr);
+    public Type evaluate(Interpreter interpreter, LambdaExpression expr) {
+        interpreter.resultRef = interpreter.getOrCreateLambda(expr);
+        return Type.OBJECT;
     }
 
     @Override

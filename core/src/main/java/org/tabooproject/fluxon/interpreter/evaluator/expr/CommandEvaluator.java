@@ -25,11 +25,11 @@ import static org.tabooproject.fluxon.runtime.Type.STRING;
 public class CommandEvaluator extends Evaluator<CommandExpression> {
 
     @Override
-    public Object evaluate(Interpreter interpreter, CommandExpression expr) {
+    public Type evaluate(Interpreter interpreter, CommandExpression expr) {
         try {
-            // 直接调用解析时捕获的 executor
             CommandExecutor<Object> executor = (CommandExecutor<Object>) expr.getExecutor();
-            return executor.execute(interpreter.getEnvironment(), expr.getParsedData());
+            interpreter.resultRef = executor.execute(interpreter.getEnvironment(), expr.getParsedData());
+            return Type.OBJECT;
         } catch (FluxonRuntimeError ex) {
             throw ex;
         } catch (Exception ex) {

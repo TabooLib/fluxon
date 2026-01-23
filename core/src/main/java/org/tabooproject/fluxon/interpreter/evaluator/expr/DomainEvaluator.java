@@ -43,11 +43,13 @@ import static org.tabooproject.fluxon.runtime.Type.STRING;
 public class DomainEvaluator extends Evaluator<DomainExpression> {
 
     @Override
-    public Object evaluate(Interpreter interpreter, DomainExpression expr) {
+    public Type evaluate(Interpreter interpreter, DomainExpression expr) {
         try {
             DomainExecutor executor = expr.getExecutor();
             ParseResult bodyAst = expr.getBody();
-            return executor.execute(interpreter.getEnvironment(), () -> interpreter.evaluate(bodyAst));
+            Environment env = interpreter.getEnvironment();
+            interpreter.resultRef = executor.execute(env, () -> interpreter.getResultBoxed(interpreter.evaluate(bodyAst)));
+            return Type.OBJECT;
         } catch (RuntimeException ex) {
             throw ex;
         } catch (Exception ex) {

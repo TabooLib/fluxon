@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
@@ -21,6 +22,10 @@ import java.util.Map;
  * 负责执行 AST 节点
  */
 public class Interpreter {
+
+    // 双槽结果传递
+    public long resultPrimitive;
+    public Object resultRef;
 
     // 当前环境
     @NotNull
@@ -39,35 +44,39 @@ public class Interpreter {
     }
 
     /**
-     * 执行 AST
-     *
-     * @param parseResults 解析结果列表
-     * @return 最后一个表达式的执行结果
+     * 根据返回的 Type 读取对应槽位并装箱
      */
-    public Object execute(List<ParseResult> parseResults) {
+    public Object getResultBoxed(Type type) {
+        if (type == Type.VOID) return null;
+        if (type.isPrimitive()) return Type.box(resultPrimitive, type);
+        return resultRef;
+    }
+
+    /**
+     * 执行 AST
+     * 结果存入 resultRef
+     */
+    public void execute(List<ParseResult> parseResults) {
         for (ParseResult result : parseResults) {
             if (result instanceof Definition) {
                 evaluateDefinition((Definition) result);
             }
         }
         // 第二遍：真正执行表达式和语句；定义节点已经处理过，直接跳过即可
-        Object lastValue = null;
+        resultRef = null;
         for (ParseResult result : parseResults) {
             if (!(result instanceof Definition)) {
-                lastValue = evaluate(result);
+                Type t = evaluate(result);
+                resultRef = getResultBoxed(t);
             }
         }
-        return lastValue;
     }
 
     /**
      * 使用指定环境执行单个节点
-     *
-     * @param result 解析结果
-     * @param env    执行环境
-     * @return 执行结果
+     * 结果存入双槽
      */
-    public Object executeWithEnvironment(ParseResult result, Environment env) {
+    public Type executeWithEnvironment(ParseResult result, Environment env) {
         Environment previous = this.environment;
         this.environment = env;
         try {
@@ -80,11 +89,8 @@ public class Interpreter {
     /**
      * 评估单个解析结果
      * 使用 instanceof 进行类型判断，避免 getType() 的虚方法调用开销
-     *
-     * @param result 解析结果
-     * @return 执行结果
      */
-    public Object evaluate(ParseResult result) {
+    public Type evaluate(ParseResult result) {
         try {
             consumeCostIfNeeded(result);
             if (result instanceof Expression) {
@@ -92,9 +98,11 @@ public class Interpreter {
             } else if (result instanceof Statement) {
                 return evaluateStatement((Statement) result);
             } else if (result instanceof Definition) {
-                return evaluateDefinition((Definition) result);
+                evaluateDefinition((Definition) result);
+                return Type.OBJECT;
             }
-            return null;
+            resultRef = null;
+            return Type.VOID;
         } catch (FluxonRuntimeError ex) {
             attachSource(ex, result);
             throw ex;
@@ -104,7 +112,7 @@ public class Interpreter {
     /**
      * 直接评估表达式，使用缓存的 evaluator 引用避免 getExpressionType() 调用
      */
-    public Object evaluateExpression(Expression expression) {
+    public Type evaluateExpression(Expression expression) {
         try {
             return expression.getEvaluator().evaluate(this, expression);
         } catch (FluxonRuntimeError ex) {
@@ -116,7 +124,7 @@ public class Interpreter {
     /**
      * 直接评估语句，使用缓存的 evaluator 引用避免 getStatementType() 调用
      */
-    public Object evaluateStatement(Statement statement) {
+    public Type evaluateStatement(Statement statement) {
         try {
             return statement.getEvaluator().evaluate(this, statement);
         } catch (FluxonRuntimeError ex) {
@@ -128,13 +136,14 @@ public class Interpreter {
     /**
      * 直接评估定义
      */
-    public Object evaluateDefinition(Definition definition) {
+    public void evaluateDefinition(Definition definition) {
         try {
             if (definition instanceof FunctionDefinition) {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
                 UserFunction function = new UserFunction(funcDef, this);
                 environment.defineRootFunction(funcDef.getName(), function);
-                return function;
+                resultRef = function;
+                return;
             }
             throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
         } catch (FluxonRuntimeError ex) {

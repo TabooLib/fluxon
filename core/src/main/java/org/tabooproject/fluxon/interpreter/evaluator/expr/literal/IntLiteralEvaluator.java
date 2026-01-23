@@ -16,9 +16,9 @@ public class IntLiteralEvaluator extends ExpressionEvaluator<IntLiteral> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, IntLiteral expr) {
-        // 使用预装箱值以降低装箱开销
-        return expr.getBoxedValue();
+    public Type evaluate(Interpreter interpreter, IntLiteral expr) {
+        interpreter.resultRef = expr.getBoxedValue();
+        return Type.INT;
     }
 
     @Override

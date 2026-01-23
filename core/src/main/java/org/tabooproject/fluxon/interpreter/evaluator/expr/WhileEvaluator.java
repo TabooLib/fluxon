@@ -26,20 +26,25 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, WhileExpression result) {
+    public Type evaluate(Interpreter interpreter, WhileExpression result) {
         boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
-        Object last = null;
-        while (isTrue(interpreter.evaluate(result.getCondition()))) {
+        Type last = Type.VOID;
+        Object lastRef = null;
+        while (true) {
+            Type ct = interpreter.evaluate(result.getCondition());
+            if (!isTrue(interpreter.getResultBoxed(ct))) break;
             if (!bodyIsStatement) {
                 interpreter.consumeCostStep();
             }
             try {
                 last = interpreter.evaluate(result.getBody());
+                lastRef = interpreter.resultRef;
             } catch (ContinueException ignored) {
             } catch (BreakException ignored) {
                 break;
             }
         }
+        interpreter.resultRef = lastRef;
         return last;
     }
 

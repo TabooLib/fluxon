@@ -39,7 +39,7 @@ public class StaticAccessEvaluator extends ExpressionEvaluator<StaticAccessExpre
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, StaticAccessExpression expression) {
+    public Type evaluate(Interpreter interpreter, StaticAccessExpression expression) {
         // 加载类
         Class<?> clazz;
         try {
@@ -52,13 +52,15 @@ public class StaticAccessEvaluator extends ExpressionEvaluator<StaticAccessExpre
                 // 静态方法调用
                 Object[] args = new Object[expression.getArguments().length];
                 for (int i = 0; i < args.length; i++) {
-                    args[i] = interpreter.evaluate(expression.getArguments()[i]);
+                    Type at = interpreter.evaluate(expression.getArguments()[i]);
+                    args[i] = interpreter.getResultBoxed(at);
                 }
-                return ReflectionHelper.invokeStaticMethod(clazz, expression.getMemberName(), args);
+                interpreter.resultRef = ReflectionHelper.invokeStaticMethod(clazz, expression.getMemberName(), args);
             } else {
                 // 静态字段访问
-                return ReflectionHelper.getStaticField(clazz, expression.getMemberName());
+                interpreter.resultRef = ReflectionHelper.getStaticField(clazz, expression.getMemberName());
             }
+            return Type.OBJECT;
         } catch (Throwable e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;

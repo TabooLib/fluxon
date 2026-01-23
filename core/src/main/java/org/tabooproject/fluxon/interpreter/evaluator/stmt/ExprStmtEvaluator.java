@@ -19,7 +19,7 @@ public class ExprStmtEvaluator extends StatementEvaluator<ExpressionStatement> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ExpressionStatement result) {
+    public Type evaluate(Interpreter interpreter, ExpressionStatement result) {
         return interpreter.evaluate(result.getExpression());
     }
 

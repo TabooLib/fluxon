@@ -20,7 +20,7 @@ public class ContinueEvaluator extends StatementEvaluator<ContinueStatement> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ContinueStatement result) {
+    public Type evaluate(Interpreter interpreter, ContinueStatement result) {
         throw new ContinueException();
     }
 

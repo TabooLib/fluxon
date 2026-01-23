@@ -16,9 +16,9 @@ public class FloatLiteralEvaluator extends ExpressionEvaluator<FloatLiteral> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, FloatLiteral expr) {
-        // 返回缓存的装箱值以减少 Float.valueOf
-        return expr.getBoxedValue();
+    public Type evaluate(Interpreter interpreter, FloatLiteral expr) {
+        interpreter.resultRef = expr.getBoxedValue();
+        return Type.FLOAT;
     }
 
     @Override

@@ -30,23 +30,27 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, IndexAccessExpression expr) {
-        Object target = interpreter.evaluate(expr.getTarget());
+    public Type evaluate(Interpreter interpreter, IndexAccessExpression expr) {
+        Type tt = interpreter.evaluate(expr.getTarget());
+        Object target = interpreter.getResultBoxed(tt);
         List<ParseResult> indices = expr.getIndices();
         // 单索引访问
         if (indices.size() == 1) {
-            Object index = interpreter.evaluate(indices.get(0));
-            return Intrinsics.getIndex(target, index);
+            Type it = interpreter.evaluate(indices.get(0));
+            Object index = interpreter.getResultBoxed(it);
+            interpreter.resultRef = Intrinsics.getIndex(target, index);
         }
         // 多索引访问：嵌套获取 map["k1", "k2"] = map["k1"]["k2"]
         else {
             Object current = target;
             for (ParseResult indexExpr : indices) {
-                Object index = interpreter.evaluate(indexExpr);
+                Type it = interpreter.evaluate(indexExpr);
+                Object index = interpreter.getResultBoxed(it);
                 current = Intrinsics.getIndex(current, index);
             }
-            return current;
+            interpreter.resultRef = current;
         }
+        return Type.OBJECT;
     }
 
     @Override

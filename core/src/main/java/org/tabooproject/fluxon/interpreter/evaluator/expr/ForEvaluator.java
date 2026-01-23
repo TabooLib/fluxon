@@ -32,14 +32,16 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ForExpression result) {
+    public Type evaluate(Interpreter interpreter, ForExpression result) {
         // 评估集合表达式
-        Object collection = interpreter.evaluate(result.getCollection());
+        Type ct = interpreter.evaluate(result.getCollection());
+        Object collection = interpreter.getResultBoxed(ct);
         // 使用 Operations 类创建迭代器
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
-        Object last = null;
+        Type last = Type.VOID;
+        Object lastRef = null;
         boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
         // 迭代集合元素
         while (iterator.hasNext()) {
@@ -51,11 +53,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             // 执行循环体
             try {
                 last = interpreter.evaluate(result.getBody());
+                lastRef = interpreter.resultRef;
             } catch (ContinueException ignored) {
             } catch (BreakException ignored) {
                 break;
             }
         }
+        interpreter.resultRef = lastRef;
         return last;
     }
 

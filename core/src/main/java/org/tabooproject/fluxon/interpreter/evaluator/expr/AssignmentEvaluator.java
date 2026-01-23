@@ -34,9 +34,10 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, AssignExpression result) {
+    public Type evaluate(Interpreter interpreter, AssignExpression result) {
         ParseResult target = result.getTarget();
-        Object value = interpreter.evaluate(result.getValue());
+        Type vt = interpreter.evaluate(result.getValue());
+        Object value = interpreter.getResultBoxed(vt);
         Environment environment = interpreter.getEnvironment();
         // 变量赋值
         if (target instanceof Identifier) {
@@ -57,16 +58,19 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         // 索引访问赋值
         else if (target instanceof IndexAccessExpression) {
             IndexAccessExpression idx = (IndexAccessExpression) target;
-            Object container = interpreter.evaluate(idx.getTarget());
+            Type tt = interpreter.evaluate(idx.getTarget());
+            Object container = interpreter.getResultBoxed(tt);
             List<ParseResult> indices = idx.getIndices();
             // 处理多索引：map["k1", "k2"] = v 等价于 map["k1"]["k2"] = v
             // 前 n-1 个索引用于导航到目标容器
             for (int i = 0; i < indices.size() - 1; i++) {
-                Object index = interpreter.evaluate(indices.get(i));
+                Type it = interpreter.evaluate(indices.get(i));
+                Object index = interpreter.getResultBoxed(it);
                 container = Intrinsics.getIndex(container, index);
             }
             // 最后一个索引用于赋值
-            Object lastIndex = interpreter.evaluate(indices.get(indices.size() - 1));
+            Type lit = interpreter.evaluate(indices.get(indices.size() - 1));
+            Object lastIndex = interpreter.getResultBoxed(lit);
             if (result.getOperator().getType() == TokenType.ASSIGN) {
                 Intrinsics.setIndex(container, lastIndex, value);
             } else {
@@ -77,7 +81,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             }
         }
         // Assignment 操作没有返回值
-        return null;
+        interpreter.resultRef = null;
+        return Type.VOID;
     }
 
     /**

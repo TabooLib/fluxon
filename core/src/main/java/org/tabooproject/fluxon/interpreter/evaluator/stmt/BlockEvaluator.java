@@ -22,8 +22,8 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, Block result) {
-        Object last = null;
+    public Type evaluate(Interpreter interpreter, Block result) {
+        Type last = Type.VOID;
         for (ParseResult statement : result.getStatements()) {
             last = interpreter.evaluate(statement);
         }

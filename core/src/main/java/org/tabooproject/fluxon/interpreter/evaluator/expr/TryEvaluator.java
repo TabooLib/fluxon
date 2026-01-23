@@ -25,10 +25,10 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, TryExpression result) {
-        Object value = null;
+    public Type evaluate(Interpreter interpreter, TryExpression result) {
+        Type valueType = Type.OBJECT;
         try {
-            value = interpreter.evaluate(result.getBody());
+            valueType = interpreter.evaluate(result.getBody());
         } catch (Throwable ex) {
             if (result.getCatchName() != null) {
                 int position = result.getPosition();
@@ -39,13 +39,18 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
                 }
             }
             if (result.getCatchBody() != null) {
-                value = interpreter.evaluate(result.getCatchBody());
+                valueType = interpreter.evaluate(result.getCatchBody());
+            } else {
+                interpreter.resultRef = null;
             }
         }
         if (result.getFinallyBody() != null) {
+            // 保存 try/catch 的结果，finally 不应覆盖
+            Object savedRef = interpreter.resultRef;
             interpreter.evaluate(result.getFinallyBody());
+            interpreter.resultRef = savedRef;
         }
-        return value;
+        return valueType;
     }
 
     @Override

@@ -22,8 +22,9 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, ReferenceExpression result) {
-        return Intrinsics.getVariableOrFunction(interpreter.getEnvironment(), result.getIdentifier().getValue(), result.isOptional(), result.getPosition());
+    public Type evaluate(Interpreter interpreter, ReferenceExpression result) {
+        interpreter.resultRef = Intrinsics.getVariableOrFunction(interpreter.getEnvironment(), result.getIdentifier().getValue(), result.isOptional(), result.getPosition());
+        return Type.OBJECT;
     }
 
     @Override

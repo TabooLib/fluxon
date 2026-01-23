@@ -75,6 +75,18 @@ public class Type {
         return descriptor;
     }
 
+    /**
+     * 将 long 位模式装箱为对应的包装类型
+     */
+    public static Object box(long bits, Type type) {
+        if (type == INT) return (int) bits;
+        if (type == LONG) return bits;
+        if (type == DOUBLE) return Double.longBitsToDouble(bits);
+        if (type == FLOAT) return Float.intBitsToFloat((int) bits);
+        if (type == BOOLEAN) return bits != 0;
+        throw new IllegalArgumentException("Cannot box type: " + type);
+    }
+
     @Override
     public String toString() {
         return descriptor;

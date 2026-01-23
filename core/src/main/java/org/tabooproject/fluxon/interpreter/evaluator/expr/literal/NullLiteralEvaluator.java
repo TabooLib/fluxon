@@ -18,8 +18,9 @@ public class NullLiteralEvaluator extends ExpressionEvaluator<NullLiteral> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, NullLiteral expr) {
-        return null;
+    public Type evaluate(Interpreter interpreter, NullLiteral expr) {
+        interpreter.resultRef = null;
+        return Type.OBJECT;
     }
 
     @Override

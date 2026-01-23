@@ -20,7 +20,7 @@ public class BreakEvaluator extends StatementEvaluator<BreakStatement> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, BreakStatement result) {
+    public Type evaluate(Interpreter interpreter, BreakStatement result) {
         throw new BreakException();
     }
 

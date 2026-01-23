@@ -36,14 +36,15 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, MemberAccessExpression expression) {
+    public Type evaluate(Interpreter interpreter, MemberAccessExpression expression) {
         // 求值目标对象
-        Object target = interpreter.evaluate(expression.getTarget());
+        Type tt = interpreter.evaluate(expression.getTarget());
+        Object target = interpreter.getResultBoxed(tt);
         // null 检查
         if (target == null) {
             if (expression.isSafe()) {
-                // 安全访问（?.）：target 为 null 时返回 null
-                return null;
+                interpreter.resultRef = null;
+                return Type.OBJECT;
             }
             throw new NullPointerException("Cannot access member '" + expression.getMemberName() + "' on null object");
         }
@@ -52,13 +53,15 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
                 // 方法调用：obj.method(args)
                 Object[] args = new Object[expression.getArgs().length];
                 for (int i = 0; i < args.length; i++) {
-                    args[i] = interpreter.evaluate(expression.getArgs()[i]);
+                    Type at = interpreter.evaluate(expression.getArgs()[i]);
+                    args[i] = interpreter.getResultBoxed(at);
                 }
-                return ReflectionHelper.invokeMethod(target, expression.getMemberName(), args);
+                interpreter.resultRef = ReflectionHelper.invokeMethod(target, expression.getMemberName(), args);
             } else {
                 // 字段访问：obj.field
-                return ReflectionHelper.getField(target, expression.getMemberName());
+                interpreter.resultRef = ReflectionHelper.getField(target, expression.getMemberName());
             }
+            return Type.OBJECT;
         } catch (Throwable e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;

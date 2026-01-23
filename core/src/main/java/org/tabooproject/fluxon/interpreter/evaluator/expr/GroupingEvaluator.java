@@ -20,7 +20,7 @@ public class GroupingEvaluator extends ExpressionEvaluator<GroupingExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, GroupingExpression result) {
+    public Type evaluate(Interpreter interpreter, GroupingExpression result) {
         return interpreter.evaluate(result.getExpression());
     }
 

@@ -19,8 +19,9 @@ public class BooleanLiteralEvaluator extends ExpressionEvaluator<BooleanLiteral>
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, BooleanLiteral expr) {
-        return expr.getValue();
+    public Type evaluate(Interpreter interpreter, BooleanLiteral expr) {
+        interpreter.resultRef = expr.getValue();
+        return Type.BOOLEAN;
     }
 
     @Override

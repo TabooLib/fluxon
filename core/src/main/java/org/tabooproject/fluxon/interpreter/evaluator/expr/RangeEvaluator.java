@@ -24,12 +24,13 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, RangeExpression result) {
-        // 获取开始值和结束值
-        Object start = interpreter.evaluate(result.getStart());
-        Object end = interpreter.evaluate(result.getEnd());
-        // 使用 Operations 类创建范围，保持与字节码生成的一致性
-        return Intrinsics.createRange(start, end, result.isInclusive());
+    public Type evaluate(Interpreter interpreter, RangeExpression result) {
+        Type st = interpreter.evaluate(result.getStart());
+        Object start = interpreter.getResultBoxed(st);
+        Type et = interpreter.evaluate(result.getEnd());
+        Object end = interpreter.getResultBoxed(et);
+        interpreter.resultRef = Intrinsics.createRange(start, end, result.isInclusive());
+        return Type.OBJECT;
     }
 
     @Override

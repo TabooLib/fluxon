@@ -30,17 +30,19 @@ public class StringInterpolationEvaluator extends ExpressionEvaluator<StringInte
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, StringInterpolation expr) {
+    public Type evaluate(Interpreter interpreter, StringInterpolation expr) {
         StringBuilder result = new StringBuilder();
         for (ParseResult part : expr.getParts()) {
             if (part instanceof StringInterpolation.StringPart) {
                 result.append(((StringInterpolation.StringPart) part).getValue());
             } else {
-                Object value = interpreter.evaluate(part);
+                Type t = interpreter.evaluate(part);
+                Object value = interpreter.getResultBoxed(t);
                 result.append(value == null ? "null" : value.toString());
             }
         }
-        return result.toString();
+        interpreter.resultRef = result.toString();
+        return Type.STRING;
     }
 
     @Override

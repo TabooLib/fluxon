@@ -30,7 +30,7 @@ public class NewEvaluator extends ExpressionEvaluator<NewExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, NewExpression expression) {
+    public Type evaluate(Interpreter interpreter, NewExpression expression) {
         String className = expression.getClassName();
         // 加载类
         Class<?> clazz;
@@ -43,11 +43,13 @@ public class NewEvaluator extends ExpressionEvaluator<NewExpression> {
         ParseResult[] argExpressions = expression.getArguments();
         Object[] args = new Object[argExpressions.length];
         for (int i = 0; i < argExpressions.length; i++) {
-            args[i] = interpreter.evaluate(argExpressions[i]);
+            Type at = interpreter.evaluate(argExpressions[i]);
+            args[i] = interpreter.getResultBoxed(at);
         }
         // 调用构造函数
         try {
-            return ReflectionHelper.invokeConstructor(clazz, args);
+            interpreter.resultRef = ReflectionHelper.invokeConstructor(clazz, args);
+            return Type.OBJECT;
         } catch (Throwable e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;

@@ -16,8 +16,9 @@ public class StringLiteralEvaluator extends ExpressionEvaluator<StringLiteral> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, StringLiteral expr) {
-        return expr.getValue();
+    public Type evaluate(Interpreter interpreter, StringLiteral expr) {
+        interpreter.resultRef = expr.getValue();
+        return Type.STRING;
     }
 
     @Override

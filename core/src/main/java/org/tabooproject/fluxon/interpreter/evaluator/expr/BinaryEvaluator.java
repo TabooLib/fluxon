@@ -28,27 +28,36 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, BinaryExpression result) {
-        Object left = interpreter.evaluate(result.getLeft());
-        Object right = interpreter.evaluate(result.getRight());
+    public Type evaluate(Interpreter interpreter, BinaryExpression result) {
+        Type lt = interpreter.evaluate(result.getLeft());
+        Object left = interpreter.getResultBoxed(lt);
+        Type rt = interpreter.evaluate(result.getRight());
+        Object right = interpreter.getResultBoxed(rt);
         // @formatter:off
         switch (result.getOperator().getType()) {
-            case PLUS:          return add(left, right);
-            case MINUS:         return subtract(left, right);
-            case DIVIDE:        return divide(left, right);
-            case MULTIPLY:      return multiply(left, right);
-            case MODULO:        return modulo(left, right);
-            case GREATER:       return isGreater(left, right);
-            case GREATER_EQUAL: return isGreaterEqual(left, right);
-            case LESS:          return isLess(left, right);
-            case LESS_EQUAL:    return isLessEqual(left, right);
-            case EQUAL:         return isEqual(left, right);
-            case NOT_EQUAL:     return !isEqual(left, right);
-            case IDENTICAL:     return left == right;
-            case NOT_IDENTICAL: return left != right;
+            case PLUS:          interpreter.resultRef = add(left, right); break;
+            case MINUS:         interpreter.resultRef = subtract(left, right); break;
+            case DIVIDE:        interpreter.resultRef = divide(left, right); break;
+            case MULTIPLY:      interpreter.resultRef = multiply(left, right); break;
+            case MODULO:        interpreter.resultRef = modulo(left, right); break;
+            case GREATER:       interpreter.resultRef = isGreater(left, right); break;
+            case GREATER_EQUAL: interpreter.resultRef = isGreaterEqual(left, right); break;
+            case LESS:          interpreter.resultRef = isLess(left, right); break;
+            case LESS_EQUAL:    interpreter.resultRef = isLessEqual(left, right); break;
+            case EQUAL:         interpreter.resultRef = isEqual(left, right); break;
+            case NOT_EQUAL:     interpreter.resultRef = !isEqual(left, right); break;
+            case IDENTICAL:     interpreter.resultRef = left == right; break;
+            case NOT_IDENTICAL: interpreter.resultRef = left != right; break;
             default:            throw new RuntimeException("Unknown binary operator: " + result.getOperator().getType());
         }
         // @formatter:on
+        switch (result.getOperator().getType()) {
+            case GREATER: case GREATER_EQUAL: case LESS: case LESS_EQUAL:
+            case EQUAL: case NOT_EQUAL: case IDENTICAL: case NOT_IDENTICAL:
+                return Type.BOOLEAN;
+            default:
+                return Type.OBJECT;
+        }
     }
 
     @SuppressWarnings("DuplicatedCode")

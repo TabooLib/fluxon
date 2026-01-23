@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Symbolic;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Collections;
@@ -79,8 +80,8 @@ public class UserFunction implements Function, Symbolic {
             interpreter.consumeCostStep();
         }
         try {
-            Object result = interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
-            context.setReturnRef(result);
+            Type t = interpreter.executeWithEnvironment(definition.getBody(), functionEnv);
+            context.setReturnRef(interpreter.getResultBoxed(t));
         } catch (ReturnValue returnValue) {
             context.setReturnRef(returnValue.getValue());
         }

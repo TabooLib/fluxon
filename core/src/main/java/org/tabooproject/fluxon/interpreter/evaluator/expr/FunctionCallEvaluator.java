@@ -26,14 +26,15 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, FunctionCallExpression result) {
+    public Type evaluate(Interpreter interpreter, FunctionCallExpression result) {
         ParseResult[] expressionArguments = result.getArguments();
         int argumentCount = expressionArguments.length;
         Object[] arguments = new Object[argumentCount];
         for (int i = 0; i < argumentCount; i++) {
-            arguments[i] = interpreter.evaluate(expressionArguments[i]);
+            Type t = interpreter.evaluate(expressionArguments[i]);
+            arguments[i] = interpreter.getResultBoxed(t);
         }
-        return Intrinsics.callFunction(
+        interpreter.resultRef = Intrinsics.callFunction(
                 FunctionContextPool.local(),
                 interpreter.getEnvironment(),
                 result.getFunctionName(),
@@ -41,6 +42,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 result.getPositionIndex(),
                 result.getExtensionPositionIndex()
         );
+        return Type.OBJECT;
     }
 
     @Override

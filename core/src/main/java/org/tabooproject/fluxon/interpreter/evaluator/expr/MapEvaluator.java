@@ -27,55 +27,41 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, MapExpression result) {
+    public Type evaluate(Interpreter interpreter, MapExpression result) {
         List<MapExpression.MapEntry> entries = result.getEntries();
         int size = entries.size();
         if (result.isImmutable()) {
-            // 使用 inline 工厂方法避免数组分配
-            switch (size) {
-                case 0: return ImmutableMap.empty();
-                case 1: return ImmutableMap.of(
-                        interpreter.evaluate(entries.get(0).getKey()),
-                        interpreter.evaluate(entries.get(0).getValue()));
-                case 2: return ImmutableMap.of(
-                        interpreter.evaluate(entries.get(0).getKey()),
-                        interpreter.evaluate(entries.get(0).getValue()),
-                        interpreter.evaluate(entries.get(1).getKey()),
-                        interpreter.evaluate(entries.get(1).getValue()));
-                case 3: return ImmutableMap.of(
-                        interpreter.evaluate(entries.get(0).getKey()),
-                        interpreter.evaluate(entries.get(0).getValue()),
-                        interpreter.evaluate(entries.get(1).getKey()),
-                        interpreter.evaluate(entries.get(1).getValue()),
-                        interpreter.evaluate(entries.get(2).getKey()),
-                        interpreter.evaluate(entries.get(2).getValue()));
-                case 4: return ImmutableMap.of(
-                        interpreter.evaluate(entries.get(0).getKey()),
-                        interpreter.evaluate(entries.get(0).getValue()),
-                        interpreter.evaluate(entries.get(1).getKey()),
-                        interpreter.evaluate(entries.get(1).getValue()),
-                        interpreter.evaluate(entries.get(2).getKey()),
-                        interpreter.evaluate(entries.get(2).getValue()),
-                        interpreter.evaluate(entries.get(3).getKey()),
-                        interpreter.evaluate(entries.get(3).getValue()));
-                default:
-                    // >4 条目回退到数组模式
-                    Object[] keys = new Object[size];
-                    Object[] values = new Object[size];
-                    for (int i = 0; i < size; i++) {
-                        keys[i] = interpreter.evaluate(entries.get(i).getKey());
-                        values[i] = interpreter.evaluate(entries.get(i).getValue());
-                    }
-                    return ImmutableMap.of(keys, values);
+            if (size == 0) {
+                interpreter.resultRef = ImmutableMap.empty();
+                return Type.OBJECT;
             }
+            Object[] keys = new Object[size];
+            Object[] values = new Object[size];
+            for (int i = 0; i < size; i++) {
+                Type kt = interpreter.evaluate(entries.get(i).getKey());
+                keys[i] = interpreter.getResultBoxed(kt);
+                Type vt = interpreter.evaluate(entries.get(i).getValue());
+                values[i] = interpreter.getResultBoxed(vt);
+            }
+            switch (size) {
+                case 1: interpreter.resultRef = ImmutableMap.of(keys[0], values[0]); break;
+                case 2: interpreter.resultRef = ImmutableMap.of(keys[0], values[0], keys[1], values[1]); break;
+                case 3: interpreter.resultRef = ImmutableMap.of(keys[0], values[0], keys[1], values[1], keys[2], values[2]); break;
+                case 4: interpreter.resultRef = ImmutableMap.of(keys[0], values[0], keys[1], values[1], keys[2], values[2], keys[3], values[3]); break;
+                default: interpreter.resultRef = ImmutableMap.of(keys, values); break;
+            }
+            return Type.OBJECT;
         }
         Map<Object, Object> map = new HashMap<>(Math.max(4, (int) (size / 0.75f) + 1));
         for (MapExpression.MapEntry entry : entries) {
-            Object key = interpreter.evaluate(entry.getKey());
-            Object value = interpreter.evaluate(entry.getValue());
+            Type kt = interpreter.evaluate(entry.getKey());
+            Object key = interpreter.getResultBoxed(kt);
+            Type vt = interpreter.evaluate(entry.getValue());
+            Object value = interpreter.getResultBoxed(vt);
             map.put(key, value);
         }
-        return map;
+        interpreter.resultRef = map;
+        return Type.OBJECT;
     }
 
     @Override

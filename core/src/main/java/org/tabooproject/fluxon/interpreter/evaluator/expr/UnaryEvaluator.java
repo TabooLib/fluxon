@@ -23,14 +23,17 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, UnaryExpression result) {
-        Object right = interpreter.evaluate(result.getRight());
+    public Type evaluate(Interpreter interpreter, UnaryExpression result) {
+        Type t = interpreter.evaluate(result.getRight());
+        Object right = interpreter.getResultBoxed(t);
         switch (result.getOperator().getType()) {
             case NOT:
-                return !isTrue(right);
+                interpreter.resultRef = !isTrue(right);
+                return Type.BOOLEAN;
             case MINUS:
                 checkNumberOperand(right);
-                return negateNumber((Number) right);
+                interpreter.resultRef = negateNumber((Number) right);
+                return Type.NUMBER;
             default:
                 throw new RuntimeException("Unknown unary operator: " + result.getOperator().getType());
         }

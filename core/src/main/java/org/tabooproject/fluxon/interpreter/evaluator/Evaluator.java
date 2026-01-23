@@ -11,9 +11,10 @@ import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 public abstract class Evaluator<T extends ParseResult> {
 
     /**
-     * 评估结果
+     * 评估结果，返回 Type 标识结果类型
+     * 结果通过 interpreter.resultRef / resultPrimitive 传递
      */
-    abstract public Object evaluate(Interpreter interpreter, T result);
+    abstract public Type evaluate(Interpreter interpreter, T result);
 
     /**
      * 生成字节码

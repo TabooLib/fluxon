@@ -28,11 +28,12 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
     }
 
     @Override
-    public Object evaluate(Interpreter interpreter, WhenExpression result) {
+    public Type evaluate(Interpreter interpreter, WhenExpression result) {
         // 获取并评估主题对象（如果有）
         Object subject = null;
         if (result.getSubject() != null) {
-            subject = interpreter.evaluate(result.getSubject());
+            Type st = interpreter.evaluate(result.getSubject());
+            subject = interpreter.getResultBoxed(st);
         }
         // 遍历所有分支，只执行匹配的分支
         for (WhenExpression.WhenBranch branch : result.getBranches()) {
@@ -43,7 +44,8 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             // 评估分支条件（IS 类型不需要条件）
             Object condition = null;
             if (branch.getMatchType() != WhenExpression.MatchType.IS) {
-                condition = interpreter.evaluate(branch.getCondition());
+                Type ct = interpreter.evaluate(branch.getCondition());
+                condition = interpreter.getResultBoxed(ct);
             }
             // 执行分支匹配
             if (Intrinsics.matchWhenBranch(subject, condition, branch.getMatchType(), branch.getTargetClass())) {
@@ -51,7 +53,8 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             }
         }
         // 如果没有匹配的分支，返回 null
-        return null;
+        interpreter.resultRef = null;
+        return Type.OBJECT;
     }
 
     @Override
