@@ -162,43 +162,6 @@ public final class Intrinsics {
     }
 
     /**
-     * 执行函数调用（fast-args 路径，避免创建参数数组）
-     * 物化参数后走标准路径
-     *
-     * @param pool        函数上下文池（避免重复 ThreadLocal.get()，可为 null）
-     * @param environment 脚本运行环境
-     * @param name        函数名称
-     * @param count       参数数量
-     * @param arg0        参数0
-     * @param arg1        参数1
-     * @param arg2        参数2
-     * @param arg3        参数3
-     * @param pos         函数位置
-     * @param exPos       扩展函数位置
-     * @return 函数调用结果
-     */
-    public static Object callFunctionFastArgs(
-            FunctionContextPool pool,
-            Environment environment,
-            String name,
-            int count,
-            Object arg0,
-            Object arg1,
-            Object arg2,
-            Object arg3,
-            int pos,
-            int exPos) {
-        if (pool == null) pool = FunctionContextPool.local();
-        Object target = environment.getTarget();
-        Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
-        Object[] arguments = materializeArgs(count, arg0, arg1, arg2, arg3);
-        if (function == null) {
-            throw new FunctionNotFoundError(environment, target, name, arguments, pos, exPos);
-        }
-        return callResolvedFunction(pool, function, target, arguments, environment);
-    }
-
-    /**
      * 解析函数引用，若找不到则抛出 FunctionNotFoundError
      */
     public static Function resolveFunction(Environment environment, Object target, String name, Object[] arguments, int pos, int exPos) {
@@ -528,21 +491,6 @@ public final class Intrinsics {
             }
             throw IndexAccessError.unsupportedType(target, index);
         }
-    }
-
-    /**
-     * 物化参数数组（用于回退路径）
-     */
-    public static Object[] materializeArgs(int count, Object arg0, Object arg1, Object arg2, Object arg3) {
-        // @formatter:off
-        switch (count) {
-            case 1: return new Object[]{arg0};
-            case 2: return new Object[]{arg0, arg1};
-            case 3: return new Object[]{arg0, arg1, arg2};
-            case 4: return new Object[]{arg0, arg1, arg2, arg3};
-            default: return EMPTY_ARGS;
-        }
-        // @formatter:on
     }
 
     /**
