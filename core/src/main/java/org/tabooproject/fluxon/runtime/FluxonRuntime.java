@@ -139,7 +139,7 @@ public class FluxonRuntime {
                 }
             }
         }
-        return new Environment(systemFunctions, cachedSystemFunctions, systemVariables, extensionFunctions, cachedSystemExtensionFunctions, cachedDispatchTables);
+        return new Environment(systemFunctions, systemVariables);
     }
 
     /**
@@ -458,6 +458,28 @@ public class FluxonRuntime {
      */
     public Map<String, Map<Class<?>, Function>> getExtensionFunctions() {
         return extensionFunctions;
+    }
+
+    /**
+     * 获取缓存的系统函数数组
+     */
+    public Function[] getCachedSystemFunctions() {
+        return cachedSystemFunctions;
+    }
+
+    /**
+     * 获取缓存的系统扩展函数数组
+     */
+    @SuppressWarnings("unchecked")
+    public KV<Class<?>, Function>[][] getCachedSystemExtensionFunctions() {
+        return cachedSystemExtensionFunctions;
+    }
+
+    /**
+     * 获取缓存的扩展函数派发表
+     */
+    public ExtensionDispatchTable[] getCachedDispatchTables() {
+        return cachedDispatchTables;
     }
 
     /**

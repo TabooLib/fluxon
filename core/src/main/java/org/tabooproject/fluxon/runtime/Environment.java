@@ -4,7 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.CommandRegistry;
 import org.tabooproject.fluxon.parser.DomainRegistry;
-import org.tabooproject.fluxon.runtime.collection.CopyOnWriteMap;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 import org.tabooproject.fluxon.runtime.java.Export;
@@ -12,38 +11,25 @@ import org.tabooproject.fluxon.util.KV;
 
 import java.io.PrintStream;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 运行时环境
  * 用于管理运行时期间的函数和变量
  */
+@SuppressWarnings("DataFlowIssue")
 public class Environment {
 
     // 类型
     public static final Type TYPE = new Type(Environment.class);
 
-    // 函数
+    // 根环境
+    @NotNull
+    protected final Environment root;
     @Nullable
-    protected final Map<String, Function> functions;
+    protected final Environment parent;
     @Nullable
-    protected final Function[] systemFunctions;
-    // 用户动态定义的函数名称（用于区分系统函数和用户定义的函数）
-    @Nullable
-    protected Set<String> userFunctionNames;
+    protected final EnvironmentState rootState; // non-null only for root
 
-    // 扩展函数
-    @Nullable
-    protected final Map<String, Map<Class<?>, Function>> extensionFunctions;
-    @Nullable
-    protected final KV<Class<?>, Function>[][] systemExtensionFunctions;
-    // 扩展函数派发表（用于优化扩展函数解析）
-    @Nullable
-    protected final ExtensionDispatchTable[] dispatchTables;
-
-    // 根变量
-    @Nullable
-    protected final Map<String, Object> rootVariables;
     // 局部变量 - 原始类型
     protected long[] localPrimitives;
     // 局部变量 - 引用类型
@@ -55,67 +41,24 @@ public class Environment {
     // 上下文目标
     @Nullable
     protected Object target;
-    // 输出流
-    @Nullable
-    protected PrintStream out;
-    @Nullable
-    protected PrintStream err;
-
-    // Command 和 Domain 注册表
-    @Nullable
-    protected CommandRegistry commandRegistry;
-    @Nullable
-    protected DomainRegistry domainRegistry;
-
-    // 执行成本控制（存储在 root 环境上，所有子环境共享）
-    protected boolean costLimitEnabled = false;
-    protected long costLimit = Long.MAX_VALUE;
-    protected final AtomicLong costRemaining = new AtomicLong(Long.MAX_VALUE);
-    protected long costPerStep = 1L;
-
-    // 根环境
-    @NotNull
-    protected final Environment root;
-    @Nullable
-    protected final Environment parent;
 
     /**
      * 创建顶层环境（全局环境）
      */
-    public Environment(
-            @NotNull Map<String, Function> functions,
-            @NotNull Function[] systemFunctions,
-            @NotNull Map<String, Object> values,
-            @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
-            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions,
-            @NotNull ExtensionDispatchTable[] dispatchTables,
-            int localVariableCount) {
-        this.root = this;
-        this.parent = null;
-        this.functions = CopyOnWriteMap.wrap(functions);
-        this.systemFunctions = systemFunctions;
-        this.extensionFunctions = extensionFunctions;
-        this.systemExtensionFunctions = systemExtensionFunctions;
-        this.dispatchTables = dispatchTables;
-        this.rootVariables = CopyOnWriteMap.wrap(values);
-        this.localPrimitives = localVariableCount > 0 ? new long[localVariableCount] : null;
-        this.localRefs = localVariableCount > 0 ? new Object[localVariableCount] : null;
-        this.localVariableNames = localVariableCount > 0 ? new String[localVariableCount] : null;
-        this.out = System.out;
-        this.err = System.err;
+    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values) {
+        this(functions, values, 0);
     }
 
     /**
-     * 创建顶层环境（全局环境）- 无局部变量版本（向后兼容）
+     * 创建顶层环境（全局环境）- 指定局部变量数量
      */
-    public Environment(
-            @NotNull Map<String, Function> functions,
-            @NotNull Function[] systemFunctions,
-            @NotNull Map<String, Object> values,
-            @NotNull Map<String, Map<Class<?>, Function>> extensionFunctions,
-            @NotNull KV<Class<?>, Function>[][] systemExtensionFunctions,
-            @NotNull ExtensionDispatchTable[] dispatchTables) {
-        this(functions, systemFunctions, values, extensionFunctions, systemExtensionFunctions, dispatchTables, 0);
+    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, int localVariableCount) {
+        this.root = this;
+        this.parent = null;
+        this.rootState = new EnvironmentState(functions, values);
+        this.localPrimitives = localVariableCount > 0 ? new long[localVariableCount] : null;
+        this.localRefs = localVariableCount > 0 ? new Object[localVariableCount] : null;
+        this.localVariableNames = localVariableCount > 0 ? new String[localVariableCount] : null;
     }
 
     /**
@@ -126,18 +69,11 @@ public class Environment {
     public Environment(@NotNull Environment parentEnv, int localVariables) {
         this.root = parentEnv.root;
         this.parent = parentEnv;
-        this.functions = null;
-        this.systemFunctions = null;
-        this.extensionFunctions = null;
-        this.systemExtensionFunctions = null;
-        this.dispatchTables = null;
-        this.rootVariables = null;
+        this.rootState = null;
         this.localPrimitives = localVariables > 0 ? new long[localVariables] : null;
         this.localRefs = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
         this.target = parentEnv.target;
-        this.out = null;
-        this.err = null;
     }
 
     /**
@@ -168,12 +104,12 @@ public class Environment {
      * @param value 函数对象
      */
     public void defineRootFunction(String name, Function value) {
-        Objects.requireNonNull(root.functions).put(name, value);
-        // 追踪用户定义的函数名
-        if (root.userFunctionNames == null) {
-            root.userFunctionNames = new HashSet<>();
+        EnvironmentState m = root.rootState;
+        m.functions.put(name, value);
+        if (m.userFunctionNames == null) {
+            m.userFunctionNames = new HashSet<>();
         }
-        root.userFunctionNames.add(name);
+        m.userFunctionNames.add(name);
     }
 
     /**
@@ -184,7 +120,7 @@ public class Environment {
      * @param value          函数对象
      */
     public void defineRootExtensionFunction(Class<?> extensionClass, String name, Function value) {
-        Objects.requireNonNull(root.extensionFunctions).computeIfAbsent(name, k -> new LinkedHashMap<>()).put(extensionClass, value);
+        FluxonRuntime.getInstance().getExtensionFunctions().computeIfAbsent(name, k -> new LinkedHashMap<>()).put(extensionClass, value);
     }
 
     /**
@@ -197,7 +133,7 @@ public class Environment {
     @Export
     @NotNull
     public Function getFunction(String name) {
-        Function function = Objects.requireNonNull(root.functions).get(name);
+        Function function = root.rootState.functions.get(name);
         if (function != null) {
             return function;
         }
@@ -213,7 +149,7 @@ public class Environment {
     @Export
     @Nullable
     public Function getFunctionOrNull(String name) {
-        return Objects.requireNonNull(root.functions).get(name);
+        return root.rootState.functions.get(name);
     }
 
     /**
@@ -244,13 +180,13 @@ public class Environment {
     public Function getExtensionFunctionOrNull(Class<?> extensionClass, String name, int index) {
         if (index != -1) {
             // 使用派发表进行优化解析
-            ExtensionDispatchTable dispatchTable = Objects.requireNonNull(root.dispatchTables)[index];
-            return Objects.requireNonNull(dispatchTable).resolve(extensionClass);
+            ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[index];
+            return dispatchTable.resolve(extensionClass);
         }
         // 回退逻辑，使用名称检索
         // 需要进行线性扫描（用于动态注册的扩展函数）
         else {
-            Map<Class<?>, Function> classFunctionMap = Objects.requireNonNull(root.extensionFunctions).get(name);
+            Map<Class<?>, Function> classFunctionMap = FluxonRuntime.getInstance().getExtensionFunctions().get(name);
             if (classFunctionMap != null) {
                 // 查找精确匹配
                 Function exact = classFunctionMap.get(extensionClass);
@@ -273,7 +209,7 @@ public class Environment {
      */
     @Export
     public Map<String, Function> getRootFunctions() {
-        return root.functions;
+        return root.rootState.functions;
     }
 
     /**
@@ -283,12 +219,13 @@ public class Environment {
      * @return 用户定义的函数映射，如果没有则返回空 map
      */
     public Map<String, Function> getUserFunctions() {
-        if (root.functions == null || root.userFunctionNames == null || root.userFunctionNames.isEmpty()) {
+        EnvironmentState m = root.rootState;
+        if (m.userFunctionNames == null || m.userFunctionNames.isEmpty()) {
             return Collections.emptyMap();
         }
         Map<String, Function> result = new HashMap<>();
-        for (String name : root.userFunctionNames) {
-            Function func = root.functions.get(name);
+        for (String name : m.userFunctionNames) {
+            Function func = m.functions.get(name);
             if (func != null) {
                 result.put(name, func);
             }
@@ -300,7 +237,7 @@ public class Environment {
      * 获取根环境中的所有系统函数
      */
     public Function[] getRootSystemFunctions() {
-        return root.systemFunctions;
+        return FluxonRuntime.getInstance().getCachedSystemFunctions();
     }
 
     /**
@@ -308,21 +245,21 @@ public class Environment {
      */
     @Export
     public Map<String, Map<Class<?>, Function>> getRootExtensionFunctions() {
-        return root.extensionFunctions;
+        return FluxonRuntime.getInstance().getExtensionFunctions();
     }
 
     /**
      * 获取根环境中的所有系统扩展函数
      */
     public KV<Class<?>, Function>[][] getRootSystemExtensionFunctions() {
-        return root.systemExtensionFunctions;
+        return FluxonRuntime.getInstance().getCachedSystemExtensionFunctions();
     }
 
     /**
      * 获取根环境中的所有扩展函数派发表
      */
     public ExtensionDispatchTable[] getRootDispatchTables() {
-        return root.dispatchTables;
+        return FluxonRuntime.getInstance().getCachedDispatchTables();
     }
 
     // endregion
@@ -350,7 +287,7 @@ public class Environment {
      * @param value 变量值
      */
     public void defineRootVariable(@NotNull String name, @Nullable Object value) {
-        Objects.requireNonNull(root.rootVariables).put(name, value);
+        root.rootState.rootVariables.put(name, value);
     }
 
     /**
@@ -361,7 +298,7 @@ public class Environment {
      */
     @Nullable
     public Object getRootVariable(@NotNull String name) {
-        return Objects.requireNonNull(root.rootVariables).get(name);
+        return root.rootState.rootVariables.get(name);
     }
 
     /**
@@ -371,7 +308,7 @@ public class Environment {
      * @param value 新的变量值
      */
     public void setRootVariable(@NotNull String name, @Nullable Object value) {
-        Objects.requireNonNull(root.rootVariables).put(name, value);
+        root.rootState.rootVariables.put(name, value);
     }
 
     /**
@@ -381,7 +318,7 @@ public class Environment {
      * @return 存在与否
      */
     public boolean hasRootVariable(@NotNull String name) {
-        return Objects.requireNonNull(root.rootVariables).containsKey(name);
+        return root.rootState.rootVariables.containsKey(name);
     }
 
     // region 局部变量 - 引用类型
@@ -452,7 +389,7 @@ public class Environment {
      */
     @Export
     public Map<String, Object> getRootVariables() {
-        return root.rootVariables;
+        return root.rootState.rootVariables;
     }
 
     /**
@@ -496,28 +433,28 @@ public class Environment {
      * 获取输出流（来自根环境）
      */
     public PrintStream getOut() {
-        return root.out;
+        return root.rootState.out;
     }
 
     /**
      * 设置输出流（写入根环境）
      */
     public void setOut(@NotNull PrintStream out) {
-        root.out = Objects.requireNonNull(out, "out");
+        root.rootState.out = Objects.requireNonNull(out, "out");
     }
 
     /**
      * 获取错误输出流（来自根环境）
      */
     public PrintStream getErr() {
-        return root.err;
+        return root.rootState.err;
     }
 
     /**
      * 设置错误输出流（写入根环境）
      */
     public void setErr(@NotNull PrintStream err) {
-        root.err = Objects.requireNonNull(err, "err");
+        root.rootState.err = Objects.requireNonNull(err, "err");
     }
 
     // endregion
@@ -528,7 +465,7 @@ public class Environment {
      * 获取 Command 注册表
      */
     public CommandRegistry getCommandRegistry() {
-        CommandRegistry registry = root.commandRegistry;
+        CommandRegistry registry = root.rootState.commandRegistry;
         return registry != null ? registry : CommandRegistry.primary();
     }
 
@@ -536,14 +473,14 @@ public class Environment {
      * 设置 Command 注册表
      */
     public void setCommandRegistry(CommandRegistry commandRegistry) {
-        root.commandRegistry = commandRegistry;
+        root.rootState.commandRegistry = commandRegistry;
     }
 
     /**
      * 获取 Domain 注册表
      */
     public DomainRegistry getDomainRegistry() {
-        DomainRegistry registry = root.domainRegistry;
+        DomainRegistry registry = root.rootState.domainRegistry;
         return registry != null ? registry : DomainRegistry.primary();
     }
 
@@ -551,7 +488,7 @@ public class Environment {
      * 设置 Domain 注册表
      */
     public void setDomainRegistry(DomainRegistry domainRegistry) {
-        root.domainRegistry = domainRegistry;
+        root.rootState.domainRegistry = domainRegistry;
     }
 
     // endregion
@@ -562,13 +499,13 @@ public class Environment {
      * 消耗执行成本一步（线程安全）
      */
     public void consumeCostStep() {
-        Environment r = this.root;
-        if (r.costLimitEnabled) {
-            long step = r.costPerStep;
-            long remaining = r.costRemaining.addAndGet(-step);
+        EnvironmentState m = this.root.rootState;
+        if (m.costLimitEnabled) {
+            long step = m.costPerStep;
+            long remaining = m.costRemaining.addAndGet(-step);
             if (remaining < 0) {
-                r.costRemaining.addAndGet(step); // 回滚
-                throw new org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError(r.costLimit, remaining + step, step);
+                m.costRemaining.addAndGet(step); // 回滚
+                throw new org.tabooproject.fluxon.runtime.error.ExecutionCostExceededError(m.costLimit, remaining + step, step);
             }
         }
     }
@@ -577,40 +514,40 @@ public class Environment {
         if (costLimit <= 0) {
             throw new IllegalArgumentException("costLimit must be positive");
         }
-        Environment r = this.root;
-        r.costLimitEnabled = true;
-        r.costLimit = costLimit;
-        r.costRemaining.set(costLimit);
+        EnvironmentState m = this.root.rootState;
+        m.costLimitEnabled = true;
+        m.costLimit = costLimit;
+        m.costRemaining.set(costLimit);
     }
 
     public void disableCostLimit() {
-        Environment r = this.root;
-        r.costLimitEnabled = false;
-        r.costLimit = Long.MAX_VALUE;
-        r.costRemaining.set(Long.MAX_VALUE);
+        EnvironmentState m = this.root.rootState;
+        m.costLimitEnabled = false;
+        m.costLimit = Long.MAX_VALUE;
+        m.costRemaining.set(Long.MAX_VALUE);
     }
 
     public void setCostPerStep(long costPerStep) {
         if (costPerStep <= 0) {
             throw new IllegalArgumentException("costPerStep must be positive");
         }
-        this.root.costPerStep = costPerStep;
+        this.root.rootState.costPerStep = costPerStep;
     }
 
     public long getCostLimit() {
-        return root.costLimit;
+        return root.rootState.costLimit;
     }
 
     public long getCostRemaining() {
-        return root.costRemaining.get();
+        return root.rootState.costRemaining.get();
     }
 
     public long getCostPerStep() {
-        return root.costPerStep;
+        return root.rootState.costPerStep;
     }
 
     public boolean isCostLimitEnabled() {
-        return root.costLimitEnabled;
+        return root.rootState.costLimitEnabled;
     }
 
     // endregion
@@ -618,7 +555,7 @@ public class Environment {
     @Override
     public String toString() {
         return "Environment{" +
-                "rootVariables=" + rootVariables +
+                "rootVariables=" + root.rootState.rootVariables +
                 ", target=" + target +
                 ", parent=" + parent +
                 '}';
