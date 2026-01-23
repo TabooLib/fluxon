@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.collection.IntRange;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -51,8 +52,7 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         }
         // 压入 isInclusive 参数
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
-        // 调用 Operations.createRange 方法
-        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)Ljava/util/List;", false);
+        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)" + IntRange.TYPE, false);
         return Type.OBJECT;
     }
 }

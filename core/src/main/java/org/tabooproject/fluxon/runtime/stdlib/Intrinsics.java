@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.parser.CommandHandler;
 import org.tabooproject.fluxon.parser.DomainExecutor;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.*;
+import org.tabooproject.fluxon.runtime.collection.IntRange;
 import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
 import org.tabooproject.fluxon.runtime.error.ArgumentTypeMismatchError;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
@@ -90,31 +91,14 @@ public final class Intrinsics {
      * @return 范围列表
      * @throws IntrinsicException 如果操作数不是数字类型
      */
-    public static List<Integer> createRange(Object start, Object end, boolean isInclusive) {
-        // 检查开始值和结束值是否为数字
+    public static IntRange createRange(Object start, Object end, boolean isInclusive) {
         Operations.checkNumberOperands(start, end);
-        // 转换为整数
         int startInt = ((Number) start).intValue();
         int endInt = ((Number) end).intValue();
-        // 检查范围是否为包含上界类型
         if (!isInclusive) {
-            endInt--;
+            endInt += (startInt <= endInt) ? -1 : 1;
         }
-        // 计算所需的确切大小
-        int size = Math.abs(endInt - startInt) + 1;
-        // 创建具有预设容量的 ArrayList
-        List<Integer> rangeList = new ArrayList<>(size);
-        // 填充列表
-        if (startInt <= endInt) {
-            for (int i = startInt; i <= endInt; i++) {
-                rangeList.add(i);
-            }
-        } else {
-            for (int i = startInt; i >= endInt; i--) {
-                rangeList.add(i);
-            }
-        }
-        return rangeList;
+        return new IntRange(startInt, endInt);
     }
 
     /**
