@@ -189,27 +189,50 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     private void emitParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
-        // 准备调用 Intrinsics.bindFunctionParameters 的参数
-        // 参数1: 父环境 (context.getEnvironment())
+        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
+        // 创建新环境: new Environment(context.getEnvironment(), localVarCount)
+        mv.visitTypeInsn(NEW, Environment.TYPE.getPath());
+        mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
-        // 参数2: 参数位置映射表
-        mv.visitFieldInsn(GETSTATIC, className, "parameters", MAP.getDescriptor());
-        // 参数3: FunctionContext 本身
-        mv.visitVarInsn(ALOAD, 1);
-        // 参数4: 局部变量数量
         mv.visitLdcInsn(funcDef.getLocalVariables().size());
-        // 调用绑定方法，创建新的函数环境
-        mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "bindFunctionParameters", "(" + Environment.TYPE + MAP + FunctionContext.TYPE + I + ")" + Environment.TYPE, false);
-        // 复制环境引用：一份存入局部变量，一份设置到实例字段
+        mv.visitMethodInsn(INVOKESPECIAL, Environment.TYPE.getPath(), "<init>", "(" + Environment.TYPE + I + ")V", false);
+        // 存入局部变量并设置到 this.environment 字段
         mv.visitInsn(DUP);
         int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, envSlot);
-        // 将环境设置到 this.environment 字段（供闭包访问）
         mv.visitVarInsn(ALOAD, 0);
         mv.visitInsn(SWAP);
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
         funcCtx.setEnvironmentLocalSlot(envSlot);
+        // 内联绑定每个参数（编译时确定类型，无运行时分支）
+        for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
+            String name = entry.getKey();
+            int slot = entry.getValue();
+            Class<?> declaredType = parameterTypes.get(slot);
+            Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            // env.setLocalXxx(slot, context.getXxx(slot))
+            mv.visitVarInsn(ALOAD, envSlot);
+            mv.visitLdcInsn(slot);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitLdcInsn(slot);
+            if (type == Type.I || type == Type.Z) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getInt", "(" + I + ")" + I, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(" + I + I + ")V", false);
+            } else if (type == Type.J) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getLong", "(" + I + ")" + J, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalLong", "(" + I + J + ")V", false);
+            } else if (type == Type.D) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getDouble", "(" + I + ")" + D, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalDouble", "(" + I + D + ")V", false);
+            } else if (type == Type.F) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getFloat", "(" + I + ")" + F, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(" + I + F + ")V", false);
+            } else {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getRef", "(" + I + ")" + OBJECT, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")V", false);
+            }
+        }
     }
 
     private void emitFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
