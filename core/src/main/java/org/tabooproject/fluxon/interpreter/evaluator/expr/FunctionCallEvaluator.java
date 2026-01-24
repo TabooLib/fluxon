@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -130,6 +131,13 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         } else {
             // Object 类型
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
+        }
+    }
+
+    @Override
+    public void analyzeTypes(FunctionCallExpression result, TypeAnalyzer analyzer) {
+        for (ParseResult arg : result.getArguments()) {
+            analyzer.analyzeNode(arg);
         }
     }
 }

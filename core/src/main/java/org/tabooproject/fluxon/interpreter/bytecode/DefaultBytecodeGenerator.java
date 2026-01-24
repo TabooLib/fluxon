@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.AnonymousClassEmitter;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
@@ -40,6 +41,8 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     private String fileName = "main";
     // 根层级局部变量数量（_ 前缀变量）
     private int rootLocalVariableCount = 0;
+    // 类型分析器
+    private TypeAnalyzer typeAnalyzer;
 
     @Override
     public Type generateExpressionBytecode(Expression expr, CodeContext ctx, MethodVisitor mv) {
@@ -156,5 +159,14 @@ public class DefaultBytecodeGenerator implements BytecodeGenerator {
     @Override
     public int getAnonymousClassCount() {
         return anonymousClassCount;
+    }
+
+    @Override
+    public void setTypeAnalyzer(TypeAnalyzer typeAnalyzer) {
+        this.typeAnalyzer = typeAnalyzer;
+    }
+
+    public TypeAnalyzer getTypeAnalyzer() {
+        return typeAnalyzer;
     }
 }

@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -35,73 +36,61 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
         }
     }
 
-    /*
-            条件判断
-            |
-            +--> 如果为假，跳到elseLabel
-            |
-            执行then分支
-            |
-            +--> 跳到endLabel
-            |
-            elseLabel:
-            执行else分支
-            |
-            V
-            endLabel:
-            继续执行后续代码
-     */
     @Override
     public Type generateBytecode(IfExpression result, CodeContext ctx, MethodVisitor mv) {
-        // 获取评估器注册表
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for expression");
+            throw new EvaluatorNotFoundError("No evaluator found for condition");
         }
         Evaluator<ParseResult> thenEval = ctx.getEvaluator(result.getThenBranch());
         if (thenEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for expression");
+            throw new EvaluatorNotFoundError("No evaluator found for then branch");
         }
         Evaluator<ParseResult> elseEval = result.getElseBranch() != null ? ctx.getEvaluator(result.getElseBranch()) : null;
 
-        // 创建局部变量用于存储分支结果
-        int storeId = ctx.allocateLocalVar(Type.OBJECT);
-        // 创建标签用于跳转
+        // 推断统一类型
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        Type unifiedType = Type.OBJECT;
+        if (analyzer != null && elseEval != null) {
+            Type thenType = thenEval.inferResultType(result.getThenBranch(), analyzer);
+            Type elseType = elseEval.inferResultType(result.getElseBranch(), analyzer);
+            unifiedType = unifyBranchTypes(thenType, elseType);
+        }
+
+        int storeId = ctx.allocateLocalVar(unifiedType);
         Label elseLabel = new Label();
         Label endLabel = new Label();
-        // 评估条件表达式
         generateCondition(ctx, mv, result.getCondition(), conditionEval, elseLabel);
 
-        // then 分支代码
+        // then 分支
         Type thenType = thenEval.generateBytecode(result.getThenBranch(), ctx, mv);
-        if (thenType == Type.VOID) {
-            mv.visitInsn(ACONST_NULL);
-        } else {
-            boxing(thenType, mv);
-        }
-        mv.visitVarInsn(ASTORE, storeId);
+        storeBranchResult(thenType, unifiedType, storeId, mv);
         mv.visitJumpInsn(GOTO, endLabel);
 
-        // else 分支标签
+        // else 分支
         mv.visitLabel(elseLabel);
-        // 生成 else 分支的字节码（如果存在）
         if (elseEval != null) {
             Type elseType = elseEval.generateBytecode(result.getElseBranch(), ctx, mv);
-            if (elseType == Type.VOID) {
-                mv.visitInsn(ACONST_NULL);
-            } else {
-                boxing(elseType, mv);
-            }
-            mv.visitVarInsn(ASTORE, storeId);
+            storeBranchResult(elseType, unifiedType, storeId, mv);
         } else {
             mv.visitInsn(ACONST_NULL);
             mv.visitVarInsn(ASTORE, storeId);
         }
 
-        // 结束标签
         mv.visitLabel(endLabel);
-        // 将分支结果加载到栈顶
-        mv.visitVarInsn(ALOAD, storeId);
-        return Type.OBJECT;
+        mv.visitVarInsn(unifiedType.isPrimitive() ? loadOpcode(unifiedType) : ALOAD, storeId);
+        return unifiedType;
+    }
+
+    @Override
+    public void analyzeTypes(IfExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getCondition());
+        analyzer.analyzeNode(result.getThenBranch());
+        analyzer.analyzeNode(result.getElseBranch());
+    }
+
+    @Override
+    public Type inferResultType(IfExpression result, TypeAnalyzer analyzer) {
+        return inferBranchType(result.getThenBranch(), result.getElseBranch(), analyzer);
     }
 }

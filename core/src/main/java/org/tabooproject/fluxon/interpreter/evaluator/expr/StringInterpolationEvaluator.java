@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -78,5 +79,14 @@ public class StringInterpolationEvaluator extends ExpressionEvaluator<StringInte
         // 调用 toString
         mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "toString", "()" + STRING, false);
         return STRING;
+    }
+
+    @Override
+    public void analyzeTypes(StringInterpolation result, TypeAnalyzer analyzer) {
+        for (ParseResult part : result.getParts()) {
+            if (!(part instanceof StringInterpolation.StringPart)) {
+                analyzer.analyzeNode(part);
+            }
+        }
     }
 }

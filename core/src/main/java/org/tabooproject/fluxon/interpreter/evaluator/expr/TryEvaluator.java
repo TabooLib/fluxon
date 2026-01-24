@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -157,5 +158,12 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         // 返回 value
         mv.visitVarInsn(ALOAD, valueVar);
         return Type.OBJECT;
+    }
+
+    @Override
+    public void analyzeTypes(TryExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getBody());
+        analyzer.analyzeNode(result.getCatchBody());
+        analyzer.analyzeNode(result.getFinallyBody());
     }
 }

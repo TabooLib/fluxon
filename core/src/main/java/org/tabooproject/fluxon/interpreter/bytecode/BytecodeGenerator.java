@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -85,4 +86,10 @@ public interface BytecodeGenerator {
      * 获取匿名类数量
      */
     int getAnonymousClassCount();
+
+    /**
+     * 设置类型分析器
+     * @param typeAnalyzer 类型分析器
+     */
+    void setTypeAnalyzer(TypeAnalyzer typeAnalyzer);
 }

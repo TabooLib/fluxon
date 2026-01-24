@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
@@ -72,5 +73,10 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             }
         }
         return Type.VOID;
+    }
+
+    @Override
+    public void analyzeTypes(ReturnStatement result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getValue());
     }
 }

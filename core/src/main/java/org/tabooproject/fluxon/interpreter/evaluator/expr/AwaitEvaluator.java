@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -45,5 +46,10 @@ public class AwaitEvaluator extends ExpressionEvaluator<AwaitExpression> {
         // 调用 Operations.awaitValue 方法
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "awaitValue", "(" + Type.OBJECT + ")" + Type.OBJECT, false);
         return Type.OBJECT;
+    }
+
+    @Override
+    public void analyzeTypes(AwaitExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getExpression());
     }
 }

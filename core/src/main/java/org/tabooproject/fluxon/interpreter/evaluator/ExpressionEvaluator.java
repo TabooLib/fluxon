@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -14,6 +15,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import static org.objectweb.asm.Opcodes.*;
 
+@SuppressWarnings("DuplicatedCode")
 public abstract class ExpressionEvaluator<T extends Expression> extends Evaluator<T> {
 
     /**
@@ -52,6 +54,113 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         if (endLabel != null) {
             // 如果条件为假，跳转到结束
             mv.visitJumpInsn(IFEQ, endLabel);
+        }
+    }
+
+    // ========== 分支类型统一工具方法 ==========
+
+    /**
+     * 统一两个分支的类型（用于 if-then-else、三元运算符等）
+     */
+    protected static Type unifyBranchTypes(Type trueType, Type falseType) {
+        if (trueType.isPrimitive() && trueType.equals(falseType)) {
+            return trueType;
+        }
+        // 数值类型提升
+        if (trueType.isPrimitive() && falseType.isPrimitive()) {
+            if (trueType == Type.D || falseType == Type.D) return Type.D;
+            if (trueType == Type.F || falseType == Type.F) return Type.F;
+            if (trueType == Type.J || falseType == Type.J) return Type.J;
+        }
+        return Type.OBJECT;
+    }
+
+    /**
+     * 推断分支统一类型（用于 TypeAnalyzer）
+     */
+    protected static Type inferBranchType(ParseResult trueBranch, ParseResult falseBranch, TypeAnalyzer analyzer) {
+        Type trueType = analyzer.inferType(trueBranch);
+        Type falseType = falseBranch != null ? analyzer.inferType(falseBranch) : Type.OBJECT;
+        return unifyBranchTypes(trueType, falseType);
+    }
+
+    protected static int storeOpcode(Type type) {
+        if (type == Type.I || type == Type.Z) return ISTORE;
+        if (type == Type.J) return LSTORE;
+        if (type == Type.F) return FSTORE;
+        if (type == Type.D) return DSTORE;
+        return ASTORE;
+    }
+
+    protected static int loadOpcode(Type type) {
+        if (type == Type.I || type == Type.Z) return ILOAD;
+        if (type == Type.J) return LLOAD;
+        if (type == Type.F) return FLOAD;
+        if (type == Type.D) return DLOAD;
+        return ALOAD;
+    }
+
+    /**
+     * 原始类型转换
+     */
+    protected static void emitConvertPrimitive(Type from, Type to, MethodVisitor mv) {
+        if (from.equals(to)) return;
+        if (!from.isPrimitive()) {
+            emitUnbox(to, mv);
+            return;
+        }
+        if (from == Type.I) {
+            if (to == Type.J) mv.visitInsn(I2L);
+            else if (to == Type.F) mv.visitInsn(I2F);
+            else if (to == Type.D) mv.visitInsn(I2D);
+        } else if (from == Type.J) {
+            if (to == Type.I) mv.visitInsn(L2I);
+            else if (to == Type.F) mv.visitInsn(L2F);
+            else if (to == Type.D) mv.visitInsn(L2D);
+        } else if (from == Type.F) {
+            if (to == Type.I) mv.visitInsn(F2I);
+            else if (to == Type.J) mv.visitInsn(F2L);
+            else if (to == Type.D) mv.visitInsn(F2D);
+        } else if (from == Type.D) {
+            if (to == Type.I) mv.visitInsn(D2I);
+            else if (to == Type.J) mv.visitInsn(D2L);
+            else if (to == Type.F) mv.visitInsn(D2F);
+        }
+    }
+
+    protected static void emitUnbox(Type type, MethodVisitor mv) {
+        if (type == Type.I) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+        } else if (type == Type.J) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+        } else if (type == Type.F) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+        } else if (type == Type.D) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+        } else if (type == Type.Z) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+        }
+    }
+
+    /**
+     * 存储分支结果到局部变量
+     */
+    protected static void storeBranchResult(Type branchType, Type unifiedType, int storeId, MethodVisitor mv) {
+        if (unifiedType.isPrimitive()) {
+            emitConvertPrimitive(branchType, unifiedType, mv);
+            mv.visitVarInsn(storeOpcode(unifiedType), storeId);
+        } else {
+            if (branchType == Type.VOID) {
+                mv.visitInsn(ACONST_NULL);
+            } else {
+                boxing(branchType, mv);
+            }
+            mv.visitVarInsn(ASTORE, storeId);
         }
     }
 }

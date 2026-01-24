@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
@@ -102,5 +103,11 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         // 退出循环上下文
         ctx.exitLoop();
         return Type.VOID;
+    }
+
+    @Override
+    public void analyzeTypes(WhileExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getCondition());
+        analyzer.analyzeNode(result.getBody());
     }
 }

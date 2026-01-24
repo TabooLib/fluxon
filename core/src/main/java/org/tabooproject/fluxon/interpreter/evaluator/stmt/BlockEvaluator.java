@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -48,5 +49,12 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
             }
         }
         return last;
+    }
+
+    @Override
+    public void analyzeTypes(Block result, TypeAnalyzer analyzer) {
+        for (ParseResult stmt : result.getStatements()) {
+            analyzer.analyzeNode(stmt);
+        }
     }
 }

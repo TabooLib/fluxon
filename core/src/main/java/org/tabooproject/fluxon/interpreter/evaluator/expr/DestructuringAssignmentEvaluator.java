@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -100,4 +101,9 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
     }
 
     private static final Type MAP = new Type(Map.class);
+
+    @Override
+    public void analyzeTypes(DestructuringAssignExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getValue());
+    }
 }

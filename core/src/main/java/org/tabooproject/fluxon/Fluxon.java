@@ -2,6 +2,7 @@ package org.tabooproject.fluxon;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.lexer.Lexer;
@@ -164,7 +165,13 @@ public class Fluxon {
     private static CompileResult doCompile(Environment env, CompilationContext context, String className, ClassLoader classLoader) {
         BytecodeGenerator generator = new DefaultBytecodeGenerator();
         generator.setSourceContext(context.getSource(), context.getFileName());
-        for (ParseResult result : doParse(env, context)) {
+        List<ParseResult> results = doParse(env, context);
+        // 类型分析阶段
+        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
+        typeAnalyzer.analyze(results);
+        generator.setTypeAnalyzer(typeAnalyzer);
+        // 分离语句和定义
+        for (ParseResult result : results) {
             if (result instanceof Statement) {
                 generator.addScriptBody((Statement) result);
             } else if (result instanceof Definition) {

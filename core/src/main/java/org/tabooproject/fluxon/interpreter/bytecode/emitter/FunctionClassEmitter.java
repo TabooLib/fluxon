@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -172,6 +173,19 @@ public class FunctionClassEmitter extends ClassEmitter {
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 0: this
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext
+        // 对函数体进行类型分析
+        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
+        typeAnalyzer.analyzeNode(funcDef.getBody());
+        // Lambda 函数：位置 >= 自身局部变量数的变量是从父作用域捕获的，必须用引用类型
+        if (funcDef instanceof LambdaFunctionDefinition) {
+            int ownLocalCount = funcDef.getLocalVariables().size();
+            for (int pos : new HashSet<>(typeAnalyzer.getVariableTypes().keySet())) {
+                if (pos >= ownLocalCount) {
+                    typeAnalyzer.markCaptured(pos);
+                }
+            }
+        }
+        funcCtx.setTypeAnalyzer(typeAnalyzer);
         // 从 FunctionContext 获取 pool 并存入局部变量（避免重复 ThreadLocal.get()）
         mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getPool", "()" + FunctionContextPool.TYPE.getDescriptor(), false);

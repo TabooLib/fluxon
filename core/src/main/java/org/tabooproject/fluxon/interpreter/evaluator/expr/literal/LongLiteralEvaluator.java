@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr.literal;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
@@ -24,6 +25,11 @@ public class LongLiteralEvaluator extends ExpressionEvaluator<LongLiteral> {
     @Override
     public Type generateBytecode(LongLiteral result, CodeContext ctx, MethodVisitor mv) {
         mv.visitLdcInsn(result.getValue());
+        return Type.J;
+    }
+
+    @Override
+    public Type inferResultType(LongLiteral result, TypeAnalyzer analyzer) {
         return Type.J;
     }
 }

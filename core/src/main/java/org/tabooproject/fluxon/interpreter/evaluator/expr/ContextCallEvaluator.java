@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -135,5 +136,11 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             return Type.OBJECT;
         }
         return resultType;
+    }
+
+    @Override
+    public void analyzeTypes(ContextCallExpression expression, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(expression.getTarget());
+        analyzer.analyzeNode(expression.getContext());
     }
 }

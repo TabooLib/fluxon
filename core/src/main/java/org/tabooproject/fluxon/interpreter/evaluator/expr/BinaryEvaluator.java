@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -485,6 +486,19 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (t == Type.F) return Float.intBitsToFloat((int) bits);
         if (t == Type.J) return (double) bits;
         return (int) bits;
+    }
+
+    @Override
+    public void analyzeTypes(BinaryExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getLeft());
+        analyzer.analyzeNode(result.getRight());
+    }
+
+    @Override
+    public Type inferResultType(BinaryExpression result, TypeAnalyzer analyzer) {
+        Type left = analyzer.inferType(result.getLeft());
+        Type right = analyzer.inferType(result.getRight());
+        return analyzer.inferBinaryResultType(left, right, result.getOperator().getType());
     }
 
     private static final Map<TokenType, BinaryOperator> OPERATORS = new EnumMap<>(TokenType.class);

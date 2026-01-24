@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -30,5 +31,10 @@ public class ExprStmtEvaluator extends StatementEvaluator<ExpressionStatement> {
             throw new EvaluatorNotFoundError("No evaluator found for expression");
         }
         return eval.generateBytecode(result.getExpression(), ctx, mv);
+    }
+
+    @Override
+    public void analyzeTypes(ExpressionStatement result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getExpression());
     }
 }

@@ -382,6 +382,30 @@ public class Environment {
         localPrimitives[index] = Double.doubleToRawLongBits(v);
     }
 
+    public float getLocalFloat(int index) {
+        return Float.intBitsToFloat((int) localPrimitives[index]);
+    }
+
+    public void setLocalFloat(int index, float v) {
+        localPrimitives[index] = Float.floatToRawIntBits(v);
+    }
+
+    /**
+     * 获取原始类型变量（通用方法）
+     * 返回 long 位模式，调用者需根据类型转换
+     */
+    public long getLocalPrimitive(int index) {
+        return localPrimitives[index];
+    }
+
+    /**
+     * 设置原始类型变量（通用方法）
+     * 存储 long 位模式，调用者需先转换
+     */
+    public void setLocalPrimitive(int index, long bits) {
+        localPrimitives[index] = bits;
+    }
+
     // endregion
 
     /**

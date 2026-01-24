@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -37,54 +38,57 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
 
     @Override
     public Type generateBytecode(TernaryExpression result, CodeContext ctx, MethodVisitor mv) {
-        // 获取评估器
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         if (conditionEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for condition expression");
+            throw new EvaluatorNotFoundError("No evaluator found for condition");
         }
-        Evaluator<ParseResult> trueExprEval = ctx.getEvaluator(result.getTrueExpr());
-        if (trueExprEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for true expression");
+        Evaluator<ParseResult> trueEval = ctx.getEvaluator(result.getTrueExpr());
+        if (trueEval == null) {
+            throw new EvaluatorNotFoundError("No evaluator found for true branch");
         }
-        Evaluator<ParseResult> falseExprEval = ctx.getEvaluator(result.getFalseExpr());
-        if (falseExprEval == null) {
-            throw new EvaluatorNotFoundError("No evaluator found for false expression");
+        Evaluator<ParseResult> falseEval = ctx.getEvaluator(result.getFalseExpr());
+        if (falseEval == null) {
+            throw new EvaluatorNotFoundError("No evaluator found for false branch");
         }
 
-        // 创建局部变量用于存储结果
-        int storeId = ctx.allocateLocalVar(Type.OBJECT);
-        // 创建标签用于跳转
+        // 推断统一类型
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        Type unifiedType = Type.OBJECT;
+        if (analyzer != null) {
+            Type trueType = trueEval.inferResultType(result.getTrueExpr(), analyzer);
+            Type falseType = falseEval.inferResultType(result.getFalseExpr(), analyzer);
+            unifiedType = unifyBranchTypes(trueType, falseType);
+        }
+
+        int storeId = ctx.allocateLocalVar(unifiedType);
         Label falseLabel = new Label();
         Label endLabel = new Label();
-        
-        // 使用标准的条件判断方式
         generateCondition(ctx, mv, result.getCondition(), conditionEval, falseLabel);
 
-        // true 分支代码
-        Type trueType = trueExprEval.generateBytecode(result.getTrueExpr(), ctx, mv);
-        if (trueType == Type.VOID) {
-            mv.visitInsn(ACONST_NULL);
-        } else {
-            boxing(trueType, mv);
-        }
-        mv.visitVarInsn(ASTORE, storeId);
+        // true 分支
+        Type trueType = trueEval.generateBytecode(result.getTrueExpr(), ctx, mv);
+        storeBranchResult(trueType, unifiedType, storeId, mv);
         mv.visitJumpInsn(GOTO, endLabel);
 
-        // false 分支标签
+        // false 分支
         mv.visitLabel(falseLabel);
-        // 生成 false 分支的字节码
-        Type falseType = falseExprEval.generateBytecode(result.getFalseExpr(), ctx, mv);
-        if (falseType == Type.VOID) {
-            mv.visitInsn(ACONST_NULL);
-        } else {
-            boxing(falseType, mv);
-        }
-        mv.visitVarInsn(ASTORE, storeId);
+        Type falseType = falseEval.generateBytecode(result.getFalseExpr(), ctx, mv);
+        storeBranchResult(falseType, unifiedType, storeId, mv);
 
-        // 结束标签
         mv.visitLabel(endLabel);
-        // 将结果加载到栈顶
-        mv.visitVarInsn(ALOAD, storeId);
-        return Type.OBJECT;
+        mv.visitVarInsn(unifiedType.isPrimitive() ? loadOpcode(unifiedType) : ALOAD, storeId);
+        return unifiedType;
+    }
+
+    @Override
+    public void analyzeTypes(TernaryExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getCondition());
+        analyzer.analyzeNode(result.getTrueExpr());
+        analyzer.analyzeNode(result.getFalseExpr());
+    }
+
+    @Override
+    public Type inferResultType(TernaryExpression result, TypeAnalyzer analyzer) {
+        return inferBranchType(result.getTrueExpr(), result.getFalseExpr(), analyzer);
     }
 }

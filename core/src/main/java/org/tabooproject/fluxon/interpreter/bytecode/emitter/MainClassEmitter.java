@@ -4,6 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
@@ -108,6 +109,10 @@ public class MainClassEmitter extends ClassEmitter {
         ctx.allocateLocalVar(Type.OBJECT);
         ctx.setEnvironmentLocalSlot(1);
         ctx.setExpectedReturnType(Object.class);
+        // 设置类型分析器（如果可用）
+        if (generator instanceof DefaultBytecodeGenerator) {
+            ctx.setTypeAnalyzer(((DefaultBytecodeGenerator) generator).getTypeAnalyzer());
+        }
         // 获取 FunctionContextPool 并存入局部变量（避免重复 ThreadLocal.get()）
         mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
         int poolSlot = ctx.allocateLocalVar(Type.OBJECT);

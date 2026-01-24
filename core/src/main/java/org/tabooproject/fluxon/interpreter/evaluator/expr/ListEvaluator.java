@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -128,4 +129,11 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
     private static final Type ARRAY_LIST = new Type(ArrayList.class);
     private static final Type OBJECT_ARRAY = new Type(Object.class, 1);
     private static final Type IMMUTABLE_LIST = new Type(ImmutableList.class);
+
+    @Override
+    public void analyzeTypes(ListExpression result, TypeAnalyzer analyzer) {
+        for (ParseResult element : result.getElements()) {
+            analyzer.analyzeNode(element);
+        }
+    }
 }

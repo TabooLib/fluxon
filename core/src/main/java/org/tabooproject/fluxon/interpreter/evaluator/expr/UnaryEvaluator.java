@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -63,14 +64,44 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
                 }
                 mv.visitInsn(ICONST_1);
                 mv.visitInsn(IXOR);
-                return boxing(Type.Z, mv);
+                return Type.Z;
             case MINUS:
+                if (rightType == Type.I || rightType == Type.Z) {
+                    mv.visitInsn(INEG);
+                    return Type.I;
+                } else if (rightType == Type.J) {
+                    mv.visitInsn(LNEG);
+                    return Type.J;
+                } else if (rightType == Type.F) {
+                    mv.visitInsn(FNEG);
+                    return Type.F;
+                } else if (rightType == Type.D) {
+                    mv.visitInsn(DNEG);
+                    return Type.D;
+                }
                 boxing(rightType, mv);
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
                 mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), "negateNumber", "(" + Type.NUMBER + ")" + Type.NUMBER, false);
                 return Type.NUMBER;
             default:
                 throw new RuntimeException("Unknown unary operator: " + result.getOperator().getType());
+        }
+    }
+
+    @Override
+    public void analyzeTypes(UnaryExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getRight());
+    }
+
+    @Override
+    public Type inferResultType(UnaryExpression result, TypeAnalyzer analyzer) {
+        switch (result.getOperator().getType()) {
+            case NOT:
+                return Type.Z;
+            case MINUS:
+                return analyzer.inferType(result.getRight());
+            default:
+                return Type.OBJECT;
         }
     }
 }

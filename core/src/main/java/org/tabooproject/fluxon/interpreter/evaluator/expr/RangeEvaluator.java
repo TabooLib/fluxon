@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -59,5 +60,11 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "createRange", "(" + Type.OBJECT + Type.OBJECT + "Z)" + IntRange.TYPE, false);
         return Type.OBJECT;
+    }
+
+    @Override
+    public void analyzeTypes(RangeExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getStart());
+        analyzer.analyzeNode(result.getEnd());
     }
 }

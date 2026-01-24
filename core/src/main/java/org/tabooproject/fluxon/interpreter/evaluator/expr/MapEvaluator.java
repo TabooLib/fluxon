@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -166,4 +167,12 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
     private static final Type HASHMAP = new Type(HashMap.class);
     private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
     private static final Type OBJECT_ARRAY = new Type(Object.class, 1);
+
+    @Override
+    public void analyzeTypes(MapExpression result, TypeAnalyzer analyzer) {
+        for (MapExpression.MapEntry entry : result.getEntries()) {
+            analyzer.analyzeNode(entry.getKey());
+            analyzer.analyzeNode(entry.getValue());
+        }
+    }
 }

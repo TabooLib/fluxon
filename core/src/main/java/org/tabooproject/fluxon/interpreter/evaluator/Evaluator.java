@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -24,6 +25,22 @@ public abstract class Evaluator<T extends ParseResult> {
      * @param mv     方法访问器
      */
     abstract public Type generateBytecode(T result, CodeContext ctx, MethodVisitor mv);
+
+    /**
+     * 遍历子节点收集赋值类型信息
+     * 需要递归遍历的 Evaluator 应重写此方法
+     */
+    public void analyzeTypes(T result, TypeAnalyzer analyzer) {
+        // 默认不做任何事
+    }
+
+    /**
+     * 推断该表达式的结果类型
+     * 需要类型推断的 Evaluator 应重写此方法
+     */
+    public Type inferResultType(T result, TypeAnalyzer analyzer) {
+        return Type.OBJECT;
+    }
 
     /**
      * 将操作数装箱

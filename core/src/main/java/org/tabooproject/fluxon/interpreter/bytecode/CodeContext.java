@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.Label;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -43,6 +44,9 @@ public class CodeContext {
 
     // Command 解析数据（运行时通过 index 访问）
     private final List<Object> commandDataList = new ArrayList<>();
+
+    // 类型分析器（用于编译期优化局部变量存储）
+    private TypeAnalyzer typeAnalyzer;
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -241,5 +245,33 @@ public class CodeContext {
      */
     public Class<?> getExpectedReturnType() {
         return expectedReturnType;
+    }
+
+    /**
+     * 设置类型分析器
+     * @param typeAnalyzer 类型分析器
+     */
+    public void setTypeAnalyzer(TypeAnalyzer typeAnalyzer) {
+        this.typeAnalyzer = typeAnalyzer;
+    }
+
+    /**
+     * 获取类型分析器
+     * @return 类型分析器，可能为 null
+     */
+    public TypeAnalyzer getTypeAnalyzer() {
+        return typeAnalyzer;
+    }
+
+    /**
+     * 获取局部变量的类型
+     * @param position 变量位置
+     * @return 变量类型，如果未知则返回 OBJECT
+     */
+    public Type getVariableType(int position) {
+        if (typeAnalyzer != null) {
+            return typeAnalyzer.getVariableType(position);
+        }
+        return Type.OBJECT;
     }
 }

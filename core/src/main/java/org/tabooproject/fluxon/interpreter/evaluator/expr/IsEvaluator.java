@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -49,7 +50,16 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
         boxing(leftType, mv);
         // 使用 BytecodeUtils 生成 INSTANCEOF 检查字节码（栈：[obj] -> [int]）
         Instructions.emitInstanceofCheck(mv, expr.getTargetClass());
-        // 结果是原始 boolean 类型（int 0 或 1），需要装箱为 Boolean
-        return boxing(Type.Z, mv);
+        return Type.Z;
+    }
+
+    @Override
+    public void analyzeTypes(IsExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getLeft());
+    }
+
+    @Override
+    public Type inferResultType(IsExpression result, TypeAnalyzer analyzer) {
+        return Type.Z;
     }
 }

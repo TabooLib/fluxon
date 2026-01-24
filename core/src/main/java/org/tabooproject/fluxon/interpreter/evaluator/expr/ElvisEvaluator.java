@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -35,44 +36,44 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
 
     @Override
     public Type generateBytecode(ElvisExpression result, CodeContext ctx, MethodVisitor mv) {
-        // 获取条件表达式和替代表达式的求值器
         Evaluator<ParseResult> conditionEval = ctx.getEvaluator(result.getCondition());
         Evaluator<ParseResult> alternativeEval = ctx.getEvaluator(result.getAlternative());
         if (conditionEval == null || alternativeEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for operands");
         }
-        
-        // 创建标签用于跳转
+
         Label endLabel = new Label();
-        // 生成条件表达式的字节码
         Type conditionType = conditionEval.generateBytecode(result.getCondition(), ctx, mv);
         if (conditionType == Type.VOID) {
             throw new VoidError("Void type is not allowed for elvis condition");
         }
         boxing(conditionType, mv);
 
-        // 检查条件表达式结果是否为 null
-        mv.visitInsn(DUP);                      // 复制栈顶值用于后续使用
-        mv.visitJumpInsn(IFNONNULL, endLabel);  // 如果不为 null，跳转到结束
+        // 检查是否为 null
+        mv.visitInsn(DUP);
+        mv.visitJumpInsn(IFNONNULL, endLabel);
 
-        // 如果为 null，弹出栈顶值并执行替代表达式
+        // 为 null 时执行替代表达式
         mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
         if (alternativeType == Type.VOID) {
-            // 若分支不返回值，则压入 null 以保持栈平衡；对 break/continue/return 等跳转分支则不会执行到此处
             mv.visitInsn(ACONST_NULL);
             alternativeType = Type.OBJECT;
         } else {
             boxing(alternativeType, mv);
         }
-        
-        // 结束标签
+
         mv.visitLabel(endLabel);
 
-        // 返回结果类型
         if (conditionType == alternativeType) {
             return conditionType;
         }
         return Type.OBJECT;
+    }
+
+    @Override
+    public void analyzeTypes(ElvisExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getCondition());
+        analyzer.analyzeNode(result.getAlternative());
     }
 }

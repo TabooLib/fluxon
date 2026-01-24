@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -36,5 +37,15 @@ public class GroupingEvaluator extends ExpressionEvaluator<GroupingExpression> {
             throw new VoidError("Void type is not allowed in grouping expression");
         }
         return type;
+    }
+
+    @Override
+    public void analyzeTypes(GroupingExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getExpression());
+    }
+
+    @Override
+    public Type inferResultType(GroupingExpression result, TypeAnalyzer analyzer) {
+        return analyzer.inferType(result.getExpression());
     }
 }

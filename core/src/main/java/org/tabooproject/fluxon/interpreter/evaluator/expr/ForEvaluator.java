@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
@@ -163,4 +164,10 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
     private static final Type ITERATOR = new Type(Iterator.class);
     private static final Type MAP = new Type(Map.class);
+
+    @Override
+    public void analyzeTypes(ForExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getCollection());
+        analyzer.analyzeNode(result.getBody());
+    }
 }

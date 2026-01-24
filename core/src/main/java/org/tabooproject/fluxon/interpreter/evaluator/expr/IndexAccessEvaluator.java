@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -91,5 +92,13 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
             // 如果还有更多索引，当前结果将作为下一次调用的 target
         }
         return Type.OBJECT;
+    }
+
+    @Override
+    public void analyzeTypes(IndexAccessExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getTarget());
+        for (ParseResult index : result.getIndices()) {
+            analyzer.analyzeNode(index);
+        }
     }
 }

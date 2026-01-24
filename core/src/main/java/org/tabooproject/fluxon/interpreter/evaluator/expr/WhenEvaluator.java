@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -156,4 +157,13 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
     }
 
     private static final Type MATCH_TYPE = new Type(WhenExpression.MatchType.class);
+
+    @Override
+    public void analyzeTypes(WhenExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getSubject());
+        for (WhenExpression.WhenBranch branch : result.getBranches()) {
+            analyzer.analyzeNode(branch.getCondition());
+            analyzer.analyzeNode(branch.getResult());
+        }
+    }
 }

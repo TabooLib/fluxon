@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -155,4 +156,14 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
     private static final Type LOOKUP = new Type(MethodHandles.Lookup.class);
     private static final Type METHOD_TYPE = new Type(MethodType.class);
     private static final Type CALL_SITE = new Type(CallSite.class);
+
+    @Override
+    public void analyzeTypes(MemberAccessExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getTarget());
+        if (result.getArgs() != null) {
+            for (ParseResult arg : result.getArgs()) {
+                analyzer.analyzeNode(arg);
+            }
+        }
+    }
 }

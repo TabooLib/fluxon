@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -163,26 +164,56 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         int position = result.getPosition();
         TokenType type = result.getOperator().getType();
         if (position >= 0) {
-            // 局部变量赋值 -> env.setLocalRef(index, value)
+            Type varType = ctx.getVariableType(position);
+            // 局部变量赋值
             if (type == TokenType.ASSIGN) {
-                Instructions.loadEnvironment(mv, ctx);
-                mv.visitLdcInsn(position);
-                Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
-                if (vt == VOID) {
-                    throw new VoidError("Void type is not allowed for assignment value");
+                if (varType.isPrimitive()) {
+                    // 基本类型：调用对应的 typed setter
+                    Instructions.loadEnvironment(mv, ctx);
+                    mv.visitLdcInsn(position);
+                    Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
+                    if (vt == VOID) {
+                        throw new VoidError("Void type is not allowed for assignment value");
+                    }
+                    emitConvert(vt, varType, mv);
+                    ReferenceEvaluator.emitSetLocal(varType, mv);
+                } else {
+                    // 引用类型：存 localRefs
+                    Instructions.loadEnvironment(mv, ctx);
+                    mv.visitLdcInsn(position);
+                    Type vt = valueEval.generateBytecode(result.getValue(), ctx, mv);
+                    if (vt == VOID) {
+                        throw new VoidError("Void type is not allowed for assignment value");
+                    }
+                    boxing(vt, mv);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
                 }
-                boxing(vt, mv);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
             } else {
-                // 复合赋值: env.setLocalRef(index, op(env.getLocalRef(index), newValue))
-                Instructions.loadEnvironment(mv, ctx);
-                mv.visitInsn(DUP);
-                mv.visitLdcInsn(position);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
-                generateCompoundOperation(result, valueEval, type, ctx, mv);
-                mv.visitLdcInsn(position);
-                mv.visitInsn(SWAP);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
+                // 复合赋值：目前仍使用装箱方式，后续可优化
+                if (varType.isPrimitive()) {
+                    // 基本类型复合赋值：先准备好 env 和 position，再计算值
+                    Instructions.loadEnvironment(mv, ctx);
+                    mv.visitLdcInsn(position);
+                    // 读取当前值
+                    Instructions.loadEnvironment(mv, ctx);
+                    mv.visitLdcInsn(position);
+                    ReferenceEvaluator.emitGetLocal(varType, mv);
+                    boxing(varType, mv);
+                    generateCompoundOperation(result, valueEval, type, ctx, mv);
+                    // 结果是 Object，需要拆箱为目标类型
+                    emitUnbox(varType, mv);
+                    ReferenceEvaluator.emitSetLocal(varType, mv);
+                } else {
+                    // 引用类型复合赋值
+                    Instructions.loadEnvironment(mv, ctx);
+                    mv.visitInsn(DUP);
+                    mv.visitLdcInsn(position);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
+                    generateCompoundOperation(result, valueEval, type, ctx, mv);
+                    mv.visitLdcInsn(position);
+                    mv.visitInsn(SWAP);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
+                }
             }
         } else {
             // 根变量赋值 -> env.setRootVariable(name, value)
@@ -207,6 +238,37 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
             }
         }
+    }
+
+    /**
+     * 类型转换
+     */
+    private void emitConvert(Type from, Type to, MethodVisitor mv) {
+        if (from.equals(to)) return;
+        // 如果源类型是 OBJECT，先拆箱
+        if (!from.isPrimitive()) {
+            emitUnbox(to, mv);
+            return;
+        }
+        // 基本类型之间的转换
+        if (from == I) {
+            if (to == J) mv.visitInsn(I2L);
+            else if (to == F) mv.visitInsn(I2F);
+            else if (to == D) mv.visitInsn(I2D);
+        } else if (from == J) {
+            if (to == I) mv.visitInsn(L2I);
+            else if (to == F) mv.visitInsn(L2F);
+            else if (to == D) mv.visitInsn(L2D);
+        } else if (from == F) {
+            if (to == I) mv.visitInsn(F2I);
+            else if (to == J) mv.visitInsn(F2L);
+            else if (to == D) mv.visitInsn(F2D);
+        } else if (from == D) {
+            if (to == I) mv.visitInsn(D2I);
+            else if (to == J) mv.visitInsn(D2L);
+            else if (to == F) mv.visitInsn(D2F);
+        }
+        // Z (boolean) 不需要转换，直接当 int 用
     }
 
     /**
@@ -316,5 +378,26 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         OPERATORS.put(TokenType.MULTIPLY_ASSIGN, "multiply");
         OPERATORS.put(TokenType.DIVIDE_ASSIGN, "divide");
         OPERATORS.put(TokenType.MODULO_ASSIGN, "modulo");
+    }
+
+    @Override
+    public void analyzeTypes(AssignExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getValue());
+        int position = result.getPosition();
+        if (position < 0) return;
+        Type valueType;
+        if (result.getOperator().getType() != TokenType.ASSIGN) {
+            Type currentType = analyzer.getVariableType(position);
+            Type rightType = analyzer.inferType(result.getValue());
+            valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+        } else {
+            valueType = analyzer.inferType(result.getValue());
+        }
+        analyzer.recordType(position, valueType);
+    }
+
+    @Override
+    public Type inferResultType(AssignExpression result, TypeAnalyzer analyzer) {
+        return analyzer.inferType(result.getValue());
     }
 }

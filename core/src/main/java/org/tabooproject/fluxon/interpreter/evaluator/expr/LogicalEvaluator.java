@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -85,6 +86,17 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
         mv.visitInsn(ICONST_0);
         // 结束标签
         mv.visitLabel(endLabel);
-        return boxing(Type.Z, mv);
+        return Type.Z;
+    }
+
+    @Override
+    public void analyzeTypes(LogicalExpression result, TypeAnalyzer analyzer) {
+        analyzer.analyzeNode(result.getLeft());
+        analyzer.analyzeNode(result.getRight());
+    }
+
+    @Override
+    public Type inferResultType(LogicalExpression result, TypeAnalyzer analyzer) {
+        return Type.Z;
     }
 }
