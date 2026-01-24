@@ -28,8 +28,8 @@ public class FluxonRuntime {
     // 单例实例
     private static final FluxonRuntime INSTANCE = new FluxonRuntime();
 
-    // 系统函数
-    private final Map<String, Function> systemFunctions = new LinkedHashMap<>();
+    // 系统函数（按名称分组的重载集合）
+    private final Map<String, OverloadSet> systemFunctions = new LinkedHashMap<>();
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
     // 扩展函数
@@ -98,8 +98,12 @@ public class FluxonRuntime {
      */
     @SuppressWarnings("unchecked")
     private void bake() {
-        // 构建系统函数数组
-        cachedSystemFunctions = systemFunctions.values().toArray(new Function[0]);
+        // 构建系统函数数组（展平所有重载）
+        List<Function> allFunctions = new ArrayList<>();
+        for (OverloadSet set : systemFunctions.values()) {
+            allFunctions.addAll(set.getOverloads());
+        }
+        cachedSystemFunctions = allFunctions.toArray(new Function[0]);
         // 构建系统扩展函数数组和派发表
         List<KV<Class<?>, Function>[]> systemExtensionFunctionsList = new ArrayList<>();
         List<ExtensionDispatchTable> dispatchTablesList = new ArrayList<>();
@@ -158,7 +162,7 @@ public class FluxonRuntime {
      * @param function 函数实例
      */
     public void registerFunction(@NotNull Function function) {
-        systemFunctions.put(function.getName(), function);
+        systemFunctions.computeIfAbsent(function.getName(), OverloadSet::new).add(function);
         dirty = true;
     }
 
@@ -166,7 +170,7 @@ public class FluxonRuntime {
      * 注册系统函数
      */
     public void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(name, signature, implementation));
+        systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(name, signature, implementation));
         dirty = true;
     }
 
@@ -174,7 +178,7 @@ public class FluxonRuntime {
      * 注册系统函数（带命名空间）
      */
     public void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, name, signature, implementation));
+        systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(namespace, name, signature, implementation));
         dirty = true;
     }
 
@@ -182,7 +186,7 @@ public class FluxonRuntime {
      * 注册异步系统函数
      */
     public void registerAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(null, name, signature, implementation, true, false));
+        systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, true, false));
         dirty = true;
     }
 
@@ -190,7 +194,7 @@ public class FluxonRuntime {
      * 注册主线程同步系统函数
      */
     public void registerPrimarySyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(null, name, signature, implementation, false, true));
+        systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, false, true));
         dirty = true;
     }
 
@@ -241,13 +245,18 @@ public class FluxonRuntime {
      * @return 是否成功卸载
      */
     public boolean unregisterFunction(@NotNull Function function) {
-        Function current = systemFunctions.get(function.getName());
-        if (current != function) {
+        OverloadSet set = systemFunctions.get(function.getName());
+        if (set == null) {
             return false;
         }
-        systemFunctions.remove(function.getName());
-        dirty = true;
-        return true;
+        boolean removed = set.remove(function);
+        if (removed) {
+            if (set.isEmpty()) {
+                systemFunctions.remove(function.getName());
+            }
+            dirty = true;
+        }
+        return removed;
     }
 
     /**
@@ -276,9 +285,9 @@ public class FluxonRuntime {
     }
 
     /**
-     * 获取所有函数信息
+     * 获取所有函数重载集合
      */
-    public Map<String, Function> getSystemFunctions() {
+    public Map<String, OverloadSet> getSystemFunctions() {
         return systemFunctions;
     }
 

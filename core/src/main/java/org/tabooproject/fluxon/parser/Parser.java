@@ -14,6 +14,7 @@ import org.tabooproject.fluxon.parser.type.ImportParser;
 import org.tabooproject.fluxon.parser.type.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -436,7 +437,7 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      *
      * @param functions 函数映射
      */
-    public void defineUserFunction(Map<String, Function> functions) {
+    public void defineUserFunction(Map<String, OverloadSet> functions) {
         symbolEnvironment.defineUserFunctions(functions);
     }
 
@@ -491,15 +492,20 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             return symbolFunction;
         }
         int i = 0;
-        for (Map.Entry<String, Function> entry : FluxonRuntime.getInstance().getSystemFunctions().entrySet()) {
+        for (Map.Entry<String, OverloadSet> entry : FluxonRuntime.getInstance().getSystemFunctions().entrySet()) {
             if (entry.getKey().equals(name)) {
-                String namespace = entry.getValue().getNamespace();
+                Function function = entry.getValue().first();
+                if (function == null) {
+                    i += entry.getValue().size();
+                    continue;
+                }
+                String namespace = function.getNamespace();
                 if (namespace == null || imports.contains(namespace)) {
                     return new FunctionPosition(entry.getValue(), i);
                 }
                 return null;
             }
-            i++;
+            i += entry.getValue().size();
         }
         return null;
     }

@@ -45,14 +45,14 @@ public class Environment {
     /**
      * 创建顶层环境（全局环境）
      */
-    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values) {
+    public Environment(@NotNull Map<String, OverloadSet> functions, @NotNull Map<String, Object> values) {
         this(functions, values, 0);
     }
 
     /**
      * 创建顶层环境（全局环境）- 指定局部变量数量
      */
-    public Environment(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> values, int localVariableCount) {
+    public Environment(@NotNull Map<String, OverloadSet> functions, @NotNull Map<String, Object> values, int localVariableCount) {
         this.root = this;
         this.parent = null;
         this.rootState = new EnvironmentState(functions, values);
@@ -105,7 +105,7 @@ public class Environment {
      */
     public void defineRootFunction(String name, Function value) {
         EnvironmentState m = root.rootState;
-        m.functions.put(name, value);
+        m.functions.computeIfAbsent(name, OverloadSet::new).add(value);
         if (m.userFunctionNames == null) {
             m.userFunctionNames = new HashSet<>();
         }
@@ -133,15 +133,18 @@ public class Environment {
     @Export
     @NotNull
     public Function getFunction(String name) {
-        Function function = root.rootState.functions.get(name);
-        if (function != null) {
-            return function;
+        OverloadSet set = root.rootState.functions.get(name);
+        if (set != null) {
+            Function function = set.first();
+            if (function != null) {
+                return function;
+            }
         }
         throw new FunctionNotFoundError(this, null, name, 0, -1, -1);
     }
 
     /**
-     * 获取函数（只查找根环境）
+     * 获取函数（只查找根环境，返回第一个重载）
      *
      * @param name 函数名
      * @return 函数值
@@ -149,7 +152,8 @@ public class Environment {
     @Export
     @Nullable
     public Function getFunctionOrNull(String name) {
-        return root.rootState.functions.get(name);
+        OverloadSet set = root.rootState.functions.get(name);
+        return set != null ? set.first() : null;
     }
 
     /**
@@ -205,10 +209,10 @@ public class Environment {
     }
 
     /**
-     * 获取根环境中的所有函数
+     * 获取根环境中的所有函数重载集合
      */
     @Export
-    public Map<String, Function> getRootFunctions() {
+    public Map<String, OverloadSet> getRootFunctions() {
         return root.rootState.functions;
     }
 
@@ -218,16 +222,16 @@ public class Environment {
      *
      * @return 用户定义的函数映射，如果没有则返回空 map
      */
-    public Map<String, Function> getUserFunctions() {
+    public Map<String, OverloadSet> getUserFunctions() {
         EnvironmentState m = root.rootState;
         if (m.userFunctionNames == null || m.userFunctionNames.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<String, Function> result = new HashMap<>();
+        Map<String, OverloadSet> result = new HashMap<>();
         for (String name : m.userFunctionNames) {
-            Function func = m.functions.get(name);
-            if (func != null) {
-                result.put(name, func);
+            OverloadSet set = m.functions.get(name);
+            if (set != null) {
+                result.put(name, set);
             }
         }
         return result;

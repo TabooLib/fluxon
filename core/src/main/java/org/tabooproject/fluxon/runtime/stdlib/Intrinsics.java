@@ -132,13 +132,12 @@ public final class Intrinsics {
 
     /**
      * 准备函数调用：解析函数并从池中借用 FunctionContext
-     * 调用方随后通过 ctx.setInt/setRef 等方法设置参数，最后调用 finishCall
      *
      * @param pool        函数上下文池
      * @param environment 脚本运行环境
      * @param name        函数名称
      * @param argCount    参数数量
-     * @param pos         函数位置
+     * @param pos         函数位置（编译期确定）
      * @param exPos       扩展函数位置
      * @return 准备好的 FunctionContext
      */
@@ -150,14 +149,23 @@ public final class Intrinsics {
     }
 
     /**
-     * 执行函数调用（兼容旧版 Object[] 参数签名，用于测试和外部调用）
+     * 执行函数调用（Object[] 参数签名，用于测试和外部调用）
      */
     public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
         if (pool == null) pool = FunctionContextPool.local();
         Object target = environment.getTarget();
-        Function function = resolveFunction(environment, target, name, arguments.length, pos, exPos);
+        // pos != -1 时直接用位置，否则按参数数量解析
+        Function function;
+        if (pos != -1) {
+            function = environment.getRootSystemFunctions()[pos];
+        } else {
+            OverloadSet set = environment.getRootFunctions().get(name);
+            function = set != null ? set.first() : null;
+            if (function == null) {
+                throw new FunctionNotFoundError(environment, target, name, arguments.length, pos, exPos);
+            }
+        }
         FunctionContext<?> ctx = pool.borrow(function, target, arguments, environment);
-        // finishCall handles close internally for sync, and detachFromPool for async
         return finishCall(ctx, null);
     }
 
@@ -230,6 +238,66 @@ public final class Intrinsics {
     }
 
     /**
+     * 完成同步函数调用，返回 int
+     */
+    public static int finishCallInt(FunctionContext<?> ctx) {
+        try {
+            ctx.getFunction().call(ctx);
+            int result = (int) ctx.getReturnPrimitive();
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
+    }
+
+    /**
+     * 完成同步函数调用，返回 long
+     */
+    public static long finishCallLong(FunctionContext<?> ctx) {
+        try {
+            ctx.getFunction().call(ctx);
+            long result = ctx.getReturnPrimitive();
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
+    }
+
+    /**
+     * 完成同步函数调用，返回 double
+     */
+    public static double finishCallDouble(FunctionContext<?> ctx) {
+        try {
+            ctx.getFunction().call(ctx);
+            double result = Double.longBitsToDouble(ctx.getReturnPrimitive());
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
+    }
+
+    /**
+     * 完成同步函数调用，返回 float
+     */
+    public static float finishCallFloat(FunctionContext<?> ctx) {
+        try {
+            ctx.getFunction().call(ctx);
+            float result = Float.intBitsToFloat((int) ctx.getReturnPrimitive());
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
+    }
+
+    /**
      * 从 FunctionContext 中获取返回值，支持原始类型
      */
     private static Object getReturnValue(FunctionContext<?> ctx) {
@@ -261,6 +329,7 @@ public final class Intrinsics {
 
     /**
      * 尝试解析函数引用，若找不到则返回 null
+     * 编译期已确定 pos，运行时直接用位置获取
      */
     private static Function resolveFunctionOrNull(Environment environment, Object target, String name, int pos, int exPos) {
         Function function = null;

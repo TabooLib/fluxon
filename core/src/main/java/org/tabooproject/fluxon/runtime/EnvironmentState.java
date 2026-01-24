@@ -24,7 +24,7 @@ public final class EnvironmentState {
 
     // 系统函数 + 用户定义函数（CopyOnWrite 隔离）
     @NotNull
-    final Map<String, Function> functions;
+    final Map<String, OverloadSet> functions;
     // 用户动态定义的函数名称（区分系统函数，用于增量解析）
     @Nullable
     Set<String> userFunctionNames;
@@ -50,7 +50,7 @@ public final class EnvironmentState {
     final AtomicLong costRemaining = new AtomicLong(Long.MAX_VALUE);
     long costPerStep = 1L;
 
-    EnvironmentState(@NotNull Map<String, Function> functions, @NotNull Map<String, Object> rootVariables) {
+    EnvironmentState(@NotNull Map<String, OverloadSet> functions, @NotNull Map<String, Object> rootVariables) {
         this.functions = CopyOnWriteMap.wrap(functions);
         this.rootVariables = CopyOnWriteMap.wrap(rootVariables);
         this.out = System.out;

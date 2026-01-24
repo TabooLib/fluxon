@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionSignature;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.io.IOException;
@@ -48,10 +49,12 @@ public class FunctionDumper {
     }
 
     private List<CatalogFunction> collectSystemFunctions() {
-        TreeMap<String, Function> system = new TreeMap<>(runtime.getSystemFunctions());
-        List<CatalogFunction> result = new ArrayList<>(system.size());
-        for (Map.Entry<String, Function> entry : system.entrySet()) {
-            result.add(toCatalogFunction(entry.getKey(), entry.getValue()));
+        TreeMap<String, OverloadSet> system = new TreeMap<>(runtime.getSystemFunctions());
+        List<CatalogFunction> result = new ArrayList<>();
+        for (Map.Entry<String, OverloadSet> entry : system.entrySet()) {
+            for (Function function : entry.getValue().getOverloads()) {
+                result.add(toCatalogFunction(entry.getKey(), function));
+            }
         }
         return result;
     }

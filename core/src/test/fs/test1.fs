@@ -50,6 +50,7 @@ when &sum {
 }
 print("Sum: " + &sum)
 print("Random: " + random())
+print("Max: " + max(1, 2))
 
 try throw('error')
 try throw('error') finally print("ok")

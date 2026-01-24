@@ -15,6 +15,7 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
@@ -63,8 +64,31 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 ctx.setRef(i, interpreter.resultRef);
             }
         }
-        interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
-        return Type.OBJECT;
+        Function function = ctx.getFunction();
+        // 处理 async / primarySync
+        if (function.isAsync() || function.isPrimarySync()) {
+            interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
+            return Type.OBJECT;
+        }
+        // 同步调用：直接执行并从 ctx 读取返回值
+        try {
+            ctx.setInterpreter(interpreter);
+            function.call(ctx);
+            Type returnType = ctx.getReturnType();
+            // VOID 和非原始类型都走引用路径
+            if (returnType != null && returnType != Type.VOID && returnType.isPrimitive()) {
+                interpreter.resultPrimitive = ctx.getReturnPrimitive();
+                ctx.close();
+                return returnType;
+            } else {
+                interpreter.resultRef = ctx.getReturnRef();
+                ctx.close();
+                return Type.OBJECT;
+            }
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
     }
 
     @Override
@@ -103,18 +127,40 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             }
             emitSetArg(t, mv);
         }
-        // 4. 调用 finishCall
+        // 推断返回类型
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        Type returnType = Type.OBJECT;
+        if (analyzer != null) {
+            Type inferred = inferResultType(result, analyzer);
+            // VOID 按 OBJECT 处理（finishCall 返回 null）
+            if (inferred != Type.VOID) {
+                returnType = inferred;
+            }
+        }
+        // 4. 调用 finishCall 并根据返回类型读取结果
         mv.visitVarInsn(ALOAD, ctxSlot);
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "finishCall",
-                "(" + FunctionContext.TYPE + ")" + Type.OBJECT,
-                false
-        );
+        emitFinishCall(returnType, mv);
         // 释放临时变量槽位
         ctx.restoreLocalVarIndex(savedLocalVar);
-        return Type.OBJECT;
+        return returnType;
+    }
+
+    /**
+     * 根据返回类型生成对应的 finishCall 调用
+     */
+    private static void emitFinishCall(Type returnType, MethodVisitor mv) {
+        String ctxDesc = FunctionContext.TYPE.getDescriptor();
+        if (returnType == Type.I || returnType == Type.Z) {
+            mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "finishCallInt", "(" + ctxDesc + ")I", false);
+        } else if (returnType == Type.J) {
+            mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "finishCallLong", "(" + ctxDesc + ")J", false);
+        } else if (returnType == Type.D) {
+            mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "finishCallDouble", "(" + ctxDesc + ")D", false);
+        } else if (returnType == Type.F) {
+            mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "finishCallFloat", "(" + ctxDesc + ")F", false);
+        } else {
+            mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), "finishCall", "(" + ctxDesc + ")" + Type.OBJECT, false);
+        }
     }
 
     /**
@@ -145,11 +191,20 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     @Override
     public Type inferResultType(FunctionCallExpression result, TypeAnalyzer analyzer) {
-        // 尝试通过函数名从全局运行时查找函数
+        // 先收集参数类型
+        ParseResult[] args = result.getArguments();
+        Type[] argTypes = new Type[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argTypes[i] = analyzer.inferType(args[i]);
+        }
+        // 尝试通过函数名和参数类型从全局运行时查找函数
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        Function function = runtime.getSystemFunctions().get(result.getFunctionName());
-        if (function != null) {
-            return function.getReturnType();
+        OverloadSet overloadSet = runtime.getSystemFunctions().get(result.getFunctionName());
+        if (overloadSet != null) {
+            Function function = overloadSet.resolve(argTypes);
+            if (function != null) {
+                return function.getReturnType();
+            }
         }
         return Type.OBJECT;
     }

@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Symbolic;
 
 import java.util.*;
@@ -89,10 +90,11 @@ public class SymbolEnvironment {
      *
      * @param functions 函数映射
      */
-    public void defineUserFunctions(Map<String, Function> functions) {
-        for (Map.Entry<String, Function> entry : functions.entrySet()) {
+    public void defineUserFunctions(Map<String, OverloadSet> functions) {
+        for (Map.Entry<String, OverloadSet> entry : functions.entrySet()) {
             String name = entry.getKey();
-            Function function = entry.getValue();
+            Function function = entry.getValue().first();
+            if (function == null) continue;
             SymbolFunction symbolFunc = null;
             // 优先使用 Symbolic 接口获取符号信息
             if (function instanceof Symbolic) {
