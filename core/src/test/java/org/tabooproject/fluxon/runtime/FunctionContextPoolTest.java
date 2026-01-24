@@ -49,8 +49,8 @@ public class FunctionContextPoolTest {
     @Test
     public void asyncAndPrimaryCallsStayThreadLocal() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerAsyncFunction("asyncPoolEcho", returns(Type.OBJECT).varParams(1), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
-        runtime.registerPrimarySyncFunction("primaryPoolEcho", returns(Type.OBJECT).varParams(1), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
+        runtime.registerAsyncFunction("asyncPoolEcho", returns(Type.OBJECT).params(Type.OBJECT), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
+        runtime.registerPrimarySyncFunction("primaryPoolEcho", returns(Type.OBJECT).params(Type.OBJECT), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
 
         Executor previousPrimary = runtime.getPrimaryThreadExecutor();
         ExecutorService primaryExecutor = Executors.newSingleThreadExecutor(r -> new Thread(r, "primary-pool-test"));

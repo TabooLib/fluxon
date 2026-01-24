@@ -130,12 +130,12 @@ public class FunctionMath {
             ctx.setReturnDouble(Math.sqrt(value));
         });
 
-        // 随机数生成函数
-        runtime.registerFunction("random", returns(Type.OBJECT).varParams(List.of(0, 1, 2)), ctx -> {
-            int argc = ctx.getArgumentCount();
-            if (argc == 0) {
+        // 随机数生成函数 - 支持 0/1/2 个参数
+        runtime.registerFunction("random", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), ctx -> {
+            int argCount = ctx.getArgumentCount();
+            if (argCount == 0) {
                 ctx.setReturnDouble(Math.random());
-            } else if (argc == 1) {
+            } else if (argCount == 1) {
                 Object end = ctx.getArgBoxed(0);
                 if (end instanceof Double || end instanceof Float) {
                     double endVal = toDouble(end);

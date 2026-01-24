@@ -63,38 +63,38 @@ public class ExtensionString {
                     String replacement = Coerce.asString(context.getRef(1)).orElse("");
                     context.setReturnRef(str.replaceAll(regex, replacement));
                 })
-                // 获取子字符串
-                .function("substring", returns(Type.STRING).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 获取子字符串 (1-2 params)
+                .function("substring", returns(Type.STRING).params(Type.I, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     int start = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    if (1 < context.getArgumentCount()) {
+                    if (context.getArgumentCount() < 2) {
+                        context.setReturnRef(str.substring(start));
+                    } else {
                         int end = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
                         context.setReturnRef(str.substring(start, Math.min(end, str.length())));
-                        return;
                     }
-                    context.setReturnRef(str.substring(start));
                 })
-                // 查找子字符串位置
-                .function("indexOf", returns(Type.I).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 查找子字符串位置 (1-2 params)
+                .function("indexOf", returns(Type.I).params(Type.OBJECT, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     String searchStr = Coerce.asString(context.getRef(0)).orElse("");
-                    if (1 < context.getArgumentCount()) {
+                    if (context.getArgumentCount() < 2) {
+                        context.setReturnInt(str.indexOf(searchStr));
+                    } else {
                         int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
                         context.setReturnInt(str.indexOf(searchStr, fromIndex));
-                        return;
                     }
-                    context.setReturnInt(str.indexOf(searchStr));
                 })
-                // 查找子字符串最后位置
-                .function("lastIndexOf", returns(Type.I).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 查找子字符串最后位置 (1-2 params)
+                .function("lastIndexOf", returns(Type.I).params(Type.OBJECT, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     String searchStr = Coerce.asString(context.getRef(0)).orElse("");
-                    if (1 < context.getArgumentCount()) {
+                    if (context.getArgumentCount() < 2) {
+                        context.setReturnInt(str.lastIndexOf(searchStr));
+                    } else {
                         int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
                         context.setReturnInt(str.lastIndexOf(searchStr, fromIndex));
-                        return;
                     }
-                    context.setReturnInt(str.lastIndexOf(searchStr));
                 })
                 // 转换为小写
                 .function("lowercase", returns(Type.STRING).noParams(), (context) -> {
@@ -106,16 +106,16 @@ public class ExtensionString {
                     String str = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(str.toUpperCase());
                 })
-                // 检查是否以指定字符串开始
-                .function("startsWith", returns(Type.Z).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 检查是否以指定字符串开始 (1-2 params)
+                .function("startsWith", returns(Type.Z).params(Type.OBJECT, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     String prefix = Coerce.asString(context.getRef(0)).orElse("");
-                    if (1 < context.getArgumentCount()) {
+                    if (context.getArgumentCount() < 2) {
+                        context.setReturnBool(str.startsWith(prefix));
+                    } else {
                         int offset = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
                         context.setReturnBool(str.startsWith(prefix, offset));
-                        return;
                     }
-                    context.setReturnBool(str.startsWith(prefix));
                 })
                 // 检查是否以指定字符串结束
                 .function("endsWith", returns(Type.Z).params(Type.OBJECT), (context) -> {
@@ -123,27 +123,33 @@ public class ExtensionString {
                     String suffix = Coerce.asString(context.getRef(0)).orElse("");
                     context.setReturnBool(str.endsWith(suffix));
                 })
-                // 左填充
-                .function("padLeft", returns(Type.STRING).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 左填充 (1-2 params)
+                .function("padLeft", returns(Type.STRING).params(Type.I, Type.OBJECT), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    String padChar = 1 < context.getArgumentCount() ? Coerce.asString(context.getRef(1)).orElse(" ") : " ";
-                    if (padChar.isEmpty()) padChar = " ";
+                    char padChar = ' ';
+                    if (context.getArgumentCount() >= 2) {
+                        String padStr = Coerce.asString(context.getRef(1)).orElse(" ");
+                        if (!padStr.isEmpty()) padChar = padStr.charAt(0);
+                    }
                     StringBuilder result = new StringBuilder(str);
                     while (result.length() < totalLength) {
-                        result.insert(0, padChar.charAt(0));
+                        result.insert(0, padChar);
                     }
                     context.setReturnRef(result.toString());
                 })
-                // 右填充
-                .function("padRight", returns(Type.STRING).varParams(Arrays.asList(1, 2)), (context) -> {
+                // 右填充 (1-2 params)
+                .function("padRight", returns(Type.STRING).params(Type.I, Type.OBJECT), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
                     int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    String padChar = 1 < context.getArgumentCount() ? Coerce.asString(context.getRef(1)).orElse(" ") : " ";
-                    if (padChar.isEmpty()) padChar = " ";
+                    char padChar = ' ';
+                    if (context.getArgumentCount() >= 2) {
+                        String padStr = Coerce.asString(context.getRef(1)).orElse(" ");
+                        if (!padStr.isEmpty()) padChar = padStr.charAt(0);
+                    }
                     StringBuilder result = new StringBuilder(str);
                     while (result.length() < totalLength) {
-                        result.append(padChar.charAt(0));
+                        result.append(padChar);
                     }
                     context.setReturnRef(result.toString());
                 })

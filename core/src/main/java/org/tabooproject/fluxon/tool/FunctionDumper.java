@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionSignature;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -84,7 +86,15 @@ public class FunctionDumper {
         CatalogFunction catalogFunction = new CatalogFunction();
         catalogFunction.name = name;
         catalogFunction.namespace = emptyToNull(function.getNamespace());
-        catalogFunction.params = new ArrayList<>(function.getParameterCounts());
+        FunctionSignature sig = function.getSignature();
+        if (sig != null) {
+            catalogFunction.returnType = sig.getReturnType().toString();
+            Type[] paramTypes = sig.getParameterTypes();
+            catalogFunction.paramTypes = new String[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                catalogFunction.paramTypes[i] = paramTypes[i].toString();
+            }
+        }
         catalogFunction.async = function.isAsync();
         catalogFunction.primarySync = function.isPrimarySync();
         return catalogFunction;
@@ -117,7 +127,8 @@ public class FunctionDumper {
     private static class CatalogFunction {
         String name;
         String namespace;
-        List<Integer> params;
+        String returnType;
+        String[] paramTypes;
         boolean async;
         boolean primarySync;
     }

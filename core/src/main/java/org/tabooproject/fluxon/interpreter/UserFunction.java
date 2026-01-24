@@ -14,7 +14,6 @@ import org.tabooproject.fluxon.runtime.Symbolic;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -57,17 +56,6 @@ public class UserFunction implements Function, Symbolic {
 
     public void setSignature(FunctionSignature signature) {
         this.signature = signature;
-    }
-
-    @NotNull
-    @Override
-    public List<Integer> getParameterCounts() {
-        return Collections.singletonList(definition.getParameters().size());
-    }
-
-    @Override
-    public int getMaxParameterCount() {
-        return definition.getParameters().size();
     }
 
     @Override

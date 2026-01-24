@@ -2,8 +2,6 @@ package org.tabooproject.fluxon.parser;
 
 import org.tabooproject.fluxon.runtime.Function;
 
-import java.util.List;
-
 public class FunctionPosition implements Callable {
 
     private final Function function;
@@ -15,18 +13,8 @@ public class FunctionPosition implements Callable {
     }
 
     @Override
-    public List<Integer> getParameterCounts() {
-        return function.getParameterCounts();
-    }
-
-    @Override
-    public int getMaxParameterCount() {
-        return function.getMaxParameterCount();
-    }
-
-    @Override
-    public boolean supportsParameterCount(int count) {
-        return function.getParameterCounts().contains(count);
+    public int getParameterCount() {
+        return function.getParameterCount();
     }
 
     public Function getFunction() {

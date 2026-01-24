@@ -1,23 +1,16 @@
 package org.tabooproject.fluxon.parser;
 
-import java.util.Collections;
-
 /**
  * 支持任意参数数量的符号函数
  */
 public class VarargsSymbolFunction extends SymbolFunction {
 
     public VarargsSymbolFunction(String namespace, String name) {
-        super(namespace, name, Collections.emptyList());
+        super(namespace, name, -1);
     }
 
     @Override
-    public boolean supportsParameterCount(int count) {
-        return true;
-    }
-
-    @Override
-    public int getMaxParameterCount() {
-        return Integer.MAX_VALUE;
+    public int getParameterCount() {
+        return -1; // 表示任意参数数量
     }
 }

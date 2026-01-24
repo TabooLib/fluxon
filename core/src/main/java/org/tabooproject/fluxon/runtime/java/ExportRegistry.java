@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.FunctionSignature;
 import org.tabooproject.fluxon.runtime.NativeFunction;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.util.StringUtils;
 
@@ -77,8 +78,10 @@ public class ExportRegistry {
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
                 context.setReturnRef(bridge.invoke(methodName, target, args));
             };
-            List<Integer> supportedCounts = analyzeMethodParameterCounts(method);
-            FunctionSignature signature = FunctionSignature.returnsObject().varParams(supportedCounts);
+            int paramCount = method.getParameterCount();
+            Type[] paramTypes = new Type[paramCount];
+            Arrays.fill(paramTypes, Type.OBJECT);
+            FunctionSignature signature = FunctionSignature.returnsObject().params(paramTypes);
             boolean isAsync = exportMethod.isAsync();
             boolean isSync = exportMethod.isSync();
             runtime.registerExtensionFunction(clazz, namespace, methodName, signature, callable, isAsync, isSync);

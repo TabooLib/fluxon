@@ -4,8 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
@@ -21,7 +19,7 @@ public class FastArgsTest {
     void testFunctionContextBasicAccess() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>("testBasic", returns(Type.OBJECT).varParams(4), ctx -> {
+        Function function = new NativeFunction<>("testBasic", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT, Type.OBJECT, Type.OBJECT), ctx -> {
             assertEquals(4, ctx.getArgumentCount());
             assertEquals("a", ctx.getRef(0));
             assertEquals("b", ctx.getRef(1));
@@ -62,7 +60,7 @@ public class FastArgsTest {
     @Test
     void testCallFunctionWithNativeFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerFunction("callFuncTest", returns(Type.OBJECT).varParams(3), ctx -> {
+        runtime.registerFunction("callFuncTest", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT, Type.OBJECT), ctx -> {
             ctx.setReturnRef(ctx.getRef(0) + "-" + ctx.getRef(1) + "-" + ctx.getRef(2));
         });
 
@@ -82,7 +80,7 @@ public class FastArgsTest {
     @Test
     void testCallFunctionWithAsyncFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerAsyncFunction("asyncCallFuncTest", returns(Type.OBJECT).varParams(2), ctx -> {
+        runtime.registerAsyncFunction("asyncCallFuncTest", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), ctx -> {
             ctx.setReturnRef(ctx.getRef(0) + "+" + ctx.getRef(1));
         });
 
@@ -106,33 +104,6 @@ public class FastArgsTest {
                 "def add(a, b) = &a + &b; add(10, 20)"
         );
         assertEquals(30, result.getInterpretResult());
-    }
-
-    /**
-     * 测试不同参数数量 0-4
-     */
-    @Test
-    void testVariableArgCounts() {
-        FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerFunction("varArgSum", returns(Type.OBJECT).varParams(List.of(0, 1, 2, 3, 4)), ctx -> {
-            int sum = 0;
-            for (int i = 0; i < ctx.getArgumentCount(); i++) {
-                Object arg = ctx.getRef(i);
-                if (arg instanceof Number) {
-                    sum += ((Number) arg).intValue();
-                }
-            }
-            ctx.setReturnRef(sum);
-        });
-
-        Environment environment = runtime.newEnvironment();
-        FunctionContextPool pool = FunctionContextPool.local();
-
-        assertEquals(0, Intrinsics.callFunction(pool, environment, "varArgSum", new Object[0], -1, -1));
-        assertEquals(1, Intrinsics.callFunction(pool, environment, "varArgSum", new Object[]{1}, -1, -1));
-        assertEquals(3, Intrinsics.callFunction(pool, environment, "varArgSum", new Object[]{1, 2}, -1, -1));
-        assertEquals(6, Intrinsics.callFunction(pool, environment, "varArgSum", new Object[]{1, 2, 3}, -1, -1));
-        assertEquals(10, Intrinsics.callFunction(pool, environment, "varArgSum", new Object[]{1, 2, 3, 4}, -1, -1));
     }
 
     /**

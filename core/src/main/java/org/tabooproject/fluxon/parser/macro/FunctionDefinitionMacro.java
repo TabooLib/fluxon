@@ -156,19 +156,8 @@ public class FunctionDefinitionMacro implements StatementMacro {
         );
         // 消费可选的等于号
         parser.match(TokenType.ASSIGN);
-        // 将函数添加到当前作用域
-        Callable function = parser.getFunction(functionName);
-        if (function != null) {
-            // 函数已存在，添加新的参数数量
-            List<Integer> paramCounts = new ArrayList<>(function.getParameterCounts());
-            if (!paramCounts.contains(parameters.size())) {
-                paramCounts.add(parameters.size());
-            }
-            parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, paramCounts));
-        } else {
-            // 函数不存在，创建新条目
-            parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, parameters.size()));
-        }
+        // 将函数添加到当前作用域（同名函数会被覆盖）
+        parser.defineUserFunction(functionName, new SymbolFunction(null, functionName, parameters.size()));
 
         // 解析函数体
         ParseResult body;

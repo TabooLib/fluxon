@@ -87,8 +87,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions) {
         emitGetNameMethod();
         emitGetNamespaceMethod();
-        emitGetParameterCountsMethod();
-        emitGetMaxParameterCountMethod();
+        emitGetSignatureMethod();
         emitIsAsyncMethod();
         emitIsPrimarySyncMethod();
         emitGetAnnotationsMethod();
@@ -113,27 +112,12 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitEnd();
     }
 
-    private void emitGetParameterCountsMethod() {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getParameterCounts", "()" + LIST, null, null);
+    private void emitGetSignatureMethod() {
+        // 返回 null，UserFunction 在运行时动态设置签名
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getSignature", "()" + FunctionSignature.TYPE.getDescriptor(), null, null);
         mv.visitCode();
-        mv.visitIntInsn(BIPUSH, 1);
-        mv.visitTypeInsn(ANEWARRAY, OBJECT.getPath());
-        mv.visitInsn(DUP);
-        mv.visitIntInsn(BIPUSH, 0);
-        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
-        mv.visitMethodInsn(INVOKESTATIC, INT.getPath(), "valueOf", "(I)" + INT, false);
-        mv.visitInsn(AASTORE);
-        mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
+        mv.visitInsn(ACONST_NULL);
         mv.visitInsn(ARETURN);
-        mv.visitMaxs(0, 0);
-        mv.visitEnd();
-    }
-
-    private void emitGetMaxParameterCountMethod() {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getMaxParameterCount", "()I", null, null);
-        mv.visitCode();
-        mv.visitIntInsn(BIPUSH, funcDef.getParameters().size());
-        mv.visitInsn(IRETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }

@@ -10,6 +10,9 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class FunctionSignature {
 
+    // 类型常量
+    public static final Type TYPE = new Type(FunctionSignature.class);
+
     private static final Type[] EMPTY_TYPES = new Type[0];
 
     private final Type returnType;

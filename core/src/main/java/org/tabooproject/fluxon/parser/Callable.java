@@ -1,12 +1,13 @@
 package org.tabooproject.fluxon.parser;
 
-import java.util.List;
-
+/**
+ * 可调用对象接口
+ * 用于编译期函数调用检查
+ */
 public interface Callable {
 
-    List<Integer> getParameterCounts();
-
-    int getMaxParameterCount();
-
-    boolean supportsParameterCount(int count);
+    /**
+     * 获取参数数量
+     */
+    int getParameterCount();
 }

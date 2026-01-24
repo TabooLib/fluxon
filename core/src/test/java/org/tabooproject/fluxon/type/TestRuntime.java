@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.type;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 
-import java.util.List;
 import java.util.Objects;
 
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
@@ -89,7 +88,7 @@ public class TestRuntime {
     public static void registerTestFunctions() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         // checkGrade 函数
-        runtime.registerFunction("checkGrade", returns(Type.OBJECT).varParams(1), (context) -> {
+        runtime.registerFunction("checkGrade", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
             Object arg0 = context.getRef(0);
             if (arg0 instanceof Number) {
                 int score = ((Number) arg0).intValue();
@@ -103,21 +102,16 @@ public class TestRuntime {
             throw new RuntimeException("checkGrade function requires a numeric argument");
         });
         // player 函数 - 支持多种参数数量
-        runtime.registerFunction("player", returns(Type.OBJECT).varParams(List.of(1, 3)), (context) -> {
-            int argc = context.getArgumentCount();
-            if (argc >= 1) {
-                String playerName = String.valueOf(context.getRef(0));
-                if (argc >= 3) {
-                    context.setReturnRef("Player " + playerName + " HP: " + context.getRef(1) + ", Level: " + context.getRef(2));
-                    return;
-                }
-                context.setReturnRef("Player " + playerName);
-                return;
-            }
-            throw new RuntimeException("player function requires at least one argument");
+        runtime.registerFunction("player", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+            String playerName = String.valueOf(context.getRef(0));
+            context.setReturnRef("Player " + playerName);
+        });
+        runtime.registerFunction("player", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT, Type.OBJECT), (context) -> {
+            String playerName = String.valueOf(context.getRef(0));
+            context.setReturnRef("Player " + playerName + " HP: " + context.getRef(1) + ", Level: " + context.getRef(2));
         });
         // fetch 函数
-        runtime.registerFunction("fetch", returns(Type.OBJECT).varParams(1), (context) -> {
+        runtime.registerFunction("fetch", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
             Object arg0 = context.getRef(0);
             if (arg0 != null) {
                 String url = String.valueOf(arg0);
@@ -126,7 +120,7 @@ public class TestRuntime {
             }
             throw new RuntimeException("fetch function requires a URL parameter");
         });
-        runtime.registerFunction("location", returns(Type.OBJECT).varParams(3), (context) -> {
+        runtime.registerFunction("location", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT, Type.OBJECT), (context) -> {
             Object a0 = context.getRef(0);
             Object a1 = context.getRef(1);
             Object a2 = context.getRef(2);

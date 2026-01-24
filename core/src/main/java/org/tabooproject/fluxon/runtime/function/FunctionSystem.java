@@ -42,13 +42,14 @@ public class FunctionSystem {
                 throw new RuntimeException("Class not found: " + className, e);
             }
         });
-        runtime.registerFunction("call", returns(Type.OBJECT).varParams(Arrays.asList(1, 2)), context -> {
+        // call 支持 1-2 个参数
+        runtime.registerFunction("call", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), context -> {
             Object func = context.getRef(0);
             Object[] parameters;
-            if (1 < context.getArgumentCount()) {
-                parameters = ((List<?>) context.getRef(1)).toArray();
-            } else {
+            if (context.getArgumentCount() < 2) {
                 parameters = new Object[0];
+            } else {
+                parameters = ((List<?>) context.getRef(1)).toArray();
             }
             FunctionContextPool pool = context.getPool();
             if (func instanceof Function) {

@@ -37,18 +37,9 @@ public interface Function {
     /**
      * 获取函数参数数量
      */
-    @NotNull
-    default List<Integer> getParameterCounts() {
+    default int getParameterCount() {
         FunctionSignature sig = getSignature();
-        return sig != null ? sig.getParameterCounts() : java.util.Collections.emptyList();
-    }
-
-    /**
-     * 获取函数参数最大数量
-     */
-    default int getMaxParameterCount() {
-        FunctionSignature sig = getSignature();
-        return sig != null ? sig.getMaxParameterCount() : 0;
+        return sig != null ? sig.getParameterCount() : 0;
     }
 
     /**

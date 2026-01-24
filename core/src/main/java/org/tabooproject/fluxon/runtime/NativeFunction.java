@@ -85,10 +85,7 @@ public class NativeFunction<Target> implements Function, Symbolic {
 
     @Override
     public SymbolFunction getInfo() {
-        if (signature == null) {
-            return new SymbolFunction(namespace, name, Collections.emptyList());
-        }
-        return new SymbolFunction(namespace, name, signature.getParameterCounts());
+        return new SymbolFunction(namespace, name, signature != null ? signature.getParameterCount() : 0);
     }
 
     public NativeCallable<Target> getCallable() {
