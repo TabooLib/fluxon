@@ -144,7 +144,7 @@ public class ExtensionDispatchTableTest {
         // 使用 index=-1 触发名称回退路径
         // 注册一个动态扩展函数来测试
         env.defineRootExtensionFunction(HashMap.class, "testDynamic", 
-            new NativeFunction<>(null, null, ctx -> ctx.setReturnRef("dynamic")));
+            new NativeFunction<>(null, (FunctionSignature) null, ctx -> ctx.setReturnRef("dynamic")));
         
         // 使用名称回退路径查找
         Function func = env.getExtensionFunctionOrNull(HashMap.class, "testDynamic", -1);
@@ -157,7 +157,7 @@ public class ExtensionDispatchTableTest {
         
         // 注册一个针对 List 的动态扩展函数
         env.defineRootExtensionFunction(List.class, "testListDynamic",
-            new NativeFunction<>(null, null, ctx -> ctx.setReturnRef("list-dynamic")));
+            new NativeFunction<>(null, (FunctionSignature) null, ctx -> ctx.setReturnRef("list-dynamic")));
         
         // ArrayList 应该能通过可赋值匹配找到
         Function func = env.getExtensionFunctionOrNull(ArrayList.class, "testListDynamic", -1);

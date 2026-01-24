@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.tabooproject.fluxon.FluxonTestUtil.assertBothEqual;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * Domain 语法功能测试
@@ -80,7 +81,7 @@ public class DomainTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "retry { failTwice() }",
                 ctx -> ctx.setDomainRegistry(registry),
-                env -> env.defineRootFunction("failTwice", new NativeFunction<>(null, ctx -> {
+                env -> env.defineRootFunction("failTwice", new NativeFunction<>("failTwice", returns(Type.OBJECT).noParams(), ctx -> {
                     int count = counter.incrementAndGet();
                     if (count < 3) {
                         throw new RuntimeException("Attempt " + count + " failed");
@@ -147,7 +148,7 @@ public class DomainTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "lazy { increment() }",
                 ctx -> ctx.setDomainRegistry(registry),
-                env -> env.defineRootFunction("increment", new NativeFunction<>(null, ctx -> ctx.setReturnRef(counter.incrementAndGet())))
+                env -> env.defineRootFunction("increment", new NativeFunction<>("increment", returns(Type.OBJECT).noParams(), ctx -> ctx.setReturnRef(counter.incrementAndGet())))
         );
         assertEquals(0, result.getInterpretResult());
         // 编译模式会创建新的 env，counter 会重置，所以只验证解释模式

@@ -181,7 +181,7 @@ public final class Intrinsics {
             return ThreadPoolManager.getInstance().submitAsync(() -> {
                 try {
                     function.call(ctx);
-                    return ctx.getReturnRef();
+                    return getReturnValue(ctx);
                 } finally {
                     // 归还到原借出线程的池
                     if (pool != null) {
@@ -198,7 +198,7 @@ public final class Intrinsics {
             FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
                 try {
                     function.call(ctx);
-                    future.complete(ctx.getReturnRef());
+                    future.complete(getReturnValue(ctx));
                 } catch (Throwable ex) {
                     if (AnnotationAccess.hasAnnotation(function, "except")) {
                         ex.printStackTrace();
@@ -217,7 +217,7 @@ public final class Intrinsics {
         try {
             ctx.setInterpreter(interpreter);
             function.call(ctx);
-            Object result = ctx.getReturnRef();
+            Object result = getReturnValue(ctx);
             ctx.close();
             return result;
         } catch (Throwable ex) {
@@ -227,6 +227,25 @@ public final class Intrinsics {
             }
             throw ex;
         }
+    }
+
+    /**
+     * 从 FunctionContext 中获取返回值，支持原始类型
+     */
+    private static Object getReturnValue(FunctionContext<?> ctx) {
+        Type t = ctx.getReturnType();
+        if (t == null || t == Type.OBJECT || !t.isPrimitive()) {
+            return ctx.getReturnRef();
+        }
+        long raw = ctx.getReturnPrimitive();
+        switch (t.getDescriptor()) {
+            case "I": return (int) raw;
+            case "J": return raw;
+            case "D": return Double.longBitsToDouble(raw);
+            case "F": return Float.intBitsToFloat((int) raw);
+            case "Z": return raw != 0;
+        }
+        return ctx.getReturnRef();
     }
 
     /**

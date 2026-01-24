@@ -8,6 +8,8 @@ import org.tabooproject.fluxon.runtime.*;
 
 import java.util.*;
 
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
+
 /**
  * fs:jvm 模块 - 动态字节码注入 API。
  *
@@ -29,25 +31,17 @@ public final class FunctionJvm {
     private FunctionJvm() {
     }
 
-    // ==================== 模块初始化 ====================
-
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("fs:jvm", "jvm", 0, ctx -> ctx.setReturnRef(INSTANCE));
-        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "inject", Arrays.asList(2, 3), FunctionJvm::inject);
-        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "restore", 1, FunctionJvm::restore);
-        runtime.registerExtensionFunction(JvmModule.class, "fs:jvm", "injections", 0, FunctionJvm::injections);
+        runtime.registerFunction("fs:jvm", "jvm", returns(Type.OBJECT).noParams(), ctx -> ctx.setReturnRef(INSTANCE));
+        runtime.registerExtension(JvmModule.class, "fs:jvm")
+                .function("inject", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), FunctionJvm::inject)
+                .function("inject", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT, Type.OBJECT), FunctionJvm::inject)
+                .function("restore", returns(Type.Z).params(Type.OBJECT), FunctionJvm::restore)
+                .function("injections", returns(Type.OBJECT).noParams(), FunctionJvm::injections);
     }
-
-    // ==================== API 实现 ====================
 
     /**
      * jvm()::inject(target, type, handler)
-     * <p>
-     * ctx.arg[0] target   - 目标方法 "com.example.Foo::bar" 或 "com.example.Foo::bar(Ljava/lang/String;)V"
-     * ctx.arg[1] type     - 注入类型 "before"、"replace" 或 "after"
-     * ctx.arg[2] handler  - 回调函数
-     *
-     * @return 注入 ID
      */
     private static void inject(FunctionContext<?> ctx) {
         Object arg0 = ctx.getRef(0);
@@ -73,15 +67,15 @@ public final class FunctionJvm {
         String idOrTarget = arg0 != null ? arg0.toString() : null;
         if (InjectionRegistry.getInstance().unregister(idOrTarget)) {
             CallbackDispatcher.unregister(idOrTarget);
-            ctx.setReturnRef(true);
+            ctx.setReturnBool(true);
             return;
         }
         if (Objects.requireNonNull(idOrTarget).contains("::")) {
             TargetMethod method = parseTarget(idOrTarget);
-            ctx.setReturnRef(InjectionRegistry.getInstance().unregisterByTarget(method.className, method.methodName, method.descriptor));
+            ctx.setReturnBool(InjectionRegistry.getInstance().unregisterByTarget(method.className, method.methodName, method.descriptor));
             return;
         }
-        ctx.setReturnRef(false);
+        ctx.setReturnBool(false);
     }
 
     /**
@@ -99,14 +93,6 @@ public final class FunctionJvm {
         ctx.setReturnRef(result);
     }
 
-    // ==================== 解析逻辑 ====================
-
-    /**
-     * 解析注入类型字符串。
-     *
-     * @param typeStr 类型字符串 "before"、"replace" 或 "after"
-     * @return InjectionType 枚举
-     */
     private static InjectionType parseType(String typeStr) {
         if (typeStr == null || "before".equalsIgnoreCase(typeStr)) {
             return InjectionType.BEFORE;
@@ -120,13 +106,6 @@ public final class FunctionJvm {
         throw new IllegalArgumentException("不支持的注入类型: " + typeStr + "，仅支持 'before'、'replace' 或 'after'");
     }
 
-    /**
-     * 将对象转换为 Function。
-     *
-     * @param obj 待转换对象
-     * @return Function 实例
-     * @throws IllegalArgumentException 如果对象不是 Function 类型
-     */
     private static Function asFunction(Object obj) {
         if (obj instanceof Function) {
             return (Function) obj;
@@ -134,12 +113,6 @@ public final class FunctionJvm {
         throw new IllegalArgumentException("回调必须是 Function 类型");
     }
 
-    /**
-     * 解析目标方法字符串。
-     *
-     * @param target 目标字符串，格式为 "className::methodName" 或 "className::methodName(descriptor)"
-     * @return TargetMethod 实例
-     */
     private static TargetMethod parseTarget(String target) {
         int sep = target.indexOf("::");
         if (sep == -1) {
@@ -154,17 +127,9 @@ public final class FunctionJvm {
         return new TargetMethod(className, methodPart, null);
     }
 
-    // ==================== 内部类型 ====================
-
-    /**
-     * JVM 模块类型标记
-     */
     public static final class JvmModule {
     }
 
-    /**
-     * 目标方法信息
-     */
     private static final class TargetMethod {
         final String className;
         final String methodName;

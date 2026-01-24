@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.junit.jupiter.api.Test;
-import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.lang.reflect.Field;
@@ -14,6 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * 针对 FunctionContextPool 的线程安全保护与并发调用回归测试
@@ -31,7 +31,7 @@ public class FunctionContextPoolTest {
     public void closeFromOtherThreadIsIgnored() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>(new SymbolFunction(null, "poolGuard", 0), ctx -> {});
+        Function function = new NativeFunction<>("poolGuard", returns(Type.VOID).noParams(), ctx -> {});
         FunctionContextPool pool = currentThreadPool();
         FunctionContext<?> context = pool.borrow(function, null, new Object[0], environment);
         int afterBorrow = getPoolSize(pool);
@@ -49,8 +49,8 @@ public class FunctionContextPoolTest {
     @Test
     public void asyncAndPrimaryCallsStayThreadLocal() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerAsyncFunction("asyncPoolEcho", 1, ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
-        runtime.registerPrimarySyncFunction("primaryPoolEcho", 1, ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
+        runtime.registerAsyncFunction("asyncPoolEcho", returns(Type.OBJECT).varParams(1), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
+        runtime.registerPrimarySyncFunction("primaryPoolEcho", returns(Type.OBJECT).varParams(1), ctx -> ctx.setReturnRef(Thread.currentThread().getName() + ":" + ctx.getRef(0)));
 
         Executor previousPrimary = runtime.getPrimaryThreadExecutor();
         ExecutorService primaryExecutor = Executors.newSingleThreadExecutor(r -> new Thread(r, "primary-pool-test"));

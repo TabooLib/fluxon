@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.function;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.Export;
 import org.tabooproject.fluxon.runtime.java.Optional;
 
@@ -8,13 +9,15 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
+
 public class FunctionTime {
 
     public static void init(FluxonRuntime runtime) {
         // 获取当前时间戳（毫秒）
-        runtime.registerFunction("now", 0, context -> context.setReturnRef(System.currentTimeMillis()));
+        runtime.registerFunction("now", returns(Type.J).noParams(), context -> context.setReturnLong(System.currentTimeMillis()));
         // 获取时间对象
-        runtime.registerFunction("fs:time", "time", 0, context -> context.setReturnRef(TimeObject.INSTANCE));
+        runtime.registerFunction("fs:time", "time", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(TimeObject.INSTANCE));
         // 注册时间相关的对象实例
         runtime.getExportRegistry().registerClass(TimeObject.class, "fs:time");
     }
@@ -215,7 +218,6 @@ public class FunctionTime {
             Calendar cal1 = Calendar.getInstance();
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
-
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                     cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
         }
@@ -226,7 +228,6 @@ public class FunctionTime {
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
             cal2.add(Calendar.DAY_OF_YEAR, -1);
-
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                     cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
         }
@@ -237,7 +238,6 @@ public class FunctionTime {
             cal1.setTimeInMillis(timestamp);
             Calendar cal2 = Calendar.getInstance();
             cal2.add(Calendar.DAY_OF_YEAR, 1);
-
             return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                     cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
         }
@@ -318,4 +318,4 @@ public class FunctionTime {
             return cal.getTimeInMillis();
         }
     }
-} 
+}

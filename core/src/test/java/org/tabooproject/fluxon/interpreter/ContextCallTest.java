@@ -315,8 +315,12 @@ public class ContextCallTest {
     // ========== 错误处理测试 ==========
 
     @Test
-    public void testArgumentTypeMismatch() {
-        assertThrows(ClassCastException.class, () -> FluxonTestUtil.runSilent("[1]::get(random(1))"));
+    public void testRandomWithIntReturnsInt() {
+        // random(10) 返回 0 到 10 之间的整数（不含 10）
+        // 验证返回值是整数类型
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("random(10)");
+        assertTrue(result.getInterpretResult() instanceof Integer, "random(10) should return Integer");
+        assertTrue(result.getCompileResult() instanceof Integer, "random(10) should return Integer (compiled)");
     }
 
     @Test

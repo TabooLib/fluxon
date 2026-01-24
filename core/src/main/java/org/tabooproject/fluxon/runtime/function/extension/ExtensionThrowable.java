@@ -1,14 +1,17 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
+
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class ExtensionThrowable {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Throwable.class)
-                .function("message", 0, context -> context.setReturnRef(context.getTarget().getMessage()))
-                .function("localizedMessage", 0, context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
-                .function("cause", 0, context -> context.setReturnRef(context.getTarget().getCause()))
-                .function("printStackTrace", 0, context -> context.getTarget().printStackTrace());
+                .function("message", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getMessage()))
+                .function("localizedMessage", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
+                .function("cause", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getCause()))
+                .function("printStackTrace", returns(Type.VOID).noParams(), context -> context.getTarget().printStackTrace());
     }
 }

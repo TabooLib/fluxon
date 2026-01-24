@@ -29,15 +29,36 @@ public interface Function {
     String getName();
 
     /**
+     * 获取函数签名
+     */
+    @Nullable
+    FunctionSignature getSignature();
+
+    /**
      * 获取函数参数数量
      */
     @NotNull
-    List<Integer> getParameterCounts();
+    default List<Integer> getParameterCounts() {
+        FunctionSignature sig = getSignature();
+        return sig != null ? sig.getParameterCounts() : java.util.Collections.emptyList();
+    }
 
     /**
      * 获取函数参数最大数量
      */
-    int getMaxParameterCount();
+    default int getMaxParameterCount() {
+        FunctionSignature sig = getSignature();
+        return sig != null ? sig.getMaxParameterCount() : 0;
+    }
+
+    /**
+     * 获取函数返回类型
+     */
+    @NotNull
+    default Type getReturnType() {
+        FunctionSignature sig = getSignature();
+        return sig != null ? sig.getReturnType() : Type.OBJECT;
+    }
 
     /**
      * 判断是否为异步函数

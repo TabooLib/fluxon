@@ -1,10 +1,13 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class ExtensionCollection {
 
@@ -12,63 +15,63 @@ public class ExtensionCollection {
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Collection.class)
                 // 获取列表大小
-                .function("size", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).size()))
+                .function("size", returns(Type.I).noParams(), (context) -> context.setReturnInt(Objects.requireNonNull(context.getTarget()).size()))
                 // 检查列表是否为空
-                .function("isEmpty", 0, (context) -> {
+                .function("isEmpty", returns(Type.Z).noParams(), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.isEmpty());
+                    context.setReturnBool(list.isEmpty());
                 })
                 // 检查是否包含某个元素
-                .function("contains", 1, (context) -> {
+                .function("contains", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.contains(context.getArgBoxed(0)));
+                    context.setReturnBool(list.contains(context.getArgBoxed(0)));
                 })
                 // 转换为数组
-                .function("toArray", 0, (context) -> {
+                .function("toArray", returns(Type.OBJECT).noParams(), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(list.toArray());
                 })
                 // 添加元素
-                .function("add", 1, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).add(context.getArgBoxed(0))))
+                .function("add", returns(Type.Z).params(Type.OBJECT), (context) -> context.setReturnBool(Objects.requireNonNull(context.getTarget()).add(context.getArgBoxed(0))))
                 // 移除元素
-                .function("remove", 1, (context) -> {
+                .function("remove", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.remove(context.getArgBoxed(0)));
+                    context.setReturnBool(list.remove(context.getArgBoxed(0)));
                 })
                 // 添加所有元素
-                .function("addAll", 1, (context) -> {
+                .function("addAll", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     Collection<Object> collection = (Collection<Object>) context.getRef(0);
                     if (collection == null) {
-                        context.setReturnRef(false);
+                        context.setReturnBool(false);
                         return;
                     }
-                    context.setReturnRef(list.addAll(collection));
+                    context.setReturnBool(list.addAll(collection));
                 })
                 // 移除所有元素
-                .function("removeAll", 1, (context) -> {
+                .function("removeAll", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     Collection<Object> collection = (Collection<Object>) context.getRef(0);
                     if (collection == null) {
-                        context.setReturnRef(false);
+                        context.setReturnBool(false);
                         return;
                     }
-                    context.setReturnRef(list.removeAll(collection));
+                    context.setReturnBool(list.removeAll(collection));
                 })
                 // 清空列表
-                .function("clear", 0, (context) -> {
+                .function("clear", returns(Type.VOID).noParams(), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     list.clear();
                 })
                 // 转换为字符串
-                .function("join", Arrays.asList(0, 1), (context) -> {
+                .function("join", returns(Type.STRING).varParams(Arrays.asList(0, 1)), (context) -> {
                     // 获取分隔符参数，默认值为 ", "
                     String delimiter = Coerce.asString(Objects.toString(context.getArgBoxed(0), null)).orElse(", ");
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(delimiter)));
                 })
                 // 随机获取元素
-                .function("random", Arrays.asList(0, 1), (context) -> {
+                .function("random", returns(Type.OBJECT).varParams(Arrays.asList(0, 1)), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     if (list.isEmpty()) {
                         return;
@@ -101,6 +104,5 @@ public class ExtensionCollection {
                     }
                     context.setReturnRef(result);
                 });
-        ;
     }
 }

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * HostAccessTest
@@ -111,11 +112,11 @@ public class HostAccessTest {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
 
         // 注册基本测试类
-        runtime.registerFunction("test:access", "access", 0, (context) -> context.setReturnRef(ClassToAccess.INSTANCE));
+        runtime.registerFunction("test:access", "access", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(ClassToAccess.INSTANCE));
         runtime.getExportRegistry().registerClass(ClassToAccess.class, "test:access");
 
         // 注册类型继承测试类
-        runtime.registerFunction("test:access", "typeTest", 0, (context) -> context.setReturnRef(TypeInheritanceClass.INSTANCE));
+        runtime.registerFunction("test:access", "typeTest", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(TypeInheritanceClass.INSTANCE));
         runtime.getExportRegistry().registerClass(TypeInheritanceClass.class, "test:access");
 
         // 自动导入
@@ -150,7 +151,7 @@ public class HostAccessTest {
     @Test
     public void testTypeSpecificityWithArrayList() {
         // 传入 ArrayList，应优先匹配 ArrayList 重载
-        FluxonRuntime.getInstance().registerFunction("test:access", "createArrayList", 0, (context) -> context.setReturnRef(new ArrayList<>()));
+        FluxonRuntime.getInstance().registerFunction("test:access", "createArrayList", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(new ArrayList<>()));
         Object result = Fluxon.eval("typeTest :: handleList(createArrayList())");
         assertEquals("ArrayList: size=0", result);
     }

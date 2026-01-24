@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.function.extension.reflect;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -8,14 +9,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
+
 @SuppressWarnings("deprecation")
 public class ExtensionConstructor {
 
     @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Constructor.class, "fs:reflect")
-                // 创建新实例
-                .function("newInstance", 1, (context) -> {
+                .function("newInstance", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     try {
                         Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                         List<Object> argument = (List<Object>) context.getRef(0);
@@ -28,69 +30,56 @@ public class ExtensionConstructor {
                         throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
                     }
                 })
-                // 获取参数类型
-                .function("parameterTypes", 0, (context) -> {
+                .function("parameterTypes", returns(Type.OBJECT).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(constructor.getParameterTypes()));
                 })
-                // 获取修饰符
-                .function("modifiers", 0, (context) -> {
+                .function("modifiers", returns(Type.I).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.getModifiers());
+                    context.setReturnInt(constructor.getModifiers());
                 })
-                // 设置可访问性
-                .function("setAccessible", 1, (context) -> {
+                .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     boolean accessible = (Boolean) context.getArgBoxed(0);
                     constructor.setAccessible(accessible);
                 })
-                // 检查是否可访问
-                .function("isAccessible", 0, (context) -> {
+                .function("isAccessible", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.isAccessible());
+                    context.setReturnBool(constructor.isAccessible());
                 })
-                // 检查是否是公共构造器
-                .function("isPublic", 0, (context) -> {
+                .function("isPublic", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(Modifier.isPublic(constructor.getModifiers()));
+                    context.setReturnBool(Modifier.isPublic(constructor.getModifiers()));
                 })
-                // 检查是否是私有构造器
-                .function("isPrivate", 0, (context) -> {
+                .function("isPrivate", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(Modifier.isPrivate(constructor.getModifiers()));
+                    context.setReturnBool(Modifier.isPrivate(constructor.getModifiers()));
                 })
-                // 检查是否是受保护构造器
-                .function("isProtected", 0, (context) -> {
+                .function("isProtected", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(Modifier.isProtected(constructor.getModifiers()));
+                    context.setReturnBool(Modifier.isProtected(constructor.getModifiers()));
                 })
-                // 获取声明类
-                .function("declaringClass", 0, (context) -> {
+                .function("declaringClass", returns(Type.OBJECT).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(constructor.getDeclaringClass());
                 })
-                // 获取参数数量
-                .function("parameterCount", 0, (context) -> {
+                .function("parameterCount", returns(Type.I).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.getParameterCount());
+                    context.setReturnInt(constructor.getParameterCount());
                 })
-                // 获取异常类型
-                .function("exceptionTypes", 0, (context) -> {
+                .function("exceptionTypes", returns(Type.OBJECT).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(constructor.getExceptionTypes()));
                 })
-                // 检查是否是合成构造器
-                .function("isSynthetic", 0, (context) -> {
+                .function("isSynthetic", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.isSynthetic());
+                    context.setReturnBool(constructor.isSynthetic());
                 })
-                // 检查是否是可变参数构造器
-                .function("isVarArgs", 0, (context) -> {
+                .function("isVarArgs", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.isVarArgs());
+                    context.setReturnBool(constructor.isVarArgs());
                 })
-                // 获取构造器名（即类名）
-                .function("name", 0, (context) -> {
+                .function("name", returns(Type.OBJECT).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(constructor.getName());
                 });

@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.Objects;
 
 public class ExtensionBuilder<Target> {
@@ -17,35 +16,21 @@ public class ExtensionBuilder<Target> {
         this.namespace = namespace;
     }
 
-    public ExtensionBuilder<Target> function(String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerExtensionFunction(extensionClass, namespace, name, paramCount, implementation);
+    public ExtensionBuilder<Target> function(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, false, false);
         return this;
     }
 
-    public ExtensionBuilder<Target> function(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerExtensionFunction(extensionClass, namespace, name, paramCounts, implementation);
+    public ExtensionBuilder<Target> asyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, true, false);
         return this;
     }
 
-    public ExtensionBuilder<Target> asyncFunction(String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerAsyncExtensionFunction(extensionClass, namespace, name, paramCount, implementation);
+    public ExtensionBuilder<Target> syncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, false, true);
         return this;
     }
 
-    public ExtensionBuilder<Target> asyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerAsyncExtensionFunction(extensionClass, namespace, name, paramCounts, implementation);
-        return this;
-    }
-
-    public ExtensionBuilder<Target> syncFunction(String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerSyncExtensionFunction(extensionClass, namespace, name, paramCount, implementation);
-        return this;
-    }
-
-    public ExtensionBuilder<Target> syncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        runtime.registerSyncExtensionFunction(extensionClass, namespace, name, paramCounts, implementation);
-        return this;
-    }
 
     public Class<Target> getExtensionClass() {
         return extensionClass;

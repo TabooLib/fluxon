@@ -63,7 +63,7 @@ public class FluxonRuntime {
     private FluxonRuntime() {
         // 全局对象
         // 用于应对在上下文环境中使用同名的全局函数
-        registerFunction("g", 0, context -> context.setReturnRef(GlobalObject.INSTANCE));
+        registerFunction("g", FunctionSignature.returns(Type.OBJECT).noParams(), context -> context.setReturnRef(GlobalObject.INSTANCE));
         // reflect
         ExtensionClass.init(this);
         ExtensionConstructor.init(this);
@@ -163,152 +163,34 @@ public class FluxonRuntime {
     }
 
     /**
-     * 注册函数
-     *
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
+     * 注册系统函数
      */
-    public void registerFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation));
+    public void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(name, signature, implementation));
         dirty = true;
     }
 
     /**
-     * 注册函数
-     *
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
+     * 注册系统函数（带命名空间）
      */
-    public void registerFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation));
+    public void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(namespace, name, signature, implementation));
         dirty = true;
     }
 
     /**
-     * 注册函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
+     * 注册异步系统函数
      */
-    public void registerFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation));
+    public void registerAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(null, name, signature, implementation, true, false));
         dirty = true;
     }
 
     /**
-     * 注册函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
+     * 注册主线程同步系统函数
      */
-    public void registerFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步函数
-     *
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
-     */
-    public void registerAsyncFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步函数
-     *
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
-     */
-    public void registerAsyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
-     */
-    public void registerAsyncFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
-     */
-    public void registerAsyncFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步函数
-     *
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
-     */
-    public void registerPrimarySyncFunction(String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation, false, true));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步函数
-     *
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
-     */
-    public void registerPrimarySyncFunction(String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation, false, true));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCounts    可能的参数数量列表
-     * @param implementation 函数实现
-     */
-    public void registerPrimarySyncFunction(String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, false, true));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步函数
-     *
-     * @param namespace      命名空间
-     * @param name           函数名
-     * @param paramCount     参数数量
-     * @param implementation 函数实现
-     */
-    public void registerPrimarySyncFunction(String namespace, String name, int paramCount, NativeFunction.NativeCallable<?> implementation) {
-        systemFunctions.put(name, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, false, true));
+    public void registerPrimarySyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        systemFunctions.put(name, new NativeFunction<>(null, name, signature, implementation, false, true));
         dirty = true;
     }
 
@@ -327,14 +209,6 @@ public class FluxonRuntime {
     }
 
     /**
-     * 注册扩展函数
-     */
-    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(null, name, paramCount), implementation));
-        dirty = true;
-    }
-
-    /**
      * 注册扩展函数，直接使用已有 Function 实例
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, Function function) {
@@ -345,56 +219,18 @@ public class FluxonRuntime {
     /**
      * 注册扩展函数
      */
-    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(new SymbolFunction(null, name, paramCounts), implementation));
-        dirty = true;
-    }
-
-    /**
-     * 注册扩展函数
-     */
-    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation));
-        dirty = true;
-    }
-
-    /**
-     * 注册扩展函数
-     */
-    public <Target> void registerExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步扩展函数
-     */
-    public <Target> void registerAsyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册异步扩展函数
-     */
-    public <Target> void registerAsyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, true, false));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步扩展函数
-     */
-    public <Target> void registerSyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, int paramCount, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCount), implementation, false, true));
-        dirty = true;
-    }
-
-    /**
-     * 注册主线程同步扩展函数
-     */
-    public <Target> void registerSyncExtensionFunction(Class<Target> extensionClass, String namespace, String name, List<Integer> paramCounts, NativeFunction.NativeCallable<Target> implementation) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(extensionClass, new NativeFunction<>(namespace, new SymbolFunction(namespace, name, paramCounts), implementation, false, true));
+    public <Target> void registerExtensionFunction(
+            Class<Target> extensionClass,
+            String namespace,
+            String name,
+            FunctionSignature signature,
+            NativeFunction.NativeCallable<Target> implementation,
+            boolean isAsync,
+            boolean isPrimarySync) {
+        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(
+                extensionClass,
+                new NativeFunction<>(namespace, name, signature, implementation, isAsync, isPrimarySync)
+        );
         dirty = true;
     }
 

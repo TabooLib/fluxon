@@ -15,29 +15,33 @@ import java.util.List;
 public class NativeFunction<Target> implements Function, Symbolic {
 
     private final String namespace;
-    private final SymbolFunction symbolInfo;
+    private final String name;
+    private final FunctionSignature signature;
     private final NativeCallable<Target> callable;
     private final boolean isAsync;
     private final boolean isPrimarySync;
 
-    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable) {
-        this(symbolInfo, callable, false, false);
-    }
-
-    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable) {
-        this(namespace, symbolInfo, callable, false, false);
-    }
-
-    public NativeFunction(SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync, boolean isPrimarySync) {
-        this(null, symbolInfo, callable, isAsync, isPrimarySync);
-    }
-
-    public NativeFunction(String namespace, SymbolFunction symbolInfo, NativeCallable<Target> callable, boolean isAsync, boolean isPrimarySync) {
+    public NativeFunction(
+            String namespace,
+            String name,
+            FunctionSignature signature,
+            NativeCallable<Target> callable,
+            boolean isAsync,
+            boolean isPrimarySync) {
         this.namespace = namespace;
-        this.symbolInfo = symbolInfo;
+        this.name = name;
+        this.signature = signature;
         this.callable = callable;
         this.isAsync = isAsync;
         this.isPrimarySync = isPrimarySync;
+    }
+
+    public NativeFunction(String name, FunctionSignature signature, NativeCallable<Target> callable) {
+        this(null, name, signature, callable, false, false);
+    }
+
+    public NativeFunction(String namespace, String name, FunctionSignature signature, NativeCallable<Target> callable) {
+        this(namespace, name, signature, callable, false, false);
     }
 
     @Nullable
@@ -49,18 +53,13 @@ public class NativeFunction<Target> implements Function, Symbolic {
     @NotNull
     @Override
     public String getName() {
-        return symbolInfo.getName();
+        return name;
     }
 
-    @NotNull
+    @Nullable
     @Override
-    public List<Integer> getParameterCounts() {
-        return symbolInfo.getParameterCounts();
-    }
-
-    @Override
-    public int getMaxParameterCount() {
-        return symbolInfo.getMaxParameterCount();
+    public FunctionSignature getSignature() {
+        return signature;
     }
 
     @Override
@@ -86,7 +85,10 @@ public class NativeFunction<Target> implements Function, Symbolic {
 
     @Override
     public SymbolFunction getInfo() {
-        return symbolInfo;
+        if (signature == null) {
+            return new SymbolFunction(namespace, name, Collections.emptyList());
+        }
+        return new SymbolFunction(namespace, name, signature.getParameterCounts());
     }
 
     public NativeCallable<Target> getCallable() {
@@ -96,7 +98,8 @@ public class NativeFunction<Target> implements Function, Symbolic {
     @Override
     public String toString() {
         return "NativeFunction{" +
-                "symbolInfo=" + symbolInfo +
+                "name='" + name + '\'' +
+                ", signature=" + signature +
                 ", isAsync=" + isAsync +
                 '}';
     }
@@ -114,4 +117,4 @@ public class NativeFunction<Target> implements Function, Symbolic {
          */
         void call(@NotNull FunctionContext<Target> context);
     }
-} 
+}

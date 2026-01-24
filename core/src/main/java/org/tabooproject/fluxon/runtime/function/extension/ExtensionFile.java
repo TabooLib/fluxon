@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.io.File;
@@ -10,34 +11,31 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
+
 public class ExtensionFile {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(File.class, "fs:io")
-                // 获取文件名
-                .function("name", 0, (context) -> {
+                .function("name", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getName());
                 })
-                // 获取路径
-                .function("path", 0, (context) -> {
+                .function("path", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getPath());
                 })
-                // 获取绝对路径
-                .function("absolutePath", 0, (context) -> {
+                .function("absolutePath", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getAbsolutePath());
                 })
-                // 获取规范路径
-                .function("canonicalPath", 0, (context) -> {
+                .function("canonicalPath", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(file.getCanonicalPath());
@@ -45,97 +43,80 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to get canonical path: " + e.getMessage(), e);
                     }
                 })
-                // 获取父目录
-                .function("parent", 0, (context) -> {
+                .function("parent", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getParent());
                 })
-                // 获取父目录文件对象
-                .function("parentFile", 0, (context) -> {
+                .function("parentFile", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getParentFile());
                 })
-                // 转换为 Path
-                .function("toPath", 0, (context) -> {
+                .function("toPath", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.toPath());
                 })
-                // 检查是否存在
-                .function("exists", 0, (context) -> {
+                .function("exists", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.exists());
+                    context.setReturnBool(file.exists());
                 })
-                // 检查是否为目录
-                .function("isDirectory", 0, (context) -> {
+                .function("isDirectory", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.isDirectory());
+                    context.setReturnBool(file.isDirectory());
                 })
-                // 检查是否为文件
-                .function("isFile", 0, (context) -> {
+                .function("isFile", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.isFile());
+                    context.setReturnBool(file.isFile());
                 })
-                // 获取文件大小
-                .function("length", 0, (context) -> {
+                .function("length", returns(Type.J).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.length());
+                    context.setReturnLong(file.length());
                 })
-                // 获取最后修改时间
-                .function("lastModified", 0, (context) -> {
+                .function("lastModified", returns(Type.J).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.lastModified());
+                    context.setReturnLong(file.lastModified());
                 })
-                // 列出文件名
-                .function("list", 0, (context) -> {
+                .function("list", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String[] names = file.list();
-                    context.setReturnRef(names != null ? Arrays.asList(names) : Collections.emptyList());
+                    context.setReturnRef(names != null ? java.util.Arrays.asList(names) : Collections.emptyList());
                 })
-                // 列出文件对象
-                .function("listFiles", 0, (context) -> {
+                .function("listFiles", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     File[] files = file.listFiles();
-                    context.setReturnRef(files != null ? Arrays.asList(files) : Collections.emptyList());
+                    context.setReturnRef(files != null ? java.util.Arrays.asList(files) : Collections.emptyList());
                 })
-                // 创建目录
-                .function("mkdir", 0, (context) -> {
+                .function("mkdir", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.mkdir());
+                    context.setReturnBool(file.mkdir());
                 })
-                // 创建所有目录
-                .function("mkdirs", 0, (context) -> {
+                .function("mkdirs", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.mkdirs());
+                    context.setReturnBool(file.mkdirs());
                 })
-                // 创建文件
-                .function("createNewFile", 0, (context) -> {
+                .function("createNewFile", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
-                        context.setReturnRef(file.createNewFile());
+                        context.setReturnBool(file.createNewFile());
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to create file: " + e.getMessage(), e);
                     }
                 })
-                // 删除文件
-                .function("delete", 0, (context) -> {
+                .function("delete", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(file.delete());
+                    context.setReturnBool(file.delete());
                 })
-                // 退出时删除
-                .function("deleteOnExit", 0, (context) -> {
+                .function("deleteOnExit", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     file.deleteOnExit();
                     context.setReturnRef(file);
                 })
-                // 重命名
-                .function("renameTo", 1, (context) -> {
+                .function("renameTo", returns(Type.Z).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object arg = context.getRef(0);
                     File to = arg instanceof File ? (File) arg : new File(arg.toString());
-                    context.setReturnRef(file.renameTo(to));
+                    context.setReturnBool(file.renameTo(to));
                 })
-                // 读取所有文本
-                .function("readText", 0, (context) -> {
+                .function("readText", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
@@ -143,8 +124,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
                     }
                 })
-                // 读取所有行
-                .function("readLines", 0, (context) -> {
+                .function("readLines", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(Files.readAllLines(file.toPath()));
@@ -152,8 +132,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
                     }
                 })
-                // 读取所有字节
-                .function("readBytes", 0, (context) -> {
+                .function("readBytes", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(Files.readAllBytes(file.toPath()));
@@ -161,8 +140,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
                     }
                 })
-                // 写入文本
-                .function("writeText", 1, (context) -> {
+                .function("writeText", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String content = Coerce.asString(context.getRef(0)).orElse("");
                     try {
@@ -172,8 +150,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                // 写入行
-                .function("writeLines", 1, (context) -> {
+                .function("writeLines", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object arg = context.getRef(0);
                     List<String> lines;
@@ -191,8 +168,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                // 写入字节
-                .function("writeBytes", 1, (context) -> {
+                .function("writeBytes", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object arg = context.getRef(0);
                     byte[] bytes;
@@ -210,8 +186,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                // 追加文本
-                .function("appendText", 1, (context) -> {
+                .function("appendText", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String content = Coerce.asString(context.getRef(0)).orElse("");
                     try (FileWriter writer = new FileWriter(file, true)) {
@@ -221,19 +196,25 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to append to file: " + e.getMessage(), e);
                     }
                 })
-                // 复制到
-                .function("copyTo", Arrays.asList(1, 2), (context) -> {
+                .function("copyTo", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
-                        if (1 < context.getArgumentCount()) {
-                            boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
-                            if (replaceExisting) {
-                                Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                            } else {
-                                Files.copy(file.toPath(), target.toPath());
-                            }
+                        Files.copy(file.toPath(), target.toPath());
+                        context.setReturnRef(target);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
+                    }
+                })
+                .function("copyTo", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                    File file = Objects.requireNonNull(context.getTarget());
+                    Object targetArg = context.getRef(0);
+                    File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
+                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
+                    try {
+                        if (replaceExisting) {
+                            Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         } else {
                             Files.copy(file.toPath(), target.toPath());
                         }
@@ -242,19 +223,25 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
                     }
                 })
-                // 移动到
-                .function("moveTo", Arrays.asList(1, 2), (context) -> {
+                .function("moveTo", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
                     try {
-                        if (1 < context.getArgumentCount()) {
-                            boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
-                            if (replaceExisting) {
-                                Files.move(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                            } else {
-                                Files.move(file.toPath(), target.toPath());
-                            }
+                        Files.move(file.toPath(), target.toPath());
+                        context.setReturnRef(target);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to move file: " + e.getMessage(), e);
+                    }
+                })
+                .function("moveTo", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                    File file = Objects.requireNonNull(context.getTarget());
+                    Object targetArg = context.getRef(0);
+                    File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
+                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
+                    try {
+                        if (replaceExisting) {
+                            Files.move(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         } else {
                             Files.move(file.toPath(), target.toPath());
                         }
@@ -263,17 +250,26 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to move file: " + e.getMessage(), e);
                     }
                 })
-                // 递归删除目录
-                .function("deleteRecursively", 0, (context) -> {
+                .function("deleteRecursively", returns(Type.Z).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(deleteRecursively(file));
+                    context.setReturnBool(deleteRecursively(file));
                 })
-                // 递归复制目录
-                .function("copyRecursively", Arrays.asList(1, 2), (context) -> {
+                .function("copyRecursively", returns(Type.OBJECT).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = 1 < context.getArgumentCount() ? Coerce.asBoolean(context.getArgBoxed(1)).orElse(false) : false;
+                    try {
+                        copyRecursively(file.toPath(), target.toPath(), false);
+                        context.setReturnRef(target);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to copy recursively: " + e.getMessage(), e);
+                    }
+                })
+                .function("copyRecursively", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                    File file = Objects.requireNonNull(context.getTarget());
+                    Object targetArg = context.getRef(0);
+                    File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
+                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
                     try {
                         copyRecursively(file.toPath(), target.toPath(), replaceExisting);
                         context.setReturnRef(target);
@@ -281,24 +277,29 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy recursively: " + e.getMessage(), e);
                     }
                 })
-                // 获取扩展名
-                .function("extension", 0, (context) -> {
+                .function("extension", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String name = file.getName();
                     int lastDot = name.lastIndexOf('.');
                     context.setReturnRef(lastDot > 0 ? name.substring(lastDot + 1) : "");
                 })
-                // 获取不带扩展名的文件名
-                .function("nameWithoutExtension", 0, (context) -> {
+                .function("nameWithoutExtension", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String name = file.getName();
                     int lastDot = name.lastIndexOf('.');
                     context.setReturnRef(lastDot > 0 ? name.substring(0, lastDot) : name);
                 })
-                // 遍历目录树
-                .function("walk", Arrays.asList(0, 1), (context) -> {
+                .function("walk", returns(Type.OBJECT).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    int maxDepth = 0 < context.getArgumentCount() ? Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE) : Integer.MAX_VALUE;
+                    try (Stream<Path> stream = Files.walk(file.toPath())) {
+                        context.setReturnRef(stream.map(Path::toFile).collect(Collectors.toList()));
+                    } catch (IOException e) {
+                        throw new RuntimeException("Failed to walk directory tree: " + e.getMessage(), e);
+                    }
+                })
+                .function("walk", returns(Type.OBJECT).params(Type.I), context -> {
+                    File file = Objects.requireNonNull(context.getTarget());
+                    int maxDepth = Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE);
                     try (Stream<Path> stream = Files.walk(file.toPath(), maxDepth)) {
                         context.setReturnRef(stream.map(Path::toFile).collect(Collectors.toList()));
                     } catch (IOException e) {
@@ -307,9 +308,6 @@ public class ExtensionFile {
                 });
     }
 
-    /**
-     * 递归删除文件或目录
-     */
     private static boolean deleteRecursively(File file) {
         if (!file.exists()) {
             return false;
@@ -325,9 +323,6 @@ public class ExtensionFile {
         return file.delete();
     }
 
-    /**
-     * 递归复制文件或目录
-     */
     private static void copyRecursively(Path source, Path target, boolean replaceExisting) throws IOException {
         if (Files.isDirectory(source)) {
             if (!Files.exists(target)) {

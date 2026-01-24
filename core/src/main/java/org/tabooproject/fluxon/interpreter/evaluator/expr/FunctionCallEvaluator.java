@@ -11,6 +11,8 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
@@ -139,5 +141,16 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         for (ParseResult arg : result.getArguments()) {
             analyzer.analyzeNode(arg);
         }
+    }
+
+    @Override
+    public Type inferResultType(FunctionCallExpression result, TypeAnalyzer analyzer) {
+        // 尝试通过函数名从全局运行时查找函数
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Function function = runtime.getSystemFunctions().get(result.getFunctionName());
+        if (function != null) {
+            return function.getReturnType();
+        }
+        return Type.OBJECT;
     }
 }

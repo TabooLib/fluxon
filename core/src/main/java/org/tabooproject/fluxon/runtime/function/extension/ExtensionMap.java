@@ -1,9 +1,12 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.Map;
 import java.util.Objects;
+
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class ExtensionMap {
 
@@ -11,67 +14,67 @@ public class ExtensionMap {
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Map.class)
                 // 添加键值对
-                .function("put", 2, (context) -> {
+                .function("put", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.put(context.getArgBoxed(0), context.getArgBoxed(1)));
                 })
                 // 获取指定键的值
-                .function("get", 1, (context) -> {
+                .function("get", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.get(context.getArgBoxed(0)));
                 })
                 // 获取指定键的值，如果不存在则返回默认值
-                .function("getOrDefault", 2, (context) -> {
+                .function("getOrDefault", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.getOrDefault(context.getArgBoxed(0), context.getArgBoxed(1)));
                 })
                 // 移除指定键的键值对
-                .function("remove", 1, (context) -> {
+                .function("remove", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.remove(context.getArgBoxed(0)));
                 })
                 // 检查是否包含指定键
-                .function("containsKey", 1, (context) -> {
+                .function("containsKey", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.containsKey(context.getArgBoxed(0)));
+                    context.setReturnBool(map.containsKey(context.getArgBoxed(0)));
                 })
                 // 检查是否包含指定值
-                .function("containsValue", 1, (context) -> {
+                .function("containsValue", returns(Type.Z).params(Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.containsValue(context.getArgBoxed(0)));
+                    context.setReturnBool(map.containsValue(context.getArgBoxed(0)));
                 })
                 // 获取 Map 的大小
-                .function("size", 0, (context) -> {
+                .function("size", returns(Type.I).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.size());
+                    context.setReturnInt(map.size());
                 })
                 // 检查 Map 是否为空
-                .function("isEmpty", 0, (context) -> {
+                .function("isEmpty", returns(Type.Z).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.isEmpty());
+                    context.setReturnBool(map.isEmpty());
                 })
                 // 清空 Map
-                .function("clear", 0, (context) -> {
+                .function("clear", returns(Type.VOID).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     map.clear();
                 })
                 // 获取所有键
-                .function("keySet", 0, (context) -> {
+                .function("keySet", returns(Type.OBJECT).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.keySet());
                 })
                 // 获取所有值
-                .function("values", 0, (context) -> {
+                .function("values", returns(Type.OBJECT).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.values());
                 })
                 // 获取所有键值对
-                .function("entrySet", 0, (context) -> {
+                .function("entrySet", returns(Type.OBJECT).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.entrySet());
                 })
                 // 添加所有键值对
-                .function("putAll", 1, (context) -> {
+                .function("putAll", returns(Type.VOID).params(Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     Map<Object, Object> otherMap = (Map<Object, Object>) context.getRef(0);
                     if (otherMap != null) {
@@ -79,24 +82,24 @@ public class ExtensionMap {
                     }
                 })
                 // 如果键不存在则添加
-                .function("putIfAbsent", 2, (context) -> {
+                .function("putIfAbsent", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.putIfAbsent(context.getArgBoxed(0), context.getArgBoxed(1)));
                 })
                 // 替换指定键的值
-                .function("replace", 2, (context) -> {
+                .function("replace", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.replace(context.getArgBoxed(0), context.getArgBoxed(1)));
                 })
                 // 替换指定键的值（仅当旧值匹配时）
-                .function("replaceIfMatch", 3, (context) -> {
+                .function("replaceIfMatch", returns(Type.Z).params(Type.OBJECT, Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.replace(context.getArgBoxed(0), context.getArgBoxed(1), context.getArgBoxed(2)));
+                    context.setReturnBool(map.replace(context.getArgBoxed(0), context.getArgBoxed(1), context.getArgBoxed(2)));
                 })
                 // 移除指定键值对（仅当键值匹配时）
-                .function("removeIfMatch", 2, (context) -> {
+                .function("removeIfMatch", returns(Type.Z).params(Type.OBJECT, Type.OBJECT), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(map.remove(context.getArgBoxed(0), context.getArgBoxed(1)));
+                    context.setReturnBool(map.remove(context.getArgBoxed(0), context.getArgBoxed(1)));
                 });
     }
 }

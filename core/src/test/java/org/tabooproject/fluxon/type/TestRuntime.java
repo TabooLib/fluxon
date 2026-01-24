@@ -1,9 +1,12 @@
 package org.tabooproject.fluxon.type;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class TestRuntime {
 
@@ -86,7 +89,7 @@ public class TestRuntime {
     public static void registerTestFunctions() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         // checkGrade 函数
-        runtime.registerFunction("checkGrade", 1, (context) -> {
+        runtime.registerFunction("checkGrade", returns(Type.OBJECT).varParams(1), (context) -> {
             Object arg0 = context.getRef(0);
             if (arg0 instanceof Number) {
                 int score = ((Number) arg0).intValue();
@@ -100,7 +103,7 @@ public class TestRuntime {
             throw new RuntimeException("checkGrade function requires a numeric argument");
         });
         // player 函数 - 支持多种参数数量
-        runtime.registerFunction("player", Arrays.asList(1, 3), (context) -> {
+        runtime.registerFunction("player", returns(Type.OBJECT).varParams(List.of(1, 3)), (context) -> {
             int argc = context.getArgumentCount();
             if (argc >= 1) {
                 String playerName = String.valueOf(context.getRef(0));
@@ -114,7 +117,7 @@ public class TestRuntime {
             throw new RuntimeException("player function requires at least one argument");
         });
         // fetch 函数
-        runtime.registerFunction("fetch", 1, (context) -> {
+        runtime.registerFunction("fetch", returns(Type.OBJECT).varParams(1), (context) -> {
             Object arg0 = context.getRef(0);
             if (arg0 != null) {
                 String url = String.valueOf(arg0);
@@ -123,7 +126,7 @@ public class TestRuntime {
             }
             throw new RuntimeException("fetch function requires a URL parameter");
         });
-        runtime.registerFunction("location", 3, (context) -> {
+        runtime.registerFunction("location", returns(Type.OBJECT).varParams(3), (context) -> {
             Object a0 = context.getRef(0);
             Object a1 = context.getRef(1);
             Object a2 = context.getRef(2);
@@ -133,14 +136,14 @@ public class TestRuntime {
                     a2 instanceof Number ? ((Number) a2).doubleValue() : 0
             ));
         });
-        runtime.registerExtensionFunction(TestAudience.class, "location", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation()));
-        runtime.registerExtensionFunction(TestAudience.class, "x", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getY()));
-        runtime.registerExtensionFunction(TestAudience.class, "y", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()));
-        runtime.registerExtensionFunction(TestAudience.class, "z", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()));
-        runtime.registerExtensionFunction(TestLocation.class, "x", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getY()));
-        runtime.registerExtensionFunction(TestLocation.class, "y", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()));
-        runtime.registerExtensionFunction(TestLocation.class, "z", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()));
-        runtime.registerExtensionFunction(TestLocation.class, "yaw", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getYaw()));
-        runtime.registerExtensionFunction(TestLocation.class, "pitch", 0, (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getPitch()));
+        runtime.registerExtensionFunction(TestAudience.class, null, "location", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getY()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getY()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "yaw", returns(Type.F).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getYaw()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "pitch", returns(Type.F).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getPitch()), false, false);
     }
 }

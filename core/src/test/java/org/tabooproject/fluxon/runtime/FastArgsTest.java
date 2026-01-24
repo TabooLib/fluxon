@@ -2,10 +2,12 @@ package org.tabooproject.fluxon.runtime;
 
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
-import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * 函数调用与参数一致性测试
@@ -19,7 +21,7 @@ public class FastArgsTest {
     void testFunctionContextBasicAccess() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>(new SymbolFunction(null, "testBasic", 4), ctx -> {
+        Function function = new NativeFunction<>("testBasic", returns(Type.OBJECT).varParams(4), ctx -> {
             assertEquals(4, ctx.getArgumentCount());
             assertEquals("a", ctx.getRef(0));
             assertEquals("b", ctx.getRef(1));
@@ -42,7 +44,7 @@ public class FastArgsTest {
     void testZeroArgs() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
-        Function function = new NativeFunction<>(new SymbolFunction(null, "testZeroArgs", 0), ctx -> {
+        Function function = new NativeFunction<>("testZeroArgs", returns(Type.OBJECT).noParams(), ctx -> {
             assertEquals(0, ctx.getArgumentCount());
             ctx.setReturnRef("ok");
         });
@@ -60,7 +62,7 @@ public class FastArgsTest {
     @Test
     void testCallFunctionWithNativeFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerFunction("callFuncTest", 3, ctx -> {
+        runtime.registerFunction("callFuncTest", returns(Type.OBJECT).varParams(3), ctx -> {
             ctx.setReturnRef(ctx.getRef(0) + "-" + ctx.getRef(1) + "-" + ctx.getRef(2));
         });
 
@@ -80,7 +82,7 @@ public class FastArgsTest {
     @Test
     void testCallFunctionWithAsyncFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerAsyncFunction("asyncCallFuncTest", 2, ctx -> {
+        runtime.registerAsyncFunction("asyncCallFuncTest", returns(Type.OBJECT).varParams(2), ctx -> {
             ctx.setReturnRef(ctx.getRef(0) + "+" + ctx.getRef(1));
         });
 
@@ -112,7 +114,7 @@ public class FastArgsTest {
     @Test
     void testVariableArgCounts() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
-        runtime.registerFunction("varArgSum", 4, ctx -> {
+        runtime.registerFunction("varArgSum", returns(Type.OBJECT).varParams(List.of(0, 1, 2, 3, 4)), ctx -> {
             int sum = 0;
             for (int i = 0; i < ctx.getArgumentCount(); i++) {
                 Object arg = ctx.getRef(i);

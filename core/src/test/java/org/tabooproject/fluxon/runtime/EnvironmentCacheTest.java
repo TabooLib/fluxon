@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * 测试 Environment 的数组缓存优化和脏标记策略
@@ -59,7 +60,7 @@ public class EnvironmentCacheTest {
         int initialCount = functions1.length;
 
         // 注册一个新函数（会触发 dirty 标记）
-        runtime.registerFunction("testFunc", 0, ctx -> ctx.setReturnRef("test"));
+        runtime.registerFunction("testFunc", returns(Type.OBJECT).noParams(), ctx -> ctx.setReturnRef("test"));
 
         // 创建第二个环境（应该触发重新构建缓存）
         Environment env2 = runtime.newEnvironment();
@@ -83,7 +84,7 @@ public class EnvironmentCacheTest {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
 
         // 注册一个新函数
-        runtime.registerFunction("testFunc2", 0, ctx -> ctx.setReturnRef("test2"));
+        runtime.registerFunction("testFunc2", returns(Type.OBJECT).noParams(), ctx -> ctx.setReturnRef("test2"));
 
         // 创建第一个环境（会触发缓存重建）
         Environment env1 = runtime.newEnvironment();
@@ -110,7 +111,7 @@ public class EnvironmentCacheTest {
         int initialCount = extensionFunctions1.length;
 
         // 注册一个新的扩展函数
-        runtime.registerExtensionFunction(String.class, "testExt", 0, ctx -> ctx.setReturnRef("test"));
+        runtime.registerExtensionFunction(String.class, null, "testExt", returns(Type.OBJECT).noParams(), ctx -> ctx.setReturnRef("test"), false, false);
 
         // 创建第二个环境
         Environment env2 = runtime.newEnvironment();
@@ -156,7 +157,7 @@ public class EnvironmentCacheTest {
         Environment env2 = runtime.newEnvironment();
 
         // 在 env1 中定义一个函数
-        Function testFunc = new NativeFunction<>(null, null, ctx -> ctx.setReturnRef("test"));
+        Function testFunc = new NativeFunction<>(null, (FunctionSignature) null, ctx -> ctx.setReturnRef("test"));
         env1.defineRootFunction("testFunc11", testFunc);
 
         // 验证 env2 中没有这个函数

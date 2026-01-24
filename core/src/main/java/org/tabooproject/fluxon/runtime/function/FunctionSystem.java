@@ -5,25 +5,27 @@ import org.tabooproject.fluxon.runtime.*;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
+
 public class FunctionSystem {
 
     @SuppressWarnings({"DataFlowIssue"})
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("print", 1, context -> {
+        runtime.registerFunction("print", returns(Type.VOID).params(Type.OBJECT), context -> {
             if (0 < context.getArgumentCount()) {
                 context.getEnvironment().getOut().println(context.getArgBoxed(0));
             } else {
                 context.getEnvironment().getOut().println();
             }
         });
-        runtime.registerFunction("error", 1, context -> {
+        runtime.registerFunction("error", returns(Type.VOID).params(Type.OBJECT), context -> {
             if (0 < context.getArgumentCount()) {
                 context.getEnvironment().getErr().println(context.getArgBoxed(0));
             } else {
                 context.getEnvironment().getErr().println();
             }
         });
-        runtime.registerFunction("sleep", 1, context -> {
+        runtime.registerFunction("sleep", returns(Type.VOID).params(Type.I), context -> {
             int sleepMillis = context.getAsInt(0);
             try {
                 Thread.sleep(sleepMillis);
@@ -31,7 +33,7 @@ public class FunctionSystem {
                 throw new RuntimeException("Sleep function interrupted", e);
             }
         });
-        runtime.registerFunction("forName", 1, context -> {
+        runtime.registerFunction("forName", returns(Type.CLASS).params(Type.OBJECT), context -> {
             Object arg = context.getRef(0);
             String className = arg != null ? arg.toString() : null;
             try {
@@ -40,7 +42,7 @@ public class FunctionSystem {
                 throw new RuntimeException("Class not found: " + className, e);
             }
         });
-        runtime.registerFunction("call", Arrays.asList(1, 2), context -> {
+        runtime.registerFunction("call", returns(Type.OBJECT).varParams(Arrays.asList(1, 2)), context -> {
             Object func = context.getRef(0);
             Object[] parameters;
             if (1 < context.getArgumentCount()) {
@@ -62,7 +64,7 @@ public class FunctionSystem {
                 }
             }
         });
-        runtime.registerFunction("this", 0, context -> {
+        runtime.registerFunction("this", returns(Type.OBJECT).noParams(), context -> {
             Environment environment = context.getEnvironment();
             Object target = environment.getTarget();
             while (target == null && environment.getParent() != null) {
@@ -71,7 +73,7 @@ public class FunctionSystem {
             }
             context.setReturnRef(target);
         });
-        runtime.registerFunction("throw", 1, context -> {
+        runtime.registerFunction("throw", returns(Type.VOID).params(Type.OBJECT), context -> {
             Object o = context.getArgBoxed(0);
             if (o instanceof Error) {
                 throw (Error) o;

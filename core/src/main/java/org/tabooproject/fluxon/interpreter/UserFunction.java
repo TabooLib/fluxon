@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.FunctionSignature;
 import org.tabooproject.fluxon.runtime.Symbolic;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -23,6 +24,7 @@ import java.util.List;
 public class UserFunction implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
+    private FunctionSignature signature;
 
     @NotNull
     private final FunctionDefinition definition;
@@ -47,6 +49,16 @@ public class UserFunction implements Function, Symbolic {
         return null;
     }
 
+    @Nullable
+    @Override
+    public FunctionSignature getSignature() {
+        return signature;
+    }
+
+    public void setSignature(FunctionSignature signature) {
+        this.signature = signature;
+    }
+
     @NotNull
     @Override
     public List<Integer> getParameterCounts() {
@@ -55,7 +67,7 @@ public class UserFunction implements Function, Symbolic {
 
     @Override
     public int getMaxParameterCount() {
-        return Collections.max(getParameterCounts());
+        return definition.getParameters().size();
     }
 
     @Override
