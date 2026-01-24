@@ -163,4 +163,16 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
             mv.visitVarInsn(ASTORE, storeId);
         }
     }
+
+    /**
+     * 生成循环体结束代码（丢弃返回值、跳回开始、结束标签、退出上下文）
+     */
+    protected static void finishLoopBody(Type bodyType, MethodVisitor mv, CodeContext ctx, Label loopStart, Label loopEnd) {
+        if (bodyType != Type.VOID) {
+            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
+        }
+        mv.visitJumpInsn(GOTO, loopStart);
+        mv.visitLabel(loopEnd);
+        ctx.exitLoop();
+    }
 }

@@ -338,7 +338,10 @@ public class FunctionContext<Target> implements AutoCloseable {
             @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
-        this.refs = argCount > 0 ? new Object[argCount] : EMPTY_REFS;
+        // 复用已有数组，仅在不够大时才扩容
+        if (refs.length < argCount) {
+            refs = new Object[argCount];
+        }
         this.argumentCount = argCount;
         this.environment = environment;
         this.returnPrimitive = 0;
@@ -356,8 +359,12 @@ public class FunctionContext<Target> implements AutoCloseable {
 
     @SuppressWarnings("DataFlowIssue")
     void clearForPooling() {
-        this.refs = EMPTY_REFS;
-        this.argTypes = EMPTY_ARG_TYPES;
+        // 清除引用，但保留数组缓冲区以便复用
+        int count = argumentCount;
+        Object[] r = refs;
+        for (int i = 0; i < count; i++) {
+            r[i] = null;
+        }
         this.argumentCount = 0;
         this.target = null;
         this.environment = null;

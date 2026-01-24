@@ -14,6 +14,8 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -47,7 +49,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 迭代集合元素
         while (iterator.hasNext()) {
             // 使用解构器注册表执行解构
-            DestructuringRegistry.getInstance().destructure(interpreter.getEnvironment(), variables, iterator.next());
+            DestructuringRegistry.getInstance().destructure(interpreter.getEnvironment(), variables, iterator.next(), interpreter::getVariableType);
             if (!bodyIsStatement) {
                 interpreter.consumeCostStep();
             }
@@ -150,15 +152,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
-        if (bodyType != Type.VOID) {
-            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
-        }
-        // 跳回循环开始
-        mv.visitJumpInsn(GOTO, whileStart);
-        // while 循环结束标签
-        mv.visitLabel(whileEnd);
-        // 退出循环上下文
-        ctx.exitLoop();
+        finishLoopBody(bodyType, mv, ctx, whileStart, whileEnd);
         return Type.VOID;
     }
 

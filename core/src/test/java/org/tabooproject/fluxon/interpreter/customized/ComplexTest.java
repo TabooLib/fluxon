@@ -17,7 +17,7 @@ import java.util.List;
 @SuppressWarnings("deprecation")
 public class ComplexTest {
 
-    public static void main(String[] args) throws IOException, InstantiationException, IllegalAccessException {
+    public static void main(String[] args) throws Exception {
         TestRuntime.registerTestFunctions();
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         env.defineRootVariable("audience", new TestRuntime.TestAudience(new TestRuntime.TestLocation(0, 0, 0)));
@@ -30,6 +30,7 @@ public class ComplexTest {
 //
         System.out.println("Compile:");
         CompileResult effect = Fluxon.compile(String.join("\n", lines).trim(), "effect", env);
+        effect.dump(new File("core/dump/effect.class"));
         Class<?> defineClass = effect.defineClass(new FluxonClassLoader());
         RuntimeScriptBase base = (RuntimeScriptBase) defineClass.newInstance();
         base.eval(env);

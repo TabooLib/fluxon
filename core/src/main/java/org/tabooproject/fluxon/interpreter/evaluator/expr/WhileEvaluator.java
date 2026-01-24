@@ -92,16 +92,7 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
-        // 如果循环体有返回值，则丢弃它
-        if (bodyType != Type.VOID) {
-            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
-        }
-        // 跳回循环开始
-        mv.visitJumpInsn(GOTO, whileStart);
-        // while 循环结束标签
-        mv.visitLabel(whileEnd);
-        // 退出循环上下文
-        ctx.exitLoop();
+        finishLoopBody(bodyType, mv, ctx, whileStart, whileEnd);
         return Type.VOID;
     }
 
