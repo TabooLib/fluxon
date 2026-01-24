@@ -126,38 +126,47 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     // @formatter:on
 
     private Type evalPrimitiveCmp(Interpreter interpreter, Type common, Type lt, long leftBits, Type rt, long rightBits, TokenType op) {
-        int cmp;
-        if (common == Type.D) {
-            cmp = Double.compare(toDouble(lt, leftBits), toDouble(rt, rightBits));
-        } else if (common == Type.F) {
-            cmp = Float.compare(toFloat(lt, leftBits), toFloat(rt, rightBits));
-        } else if (common == Type.J) {
-            cmp = Long.compare(toLong(lt, leftBits), toLong(rt, rightBits));
-        } else {
-            cmp = Integer.compare((int) leftBits, (int) rightBits);
-        }
         boolean res;
-        switch (op) {
-            case GREATER:
-                res = cmp > 0;
-                break;
-            case GREATER_EQUAL:
-                res = cmp >= 0;
-                break;
-            case LESS:
-                res = cmp < 0;
-                break;
-            case LESS_EQUAL:
-                res = cmp <= 0;
-                break;
-            case EQUAL:
-                res = cmp == 0;
-                break;
-            case NOT_EQUAL:
-                res = cmp != 0;
-                break;
-            default:
-                throw new RuntimeException("Unknown comparison op: " + op);
+        // EQUAL/NOT_EQUAL 使用直接比较，正确处理 -0.0 == 0.0
+        if (op == TokenType.EQUAL || op == TokenType.NOT_EQUAL) {
+            boolean eq;
+            if (common == Type.D) {
+                eq = toDouble(lt, leftBits) == toDouble(rt, rightBits);
+            } else if (common == Type.F) {
+                eq = toFloat(lt, leftBits) == toFloat(rt, rightBits);
+            } else if (common == Type.J) {
+                eq = toLong(lt, leftBits) == toLong(rt, rightBits);
+            } else {
+                eq = (int) leftBits == (int) rightBits;
+            }
+            res = (op == TokenType.EQUAL) == eq;
+        } else {
+            int cmp;
+            if (common == Type.D) {
+                cmp = Double.compare(toDouble(lt, leftBits), toDouble(rt, rightBits));
+            } else if (common == Type.F) {
+                cmp = Float.compare(toFloat(lt, leftBits), toFloat(rt, rightBits));
+            } else if (common == Type.J) {
+                cmp = Long.compare(toLong(lt, leftBits), toLong(rt, rightBits));
+            } else {
+                cmp = Integer.compare((int) leftBits, (int) rightBits);
+            }
+            switch (op) {
+                case GREATER:
+                    res = cmp > 0;
+                    break;
+                case GREATER_EQUAL:
+                    res = cmp >= 0;
+                    break;
+                case LESS:
+                    res = cmp < 0;
+                    break;
+                case LESS_EQUAL:
+                    res = cmp <= 0;
+                    break;
+                default:
+                    throw new RuntimeException("Unknown comparison op: " + op);
+            }
         }
         interpreter.resultPrimitive = res ? 1 : 0;
         return Type.Z;

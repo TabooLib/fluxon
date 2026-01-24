@@ -63,6 +63,10 @@ public class Fluxon {
      */
     public static ParsedScript parse(CompilationContext context, Environment env) {
         List<ParseResult> results = doParse(env, context);
+        // 类型分析
+        TypeAnalyzer analyzer = new TypeAnalyzer();
+        analyzer.analyze(results);
+        context.setAttribute("variableTypes", analyzer.getVariableTypes());
         Integer rootLocalVarCount = context.getAttribute("rootLocalVariableCount");
         return new ParsedScript(results, rootLocalVarCount != null ? rootLocalVarCount : 0, context);
     }

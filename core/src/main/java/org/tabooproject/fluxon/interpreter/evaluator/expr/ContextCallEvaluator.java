@@ -80,7 +80,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
 
         // 处理安全调用（?::）的 null 短路逻辑
         Label endLabel = null;
-        Label notNullLabel = null;
+        Label notNullLabel;
         if (expression.isSafe()) {
             endLabel = new Label();
             notNullLabel = new Label();
@@ -113,8 +113,12 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
 
         // 处理结果（如果不是 void）
         int resultIndex = -1;
+        boolean boxed = false;
         if (resultType != Type.VOID) {
-            boxing(resultType, mv);
+            if (resultType.isPrimitive()) {
+                boxing(resultType, mv);
+                boxed = true;
+            }
             resultIndex = ctx.allocateLocalVar(Type.OBJECT);
             mv.visitVarInsn(ASTORE, resultIndex);
         }
@@ -135,7 +139,8 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             // 安全调用始终返回 OBJECT 类型（可能是 null）
             return Type.OBJECT;
         }
-        return resultType;
+        // 如果进行了装箱，返回 OBJECT
+        return boxed ? Type.OBJECT : resultType;
     }
 
     @Override

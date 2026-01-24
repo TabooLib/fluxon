@@ -149,27 +149,6 @@ public final class Intrinsics {
     }
 
     /**
-     * 执行函数调用（Object[] 参数签名，用于测试和外部调用）
-     */
-    public static Object callFunction(FunctionContextPool pool, Environment environment, String name, Object[] arguments, int pos, int exPos) {
-        if (pool == null) pool = FunctionContextPool.local();
-        Object target = environment.getTarget();
-        // pos != -1 时直接用位置，否则按参数数量解析
-        Function function;
-        if (pos != -1) {
-            function = environment.getRootSystemFunctions()[pos];
-        } else {
-            OverloadSet set = environment.getRootFunctions().get(name);
-            function = set != null ? set.first() : null;
-            if (function == null) {
-                throw new FunctionNotFoundError(environment, target, name, arguments.length, pos, exPos);
-            }
-        }
-        FunctionContext<?> ctx = pool.borrow(function, target, arguments, environment);
-        return finishCall(ctx, null);
-    }
-
-    /**
      * 完成函数调用（无 interpreter）
      */
     public static Object finishCall(FunctionContext<?> ctx) {

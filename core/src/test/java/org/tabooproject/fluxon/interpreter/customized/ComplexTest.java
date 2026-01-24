@@ -25,9 +25,9 @@ public class ComplexTest {
         List<String> lines = Files.readAllLines(new File("effect.fs").toPath());
 
         System.out.println("Run:");
-        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
-        script.eval(env);
-
+//        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
+//        script.eval(env);
+//
         System.out.println("Compile:");
         CompileResult effect = Fluxon.compile(String.join("\n", lines).trim(), "effect", env);
         Class<?> defineClass = effect.defineClass(new FluxonClassLoader());

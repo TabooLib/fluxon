@@ -24,7 +24,26 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
 
     @Override
     public Type evaluate(Interpreter interpreter, ReferenceExpression result) {
-        interpreter.resultRef = Intrinsics.getVariableOrFunction(interpreter.getEnvironment(), result.getIdentifier().getValue(), result.isOptional(), result.getPosition());
+        int position = result.getPosition();
+        Environment env = interpreter.getEnvironment();
+        if (position >= 0) {
+            Type varType = interpreter.getVariableType(position);
+            if (varType.isPrimitive()) {
+                if (varType == Type.I || varType == Type.Z) {
+                    interpreter.resultPrimitive = env.getLocalInt(position);
+                } else if (varType == Type.J) {
+                    interpreter.resultPrimitive = env.getLocalLong(position);
+                } else if (varType == Type.F) {
+                    interpreter.resultPrimitive = Float.floatToRawIntBits(env.getLocalFloat(position));
+                } else {
+                    interpreter.resultPrimitive = Double.doubleToRawLongBits(env.getLocalDouble(position));
+                }
+                return varType;
+            }
+            interpreter.resultRef = env.getLocalRef(position);
+            return Type.OBJECT;
+        }
+        interpreter.resultRef = Intrinsics.getVariableOrFunction(env, result.getIdentifier().getValue(), result.isOptional(), position);
         return Type.OBJECT;
     }
 

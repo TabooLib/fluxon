@@ -66,11 +66,11 @@ public class FunctionCallTest {
     public void testMultipleArgsWithExpressions() {
         // 测试多个参数，其中包含表达式
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def max(x, y) = if &x > &y then &x else &y; " +
+                "def myMax(x, y) = if &x > &y then &x else &y; " +
                         "a = 10; " +
                         "b = 5; " +
-                        "max(&a + &b, &a * &b)");
-        // max(15, 50) = 50
+                        "myMax(&a + &b, &a * &b)");
+        // myMax(15, 50) = 50
         assertEquals(50, result.getInterpretResult());
         assertEquals(50, result.getCompileResult());
     }
@@ -137,14 +137,14 @@ public class FunctionCallTest {
         FluxonTestUtil.TestResult result;
 
         result = FluxonTestUtil.runSilent(
-                "def abs(x) = if &x < 0 then -&x else &x; " +
-                        "abs(-5)");
+                "def myAbs(x) = if &x < 0 then -&x else &x; " +
+                        "myAbs(-5)");
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
 
         result = FluxonTestUtil.runSilent(
-                "def abs(x) = if &x < 0 then -&x else &x; " +
-                        "abs(5)");
+                "def myAbs(x) = if &x < 0 then -&x else &x; " +
+                        "myAbs(5)");
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
     }

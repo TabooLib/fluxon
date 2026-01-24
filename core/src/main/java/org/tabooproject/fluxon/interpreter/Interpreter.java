@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,17 +32,21 @@ public class Interpreter {
     private Environment environment;
     // 缓存 lambda -> UserFunction，避免循环中重复创建实例
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
+    // 变量类型映射（position -> Type），用于类型感知的变量读写
+    private Map<Integer, Type> variableTypes = Collections.emptyMap();
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
     }
 
     /**
-     * 创建子解释器（独立 result slots + lambdaCache，共享 environment）
+     * 创建子解释器（独立 result slots + lambdaCache，共享 environment 和 variableTypes）
      * 用于异步执行时隔离线程间的 result 竞争
      */
     public Interpreter createChild() {
-        return new Interpreter(this.environment);
+        Interpreter child = new Interpreter(this.environment);
+        child.variableTypes = this.variableTypes;
+        return child;
     }
 
     /**
@@ -248,5 +253,19 @@ public class Interpreter {
      */
     public boolean isCostLimitEnabled() {
         return environment.isCostLimitEnabled();
+    }
+
+    /**
+     * 设置变量类型映射
+     */
+    public void setVariableTypes(Map<Integer, Type> variableTypes) {
+        this.variableTypes = variableTypes != null ? variableTypes : Collections.emptyMap();
+    }
+
+    /**
+     * 获取变量类型
+     */
+    public Type getVariableType(int position) {
+        return variableTypes.getOrDefault(position, Type.OBJECT);
     }
 }

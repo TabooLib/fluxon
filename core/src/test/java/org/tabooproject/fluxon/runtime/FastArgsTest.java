@@ -55,7 +55,7 @@ public class FastArgsTest {
     }
 
     /**
-     * 测试 Intrinsics.callFunction 对同步 NativeFunction 的处理
+     * 测试同步 NativeFunction 调用
      */
     @Test
     void testCallFunctionWithNativeFunction() {
@@ -65,17 +65,16 @@ public class FastArgsTest {
         });
 
         Environment environment = runtime.newEnvironment();
-        Object result = Intrinsics.callFunction(
-                FunctionContextPool.local(),
-                environment, "callFuncTest",
-                new Object[]{"a", "b", "c"},
-                -1, -1
-        );
-        assertEquals("a-b-c", result);
+        Function function = environment.getFunction("callFuncTest");
+        FunctionContextPool pool = FunctionContextPool.local();
+        try (FunctionContext<?> ctx = pool.borrow(function, null, new Object[]{"a", "b", "c"}, environment)) {
+            function.call(ctx);
+            assertEquals("a-b-c", ctx.getReturnRef());
+        }
     }
 
     /**
-     * 测试 Intrinsics.callFunction 对异步函数的处理
+     * 测试异步函数调用
      */
     @Test
     void testCallFunctionWithAsyncFunction() {
@@ -85,12 +84,10 @@ public class FastArgsTest {
         });
 
         Environment environment = runtime.newEnvironment();
-        Object result = Intrinsics.callFunction(
-                FunctionContextPool.local(),
-                environment, "asyncCallFuncTest",
-                new Object[]{"x", "y"},
-                -1, -1
-        );
+        Function function = environment.getFunction("asyncCallFuncTest");
+        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContext<?> ctx = pool.borrow(function, null, new Object[]{"x", "y"}, environment);
+        Object result = Intrinsics.finishCall(ctx);
         Object awaited = Intrinsics.awaitValue(result);
         assertEquals("x+y", awaited);
     }

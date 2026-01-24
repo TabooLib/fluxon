@@ -38,50 +38,121 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     public Type evaluate(Interpreter interpreter, AssignExpression result) {
         ParseResult target = result.getTarget();
         Type vt = interpreter.evaluate(result.getValue());
-        Object value = interpreter.getResultBoxed(vt);
-        Environment environment = interpreter.getEnvironment();
+        Environment env = interpreter.getEnvironment();
         // 变量赋值
         if (target instanceof Identifier) {
-            String name = ((Identifier) target).getValue();
             int position = result.getPosition();
-            // 根据赋值操作符类型处理赋值
-            if (result.getOperator().getType() != TokenType.ASSIGN) {
-                // 处理复合赋值
-                Object current = position >= 0 ? environment.getLocalRef(position) : environment.getRootVariable(name);
-                value = applyCompoundOperation(current, value, result.getOperator().getType());
-            }
             if (position >= 0) {
-                environment.setLocalRef(position, value);
+                Type varType = interpreter.getVariableType(position);
+                if (result.getOperator().getType() != TokenType.ASSIGN) {
+                    // 复合赋值
+                    Object current, value = interpreter.getResultBoxed(vt);
+                    switch (varType.getDescriptor().charAt(0)) {
+                        case 'I':
+                        case 'Z':
+                            current = env.getLocalInt(position);
+                            break;
+                        case 'J':
+                            current = env.getLocalLong(position);
+                            break;
+                        case 'F':
+                            current = env.getLocalFloat(position);
+                            break;
+                        case 'D':
+                            current = env.getLocalDouble(position);
+                            break;
+                        default:
+                            current = env.getLocalRef(position);
+                            break;
+                    }
+                    Object newValue = applyCompoundOperation(current, value, result.getOperator().getType());
+                    switch (varType.getDescriptor().charAt(0)) {
+                        case 'I':
+                        case 'Z':
+                            env.setLocalInt(position, ((Number) newValue).intValue());
+                            break;
+                        case 'J':
+                            env.setLocalLong(position, ((Number) newValue).longValue());
+                            break;
+                        case 'F':
+                            env.setLocalFloat(position, ((Number) newValue).floatValue());
+                            break;
+                        case 'D':
+                            env.setLocalDouble(position, ((Number) newValue).doubleValue());
+                            break;
+                        default:
+                            env.setLocalRef(position, newValue);
+                            break;
+                    }
+                } else {
+                    // 简单赋值：类型相同直接写，避免转换
+                    if (vt == varType && vt.isPrimitive()) {
+                        long bits = interpreter.resultPrimitive;
+                        switch (vt.getDescriptor().charAt(0)) {
+                            case 'I':
+                            case 'Z':
+                                env.setLocalInt(position, (int) bits);
+                                break;
+                            case 'J':
+                                env.setLocalLong(position, bits);
+                                break;
+                            case 'F':
+                                env.setLocalFloat(position, Float.intBitsToFloat((int) bits));
+                                break;
+                            case 'D':
+                                env.setLocalDouble(position, Double.longBitsToDouble(bits));
+                                break;
+                        }
+                    } else if (varType.isPrimitive()) {
+                        Number num = vt.isPrimitive() ? (Number) interpreter.getResultBoxed(vt) : (Number) interpreter.resultRef;
+                        switch (varType.getDescriptor().charAt(0)) {
+                            case 'I':
+                            case 'Z':
+                                env.setLocalInt(position, num.intValue());
+                                break;
+                            case 'J':
+                                env.setLocalLong(position, num.longValue());
+                                break;
+                            case 'F':
+                                env.setLocalFloat(position, num.floatValue());
+                                break;
+                            case 'D':
+                                env.setLocalDouble(position, num.doubleValue());
+                                break;
+                        }
+                    } else {
+                        env.setLocalRef(position, interpreter.getResultBoxed(vt));
+                    }
+                }
             } else {
-                environment.setRootVariable(name, value);
+                // 根变量赋值
+                String name = ((Identifier) target).getValue();
+                Object value = interpreter.getResultBoxed(vt);
+                if (result.getOperator().getType() != TokenType.ASSIGN) {
+                    value = applyCompoundOperation(env.getRootVariable(name), value, result.getOperator().getType());
+                }
+                env.setRootVariable(name, value);
             }
         }
         // 索引访问赋值
         else if (target instanceof IndexAccessExpression) {
+            // 先捕获值，避免后续 evaluate 覆盖 interpreter 的结果槽
+            Object value = interpreter.getResultBoxed(vt);
             IndexAccessExpression idx = (IndexAccessExpression) target;
             Type tt = interpreter.evaluate(idx.getTarget());
             Object container = interpreter.getResultBoxed(tt);
             List<ParseResult> indices = idx.getIndices();
-            // 处理多索引：map["k1", "k2"] = v 等价于 map["k1"]["k2"] = v
-            // 前 n-1 个索引用于导航到目标容器
             for (int i = 0; i < indices.size() - 1; i++) {
                 Type it = interpreter.evaluate(indices.get(i));
-                Object index = interpreter.getResultBoxed(it);
-                container = Intrinsics.getIndex(container, index);
+                container = Intrinsics.getIndex(container, interpreter.getResultBoxed(it));
             }
-            // 最后一个索引用于赋值
             Type lit = interpreter.evaluate(indices.get(indices.size() - 1));
             Object lastIndex = interpreter.getResultBoxed(lit);
-            if (result.getOperator().getType() == TokenType.ASSIGN) {
-                Intrinsics.setIndex(container, lastIndex, value);
-            } else {
-                // 复合赋值
-                Object current = Intrinsics.getIndex(container, lastIndex);
-                value = applyCompoundOperation(current, value, result.getOperator().getType());
-                Intrinsics.setIndex(container, lastIndex, value);
+            if (result.getOperator().getType() != TokenType.ASSIGN) {
+                value = applyCompoundOperation(Intrinsics.getIndex(container, lastIndex), value, result.getOperator().getType());
             }
+            Intrinsics.setIndex(container, lastIndex, value);
         }
-        // Assignment 操作没有返回值
         interpreter.resultRef = null;
         return Type.VOID;
     }

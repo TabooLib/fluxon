@@ -5,8 +5,10 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.ReturnValue;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -83,6 +85,10 @@ public class ParsedScript {
             env.initializeRootLocalVariables(rootLocalVariableCount);
         }
         Interpreter interpreter = new Interpreter(env);
+        Map<Integer, Type> varTypes = context.getAttribute("variableTypes");
+        if (varTypes != null) {
+            interpreter.setVariableTypes(varTypes);
+        }
         try {
             interpreter.execute(results);
             return interpreter.resultRef;

@@ -157,10 +157,14 @@ public class FunctionContext<Target> implements AutoCloseable {
         byte t = index < argTypes.length ? argTypes[index] : 0;
         if (t == 0) return ((Number) refs[index]).doubleValue();
         switch (t) {
-            case 'J': return (double) primitives[index];
-            case 'F': return Float.intBitsToFloat((int) primitives[index]);
-            case 'D': return Double.longBitsToDouble(primitives[index]);
-            default: return (int) primitives[index]; // I, Z
+            case 'J':
+                return (double) primitives[index];
+            case 'F':
+                return Float.intBitsToFloat((int) primitives[index]);
+            case 'D':
+                return Double.longBitsToDouble(primitives[index]);
+            default:
+                return (int) primitives[index]; // I, Z
         }
     }
 
@@ -168,10 +172,14 @@ public class FunctionContext<Target> implements AutoCloseable {
         byte t = index < argTypes.length ? argTypes[index] : 0;
         if (t == 0) return ((Number) refs[index]).intValue();
         switch (t) {
-            case 'J': return (int) primitives[index];
-            case 'F': return (int) Float.intBitsToFloat((int) primitives[index]);
-            case 'D': return (int) Double.longBitsToDouble(primitives[index]);
-            default: return (int) primitives[index]; // I, Z
+            case 'J':
+                return (int) primitives[index];
+            case 'F':
+                return (int) Float.intBitsToFloat((int) primitives[index]);
+            case 'D':
+                return (int) Double.longBitsToDouble(primitives[index]);
+            default:
+                return (int) primitives[index]; // I, Z
         }
     }
 
@@ -179,10 +187,14 @@ public class FunctionContext<Target> implements AutoCloseable {
         byte t = index < argTypes.length ? argTypes[index] : 0;
         if (t == 0) return ((Number) refs[index]).longValue();
         switch (t) {
-            case 'I': return (int) primitives[index]; // sign-extend
-            case 'F': return (long) Float.intBitsToFloat((int) primitives[index]);
-            case 'D': return (long) Double.longBitsToDouble(primitives[index]);
-            default: return primitives[index]; // J, Z
+            case 'I':
+                return (int) primitives[index]; // sign-extend
+            case 'F':
+                return (long) Float.intBitsToFloat((int) primitives[index]);
+            case 'D':
+                return (long) Double.longBitsToDouble(primitives[index]);
+            default:
+                return primitives[index]; // J, Z
         }
     }
 
@@ -190,11 +202,16 @@ public class FunctionContext<Target> implements AutoCloseable {
         byte t = index < argTypes.length ? argTypes[index] : 0;
         if (t == 0) return refs[index];
         switch (t) {
-            case 'I': return (int) primitives[index];
-            case 'J': return primitives[index];
-            case 'F': return Float.intBitsToFloat((int) primitives[index]);
-            case 'D': return Double.longBitsToDouble(primitives[index]);
-            case 'Z': return primitives[index] != 0;
+            case 'I':
+                return (int) primitives[index];
+            case 'J':
+                return primitives[index];
+            case 'F':
+                return Float.intBitsToFloat((int) primitives[index]);
+            case 'D':
+                return Double.longBitsToDouble(primitives[index]);
+            case 'Z':
+                return primitives[index] != 0;
         }
         return refs[index];
     }

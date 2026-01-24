@@ -43,8 +43,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 result.getPositionIndex(),
                 result.getExtensionPositionIndex()
         );
+        // 获取函数期望的参数类型
+        Function function = ctx.getFunction();
+        Type[] expectedTypes = function.getSignature() != null ? function.getSignature().getParameterTypes() : null;
         for (int i = 0; i < argumentCount; i++) {
             Type t = interpreter.evaluate(expressionArguments[i]);
+            Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : Type.OBJECT;
             if (t.isPrimitive()) {
                 switch (t.getDescriptor()) {
                     case "I":
@@ -61,11 +65,29 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                         ctx.setDouble(i, Double.longBitsToDouble(interpreter.resultPrimitive));
                         break;
                 }
+            } else if (expected.isPrimitive()) {
+                // 期望 primitive 但得到 Object，尝试转换
+                Object ref = interpreter.resultRef;
+                if (ref instanceof Number) {
+                    Number num = (Number) ref;
+                    if (expected == Type.I || expected == Type.Z) {
+                        ctx.setInt(i, num.intValue());
+                    } else if (expected == Type.J) {
+                        ctx.setLong(i, num.longValue());
+                    } else if (expected == Type.F) {
+                        ctx.setFloat(i, num.floatValue());
+                    } else if (expected == Type.D) {
+                        ctx.setDouble(i, num.doubleValue());
+                    }
+                } else if (ref instanceof Boolean) {
+                    ctx.setInt(i, (Boolean) ref ? 1 : 0);
+                } else {
+                    throw new ClassCastException("Cannot convert " + (ref == null ? "null" : ref.getClass().getName()) + " to " + expected);
+                }
             } else {
                 ctx.setRef(i, interpreter.resultRef);
             }
         }
-        Function function = ctx.getFunction();
         // 处理 async / primarySync
         if (function.isAsync() || function.isPrimarySync()) {
             interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
@@ -97,6 +119,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         ParseResult[] arguments = result.getArguments();
         int argumentCount = arguments.length;
         int savedLocalVar = ctx.getLocalVarIndex();
+        // 获取函数签名的期望参数类型
+        Type[] expectedTypes = resolveExpectedTypes(result, ctx);
         // 1. 调用 prepareCall → FunctionContext
         Instructions.loadPool(mv, ctx);
         Instructions.loadEnvironment(mv, ctx);
@@ -126,7 +150,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             if (t == Type.VOID) {
                 throw new VoidError("Void type is not allowed for function arguments");
             }
-            emitSetArg(t, mv);
+            Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : null;
+            emitSetArg(t, expected, mv);
         }
         // 推断返回类型
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
@@ -144,6 +169,27 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         // 释放临时变量槽位
         ctx.restoreLocalVarIndex(savedLocalVar);
         return returnType;
+    }
+
+    /**
+     * 解析函数期望的参数类型
+     */
+    private Type[] resolveExpectedTypes(FunctionCallExpression result, CodeContext ctx) {
+        FunctionPosition position = result.getPosition();
+        if (position == null) return null;
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        if (analyzer == null) return null;
+        // 收集参数类型
+        ParseResult[] args = result.getArguments();
+        Type[] argTypes = new Type[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argTypes[i] = analyzer.inferType(args[i]);
+        }
+        Function function = position.resolve(argTypes);
+        if (function != null && function.getSignature() != null) {
+            return function.getSignature().getParameterTypes();
+        }
+        return null;
     }
 
     /**
@@ -166,9 +212,11 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     /**
      * 根据参数类型生成对应的 FunctionContext setter 调用
+     * 如果表达式类型是 OBJECT 但期望类型是 primitive，生成类型转换代码
      */
-    private static void emitSetArg(Type t, MethodVisitor mv) {
+    private static void emitSetArg(Type t, Type expected, MethodVisitor mv) {
         String ctxPath = FunctionContext.TYPE.getPath();
+        // 表达式类型是 primitive，直接设置
         if (t == Type.I || t == Type.Z) {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
         } else if (t == Type.J) {
@@ -177,6 +225,26 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
         } else if (t == Type.D) {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
+        } else if (expected != null && expected.isPrimitive()) {
+            // 表达式类型是 OBJECT 但期望 primitive，生成转换代码
+            // 栈：ctx, index, value(Object)
+            // 先将 Object 转换为 Number，再调用对应的 xxxValue 方法
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+            if (expected == Type.I || expected == Type.Z) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
+            } else if (expected == Type.J) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setLong", "(IJ)V", false);
+            } else if (expected == Type.F) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
+            } else if (expected == Type.D) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
+            } else {
+                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
+            }
         } else {
             // Object 类型
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);

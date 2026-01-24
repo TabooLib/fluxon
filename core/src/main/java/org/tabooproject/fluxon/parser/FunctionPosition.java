@@ -29,10 +29,13 @@ public class FunctionPosition implements Callable {
      * 根据参数类型解析具体重载并返回其索引
      */
     public int resolveIndex(Type[] argTypes) {
+        Function resolved = overloadSet.resolve(argTypes);
+        if (resolved == null) {
+            return baseIndex;
+        }
         int offset = 0;
         for (Function f : overloadSet.getOverloads()) {
-            FunctionSignature sig = f.getSignature();
-            if (sig == null || sig.getParameterCount() == argTypes.length) {
+            if (f == resolved) {
                 return baseIndex + offset;
             }
             offset++;

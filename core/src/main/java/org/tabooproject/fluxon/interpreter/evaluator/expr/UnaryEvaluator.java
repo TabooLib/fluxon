@@ -26,15 +26,32 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, UnaryExpression result) {
         Type t = interpreter.evaluate(result.getRight());
-        Object right = interpreter.getResultBoxed(t);
         switch (result.getOperator().getType()) {
             case NOT:
-                interpreter.resultRef = !isTrue(right);
-                return Type.BOOLEAN;
+                Object right = interpreter.getResultBoxed(t);
+                interpreter.resultPrimitive = isTrue(right) ? 0 : 1;
+                return Type.Z;
             case MINUS:
-                checkNumberOperand(right);
-                interpreter.resultRef = negateNumber((Number) right);
-                return Type.NUMBER;
+                if (t == Type.I || t == Type.Z) {
+                    interpreter.resultPrimitive = -(int) interpreter.resultPrimitive;
+                    return Type.I;
+                } else if (t == Type.J) {
+                    interpreter.resultPrimitive = -interpreter.resultPrimitive;
+                    return Type.J;
+                } else if (t == Type.F) {
+                    // 翻转符号位，等价于 FNEG
+                    interpreter.resultPrimitive ^= 0x80000000L;
+                    return Type.F;
+                } else if (t == Type.D) {
+                    // 翻转符号位，等价于 DNEG
+                    interpreter.resultPrimitive ^= 0x8000000000000000L;
+                    return Type.D;
+                } else {
+                    Object rightObj = interpreter.resultRef;
+                    checkNumberOperand(rightObj);
+                    interpreter.resultRef = negateNumber((Number) rightObj);
+                    return Type.NUMBER;
+                }
             default:
                 throw new RuntimeException("Unknown unary operator: " + result.getOperator().getType());
         }
