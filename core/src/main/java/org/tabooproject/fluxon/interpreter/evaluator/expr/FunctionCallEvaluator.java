@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
@@ -184,8 +185,21 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     @Override
     public void analyzeTypes(FunctionCallExpression result, TypeAnalyzer analyzer) {
-        for (ParseResult arg : result.getArguments()) {
+        // 先分析所有参数
+        ParseResult[] args = result.getArguments();
+        for (ParseResult arg : args) {
             analyzer.analyzeNode(arg);
+        }
+        // 收集参数类型
+        Type[] argTypes = new Type[args.length];
+        for (int i = 0; i < args.length; i++) {
+            argTypes[i] = analyzer.inferType(args[i]);
+        }
+        // 解析具体重载并设置索引
+        FunctionPosition position = result.getPosition();
+        if (position != null) {
+            int resolvedIndex = position.resolveIndex(argTypes);
+            result.setResolvedPositionIndex(resolvedIndex);
         }
     }
 

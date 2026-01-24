@@ -27,7 +27,7 @@ class LibraryLoaderTest {
             List<?> exported = result.getExportedFunctions();
             assertEquals(2, exported.size());
 
-            Function libHello = runtime.getSystemFunctions().get("libHello");
+            Function libHello = runtime.getSystemFunctions().get("libHello").first();
             Environment env = runtime.newEnvironment();
             FunctionContext<?> ctx = new FunctionContext<>(libHello, null, new Object[]{"Fluxon"}, env);
             libHello.call(ctx);

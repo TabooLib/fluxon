@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.jsr223;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -91,9 +92,14 @@ final class BindingsHelper {
         if (vars != null && !vars.isEmpty()) {
             engineBindings.putAll(vars);
         }
-        Map<String, Function> funcs = env.getRootFunctions();
+        Map<String, OverloadSet> funcs = env.getRootFunctions();
         if (funcs != null && !funcs.isEmpty()) {
-            engineBindings.putAll(funcs);
+            for (Map.Entry<String, OverloadSet> entry : funcs.entrySet()) {
+                Function first = entry.getValue().first();
+                if (first != null) {
+                    engineBindings.put(entry.getKey(), first);
+                }
+            }
         }
     }
 

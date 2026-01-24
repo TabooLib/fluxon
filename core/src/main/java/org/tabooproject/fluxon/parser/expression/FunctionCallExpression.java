@@ -14,11 +14,12 @@ public class FunctionCallExpression extends Expression {
 
     private final String functionName;
     private final ParseResult[] arguments;
-
     @Nullable
     private FunctionPosition position;
     @Nullable
     private ExtensionFunctionPosition extensionPosition;
+    // 类型分析后解析的具体重载索引
+    private int resolvedPositionIndex = -1;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -40,6 +41,13 @@ public class FunctionCallExpression extends Expression {
      */
     public void setExtensionPosition(@Nullable ExtensionFunctionPosition extensionPosition) {
         this.extensionPosition = extensionPosition;
+    }
+
+    /**
+     * 设置类型分析后解析的具体重载索引
+     */
+    public void setResolvedPositionIndex(int index) {
+        this.resolvedPositionIndex = index;
     }
 
     /**
@@ -65,10 +73,14 @@ public class FunctionCallExpression extends Expression {
     }
 
     /**
-     * 获取函数解析时预测的位置索引
+     * 获取函数位置索引
+     * 优先返回类型分析后的具体重载索引，否则返回基础索引
      */
     public int getPositionIndex() {
-        return position != null ? position.getIndex() : -1;
+        if (resolvedPositionIndex != -1) {
+            return resolvedPositionIndex;
+        }
+        return position != null ? position.getBaseIndex() : -1;
     }
 
     /**

@@ -16,9 +16,9 @@ public class FunctionPosition implements Callable {
     }
 
     @Override
-    public FunctionSignature getSignature() {
+    public int getParameterCount() {
         Function first = overloadSet.first();
-        return first != null ? first.getSignature() : null;
+        return first != null ? first.getParameterCount() : 0;
     }
 
     public OverloadSet getOverloadSet() {
@@ -31,7 +31,8 @@ public class FunctionPosition implements Callable {
     public int resolveIndex(Type[] argTypes) {
         int offset = 0;
         for (Function f : overloadSet.getOverloads()) {
-            if (matchesSignature(f, argTypes)) {
+            FunctionSignature sig = f.getSignature();
+            if (sig == null || sig.getParameterCount() == argTypes.length) {
                 return baseIndex + offset;
             }
             offset++;
@@ -45,13 +46,6 @@ public class FunctionPosition implements Callable {
     public Function resolve(Type[] argTypes) {
         Function resolved = overloadSet.resolve(argTypes);
         return resolved != null ? resolved : overloadSet.first();
-    }
-
-    private boolean matchesSignature(Function f, Type[] argTypes) {
-        FunctionSignature sig = f.getSignature();
-        if (sig == null) return true;
-        if (sig.getParameterCount() != argTypes.length) return false;
-        return true;
     }
 
     public int getBaseIndex() {

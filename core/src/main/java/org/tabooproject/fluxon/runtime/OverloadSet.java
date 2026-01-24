@@ -32,10 +32,18 @@ public class OverloadSet {
     }
 
     /**
-     * 添加重载
+     * 添加重载（添加到末尾）
      */
     public void add(Function function) {
         overloads.add(function);
+        singleOverload = overloads.size() == 1 ? function : null;
+    }
+
+    /**
+     * 添加重载到开头（用于用户定义函数覆盖系统函数）
+     */
+    public void addFirst(Function function) {
+        overloads.add(0, function);
         singleOverload = overloads.size() == 1 ? function : null;
     }
 

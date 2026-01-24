@@ -99,13 +99,27 @@ public class Environment {
 
     /**
      * 在根环境中定义函数
+     * 用户定义的函数会添加到重载列表开头，以覆盖同名的系统函数
      *
      * @param name  函数名
      * @param value 函数对象
      */
     public void defineRootFunction(String name, Function value) {
         EnvironmentState m = root.rootState;
-        m.functions.computeIfAbsent(name, OverloadSet::new).add(value);
+        OverloadSet existing = m.functions.get(name);
+        if (existing != null) {
+            // 复制现有的 OverloadSet 以避免污染共享状态
+            OverloadSet copy = new OverloadSet(name);
+            copy.addFirst(value);
+            for (Function f : existing.getOverloads()) {
+                copy.add(f);
+            }
+            m.functions.put(name, copy);
+        } else {
+            OverloadSet set = new OverloadSet(name);
+            set.add(value);
+            m.functions.put(name, set);
+        }
         if (m.userFunctionNames == null) {
             m.userFunctionNames = new HashSet<>();
         }
