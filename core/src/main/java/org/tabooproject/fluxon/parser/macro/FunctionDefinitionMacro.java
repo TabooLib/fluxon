@@ -135,6 +135,7 @@ public class FunctionDefinitionMacro implements StatementMacro {
      * 1. 允许无括号参数定义，如：def factorial n = { ... }
      * 2. 允许省略大括号
      * 3. 支持注解，如：@listener(event = "onStart") def handleStart() = { ... }
+     * 4. 支持参数类型注解，如：def foo(x: int, y: double) = { ... }
      *
      * @param parser        解析器
      * @param isAsync       是否为异步函数
@@ -148,9 +149,12 @@ public class FunctionDefinitionMacro implements StatementMacro {
         String functionName = nameToken.getLexeme();
         // 创建函数标记
         parser.getSymbolEnvironment().setCurrentFunction(functionName);
+        // 参数类型映射
+        Map<Integer, Class<?>> parameterTypes = new HashMap<>();
         // 解析参数列表（函数定义支持无括号多参数）
         LinkedHashMap<String, Integer> parameters = parseParameters(
                 parser,
+                parameterTypes,
                 true,  // 函数定义支持无括号多参数
                 TokenType.ASSIGN, TokenType.LEFT_BRACE  // 遇到等号或左大括号停止
         );
@@ -177,28 +181,29 @@ public class FunctionDefinitionMacro implements StatementMacro {
         }
         // 退出函数标记
         parser.getSymbolEnvironment().setCurrentFunction(null);
-        return new FunctionDefinition(functionName, parameters, body, isAsync, isPrimarySync, annotations, localVariables);
+        return new FunctionDefinition(functionName, parameters, parameterTypes, body, isAsync, isPrimarySync, annotations, localVariables, true);
     }
 
     /**
      * 解析参数列表
      * 支持三种语法：
-     * 1. 带括号：(x, y, z)
+     * 1. 带括号：(x, y, z) 或 (x: int, y: double)
      * 2. 无括号多参数：x y z 或 x, y, z
      * 3. 单参数简写：x
      *
      * @param parser                       解析器
+     * @param parameterTypes               参数类型映射（输出参数）
      * @param allowUnparenthesizedMultiple 是否允许无括号的多参数
      * @param stopTokens                   停止解析的 token 类型
      * @return 参数名到索引的映射
      */
-    public static LinkedHashMap<String, Integer> parseParameters(Parser parser, boolean allowUnparenthesizedMultiple, TokenType... stopTokens) {
+    public static LinkedHashMap<String, Integer> parseParameters(Parser parser, Map<Integer, Class<?>> parameterTypes, boolean allowUnparenthesizedMultiple, TokenType... stopTokens) {
         LinkedHashMap<String, Integer> parameters = new LinkedHashMap<>();
         // 带括号的参数列表: (x, y, z)
         if (parser.match(TokenType.LEFT_PAREN)) {
             if (!parser.check(TokenType.RIGHT_PAREN)) {
                 do {
-                    addParameter(parser, parameters);
+                    addParameter(parser, parameters, parameterTypes);
                 } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
             }
             parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters");
@@ -210,7 +215,7 @@ public class FunctionDefinitionMacro implements StatementMacro {
         }
         // 无括号的参数列表: x, y, z 或 x y z
         while (parser.check(TokenType.IDENTIFIER)) {
-            addParameter(parser, parameters);
+            addParameter(parser, parameters, parameterTypes);
             // 检查是否遇到停止符
             if (isStopToken(parser.peek().getType(), stopTokens)) {
                 break;
@@ -227,9 +232,10 @@ public class FunctionDefinitionMacro implements StatementMacro {
     }
 
     /**
-     * 添加单个参数
+     * 添加单个参数，支持可选的类型注解
+     * 语法：paramName 或 paramName: typeName
      */
-    private static void addParameter(Parser parser, LinkedHashMap<String, Integer> parameters) {
+    private static void addParameter(Parser parser, LinkedHashMap<String, Integer> parameters, Map<Integer, Class<?>> parameterTypes) {
         Token paramToken = parser.consume(TokenType.IDENTIFIER, "Expected parameter name");
         String paramName = paramToken.getLexeme();
         // 检查参数重复
@@ -240,6 +246,11 @@ public class FunctionDefinitionMacro implements StatementMacro {
         parser.defineVariable(paramName);
         int index = parser.getSymbolEnvironment().getLocalVariable(paramName);
         parameters.put(paramName, index);
+        // 可选类型注解: paramName: typeName
+        if (parser.match(TokenType.COLON)) {
+            Class<?> type = SyntaxMacroHelper.parseAndResolveType(parser);
+            parameterTypes.put(index, type);
+        }
     }
 
     /**

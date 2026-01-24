@@ -14,7 +14,6 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 /**
  * 三元运算符求值器
@@ -29,7 +28,7 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, TernaryExpression result) {
         Type ct = interpreter.evaluate(result.getCondition());
-        if (isTrue(interpreter.getResultBoxed(ct))) {
+        if (interpreter.isResultTrue(ct)) {
             return interpreter.evaluate(result.getTrueExpr());
         } else {
             return interpreter.evaluate(result.getFalseExpr());

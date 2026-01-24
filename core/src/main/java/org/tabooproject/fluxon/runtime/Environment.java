@@ -108,13 +108,7 @@ public class Environment {
         EnvironmentState m = root.rootState;
         OverloadSet existing = m.functions.get(name);
         if (existing != null) {
-            // 复制现有的 OverloadSet 以避免污染共享状态
-            OverloadSet copy = new OverloadSet(name);
-            copy.addFirst(value);
-            for (Function f : existing.getOverloads()) {
-                copy.add(f);
-            }
-            m.functions.put(name, copy);
+            m.functions.put(name, existing.copyWithFirst(value));
         } else {
             OverloadSet set = new OverloadSet(name);
             set.add(value);

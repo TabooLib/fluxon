@@ -26,11 +26,14 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, ElvisExpression result) {
         Type ct = interpreter.evaluate(result.getCondition());
-        Object object = interpreter.getResultBoxed(ct);
-        if (object == null) {
+        // primitive 不可能为 null，直接返回装箱值
+        if (ct.isPrimitive()) {
+            interpreter.resultRef = Type.box(interpreter.resultPrimitive, ct);
+            return Type.OBJECT;
+        }
+        if (interpreter.resultRef == null) {
             return interpreter.evaluate(result.getAlternative());
         }
-        interpreter.resultRef = object;
         return Type.OBJECT;
     }
 

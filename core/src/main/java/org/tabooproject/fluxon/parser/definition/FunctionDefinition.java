@@ -3,8 +3,10 @@ package org.tabooproject.fluxon.parser.definition;
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.ParseResult;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -14,6 +16,7 @@ import java.util.Set;
 public class FunctionDefinition implements Definition {
     private final String name;
     private final LinkedHashMap<String, Integer> parameters;
+    private final Map<Integer, Class<?>> parameterTypes;
     private final ParseResult body;
     private final boolean isAsync;
     private final boolean isPrimarySync;
@@ -30,7 +33,7 @@ public class FunctionDefinition implements Definition {
             @NotNull List<Annotation> annotations,
             @NotNull Set<String> localVariables
     ) {
-        this(name, parameters, body, isAsync, isPrimarySync, annotations, localVariables, true);
+        this(name, parameters, Collections.emptyMap(), body, isAsync, isPrimarySync, annotations, localVariables, true);
     }
 
     public FunctionDefinition(
@@ -43,8 +46,23 @@ public class FunctionDefinition implements Definition {
             @NotNull Set<String> localVariables,
             boolean registerToRoot
     ) {
+        this(name, parameters, Collections.emptyMap(), body, isAsync, isPrimarySync, annotations, localVariables, registerToRoot);
+    }
+
+    public FunctionDefinition(
+            String name,
+            @NotNull LinkedHashMap<String, Integer> parameters,
+            @NotNull Map<Integer, Class<?>> parameterTypes,
+            @NotNull ParseResult body,
+            boolean isAsync,
+            boolean isPrimarySync,
+            @NotNull List<Annotation> annotations,
+            @NotNull Set<String> localVariables,
+            boolean registerToRoot
+    ) {
         this.name = name;
         this.parameters = parameters;
+        this.parameterTypes = parameterTypes;
         this.body = body;
         this.isAsync = isAsync;
         this.isPrimarySync = isPrimarySync;
@@ -59,6 +77,10 @@ public class FunctionDefinition implements Definition {
 
     public LinkedHashMap<String, Integer> getParameters() {
         return parameters;
+    }
+
+    public Map<Integer, Class<?>> getParameterTypes() {
+        return parameterTypes;
     }
 
     public ParseResult getBody() {

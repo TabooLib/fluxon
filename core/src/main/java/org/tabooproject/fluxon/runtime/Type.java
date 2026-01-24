@@ -87,6 +87,19 @@ public class Type {
         throw new IllegalArgumentException("Cannot box type: " + type);
     }
 
+    /**
+     * 将 Java Class 转换为对应的 Type
+     * 用于参数类型注解的类型映射
+     */
+    public static Type fromClass(Class<?> clazz) {
+        if (clazz == int.class || clazz == Integer.class) return I;
+        if (clazz == long.class || clazz == Long.class) return J;
+        if (clazz == float.class || clazz == Float.class) return F;
+        if (clazz == double.class || clazz == Double.class) return D;
+        if (clazz == boolean.class || clazz == Boolean.class) return Z;
+        return OBJECT;
+    }
+
     @Override
     public String toString() {
         return descriptor;

@@ -22,6 +22,15 @@ public class TypeAnalyzer {
     private final Map<Integer, Type> variableTypes = new HashMap<>();
 
     /**
+     * 从函数定义初始化参数类型
+     */
+    public void initFromParameterTypes(Map<Integer, Class<?>> parameterTypes) {
+        for (Map.Entry<Integer, Class<?>> entry : parameterTypes.entrySet()) {
+            variableTypes.put(entry.getKey(), Type.fromClass(entry.getValue()));
+        }
+    }
+
+    /**
      * 分析 AST，收集变量类型信息
      */
     public void analyze(List<ParseResult> results) {

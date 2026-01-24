@@ -15,9 +15,6 @@ import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
-import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
-
 public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 
     @Override
@@ -32,7 +29,7 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         Object lastRef = null;
         while (true) {
             Type ct = interpreter.evaluate(result.getCondition());
-            if (!isTrue(interpreter.getResultBoxed(ct))) break;
+            if (!interpreter.isResultTrue(ct)) break;
             if (!bodyIsStatement) {
                 interpreter.consumeCostStep();
             }

@@ -1,4 +1,4 @@
-def createComplete3DShape(center, radius, height, segments) = {
+def createComplete3DShape(center, radius: int, height: int, segments: int) = {
   particles = []
 
   // 圆柱体部分

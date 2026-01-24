@@ -159,6 +159,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext
         // 对函数体进行类型分析
         TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
+        // 从参数类型注解初始化变量类型
+        typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
         typeAnalyzer.analyzeNode(funcDef.getBody());
         // Lambda 函数：位置 >= 自身局部变量数的变量是从父作用域捕获的，必须用引用类型
         if (funcDef instanceof LambdaFunctionDefinition) {

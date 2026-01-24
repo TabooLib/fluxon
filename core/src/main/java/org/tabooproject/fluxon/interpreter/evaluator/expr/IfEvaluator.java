@@ -14,7 +14,6 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
@@ -26,7 +25,7 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, IfExpression result) {
         Type ct = interpreter.evaluate(result.getCondition());
-        if (isTrue(interpreter.getResultBoxed(ct))) {
+        if (interpreter.isResultTrue(ct)) {
             return interpreter.evaluate(result.getThenBranch());
         } else if (result.getElseBranch() != null) {
             return interpreter.evaluate(result.getElseBranch());

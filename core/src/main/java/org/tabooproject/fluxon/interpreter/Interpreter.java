@@ -12,6 +12,8 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
+import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
+
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -57,6 +59,17 @@ public class Interpreter {
         if (type.isPrimitive()) return Type.box(resultPrimitive, type);
         return resultRef;
     }
+
+    /**
+     * 直接判断结果是否为真（避免装箱）
+     */
+    public boolean isResultTrue(Type type) {
+        if (!type.isPrimitive()) return isTrue(resultRef);
+        if (type == Type.F) return ((int) resultPrimitive & 0x7FFFFFFF) != 0;
+        if (type == Type.D) return (resultPrimitive & 0x7FFFFFFFFFFFFFFFL) != 0;
+        return resultPrimitive != 0;
+    }
+
 
     /**
      * 执行 AST

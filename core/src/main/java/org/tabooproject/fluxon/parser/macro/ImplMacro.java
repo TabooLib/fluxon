@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.parser.type.BlockParser;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -74,7 +75,7 @@ public class ImplMacro implements SyntaxMacro {
         String methodName = parser.consume(TokenType.IDENTIFIER, "Expected method name").getLexeme();
         String scopeId = "$impl$" + methodName;
         parser.getSymbolEnvironment().setCurrentFunction(scopeId);
-        List<String> paramNames = new ArrayList<>(parseParameters(parser, false, TokenType.ASSIGN, TokenType.LEFT_BRACE).keySet());
+        List<String> paramNames = new ArrayList<>(parseParameters(parser, new HashMap<>(), false, TokenType.ASSIGN, TokenType.LEFT_BRACE).keySet());
         ParseResult body;
         if (parser.match(TokenType.ASSIGN)) {
             body = ExpressionParser.parse(parser);

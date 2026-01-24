@@ -28,8 +28,7 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
         Type t = interpreter.evaluate(result.getRight());
         switch (result.getOperator().getType()) {
             case NOT:
-                Object right = interpreter.getResultBoxed(t);
-                interpreter.resultPrimitive = isTrue(right) ? 0 : 1;
+                interpreter.resultPrimitive = interpreter.isResultTrue(t) ? 0 : 1;
                 return Type.Z;
             case MINUS:
                 if (t == Type.I || t == Type.Z) {

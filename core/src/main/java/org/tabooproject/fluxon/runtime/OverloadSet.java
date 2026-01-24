@@ -48,6 +48,17 @@ public class OverloadSet {
     }
 
     /**
+     * 复制当前 OverloadSet 并在开头添加新函数
+     */
+    public OverloadSet copyWithFirst(Function function) {
+        OverloadSet copy = new OverloadSet(name);
+        copy.overloads.add(function);
+        copy.overloads.addAll(this.overloads);
+        copy.singleOverload = null;
+        return copy;
+    }
+
+    /**
      * 移除重载
      */
     public boolean remove(Function function) {

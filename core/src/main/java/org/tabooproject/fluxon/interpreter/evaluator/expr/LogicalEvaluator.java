@@ -15,7 +15,6 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
 import static org.objectweb.asm.Opcodes.*;
-import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
 public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
 
@@ -27,20 +26,20 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, LogicalExpression result) {
         Type lt = interpreter.evaluate(result.getLeft());
-        Object left = interpreter.getResultBoxed(lt);
+        boolean left = interpreter.isResultTrue(lt);
         if (result.getOperator().getType() == TokenType.OR) {
-            if (isTrue(left)) {
+            if (left) {
                 interpreter.resultRef = true;
             } else {
                 Type rt = interpreter.evaluate(result.getRight());
-                interpreter.resultRef = isTrue(interpreter.getResultBoxed(rt));
+                interpreter.resultRef = interpreter.isResultTrue(rt);
             }
         } else {
-            if (!isTrue(left)) {
+            if (!left) {
                 interpreter.resultRef = false;
             } else {
                 Type rt = interpreter.evaluate(result.getRight());
-                interpreter.resultRef = isTrue(interpreter.getResultBoxed(rt));
+                interpreter.resultRef = interpreter.isResultTrue(rt);
             }
         }
         return Type.BOOLEAN;
