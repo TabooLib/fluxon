@@ -23,9 +23,9 @@ public class ComplexTest {
         env.defineRootVariable("location", new TestRuntime.TestLocation(0, 0, 0));
         List<String> lines = Files.readAllLines(new File("effect.fs").toPath());
 
-        System.out.println("Run:");
-        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
-        script.eval(env);
+//        System.out.println("Run:");
+//        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
+//        script.eval(env);
 //
         System.out.println("Compile:");
         CompileResult effect = Fluxon.compile(String.join("\n", lines).trim(), "effect", env);
@@ -34,20 +34,20 @@ public class ComplexTest {
         RuntimeScriptBase base = (RuntimeScriptBase) defineClass.newInstance();
         base.eval(env);
 
-        for (int i = 0; i < 30; i++) {
-            long time = System.currentTimeMillis();
-            for (int j = 0; j < 1000; j++) {
-                base.eval(env);
-//                script.eval(env);
-            }
-            System.out.println((System.currentTimeMillis() - time) + "ms");
-        }
-
-        for (int i = 0; i < 10; i++) {
-            long time = System.currentTimeMillis();
-            base.eval(env);
-//            script.eval(env);
-            System.out.println((System.currentTimeMillis() - time) + "ms");
-        }
+//        for (int i = 0; i < 30; i++) {
+//            long time = System.currentTimeMillis();
+//            for (int j = 0; j < 1000; j++) {
+//                base.eval(env);
+////                script.eval(env);
+//            }
+//            System.out.println((System.currentTimeMillis() - time) + "ms");
+//        }
+//
+//        for (int i = 0; i < 10; i++) {
+//            long time = System.currentTimeMillis();
+//            base.eval(env);
+////            script.eval(env);
+//            System.out.println((System.currentTimeMillis() - time) + "ms");
+//        }
     }
 }
