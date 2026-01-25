@@ -13,6 +13,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.ExtensionDispatchTable;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
@@ -22,6 +23,8 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+
+import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -270,10 +273,27 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             int resolvedIndex = position.resolveIndex(argTypes);
             result.setResolvedPositionIndex(resolvedIndex);
         }
+        // 基于 target 类型预解析扩展函数
+        ExtensionFunctionPosition extPos = result.getExtensionPosition();
+        if (extPos != null) {
+            Type targetType = analyzer.getCurrentTargetType();
+            if (targetType != null && targetType.getSource() != null && targetType.getSource() != Object.class) {
+                ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
+                Function resolved = dispatchTable.resolve(targetType.getSource());
+                if (resolved != null) {
+                    result.setResolvedExtensionFunction(resolved);
+                }
+            }
+        }
     }
 
     @Override
     public Type inferResultType(FunctionCallExpression result, TypeAnalyzer analyzer) {
+        // 优先使用预解析的扩展函数
+        Function resolvedExt = result.getResolvedExtensionFunction();
+        if (resolvedExt != null) {
+            return resolvedExt.getReturnType();
+        }
         // 先收集参数类型
         ParseResult[] args = result.getArguments();
         Type[] argTypes = new Type[args.length];
@@ -289,11 +309,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 return function.getReturnType();
             }
         }
-        // 尝试从扩展函数推断返回类型
+        // 尝试从扩展函数推断返回类型（回退：统一类型检查）
         ExtensionFunctionPosition extPos = result.getExtensionPosition();
         if (extPos != null && extPos.getFunctions() != null) {
+            Map<Class<?>, Function> functions = extPos.getFunctions();
             Type commonType = null;
-            for (Function func : extPos.getFunctions().values()) {
+            for (Function func : functions.values()) {
                 Type rt = func.getReturnType();
                 if (commonType == null) {
                     commonType = rt;

@@ -168,13 +168,14 @@ public class Environment {
      * 获取扩展函数（只查找根环境）
      *
      * @param extensionClass 扩展类
-     * @param name           函数名
+     * @param name           函数名（用于错误提示）
+     * @param index          派发表索引
      * @return 函数值
      * @throws FluxonRuntimeError 如果函数不存在
      */
     @NotNull
     public Function getExtensionFunction(Class<?> extensionClass, String name, int index) {
-        Function function = getExtensionFunctionOrNull(extensionClass, name, index);
+        Function function = getExtensionFunctionOrNull(extensionClass, index);
         if (function != null) {
             return function;
         }
@@ -185,35 +186,13 @@ public class Environment {
      * 获取扩展函数（只查找根环境）
      *
      * @param extensionClass 扩展类
-     * @param name           函数名
+     * @param index          派发表索引
      * @return 函数值
      */
     @Nullable
-    public Function getExtensionFunctionOrNull(Class<?> extensionClass, String name, int index) {
-        if (index != -1) {
-            // 使用派发表进行优化解析
-            ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[index];
-            return dispatchTable.resolve(extensionClass);
-        }
-        // 回退逻辑，使用名称检索
-        // 需要进行线性扫描（用于动态注册的扩展函数）
-        else {
-            Map<Class<?>, Function> classFunctionMap = FluxonRuntime.getInstance().getExtensionFunctions().get(name);
-            if (classFunctionMap != null) {
-                // 查找精确匹配
-                Function exact = classFunctionMap.get(extensionClass);
-                if (exact != null) {
-                    return exact;
-                }
-                // 查找可赋值匹配
-                for (Map.Entry<Class<?>, Function> entry : classFunctionMap.entrySet()) {
-                    if (entry.getKey().isAssignableFrom(extensionClass)) {
-                        return entry.getValue();
-                    }
-                }
-            }
-        }
-        return null;
+    public Function getExtensionFunctionOrNull(Class<?> extensionClass, int index) {
+        ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[index];
+        return dispatchTable.resolve(extensionClass);
     }
 
     /**

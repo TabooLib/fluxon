@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.ExtensionFunctionPosition;
 import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.runtime.Function;
 
 import java.util.Arrays;
 
@@ -20,6 +21,9 @@ public class FunctionCallExpression extends Expression {
     private ExtensionFunctionPosition extensionPosition;
     // 类型分析后解析的具体重载索引
     private int resolvedPositionIndex = -1;
+    // 类型分析后解析的具体扩展函数（基于 target 类型）
+    @Nullable
+    private Function resolvedExtensionFunction;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -48,6 +52,21 @@ public class FunctionCallExpression extends Expression {
      */
     public void setResolvedPositionIndex(int index) {
         this.resolvedPositionIndex = index;
+    }
+
+    /**
+     * 设置类型分析后解析的具体扩展函数
+     */
+    public void setResolvedExtensionFunction(@Nullable Function function) {
+        this.resolvedExtensionFunction = function;
+    }
+
+    /**
+     * 获取类型分析后解析的具体扩展函数
+     */
+    @Nullable
+    public Function getResolvedExtensionFunction() {
+        return resolvedExtensionFunction;
     }
 
     /**

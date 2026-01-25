@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -98,4 +99,21 @@ public class NewEvaluator extends ExpressionEvaluator<NewExpression> {
     private static final Type LOOKUP = new Type(java.lang.invoke.MethodHandles.Lookup.class);
     private static final Type METHOD_TYPE = new Type(java.lang.invoke.MethodType.class);
     private static final Type CALL_SITE = new Type(java.lang.invoke.CallSite.class);
+
+    @Override
+    public void analyzeTypes(NewExpression result, TypeAnalyzer analyzer) {
+        for (ParseResult arg : result.getArguments()) {
+            analyzer.analyzeNode(arg);
+        }
+    }
+
+    @Override
+    public Type inferResultType(NewExpression result, TypeAnalyzer analyzer) {
+        try {
+            Class<?> clazz = Class.forName(result.getClassName());
+            return Type.fromClass(clazz);
+        } catch (ClassNotFoundException e) {
+            return OBJECT;
+        }
+    }
 }

@@ -136,4 +136,9 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
             analyzer.analyzeNode(element);
         }
     }
+
+    @Override
+    public Type inferResultType(ListExpression result, TypeAnalyzer analyzer) {
+        return result.isImmutable() ? IMMUTABLE_LIST : ARRAY_LIST;
+    }
 }

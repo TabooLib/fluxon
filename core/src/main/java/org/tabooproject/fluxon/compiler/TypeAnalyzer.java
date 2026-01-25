@@ -6,6 +6,8 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,8 @@ public class TypeAnalyzer {
 
     // 变量位置 -> 统一类型
     private final Map<Integer, Type> variableTypes = new HashMap<>();
+    // 上下文调用的 target 类型栈
+    private final Deque<Type> targetTypeStack = new ArrayDeque<>();
 
     /**
      * 从函数定义初始化参数类型
@@ -110,6 +114,29 @@ public class TypeAnalyzer {
      */
     public Map<Integer, Type> getVariableTypes() {
         return variableTypes;
+    }
+
+    /**
+     * 压入当前上下文调用的 target 类型
+     */
+    public void pushTargetType(Type type) {
+        targetTypeStack.push(type);
+    }
+
+    /**
+     * 弹出上下文调用的 target 类型
+     */
+    public void popTargetType() {
+        if (!targetTypeStack.isEmpty()) {
+            targetTypeStack.pop();
+        }
+    }
+
+    /**
+     * 获取当前上下文调用的 target 类型
+     */
+    public Type getCurrentTargetType() {
+        return targetTypeStack.isEmpty() ? null : targetTypeStack.peek();
     }
 
     private boolean isComparisonOp(TokenType op) {

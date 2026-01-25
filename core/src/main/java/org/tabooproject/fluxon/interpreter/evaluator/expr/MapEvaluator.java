@@ -175,4 +175,9 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
             analyzer.analyzeNode(entry.getValue());
         }
     }
+
+    @Override
+    public Type inferResultType(MapExpression result, TypeAnalyzer analyzer) {
+        return result.isImmutable() ? IMMUTABLE_MAP : HASHMAP;
+    }
 }

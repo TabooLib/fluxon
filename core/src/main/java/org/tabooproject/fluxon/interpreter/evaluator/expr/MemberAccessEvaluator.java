@@ -166,4 +166,46 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
             }
         }
     }
+
+    @Override
+    public Type inferResultType(MemberAccessExpression result, TypeAnalyzer analyzer) {
+        Type targetType = analyzer.inferType(result.getTarget());
+        Class<?> targetClass = targetType.getSource();
+        // 如果目标类型是 Object.class，无法进一步推断
+        if (targetClass == null || targetClass == Object.class) {
+            return OBJECT;
+        }
+        String memberName = result.getMemberName();
+        try {
+            if (result.isMethodCall()) {
+                // 方法调用：查找方法并返回其返回类型
+                for (java.lang.reflect.Method method : targetClass.getMethods()) {
+                    if (method.getName().equals(memberName) && method.getParameterCount() == result.getArgs().length) {
+                        return Type.fromClass(method.getReturnType());
+                    }
+                }
+            } else {
+                // 字段访问：查找字段并返回其类型
+                try {
+                    java.lang.reflect.Field field = targetClass.getField(memberName);
+                    return Type.fromClass(field.getType());
+                } catch (NoSuchFieldException e) {
+                    // 尝试查找 getter 方法
+                    String capitalized = memberName.substring(0, 1).toUpperCase() + memberName.substring(1);
+                    String[] patterns = {"get" + capitalized, memberName, "is" + capitalized};
+                    for (String methodName : patterns) {
+                        try {
+                            java.lang.reflect.Method method = targetClass.getMethod(methodName);
+                            if (method.getParameterCount() == 0) {
+                                return Type.fromClass(method.getReturnType());
+                            }
+                        } catch (NoSuchMethodException ignored) {
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return OBJECT;
+    }
 }

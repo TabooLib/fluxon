@@ -313,7 +313,7 @@ public final class Intrinsics {
     private static Function resolveFunctionOrNull(Environment environment, Object target, String name, int pos, int exPos) {
         Function function = null;
         if (target != null && target != GlobalObject.INSTANCE && exPos != -1) {
-            function = environment.getExtensionFunctionOrNull(target.getClass(), name, exPos);
+            function = environment.getExtensionFunctionOrNull(target.getClass(), exPos);
         }
         if (function == null) {
             if (pos != -1) {

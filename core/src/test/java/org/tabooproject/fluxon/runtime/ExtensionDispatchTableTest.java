@@ -4,9 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,18 +25,18 @@ public class ExtensionDispatchTableTest {
     @Test
     void testExactMatchForString() {
         Environment env = runtime.newEnvironment();
-        
+
         // String 类型应该精确匹配到 String 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(String.class, "length", getExtensionIndex("length"));
+        Function func = env.getExtensionFunctionOrNull(String.class, getExtensionIndex("length"));
         assertNotNull(func, "String.length 扩展函数应该存在");
     }
 
     @Test
     void testExactMatchForArrayList() {
         Environment env = runtime.newEnvironment();
-        
+
         // ArrayList 应该匹配到 List 或 Collection 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(ArrayList.class, "size", getExtensionIndex("size"));
+        Function func = env.getExtensionFunctionOrNull(ArrayList.class, getExtensionIndex("size"));
         assertNotNull(func, "ArrayList.size 扩展函数应该存在");
     }
 
@@ -47,10 +45,10 @@ public class ExtensionDispatchTableTest {
     @Test
     void testAssignableMatchForSubclass() {
         Environment env = runtime.newEnvironment();
-        
+
         // 自定义子类应该能匹配到父类的扩展函数
         // LinkedHashMap 是 Map 的实现，应该匹配到 Map 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(LinkedHashMap.class, "keySet", getExtensionIndex("keySet"));
+        Function func = env.getExtensionFunctionOrNull(LinkedHashMap.class, getExtensionIndex("keySet"));
         assertNotNull(func, "LinkedHashMap 应该匹配到 Map.keySet 扩展函数");
     }
 
@@ -60,12 +58,12 @@ public class ExtensionDispatchTableTest {
     void testCacheStabilityForSameClass() {
         Environment env = runtime.newEnvironment();
         int index = getExtensionIndex("length");
-        
+
         // 对同一目标类型多次调用，应该返回相同的函数实例
-        Function func1 = env.getExtensionFunctionOrNull(String.class, "length", index);
-        Function func2 = env.getExtensionFunctionOrNull(String.class, "length", index);
-        Function func3 = env.getExtensionFunctionOrNull(String.class, "length", index);
-        
+        Function func1 = env.getExtensionFunctionOrNull(String.class, index);
+        Function func2 = env.getExtensionFunctionOrNull(String.class, index);
+        Function func3 = env.getExtensionFunctionOrNull(String.class, index);
+
         assertSame(func1, func2, "多次调用应该返回相同的函数实例");
         assertSame(func2, func3, "多次调用应该返回相同的函数实例");
     }
@@ -74,11 +72,11 @@ public class ExtensionDispatchTableTest {
     void testCacheStabilityForAssignableClass() {
         Environment env = runtime.newEnvironment();
         int index = getExtensionIndex("size");
-        
+
         // 对可赋值匹配的类型多次调用，应该返回相同的函数实例
-        Function func1 = env.getExtensionFunctionOrNull(ArrayList.class, "size", index);
-        Function func2 = env.getExtensionFunctionOrNull(ArrayList.class, "size", index);
-        
+        Function func1 = env.getExtensionFunctionOrNull(ArrayList.class, index);
+        Function func2 = env.getExtensionFunctionOrNull(ArrayList.class, index);
+
         assertSame(func1, func2, "可赋值匹配的缓存应该稳定");
     }
 
@@ -124,7 +122,7 @@ public class ExtensionDispatchTableTest {
         // 测试小候选数组路径
         Environment env = runtime.newEnvironment();
         ExtensionDispatchTable[] tables = env.getRootDispatchTables();
-        
+
         // 找一个小候选（2-6）的派发表
         for (ExtensionDispatchTable table : tables) {
             int count = table.getCandidateCount();
@@ -135,35 +133,6 @@ public class ExtensionDispatchTableTest {
         }
     }
 
-    // ========== 名称回退路径测试 ==========
-
-    @Test
-    void testNameFallbackPath() {
-        Environment env = runtime.newEnvironment();
-        
-        // 使用 index=-1 触发名称回退路径
-        // 注册一个动态扩展函数来测试
-        env.defineRootExtensionFunction(HashMap.class, "testDynamic", 
-            new NativeFunction<>(null, (FunctionSignature) null, ctx -> ctx.setReturnRef("dynamic")));
-        
-        // 使用名称回退路径查找
-        Function func = env.getExtensionFunctionOrNull(HashMap.class, "testDynamic", -1);
-        assertNotNull(func, "名称回退路径应该能找到动态注册的扩展函数");
-    }
-
-    @Test
-    void testNameFallbackPathAssignableMatch() {
-        Environment env = runtime.newEnvironment();
-        
-        // 注册一个针对 List 的动态扩展函数
-        env.defineRootExtensionFunction(List.class, "testListDynamic",
-            new NativeFunction<>(null, (FunctionSignature) null, ctx -> ctx.setReturnRef("list-dynamic")));
-        
-        // ArrayList 应该能通过可赋值匹配找到
-        Function func = env.getExtensionFunctionOrNull(ArrayList.class, "testListDynamic", -1);
-        assertNotNull(func, "名称回退路径应该支持可赋值匹配");
-    }
-
     // ========== 性能测试 ==========
 
     @Test
@@ -171,22 +140,22 @@ public class ExtensionDispatchTableTest {
         Environment env = runtime.newEnvironment();
         int index = getExtensionIndex("length");
         int iterations = 100000;
-        
+
         // 预热
         for (int i = 0; i < 1000; i++) {
-            env.getExtensionFunctionOrNull(String.class, "length", index);
+            env.getExtensionFunctionOrNull(String.class, index);
         }
-        
+
         // 测试派发表性能
         long startTime = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            env.getExtensionFunctionOrNull(String.class, "length", index);
+            env.getExtensionFunctionOrNull(String.class, index);
         }
         long endTime = System.nanoTime();
-        
+
         long avgTimeNanos = (endTime - startTime) / iterations;
         System.out.printf("派发表查找平均耗时: %d ns%n", avgTimeNanos);
-        
+
         // 应该非常快（通常 < 100ns，因为有缓存）
         assertTrue(avgTimeNanos < 1000, "派发表查找应该非常快（< 1000ns）");
     }
@@ -196,20 +165,20 @@ public class ExtensionDispatchTableTest {
         Environment env = runtime.newEnvironment();
         int index = getExtensionIndex("size");
         int iterations = 100000;
-        
+
         // 预热（第一次调用会计算并缓存）
-        env.getExtensionFunctionOrNull(ArrayList.class, "size", index);
-        
+        env.getExtensionFunctionOrNull(ArrayList.class, index);
+
         // 测试缓存后的性能
         long startTime = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            env.getExtensionFunctionOrNull(ArrayList.class, "size", index);
+            env.getExtensionFunctionOrNull(ArrayList.class, index);
         }
         long endTime = System.nanoTime();
-        
+
         long avgTimeNanos = (endTime - startTime) / iterations;
         System.out.printf("可赋值匹配（缓存后）查找平均耗时: %d ns%n", avgTimeNanos);
-        
+
         // 缓存后应该和精确匹配一样快
         assertTrue(avgTimeNanos < 1000, "缓存后的可赋值匹配查找应该非常快（< 1000ns）");
     }

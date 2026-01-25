@@ -111,27 +111,11 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         // 在新环境中求值上下文表达式
         Type resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
 
-        // 处理结果（如果不是 void）
-        int resultIndex = -1;
-        boolean boxed = false;
-        if (resultType != Type.VOID) {
-            if (resultType.isPrimitive()) {
-                boxing(resultType, mv);
-                boxed = true;
-            }
-            resultIndex = ctx.allocateLocalVar(Type.OBJECT);
-            mv.visitVarInsn(ASTORE, resultIndex);
-        }
-
         // 恢复原来的 target - 调用 environment.setTarget(oldTarget)
+        // 结果在栈底，setTarget 不会影响它
         Instructions.loadEnvironment(mv, ctx);
-        mv.visitVarInsn(ALOAD, oldTargetIndex); // 加载原 target
+        mv.visitVarInsn(ALOAD, oldTargetIndex);
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
-
-        // 恢复结果到栈上（如果不是 void）
-        if (resultType != Type.VOID) {
-            mv.visitVarInsn(ALOAD, resultIndex);
-        }
 
         // 安全调用的结束标签
         if (endLabel != null) {
@@ -139,13 +123,24 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             // 安全调用始终返回 OBJECT 类型（可能是 null）
             return Type.OBJECT;
         }
-        // 如果进行了装箱，返回 OBJECT
-        return boxed ? Type.OBJECT : resultType;
+        return resultType;
     }
 
     @Override
     public void analyzeTypes(ContextCallExpression expression, TypeAnalyzer analyzer) {
         analyzer.analyzeNode(expression.getTarget());
-        analyzer.analyzeNode(expression.getContext());
+        Type targetType = analyzer.inferType(expression.getTarget());
+        analyzer.pushTargetType(targetType);
+        try {
+            analyzer.analyzeNode(expression.getContext());
+        } finally {
+            analyzer.popTargetType();
+        }
+    }
+
+    @Override
+    public Type inferResultType(ContextCallExpression expression, TypeAnalyzer analyzer) {
+        // 上下文调用的结果类型就是 context 表达式的类型
+        return analyzer.inferType(expression.getContext());
     }
 }
