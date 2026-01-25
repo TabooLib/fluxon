@@ -17,7 +17,7 @@ public class ExtensionConstructor {
     @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Constructor.class, "fs:reflect")
-                .function("newInstance", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("newInstance", returns(Type.OBJECT).params(Type.LIST), context -> {
                     try {
                         Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                         List<Object> argument = (List<Object>) context.getRef(0);
@@ -30,7 +30,7 @@ public class ExtensionConstructor {
                         throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
                     }
                 })
-                .function("parameterTypes", returns(Type.OBJECT).noParams(), context -> {
+                .function("parameterTypes", returns(Type.LIST).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(constructor.getParameterTypes()));
                 })
@@ -59,7 +59,7 @@ public class ExtensionConstructor {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(Modifier.isProtected(constructor.getModifiers()));
                 })
-                .function("declaringClass", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaringClass", returns(Type.CLASS).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(constructor.getDeclaringClass());
                 })
@@ -67,7 +67,7 @@ public class ExtensionConstructor {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnInt(constructor.getParameterCount());
                 })
-                .function("exceptionTypes", returns(Type.OBJECT).noParams(), context -> {
+                .function("exceptionTypes", returns(Type.LIST).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(constructor.getExceptionTypes()));
                 })
@@ -79,7 +79,7 @@ public class ExtensionConstructor {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(constructor.isVarArgs());
                 })
-                .function("name", returns(Type.OBJECT).noParams(), context -> {
+                .function("name", returns(Type.STRING).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(constructor.getName());
                 });

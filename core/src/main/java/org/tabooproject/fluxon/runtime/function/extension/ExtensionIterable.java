@@ -24,7 +24,7 @@ public class ExtensionIterable {
         initOperations(runtime);
         // 直接遍历
         runtime.registerExtension(Iterable.class)
-                .function("each", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("each", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     forEachElement(context, null);
                     context.setReturnRef(context.getTarget());
                 });
@@ -33,13 +33,13 @@ public class ExtensionIterable {
     public static void initTransformation(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 对每个元素应用函数
-                .function("map", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("map", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     List<Object> result = new ArrayList<>();
                     forEachElement(context, (element, callResult) -> result.add(callResult));
                     context.setReturnRef(result);
                 })
                 // 对每个元素应用函数并展平结果
-                .function("flatMap", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("flatMap", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     List<Object> result = new ArrayList<>();
                     forEachElement(context, (element, callResult) -> {
                         if (callResult instanceof Collection) {
@@ -53,7 +53,7 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 根据键函数创建映射，元素作为值
-                .function("associateBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("associateBy", returns(Type.MAP).params(Function.TYPE), (context) -> {
                     Map<Object, Object> result = new HashMap<>();
                     forEachElement(context, (element, callResult) -> {
                         result.put(callResult, element);
@@ -61,7 +61,7 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 根据值函数创建映射，元素作为键
-                .function("associateWith", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("associateWith", returns(Type.MAP).params(Function.TYPE), (context) -> {
                     Map<Object, Object> result = new HashMap<>();
                     forEachElement(context, result::put);
                     context.setReturnRef(result);
@@ -71,7 +71,7 @@ public class ExtensionIterable {
     public static void initFiltering(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 过滤元素
-                .function("filter", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("filter", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     List<Object> result = new ArrayList<>();
                     forEachElement(context, (element, callResult) -> {
                         if (Operations.isTrue(callResult)) result.add(element);
@@ -83,15 +83,15 @@ public class ExtensionIterable {
     public static void initChecking(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 检查是否有任意元素满足条件
-                .function("any", returns(Type.Z).params(Type.OBJECT), (context) -> {
+                .function("any", returns(Type.Z).params(Function.TYPE), (context) -> {
                     context.setReturnBool(!testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
                 })
                 // 检查是否所有元素都满足条件
-                .function("all", returns(Type.Z).params(Type.OBJECT), (context) -> {
+                .function("all", returns(Type.Z).params(Function.TYPE), (context) -> {
                     context.setReturnBool(testElements(context, (element, callResult) -> Operations.isTrue(callResult)));
                 })
                 // 检查是否没有元素满足条件
-                .function("none", returns(Type.Z).params(Type.OBJECT), (context) -> {
+                .function("none", returns(Type.Z).params(Function.TYPE), (context) -> {
                     context.setReturnBool(testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
                 });
     }
@@ -99,7 +99,7 @@ public class ExtensionIterable {
     public static void initRetrieving(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 查找第一个满足条件的元素
-                .function("find", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("find", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     Object[] found = new Object[1];
                     testElements(context, (element, callResult) -> {
                         if (Operations.isTrue(callResult)) {
@@ -148,7 +148,7 @@ public class ExtensionIterable {
     public static void initAggregation(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 统计满足条件的元素数量
-                .function("countOf", returns(Type.I).params(Type.OBJECT), (context) -> {
+                .function("countOf", returns(Type.I).params(Function.TYPE), (context) -> {
                     int[] count = new int[1];
                     forEachElement(context, (element, callResult) -> {
                         if (Operations.isTrue(callResult)) count[0]++;
@@ -156,7 +156,7 @@ public class ExtensionIterable {
                     context.setReturnInt(count[0]);
                 })
                 // 对每个元素应用函数并求和
-                .function("sumOf", returns(Type.D).params(Type.OBJECT), (context) -> {
+                .function("sumOf", returns(Type.D).params(Function.TYPE), (context) -> {
                     double[] sum = new double[1];
                     forEachElement(context, (element, callResult) -> {
                         if (callResult instanceof Number) {
@@ -166,25 +166,25 @@ public class ExtensionIterable {
                     context.setReturnDouble(sum[0]);
                 })
                 // 对每个元素应用函数并求最小值
-                .function("minOf", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("minOf", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     context.setReturnRef(compareElements(context, (current, candidate) ->
                             ((Comparable<Object>) candidate).compareTo(current) < 0
                     ));
                 })
                 // 对每个元素应用函数并求最大值
-                .function("maxOf", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("maxOf", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     context.setReturnRef(compareElements(context, (current, candidate) ->
                             ((Comparable<Object>) candidate).compareTo(current) > 0
                     ));
                 })
                 // 根据选择器函数找到最小值对应的元素
-                .function("minBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("minBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     context.setReturnRef(compareElementsBy(context, (current, candidate) ->
                             ((Comparable<Object>) candidate).compareTo(current) < 0
                     ));
                 })
                 // 根据选择器函数找到最大值对应的元素
-                .function("maxBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("maxBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     context.setReturnRef(compareElementsBy(context, (current, candidate) ->
                             ((Comparable<Object>) candidate).compareTo(current) > 0
                     ));
@@ -194,7 +194,7 @@ public class ExtensionIterable {
     public static void initGrouping(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 分组元素
-                .function("groupBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("groupBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     Map<Object, List<Object>> result = new HashMap<>();
                     forEachElement(context, (element, callResult) -> {
                         result.computeIfAbsent(callResult, k -> new ArrayList<>()).add(element);
@@ -202,7 +202,7 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 根据断言将元素分为两组
-                .function("partition", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("partition", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
                     List<Object> matched = new ArrayList<>();
                     List<Object> unmatched = new ArrayList<>();
                     forEachElement(context, (element, callResult) -> {
@@ -239,29 +239,29 @@ public class ExtensionIterable {
     public static void initOrdering(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 自然顺序升序排序
-                .function("sorted", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("sorted", returns(Type.LIST).noParams(), (context) -> {
                     context.setReturnRef(sortElements(context, false, false));
                 })
                 // 自然顺序降序排序
-                .function("sortedDescending", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("sortedDescending", returns(Type.LIST).noParams(), (context) -> {
                     context.setReturnRef(sortElements(context, true, false));
                 })
                 // 根据选择器函数升序排序
-                .function("sortedBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("sortedBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     context.setReturnRef(sortElements(context, false, true));
                 })
                 // 根据选择器函数降序排序
-                .function("sortedDescendingBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("sortedDescendingBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     context.setReturnRef(sortElements(context, true, true));
                 })
                 // 反转顺序
-                .function("reversed", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("reversed", returns(Type.LIST).noParams(), (context) -> {
                     List<Object> list = CollectionUtils.copyList((Iterable<Object>) Objects.requireNonNull(context.getTarget()));
                     Collections.reverse(list);
                     context.setReturnRef(list);
                 })
                 // 随机打乱顺序
-                .function("shuffled", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("shuffled", returns(Type.LIST).noParams(), (context) -> {
                     List<Object> list = CollectionUtils.copyList((Iterable<Object>) Objects.requireNonNull(context.getTarget()));
                     Collections.shuffle(list);
                     context.setReturnRef(list);
@@ -271,7 +271,7 @@ public class ExtensionIterable {
     public static void initOperations(FluxonRuntime runtime) {
         runtime.registerExtension(Iterable.class)
                 // 取前 n 个元素
-                .function("take", returns(Type.OBJECT).params(Type.I), (context) -> {
+                .function("take", returns(Type.LIST).params(Type.I), (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
                     int n = context.getInt(0);
                     // 如果 n <= 0 丢弃所有元素
@@ -291,7 +291,7 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 丢弃前 n 个元素
-                .function("drop", returns(Type.OBJECT).params(Type.I), (context) -> {
+                .function("drop", returns(Type.LIST).params(Type.I), (context) -> {
                     Iterable<Object> list = Objects.requireNonNull(context.getTarget());
                     int n = context.getInt(0);
                     // 如果 n <= 0 保留所有元素
@@ -310,7 +310,7 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 取后 n 个元素
-                .function("takeLast", returns(Type.OBJECT).params(Type.I), (context) -> {
+                .function("takeLast", returns(Type.LIST).params(Type.I), (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
                     int n = context.getInt(0);
                     // 如果 n <= 0 丢弃所有元素
@@ -330,7 +330,7 @@ public class ExtensionIterable {
                     context.setReturnRef(list.subList(size - n, size));
                 })
                 // 丢弃后 n 个元素
-                .function("dropLast", returns(Type.OBJECT).params(Type.I), (context) -> {
+                .function("dropLast", returns(Type.LIST).params(Type.I), (context) -> {
                     Iterable<Object> iterable = Objects.requireNonNull(context.getTarget());
                     int n = context.getInt(0);
                     // 如果 n <= 0 保留所有元素
@@ -350,7 +350,7 @@ public class ExtensionIterable {
                     context.setReturnRef(list.subList(0, size - n));
                 })
                 // 并集：合并两个集合，去重
-                .function("union", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("union", returns(Type.LIST).params(Type.LIST), (context) -> {
                     Iterable<Object> first = Objects.requireNonNull(context.getTarget());
                     Iterable<Object> second = Objects.requireNonNull((Iterable<Object>) context.getRef(0));
                     Set<Object> result = toLinkedSet(first);
@@ -360,19 +360,19 @@ public class ExtensionIterable {
                     context.setReturnRef(result);
                 })
                 // 交集：返回两个集合共有的元素
-                .function("intersect", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("intersect", returns(Type.LIST).params(Type.LIST), (context) -> {
                     context.setReturnRef(filterBySet(context, true));
                 })
                 // 差集：从第一个集合中移除第二个集合的元素
-                .function("subtract", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("subtract", returns(Type.LIST).params(Type.LIST), (context) -> {
                     context.setReturnRef(filterBySet(context, false));
                 })
                 // 去重：移除重复元素
-                .function("distinct", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("distinct", returns(Type.LIST).noParams(), (context) -> {
                     context.setReturnRef(toLinkedSet(Objects.requireNonNull(context.getTarget())));
                 })
                 // 根据选择器函数去重
-                .function("distinctBy", returns(Type.OBJECT).params(Type.OBJECT), (context) -> {
+                .function("distinctBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
                     Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
                     Function selector = (Function) context.getRef(0);
                     Set<Object> seenKeys = new LinkedHashSet<>();

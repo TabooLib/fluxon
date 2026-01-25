@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -64,11 +63,12 @@ public class ExtensionCollection {
                     list.clear();
                 })
                 // 转换为字符串 (0-1 params)
-                .function("join", returns(Type.STRING).params(Type.OBJECT), (context) -> {
+                .function("join", returns(Type.STRING).params(Type.STRING), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     String delimiter = ", ";
                     if (context.getArgumentCount() >= 1) {
-                        delimiter = Coerce.asString(Objects.toString(context.getArgBoxed(0), null)).orElse(", ");
+                        String arg = (String) context.getRef(0);
+                        if (arg != null) delimiter = arg;
                     }
                     context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(delimiter)));
                 })

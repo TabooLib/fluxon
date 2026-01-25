@@ -56,17 +56,18 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 }
             }
         }
+        FunctionContextPool pool = interpreter.getPool();
         FunctionContext<?> ctx;
         if (resolvedExt != null) {
             ctx = Intrinsics.prepareCallDirect(
-                    FunctionContextPool.local(),
+                    pool,
                     interpreter.getEnvironment(),
                     resolvedExt,
                     argumentCount
             );
         } else {
             ctx = Intrinsics.prepareCall(
-                    FunctionContextPool.local(),
+                    pool,
                     interpreter.getEnvironment(),
                     result.getFunctionName(),
                     argumentCount,

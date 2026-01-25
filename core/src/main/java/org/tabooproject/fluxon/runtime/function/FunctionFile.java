@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime.function;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -14,24 +13,21 @@ public class FunctionFile {
 
     public static void init(FluxonRuntime runtime) {
         // path(string)
-        runtime.registerFunction("fs:io", "path", returns(Type.OBJECT).params(Type.OBJECT), context -> {
-            context.setReturnRef(Paths.get(Coerce.asString(context.getRef(0)).orElse("")));
+        runtime.registerFunction("fs:io", "path", returns(Type.PATH).params(Type.STRING), context -> {
+            context.setReturnRef(Paths.get((String) context.getRef(0)));
         });
         // path(string, string)
-        runtime.registerFunction("fs:io", "path", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), context -> {
-            context.setReturnRef(Paths.get(
-                    Objects.requireNonNull(Objects.toString(context.getRef(0), null)),
-                    Objects.requireNonNull(Objects.toString(context.getRef(1), null))
-            ));
+        runtime.registerFunction("fs:io", "path", returns(Type.PATH).params(Type.STRING, Type.STRING), context -> {
+            context.setReturnRef(Paths.get((String) context.getRef(0), (String) context.getRef(1)));
         });
         // file(string)
-        runtime.registerFunction("fs:io", "file", returns(Type.OBJECT).params(Type.OBJECT), context -> {
-            context.setReturnRef(new File(Objects.requireNonNull(Objects.toString(context.getRef(0), null))));
+        runtime.registerFunction("fs:io", "file", returns(Type.FILE).params(Type.STRING), context -> {
+            context.setReturnRef(new File((String) context.getRef(0)));
         });
         // file(parent, child)
-        runtime.registerFunction("fs:io", "file", returns(Type.OBJECT).params(Type.OBJECT, Type.OBJECT), context -> {
+        runtime.registerFunction("fs:io", "file", returns(Type.FILE).params(Type.OBJECT, Type.STRING), context -> {
             Object parent = Objects.requireNonNull(context.getRef(0));
-            String child = Objects.requireNonNull(Objects.toString(context.getRef(1), null));
+            String child = (String) context.getRef(1);
             if (parent instanceof File) {
                 context.setReturnRef(new File((File) parent, child));
             } else {

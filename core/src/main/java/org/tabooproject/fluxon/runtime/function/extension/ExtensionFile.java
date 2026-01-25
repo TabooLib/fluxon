@@ -23,19 +23,19 @@ public class ExtensionFile {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(File.class, "fs:io")
-                .function("name", returns(Type.OBJECT).noParams(), context -> {
+                .function("name", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getName());
                 })
-                .function("path", returns(Type.OBJECT).noParams(), context -> {
+                .function("path", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getPath());
                 })
-                .function("absolutePath", returns(Type.OBJECT).noParams(), context -> {
+                .function("absolutePath", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getAbsolutePath());
                 })
-                .function("canonicalPath", returns(Type.OBJECT).noParams(), context -> {
+                .function("canonicalPath", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(file.getCanonicalPath());
@@ -43,15 +43,15 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to get canonical path: " + e.getMessage(), e);
                     }
                 })
-                .function("parent", returns(Type.OBJECT).noParams(), context -> {
+                .function("parent", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getParent());
                 })
-                .function("parentFile", returns(Type.OBJECT).noParams(), context -> {
+                .function("parentFile", returns(Type.FILE).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.getParentFile());
                 })
-                .function("toPath", returns(Type.OBJECT).noParams(), context -> {
+                .function("toPath", returns(Type.PATH).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(file.toPath());
                 })
@@ -105,7 +105,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(file.delete());
                 })
-                .function("deleteOnExit", returns(Type.OBJECT).noParams(), context -> {
+                .function("deleteOnExit", returns(Type.FILE).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     file.deleteOnExit();
                     context.setReturnRef(file);
@@ -116,7 +116,7 @@ public class ExtensionFile {
                     File to = arg instanceof File ? (File) arg : new File(arg.toString());
                     context.setReturnBool(file.renameTo(to));
                 })
-                .function("readText", returns(Type.OBJECT).noParams(), context -> {
+                .function("readText", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try {
                         context.setReturnRef(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
@@ -140,17 +140,17 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
                     }
                 })
-                .function("writeText", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("writeText", returns(Type.FILE).params(Type.STRING), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    String content = Coerce.asString(context.getRef(0)).orElse("");
+                    String content = (String) context.getRef(0);
                     try {
-                        Files.write(file.toPath(), content.getBytes(StandardCharsets.UTF_8));
+                        Files.write(file.toPath(), (content != null ? content : "").getBytes(StandardCharsets.UTF_8));
                         context.setReturnRef(file);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                .function("writeLines", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("writeLines", returns(Type.FILE).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object arg = context.getRef(0);
                     List<String> lines;
@@ -168,7 +168,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                .function("writeBytes", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("writeBytes", returns(Type.FILE).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object arg = context.getRef(0);
                     byte[] bytes;
@@ -186,17 +186,17 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to write file: " + e.getMessage(), e);
                     }
                 })
-                .function("appendText", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("appendText", returns(Type.FILE).params(Type.STRING), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    String content = Coerce.asString(context.getRef(0)).orElse("");
+                    String content = (String) context.getRef(0);
                     try (FileWriter writer = new FileWriter(file, true)) {
-                        writer.write(content);
+                        writer.write(content != null ? content : "");
                         context.setReturnRef(file);
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to append to file: " + e.getMessage(), e);
                     }
                 })
-                .function("copyTo", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("copyTo", returns(Type.FILE).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -207,7 +207,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
                     }
                 })
-                .function("copyTo", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                .function("copyTo", returns(Type.FILE).params(Type.OBJECT, Type.Z), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -223,7 +223,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy file: " + e.getMessage(), e);
                     }
                 })
-                .function("moveTo", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("moveTo", returns(Type.FILE).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -234,7 +234,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to move file: " + e.getMessage(), e);
                     }
                 })
-                .function("moveTo", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                .function("moveTo", returns(Type.FILE).params(Type.OBJECT, Type.Z), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -254,7 +254,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(deleteRecursively(file));
                 })
-                .function("copyRecursively", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("copyRecursively", returns(Type.FILE).params(Type.OBJECT), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -265,7 +265,7 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy recursively: " + e.getMessage(), e);
                     }
                 })
-                .function("copyRecursively", returns(Type.OBJECT).params(Type.OBJECT, Type.Z), context -> {
+                .function("copyRecursively", returns(Type.FILE).params(Type.OBJECT, Type.Z), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
@@ -277,13 +277,13 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to copy recursively: " + e.getMessage(), e);
                     }
                 })
-                .function("extension", returns(Type.OBJECT).noParams(), context -> {
+                .function("extension", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String name = file.getName();
                     int lastDot = name.lastIndexOf('.');
                     context.setReturnRef(lastDot > 0 ? name.substring(lastDot + 1) : "");
                 })
-                .function("nameWithoutExtension", returns(Type.OBJECT).noParams(), context -> {
+                .function("nameWithoutExtension", returns(Type.STRING).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     String name = file.getName();
                     int lastDot = name.lastIndexOf('.');

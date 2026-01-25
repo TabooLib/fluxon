@@ -18,19 +18,19 @@ public class ExtensionClass {
     @SuppressWarnings({"DuplicatedCode", "unchecked"})
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Class.class)
-                .function("name", returns(Type.OBJECT).noParams(), context -> {
+                .function("name", returns(Type.STRING).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getName());
                 })
-                .function("simpleName", returns(Type.OBJECT).noParams(), context -> {
+                .function("simpleName", returns(Type.STRING).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getSimpleName());
                 })
-                .function("canonicalName", returns(Type.OBJECT).noParams(), context -> {
+                .function("canonicalName", returns(Type.STRING).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getCanonicalName());
                 })
-                .function("typeName", returns(Type.OBJECT).noParams(), context -> {
+                .function("typeName", returns(Type.STRING).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getTypeName());
                 });
@@ -64,23 +64,23 @@ public class ExtensionClass {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(clazz.isInstance(context.getRef(0)));
                 })
-                .function("superclass", returns(Type.OBJECT).noParams(), context -> {
+                .function("superclass", returns(Type.CLASS).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getSuperclass());
                 })
-                .function("interfaces", returns(Type.OBJECT).noParams(), context -> {
+                .function("interfaces", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getInterfaces()));
                 })
-                .function("package", returns(Type.OBJECT).noParams(), context -> {
+                .function("package", returns(Type.PACKAGE).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getPackage());
                 })
-                .function("packageName", returns(Type.OBJECT).noParams(), context -> {
+                .function("packageName", returns(Type.STRING).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getPackage().getName());
                 })
-                .function("classLoader", returns(Type.OBJECT).noParams(), context -> {
+                .function("classLoader", returns(Type.CLASS_LOADER).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getClassLoader());
                 })
@@ -112,7 +112,7 @@ public class ExtensionClass {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(Modifier.isStatic(clazz.getModifiers()));
                 })
-                .function("componentType", returns(Type.OBJECT).noParams(), context -> {
+                .function("componentType", returns(Type.CLASS).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(clazz.getComponentType());
                 })
@@ -130,31 +130,31 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
                     }
                 })
-                .function("constructors", returns(Type.OBJECT).noParams(), context -> {
+                .function("constructors", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getConstructors()));
                 })
-                .function("declaredConstructors", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaredConstructors", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getDeclaredConstructors()));
                 })
-                .function("methods", returns(Type.OBJECT).noParams(), context -> {
+                .function("methods", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getMethods()));
                 })
-                .function("declaredMethods", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaredMethods", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getDeclaredMethods()));
                 })
-                .function("fields", returns(Type.OBJECT).noParams(), context -> {
+                .function("fields", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getFields()));
                 })
-                .function("declaredFields", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaredFields", returns(Type.LIST).noParams(), context -> {
                     Class<?> clazz = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(clazz.getDeclaredFields()));
                 })
-                .function("method", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("method", returns(Type.METHOD).params(Type.STRING), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         String methodName = Objects.toString(context.getRef(0), null);
@@ -169,7 +169,7 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to get method: " + e.getMessage(), e);
                     }
                 })
-                .function("declaredMethod", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("declaredMethod", returns(Type.METHOD).params(Type.STRING), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         String methodName = Objects.toString(context.getRef(0), null);
@@ -184,7 +184,7 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to get declared method: " + e.getMessage(), e);
                     }
                 })
-                .function("field", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("field", returns(Type.FIELD).params(Type.STRING), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         String fieldName = Objects.toString(context.getRef(0), null);
@@ -194,7 +194,7 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to get field: " + e.getMessage(), e);
                     }
                 })
-                .function("declaredField", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("declaredField", returns(Type.FIELD).params(Type.STRING), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         String fieldName = Objects.toString(context.getRef(0), null);
@@ -204,7 +204,7 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to get declared field: " + e.getMessage(), e);
                     }
                 })
-                .function("constructor", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("constructor", returns(Type.CONSTRUCTOR).params(Type.LIST), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         List<Object> paramTypes = (List<Object>) context.getRef(0);
@@ -225,7 +225,7 @@ public class ExtensionClass {
                         throw new RuntimeException("Failed to get constructor: " + e.getMessage(), e);
                     }
                 })
-                .function("declaredConstructor", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+                .function("declaredConstructor", returns(Type.CONSTRUCTOR).params(Type.LIST), context -> {
                     try {
                         Class<?> clazz = Objects.requireNonNull(context.getTarget());
                         List<Object> paramTypes = (List<Object>) context.getRef(0);

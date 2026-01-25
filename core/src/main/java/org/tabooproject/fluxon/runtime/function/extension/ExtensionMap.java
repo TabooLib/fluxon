@@ -3,8 +3,10 @@ package org.tabooproject.fluxon.runtime.function.extension;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
@@ -59,22 +61,22 @@ public class ExtensionMap {
                     map.clear();
                 })
                 // 获取所有键
-                .function("keySet", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("keySet", returns(Type.fromClass(Set.class)).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.keySet());
                 })
                 // 获取所有值
-                .function("values", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("values", returns(Type.fromClass(Collection.class)).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.values());
                 })
                 // 获取所有键值对
-                .function("entrySet", returns(Type.OBJECT).noParams(), (context) -> {
+                .function("entrySet", returns(Type.fromClass(Set.class)).noParams(), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(map.entrySet());
                 })
                 // 添加所有键值对
-                .function("putAll", returns(Type.VOID).params(Type.OBJECT), (context) -> {
+                .function("putAll", returns(Type.VOID).params(Type.MAP), (context) -> {
                     Map<Object, Object> map = Objects.requireNonNull(context.getTarget());
                     Map<Object, Object> otherMap = (Map<Object, Object>) context.getRef(0);
                     if (otherMap != null) {

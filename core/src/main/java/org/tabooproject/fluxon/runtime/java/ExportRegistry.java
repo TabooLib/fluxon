@@ -78,30 +78,16 @@ public class ExportRegistry {
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
                 context.setReturnRef(bridge.invoke(methodName, target, args));
             };
-            int paramCount = method.getParameterCount();
-            Type[] paramTypes = new Type[paramCount];
-            Arrays.fill(paramTypes, Type.OBJECT);
-            FunctionSignature signature = FunctionSignature.returnsObject().params(paramTypes);
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            Type[] paramTypes = new Type[parameterTypes.length];
+            for (int i = 0; i < parameterTypes.length; i++) {
+                paramTypes[i] = Type.fromClass(parameterTypes[i]);
+            }
+            FunctionSignature signature = FunctionSignature.returns(Type.fromClass(method.getReturnType())).params(paramTypes);
             boolean isAsync = exportMethod.isAsync();
             boolean isSync = exportMethod.isSync();
             runtime.registerExtensionFunction(clazz, namespace, methodName, signature, callable, isAsync, isSync);
         }
-    }
-
-    private List<Integer> analyzeMethodParameterCounts(Method method) {
-        Parameter[] parameters = method.getParameters();
-        int requiredCount = 0;
-        int totalCount = parameters.length;
-        for (int i = 0; i < parameters.length; i++) {
-            if (!parameters[i].isAnnotationPresent(Optional.class)) {
-                requiredCount = i + 1;
-            }
-        }
-        List<Integer> counts = new ArrayList<>();
-        for (int i = requiredCount; i <= totalCount; i++) {
-            counts.add(i);
-        }
-        return counts;
     }
 
     private ExportMethod[] convertToExportMethods(Method[] methods) {

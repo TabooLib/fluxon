@@ -9,8 +9,8 @@ public class ExtensionThrowable {
 
     public static void init(FluxonRuntime runtime) {
         runtime.registerExtension(Throwable.class)
-                .function("message", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getMessage()))
-                .function("localizedMessage", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
+                .function("message", returns(Type.STRING).noParams(), context -> context.setReturnRef(context.getTarget().getMessage()))
+                .function("localizedMessage", returns(Type.STRING).noParams(), context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
                 .function("cause", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getCause()))
                 .function("printStackTrace", returns(Type.VOID).noParams(), context -> context.getTarget().printStackTrace());
     }

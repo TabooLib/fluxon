@@ -33,9 +33,8 @@ public class FunctionSystem {
                 throw new RuntimeException("Sleep function interrupted", e);
             }
         });
-        runtime.registerFunction("forName", returns(Type.CLASS).params(Type.OBJECT), context -> {
-            Object arg = context.getRef(0);
-            String className = arg != null ? arg.toString() : null;
+        runtime.registerFunction("forName", returns(Type.CLASS).params(Type.STRING), context -> {
+            String className = (String) context.getRef(0);
             try {
                 context.setReturnRef(Class.forName(className));
             } catch (ClassNotFoundException e) {

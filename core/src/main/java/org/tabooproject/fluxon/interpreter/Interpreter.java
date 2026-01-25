@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
@@ -32,6 +33,9 @@ public class Interpreter {
     // 当前环境
     @NotNull
     private Environment environment;
+    // 线程本地 FunctionContextPool 缓存
+    @NotNull
+    private final FunctionContextPool pool;
     // 缓存 lambda -> UserFunction，避免循环中重复创建实例
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
     // 变量类型映射（position -> Type），用于类型感知的变量读写
@@ -39,6 +43,7 @@ public class Interpreter {
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
+        this.pool = FunctionContextPool.local();
     }
 
     /**
@@ -192,6 +197,14 @@ public class Interpreter {
     @NotNull
     public Environment getEnvironment() {
         return environment;
+    }
+
+    /**
+     * 获取 FunctionContextPool
+     */
+    @NotNull
+    public FunctionContextPool getPool() {
+        return pool;
     }
 
     /**

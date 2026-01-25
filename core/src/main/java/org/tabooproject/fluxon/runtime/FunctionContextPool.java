@@ -36,18 +36,8 @@ public final class FunctionContextPool {
      * 从线程本地池借用一个 FunctionContext 实例
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
-        FunctionContext<?> context = tryReclaimPending();
-        if (context != null) {
-            context.reset(function, target, refs, environment);
-            return context;
-        }
-        if (size > 0) {
-            context = pool[--size];
-            pool[size] = null;
-            context.reset(function, target, refs, environment);
-        } else {
-            context = new FunctionContext<>(function, target, refs, environment, this);
-        }
+        FunctionContext<?> context = pollOrCreate(function, target, refs, environment);
+        context.reset(function, target, refs, environment);
         return context;
     }
 
@@ -55,19 +45,29 @@ public final class FunctionContextPool {
      * 从线程本地池借用一个 FunctionContext 实例（按参数数量，不分配 Object[] 参数数组）
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, int argCount, @NotNull Environment environment) {
-        FunctionContext<?> context = tryReclaimPending();
-        if (context != null) {
-            context.reset(function, target, argCount, environment);
+        Object[] refs = argCount > 0 ? new Object[argCount] : EMPTY_REFS;
+        FunctionContext<?> context = pollOrCreate(function, target, refs, environment);
+        context.reset(function, target, argCount, environment);
+        return context;
+    }
+
+    /**
+     * 从池中获取或创建新的 context
+     */
+    private FunctionContext<?> pollOrCreate(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
+        // 优先从本地池获取（无锁）
+        if (size > 0) {
+            FunctionContext<?> context = pool[--size];
+            pool[size] = null;
             return context;
         }
-        if (size > 0) {
-            context = pool[--size];
-            pool[size] = null;
-            context.reset(function, target, argCount, environment);
-        } else {
-            context = new FunctionContext<>(function, target, argCount > 0 ? new Object[argCount] : EMPTY_REFS, environment, this);
+        // 本地池为空，尝试从跨线程归还队列回收
+        FunctionContext<?> context = pendingReturns.poll();
+        if (context != null) {
+            return context;
         }
-        return context;
+        // 都没有，新建
+        return new FunctionContext<>(function, target, refs, environment, this);
     }
 
     /**
@@ -104,12 +104,5 @@ public final class FunctionContextPool {
         }
         context.clearForPooling();
         pendingReturns.offer(context);
-    }
-
-    /**
-     * 尝试从跨线程归还队列回收一个 context
-     */
-    private FunctionContext<?> tryReclaimPending() {
-        return pendingReturns.poll();
     }
 }

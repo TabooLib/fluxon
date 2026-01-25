@@ -16,14 +16,14 @@ public class FunctionType {
             Object arg = context.getArgBoxed(0);
             context.setReturnRef(arg != null ? arg.toString() : null);
         });
-        runtime.registerFunction("int", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asInteger(context.getArgBoxed(0)).orElse(0)));
-        runtime.registerFunction("intOrNull", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asInteger(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("long", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asLong(context.getArgBoxed(0)).orElse(0L)));
-        runtime.registerFunction("longOrNull", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asLong(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("float", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asFloat(context.getArgBoxed(0)).orElse(0f)));
-        runtime.registerFunction("floatOrNull", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asFloat(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("double", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asDouble(context.getArgBoxed(0)).orElse(0d)));
-        runtime.registerFunction("doubleOrNull", returns(Type.OBJECT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asDouble(context.getArgBoxed(0)).orElse(null)));
+        runtime.registerFunction("int", returns(Type.I).params(Type.OBJECT), context -> context.setReturnInt(Coerce.asInteger(context.getArgBoxed(0)).orElse(0)));
+        runtime.registerFunction("intOrNull", returns(Type.INT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asInteger(context.getArgBoxed(0)).orElse(null)));
+        runtime.registerFunction("long", returns(Type.J).params(Type.OBJECT), context -> context.setReturnLong(Coerce.asLong(context.getArgBoxed(0)).orElse(0L)));
+        runtime.registerFunction("longOrNull", returns(Type.LONG).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asLong(context.getArgBoxed(0)).orElse(null)));
+        runtime.registerFunction("float", returns(Type.F).params(Type.OBJECT), context -> context.setReturnFloat(Coerce.asFloat(context.getArgBoxed(0)).orElse(0f)));
+        runtime.registerFunction("floatOrNull", returns(Type.FLOAT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asFloat(context.getArgBoxed(0)).orElse(null)));
+        runtime.registerFunction("double", returns(Type.D).params(Type.OBJECT), context -> context.setReturnDouble(Coerce.asDouble(context.getArgBoxed(0)).orElse(0d)));
+        runtime.registerFunction("doubleOrNull", returns(Type.DOUBLE).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asDouble(context.getArgBoxed(0)).orElse(null)));
 
         // 集合转换为数组
         runtime.registerFunction("array", returns(Type.OBJECT).params(Type.OBJECT), context -> {
@@ -33,14 +33,14 @@ public class FunctionType {
             }
         });
         // 将数组转换为集合
-        runtime.registerFunction("list", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+        runtime.registerFunction("list", returns(Type.LIST).params(Type.OBJECT), context -> {
             Object arg = context.getRef(0);
             if (arg instanceof Object[]) {
                 context.setReturnRef(Arrays.asList((Object[]) arg));
             }
         });
         // 将数组转换为可变集合
-        runtime.registerFunction("mutableList", returns(Type.OBJECT).params(Type.OBJECT), context -> {
+        runtime.registerFunction("mutableList", returns(Type.LIST).params(Type.OBJECT), context -> {
             Object arg = context.getRef(0);
             if (arg instanceof Object[]) {
                 Object[] array = (Object[]) arg;

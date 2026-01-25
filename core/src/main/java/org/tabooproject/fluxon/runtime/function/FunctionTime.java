@@ -17,7 +17,7 @@ public class FunctionTime {
         // 获取当前时间戳（毫秒）
         runtime.registerFunction("now", returns(Type.J).noParams(), context -> context.setReturnLong(System.currentTimeMillis()));
         // 获取时间对象
-        runtime.registerFunction("fs:time", "time", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(TimeObject.INSTANCE));
+        runtime.registerFunction("fs:time", "time", returns(TimeObject.TYPE).noParams(), context -> context.setReturnRef(TimeObject.INSTANCE));
         // 注册时间相关的对象实例
         runtime.getExportRegistry().registerClass(TimeObject.class, "fs:time");
     }
@@ -25,6 +25,7 @@ public class FunctionTime {
     public static class TimeObject {
 
         public static final TimeObject INSTANCE = new TimeObject();
+        public static final Type TYPE = Type.fromClass(TimeObject.class);
 
         // 基础时间函数
         @Export

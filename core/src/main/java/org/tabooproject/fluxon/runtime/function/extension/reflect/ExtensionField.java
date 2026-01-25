@@ -33,11 +33,11 @@ public class ExtensionField {
                         throw new RuntimeException("Failed to set field value: " + e.getMessage(), e);
                     }
                 })
-                .function("name", returns(Type.OBJECT).noParams(), context -> {
+                .function("name", returns(Type.STRING).noParams(), context -> {
                     Field field = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(field.getName());
                 })
-                .function("type", returns(Type.OBJECT).noParams(), context -> {
+                .function("type", returns(Type.CLASS).noParams(), context -> {
                     Field field = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(field.getType());
                 })
@@ -82,7 +82,7 @@ public class ExtensionField {
                     Field field = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(Modifier.isTransient(field.getModifiers()));
                 })
-                .function("declaringClass", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaringClass", returns(Type.CLASS).noParams(), context -> {
                     Field field = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(field.getDeclaringClass());
                 })

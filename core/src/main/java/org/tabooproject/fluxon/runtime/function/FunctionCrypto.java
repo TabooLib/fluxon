@@ -20,10 +20,10 @@ import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 public class FunctionCrypto {
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerFunction("fs:crypto", "hash", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(HashObject.INSTANCE));
-        runtime.registerFunction("fs:crypto", "base64", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(Base64Object.INSTANCE));
-        runtime.registerFunction("fs:crypto", "unicode", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(UnicodeObject.INSTANCE));
-        runtime.registerFunction("fs:crypto", "hex", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(HexObject.INSTANCE));
+        runtime.registerFunction("fs:crypto", "hash", returns(HashObject.TYPE).noParams(), context -> context.setReturnRef(HashObject.INSTANCE));
+        runtime.registerFunction("fs:crypto", "base64", returns(Base64Object.TYPE).noParams(), context -> context.setReturnRef(Base64Object.INSTANCE));
+        runtime.registerFunction("fs:crypto", "unicode", returns(UnicodeObject.TYPE).noParams(), context -> context.setReturnRef(UnicodeObject.INSTANCE));
+        runtime.registerFunction("fs:crypto", "hex", returns(HexObject.TYPE).noParams(), context -> context.setReturnRef(HexObject.INSTANCE));
 
         ExportRegistry exportRegistry = runtime.getExportRegistry();
         exportRegistry.registerClass(HashObject.class, "fs:crypto");
@@ -35,6 +35,7 @@ public class FunctionCrypto {
     public static class HashObject {
 
         public static final HashObject INSTANCE = new HashObject();
+        public static final Type TYPE = new Type(HashObject.class);
 
         @Export
         public String md5(String input) {
@@ -65,6 +66,7 @@ public class FunctionCrypto {
     public static class Base64Object {
 
         public static final Base64Object INSTANCE = new Base64Object();
+        public static final Type TYPE = new Type(Base64Object.class);
 
         @Export
         public String encode(String input, @Optional String charset) {
@@ -94,6 +96,7 @@ public class FunctionCrypto {
     public static class UnicodeObject {
 
         public static final UnicodeObject INSTANCE = new UnicodeObject();
+        public static final Type TYPE = new Type(UnicodeObject.class);
 
         @Export
         public String encode(String input) {
@@ -109,6 +112,7 @@ public class FunctionCrypto {
     public static class HexObject {
 
         public static final HexObject INSTANCE = new HexObject();
+        public static final Type TYPE = new Type(HexObject.class);
 
         @Export
         public String encode(String input) {

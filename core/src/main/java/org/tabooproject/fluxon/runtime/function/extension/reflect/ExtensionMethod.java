@@ -32,15 +32,15 @@ public class ExtensionMethod {
                         throw new RuntimeException("Failed to invoke method: " + e.getMessage(), e);
                     }
                 })
-                .function("name", returns(Type.OBJECT).noParams(), context -> {
+                .function("name", returns(Type.STRING).noParams(), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(method.getName());
                 })
-                .function("parameterTypes", returns(Type.OBJECT).noParams(), context -> {
+                .function("parameterTypes", returns(Type.LIST).noParams(), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(method.getParameterTypes()));
                 })
-                .function("returnType", returns(Type.OBJECT).noParams(), context -> {
+                .function("returnType", returns(Type.CLASS).noParams(), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(method.getReturnType());
                 })
@@ -81,7 +81,7 @@ public class ExtensionMethod {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(Modifier.isAbstract(method.getModifiers()));
                 })
-                .function("declaringClass", returns(Type.OBJECT).noParams(), context -> {
+                .function("declaringClass", returns(Type.CLASS).noParams(), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(method.getDeclaringClass());
                 })
@@ -89,7 +89,7 @@ public class ExtensionMethod {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnInt(method.getParameterCount());
                 })
-                .function("exceptionTypes", returns(Type.OBJECT).noParams(), context -> {
+                .function("exceptionTypes", returns(Type.LIST).noParams(), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(Arrays.asList(method.getExceptionTypes()));
                 })
