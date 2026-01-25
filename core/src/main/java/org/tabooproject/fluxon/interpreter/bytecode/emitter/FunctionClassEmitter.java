@@ -229,7 +229,8 @@ public class FunctionClassEmitter extends ClassEmitter {
                 mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getFloat", "(" + I + ")" + F, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(" + I + F + ")V", false);
             } else {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getRef", "(" + I + ")" + OBJECT, false);
+                // 无类型声明时使用 getArgBoxed，根据 argTypes 自动选择 refs 或 primitives
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")V", false);
             }
         }

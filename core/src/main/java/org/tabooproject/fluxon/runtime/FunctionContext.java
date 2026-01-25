@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 
+import java.util.Arrays;
+
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
@@ -199,6 +201,7 @@ public class FunctionContext<Target> implements AutoCloseable {
     }
 
     public Object getArgBoxed(int index) {
+        if (index >= argumentCount) return null; // 参数不存在时返回 null
         byte t = index < argTypes.length ? argTypes[index] : 0;
         if (t == 0) return refs[index];
         switch (t) {
@@ -323,6 +326,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         this.target = (Target) target;
         this.refs = refs;
         this.argumentCount = refs.length;
+        this.argTypes = EMPTY_ARG_TYPES; // 通过 refs 传参时，所有参数都是引用类型
         this.environment = environment;
         this.returnPrimitive = 0;
         this.returnRef = null;
@@ -359,19 +363,19 @@ public class FunctionContext<Target> implements AutoCloseable {
 
     @SuppressWarnings("DataFlowIssue")
     void clearForPooling() {
-        // 清除引用，但保留数组缓冲区以便复用
-        int count = argumentCount;
-        Object[] r = refs;
-        for (int i = 0; i < count; i++) {
-            r[i] = null;
+        if (argumentCount > 0) {
+            Arrays.fill(refs, 0, argumentCount, null);
         }
-        this.argumentCount = 0;
+        // 仅重置必要的引用字段
         this.target = null;
         this.environment = null;
-        this.returnPrimitive = 0;
         this.returnRef = null;
-        this.returnType = null;
         this.interpreter = null;
+        this.returnType = null;
+        // 基本类型字段完全不需要清零
+        // primitives[], argTypes[], returnPrimitive 等留着旧数据没关系
+        // 只要 reset 时重置了 argumentCount，读取逻辑就不会越界访问到旧数据
+        this.argumentCount = 0;
     }
 
     private void ensurePrimitivesCapacity(int index) {

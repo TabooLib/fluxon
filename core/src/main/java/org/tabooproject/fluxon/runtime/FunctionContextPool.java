@@ -84,10 +84,13 @@ public final class FunctionContextPool {
         if (context == null) {
             return;
         }
-        context.clearForPooling();
+        // 如果满了直接丢弃对象
+        // 不需要做任何清理（GC 会回收它）
         if (size >= MAX_POOL_SIZE) {
             return;
         }
+        // 只有确定要入池，才进行清理
+        context.clearForPooling();
         pool[size++] = context;
     }
 

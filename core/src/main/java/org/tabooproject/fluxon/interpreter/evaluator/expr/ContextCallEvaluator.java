@@ -110,6 +110,11 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
 
         // 在新环境中求值上下文表达式
         Type resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
+        // 安全调用时需要装箱，确保与 null 分支的栈帧类型一致
+        if (endLabel != null && resultType.isPrimitive()) {
+            boxing(resultType, mv);
+            resultType = Type.OBJECT;
+        }
 
         // 恢复原来的 target - 调用 environment.setTarget(oldTarget)
         // 结果在栈底，setTarget 不会影响它

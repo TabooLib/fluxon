@@ -45,32 +45,34 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
             throw new EvaluatorNotFoundError("No evaluator found for operands");
         }
 
+        Label altLabel = new Label();
         Label endLabel = new Label();
         Type conditionType = conditionEval.generateBytecode(result.getCondition(), ctx, mv);
         if (conditionType == Type.VOID) {
             throw new VoidError("Void type is not allowed for elvis condition");
         }
-        boxing(conditionType, mv);
+        // 装箱 condition
+        if (conditionType.isPrimitive()) {
+            boxing(conditionType, mv);
+        }
 
         // 检查是否为 null
         mv.visitInsn(DUP);
-        mv.visitJumpInsn(IFNONNULL, endLabel);
+        mv.visitJumpInsn(IFNULL, altLabel);
+        // 不为 null，跳转到结束
+        mv.visitJumpInsn(GOTO, endLabel);
 
         // 为 null 时执行替代表达式
+        mv.visitLabel(altLabel);
         mv.visitInsn(POP);
         Type alternativeType = alternativeEval.generateBytecode(result.getAlternative(), ctx, mv);
         if (alternativeType == Type.VOID) {
             mv.visitInsn(ACONST_NULL);
-            alternativeType = Type.OBJECT;
-        } else {
+        } else if (alternativeType.isPrimitive()) {
             boxing(alternativeType, mv);
         }
 
         mv.visitLabel(endLabel);
-
-        if (conditionType == alternativeType) {
-            return conditionType;
-        }
         return Type.OBJECT;
     }
 
