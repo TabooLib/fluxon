@@ -29,6 +29,8 @@ public class FunctionCallExpression extends Expression {
     // 预解析扩展函数的目标类型（用于编译期优化）
     @Nullable
     private Class<?> resolvedTargetClass;
+    // 预解析扩展函数在 OverloadSet 中的索引
+    private int resolvedOverloadIndex = -1;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -69,9 +71,10 @@ public class FunctionCallExpression extends Expression {
     /**
      * 设置预解析扩展函数的元信息（用于编译期优化）
      */
-    public void setResolvedExtensionInfo(int dispatchTableIndex, @Nullable Class<?> targetClass) {
+    public void setResolvedExtensionInfo(int dispatchTableIndex, @Nullable Class<?> targetClass, int overloadIndex) {
         this.resolvedDispatchTableIndex = dispatchTableIndex;
         this.resolvedTargetClass = targetClass;
+        this.resolvedOverloadIndex = overloadIndex;
     }
 
     /**
@@ -87,6 +90,13 @@ public class FunctionCallExpression extends Expression {
     @Nullable
     public Class<?> getResolvedTargetClass() {
         return resolvedTargetClass;
+    }
+
+    /**
+     * 获取预解析扩展函数在 OverloadSet 中的索引
+     */
+    public int getResolvedOverloadIndex() {
+        return resolvedOverloadIndex;
     }
 
     /**

@@ -54,9 +54,11 @@ public class CodeContext {
     public static class ResolvedExtFuncInfo {
         public final int dispatchTableIndex;
         public final Class<?> targetClass;
-        public ResolvedExtFuncInfo(int dispatchTableIndex, Class<?> targetClass) {
+        public final int overloadIndex;
+        public ResolvedExtFuncInfo(int dispatchTableIndex, Class<?> targetClass, int overloadIndex) {
             this.dispatchTableIndex = dispatchTableIndex;
             this.targetClass = targetClass;
+            this.overloadIndex = overloadIndex;
         }
     }
 
@@ -294,18 +296,19 @@ public class CodeContext {
      * 添加预解析的扩展函数到常量池
      * @param dispatchTableIndex 派发表索引
      * @param targetClass 目标类型
+     * @param overloadIndex 重载索引
      * @return 函数在常量池中的索引
      */
-    public int addResolvedExtensionFunction(int dispatchTableIndex, Class<?> targetClass) {
+    public int addResolvedExtensionFunction(int dispatchTableIndex, Class<?> targetClass, int overloadIndex) {
         // 检查是否已存在相同的组合
         for (int i = 0; i < resolvedExtensionFunctions.size(); i++) {
             ResolvedExtFuncInfo info = resolvedExtensionFunctions.get(i);
-            if (info.dispatchTableIndex == dispatchTableIndex && info.targetClass == targetClass) {
+            if (info.dispatchTableIndex == dispatchTableIndex && info.targetClass == targetClass && info.overloadIndex == overloadIndex) {
                 return i;
             }
         }
         int index = resolvedExtensionFunctions.size();
-        resolvedExtensionFunctions.add(new ResolvedExtFuncInfo(dispatchTableIndex, targetClass));
+        resolvedExtensionFunctions.add(new ResolvedExtFuncInfo(dispatchTableIndex, targetClass, overloadIndex));
         return index;
     }
 

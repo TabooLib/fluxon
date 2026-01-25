@@ -314,7 +314,7 @@ public final class Intrinsics {
      * 解析函数引用，若找不到则抛出 FunctionNotFoundError
      */
     public static Function resolveFunction(Environment environment, Object target, String name, int argCount, int pos, int exPos) {
-        Function function = resolveFunctionOrNull(environment, target, name, pos, exPos);
+        Function function = resolveFunctionOrNull(environment, target, name, argCount, pos, exPos);
         if (function == null) {
             throw new FunctionNotFoundError(environment, target, name, argCount, pos, exPos);
         }
@@ -325,10 +325,10 @@ public final class Intrinsics {
      * 尝试解析函数引用，若找不到则返回 null
      * 编译期已确定 pos，运行时直接用位置获取
      */
-    private static Function resolveFunctionOrNull(Environment environment, Object target, String name, int pos, int exPos) {
+    private static Function resolveFunctionOrNull(Environment environment, Object target, String name, int argCount, int pos, int exPos) {
         Function function = null;
         if (target != null && target != GlobalObject.INSTANCE && exPos != -1) {
-            function = environment.getExtensionFunctionOrNull(target.getClass(), exPos);
+            function = environment.getExtensionFunctionOrNull(target.getClass(), exPos, argCount);
         }
         if (function == null) {
             if (pos != -1) {

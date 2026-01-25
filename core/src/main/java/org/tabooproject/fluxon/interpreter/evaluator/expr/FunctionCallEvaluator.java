@@ -48,10 +48,16 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 Object target = interpreter.getEnvironment().getTarget();
                 if (target != null) {
                     ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
-                    resolvedExt = dispatchTable.resolve(target.getClass());
-                    if (resolvedExt != null) {
-                        result.setResolvedExtensionFunction(resolvedExt);
-                        result.setResolvedExtensionInfo(extPos.getIndex(), target.getClass());
+                    // 使用参数数量解析正确的重载
+                    Type[] argTypes = new Type[argumentCount];
+                    OverloadSet overloadSet = dispatchTable.resolveOverloadSet(target.getClass());
+                    if (overloadSet != null) {
+                        resolvedExt = overloadSet.resolve(argTypes);
+                        if (resolvedExt != null) {
+                            int overloadIndex = overloadSet.indexOf(resolvedExt);
+                            result.setResolvedExtensionFunction(resolvedExt);
+                            result.setResolvedExtensionInfo(extPos.getIndex(), target.getClass(), overloadIndex);
+                        }
                     }
                 }
             }
@@ -157,7 +163,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         Function resolvedExt = result.getResolvedExtensionFunction();
         if (resolvedExt != null && result.getResolvedTargetClass() != null) {
             // 编译期已解析扩展函数，使用 prepareCallDirect
-            int funcSlot = ctx.addResolvedExtensionFunction(result.getResolvedDispatchTableIndex(), result.getResolvedTargetClass());
+            int funcSlot = ctx.addResolvedExtensionFunction(result.getResolvedDispatchTableIndex(), result.getResolvedTargetClass(), result.getResolvedOverloadIndex());
             Instructions.loadPool(mv, ctx);
             Instructions.loadEnvironment(mv, ctx);
             mv.visitFieldInsn(GETSTATIC, ctx.getInternalName(), "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor());
@@ -327,10 +333,14 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             Type targetType = analyzer.getCurrentTargetType();
             if (targetType != null && targetType.getSource() != null && targetType.getSource() != Object.class) {
                 ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
-                Function resolved = dispatchTable.resolve(targetType.getSource());
-                if (resolved != null) {
-                    result.setResolvedExtensionFunction(resolved);
-                    result.setResolvedExtensionInfo(extPos.getIndex(), targetType.getSource());
+                OverloadSet overloadSet = dispatchTable.resolveOverloadSet(targetType.getSource());
+                if (overloadSet != null) {
+                    Function resolved = overloadSet.resolve(argTypes);
+                    if (resolved != null) {
+                        int overloadIndex = overloadSet.indexOf(resolved);
+                        result.setResolvedExtensionFunction(resolved);
+                        result.setResolvedExtensionInfo(extPos.getIndex(), targetType.getSource(), overloadIndex);
+                    }
                 }
             }
         }
@@ -360,16 +370,19 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         }
         // 尝试从扩展函数推断返回类型（回退：统一类型检查）
         ExtensionFunctionPosition extPos = result.getExtensionPosition();
-        if (extPos != null && extPos.getFunctions() != null) {
-            Map<Class<?>, Function> functions = extPos.getFunctions();
+        if (extPos != null && extPos.getOverloadSets() != null) {
+            Map<Class<?>, OverloadSet> overloadSets = extPos.getOverloadSets();
             Type commonType = null;
-            for (Function func : functions.values()) {
-                Type rt = func.getReturnType();
-                if (commonType == null) {
-                    commonType = rt;
-                } else if (!commonType.equals(rt)) {
-                    // 返回类型不一致，无法推断
-                    return Type.OBJECT;
+            for (OverloadSet set : overloadSets.values()) {
+                Function func = set.resolve(argTypes);
+                if (func != null) {
+                    Type rt = func.getReturnType();
+                    if (commonType == null) {
+                        commonType = rt;
+                    } else if (!commonType.equals(rt)) {
+                        // 返回类型不一致，无法推断
+                        return Type.OBJECT;
+                    }
                 }
             }
             if (commonType != null) {

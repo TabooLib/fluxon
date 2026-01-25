@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 用于优化扩展函数解析，通过预计算和分流策略减少运行时开销
  * <p>
  * 分流策略:
- * 1. 单候选快速路径: 直接存储 class/function，只做 == 和 isAssignableFrom 判断
+ * 1. 单候选快速路径: 直接存储 class/overloadSet，只做 == 和 isAssignableFrom 判断
  * 2. 小候选数组路径: 候选数 <= 6 时用数组单趟扫描，同时处理精确匹配和可赋值回退
  * 3. 大候选 Map 路径: 候选数 > 6 时启用 HashMap 精确匹配 + ConcurrentHashMap 缓存
  */
@@ -20,7 +20,7 @@ public final class ExtensionDispatchTable {
     /**
      * 缓存标记：未命中时的占位符
      */
-    private static final Function NOT_FOUND_SENTINEL = new NativeFunction<>(null, null, ctx -> {});
+    private static final OverloadSet NOT_FOUND_SENTINEL = new OverloadSet("__NOT_FOUND__");
 
     /**
      * 启用 Map + 缓存的阈值：候选数量超过此值时才启用
@@ -29,79 +29,128 @@ public final class ExtensionDispatchTable {
 
     /** 单候选时的目标类型 */
     private final Class<?> singleClass;
-    /** 单候选时的函数 */
-    private final Function singleFunction;
+    /** 单候选时的重载集合 */
+    private final OverloadSet singleOverloadSet;
 
     /** 候选类型数组（用于小候选场景） */
     private final Class<?>[] candidateClasses;
-    /** 候选函数数组（用于小候选场景） */
-    private final Function[] candidateFunctions;
+    /** 候选重载集合数组（用于小候选场景） */
+    private final OverloadSet[] candidateOverloadSets;
 
     /** 精确类型匹配表（仅大候选场景） */
-    private final Map<Class<?>, Function> exactMatches;
+    private final Map<Class<?>, OverloadSet> exactMatches;
     /** 可赋值匹配缓存（仅大候选场景） */
-    private final ConcurrentHashMap<Class<?>, Function> assignableCache;
+    private final ConcurrentHashMap<Class<?>, OverloadSet> assignableCache;
 
     /**
      * 构造派发表
      *
      * @param exactMatches 精确匹配表（来自注册）
      * @param candidateClasses 候选类型数组
-     * @param candidateFunctions 候选函数数组
+     * @param candidateOverloadSets 候选重载集合数组
      */
     public ExtensionDispatchTable(
-            @NotNull Map<Class<?>, Function> exactMatches,
+            @NotNull Map<Class<?>, OverloadSet> exactMatches,
             @NotNull Class<?>[] candidateClasses,
-            @NotNull Function[] candidateFunctions) {
+            @NotNull OverloadSet[] candidateOverloadSets) {
         int count = candidateClasses.length;
 
         if (count == 0) {
             // 无候选
             this.singleClass = null;
-            this.singleFunction = null;
+            this.singleOverloadSet = null;
             this.candidateClasses = null;
-            this.candidateFunctions = null;
+            this.candidateOverloadSets = null;
             this.exactMatches = null;
             this.assignableCache = null;
         } else if (count == 1) {
             // 单候选快速路径
             this.singleClass = candidateClasses[0];
-            this.singleFunction = candidateFunctions[0];
+            this.singleOverloadSet = candidateOverloadSets[0];
             this.candidateClasses = null;
-            this.candidateFunctions = null;
+            this.candidateOverloadSets = null;
             this.exactMatches = null;
             this.assignableCache = null;
         } else if (count <= MAP_THRESHOLD) {
             // 小候选数组路径
             this.singleClass = null;
-            this.singleFunction = null;
+            this.singleOverloadSet = null;
             this.candidateClasses = candidateClasses;
-            this.candidateFunctions = candidateFunctions;
+            this.candidateOverloadSets = candidateOverloadSets;
             this.exactMatches = null;
             this.assignableCache = null;
         } else {
             // 大候选 Map 路径
             this.singleClass = null;
-            this.singleFunction = null;
+            this.singleOverloadSet = null;
             this.candidateClasses = candidateClasses;
-            this.candidateFunctions = candidateFunctions;
+            this.candidateOverloadSets = candidateOverloadSets;
             this.exactMatches = exactMatches;
             this.assignableCache = new ConcurrentHashMap<>();
         }
     }
 
     /**
-     * 解析目标类型对应的扩展函数
+     * 解析目标类型对应的扩展函数（基于参数类型选择重载）
      *
      * @param targetClass 目标对象的类型
+     * @param argTypes 参数类型数组
      * @return 匹配的函数，如果没有找到则返回 null
      */
     @Nullable
-    public Function resolve(@NotNull Class<?> targetClass) {
+    public Function resolve(@NotNull Class<?> targetClass, @Nullable Type[] argTypes) {
+        OverloadSet overloadSet = resolveOverloadSet(targetClass);
+        if (overloadSet == null) {
+            return null;
+        }
+        return overloadSet.resolve(argTypes != null ? argTypes : new Type[0]);
+    }
+
+    /**
+     * 解析目标类型对应的扩展函数（基于参数数量选择重载）
+     *
+     * @param targetClass 目标对象的类型
+     * @param argCount 参数数量
+     * @return 匹配的函数，如果没有找到则返回 null
+     */
+    @Nullable
+    public Function resolve(@NotNull Class<?> targetClass, int argCount) {
+        OverloadSet overloadSet = resolveOverloadSet(targetClass);
+        if (overloadSet == null) {
+            return null;
+        }
+        return overloadSet.resolveByArgCount(argCount);
+    }
+
+    /**
+     * 根据索引直接获取扩展函数（用于编译后代码）
+     *
+     * @param targetClass 目标对象的类型
+     * @param overloadIndex 重载索引
+     * @return 匹配的函数，如果没有找到则返回 null
+     */
+    @Nullable
+    public Function resolveByIndex(@NotNull Class<?> targetClass, int overloadIndex) {
+        OverloadSet overloadSet = resolveOverloadSet(targetClass);
+        if (overloadSet == null) {
+            return null;
+        }
+        return overloadSet.get(overloadIndex);
+    }
+
+
+    /**
+     * 解析目标类型对应的重载集合
+     *
+     * @param targetClass 目标对象的类型
+     * @return 匹配的重载集合，如果没有找到则返回 null
+     */
+    @Nullable
+    public OverloadSet resolveOverloadSet(@NotNull Class<?> targetClass) {
         // 单候选快速路径
         if (singleClass != null) {
             if (singleClass == targetClass || singleClass.isAssignableFrom(targetClass)) {
-                return singleFunction;
+                return singleOverloadSet;
             }
             return null;
         }
@@ -122,16 +171,16 @@ public final class ExtensionDispatchTable {
      * 同时处理精确匹配和可赋值回退，避免两次遍历
      */
     @Nullable
-    private Function resolveSmallCandidates(@NotNull Class<?> targetClass) {
-        Function assignable = null;
+    private OverloadSet resolveSmallCandidates(@NotNull Class<?> targetClass) {
+        OverloadSet assignable = null;
         if (candidateClasses != null) {
             for (int i = 0; i < candidateClasses.length; i++) {
                 Class<?> c = candidateClasses[i];
-                if (c == targetClass && candidateFunctions != null) {
-                    return candidateFunctions[i];
+                if (c == targetClass && candidateOverloadSets != null) {
+                    return candidateOverloadSets[i];
                 }
-                if (assignable == null && c.isAssignableFrom(targetClass) && candidateFunctions != null) {
-                    assignable = candidateFunctions[i];
+                if (assignable == null && c.isAssignableFrom(targetClass) && candidateOverloadSets != null) {
+                    assignable = candidateOverloadSets[i];
                 }
             }
         }
@@ -142,9 +191,9 @@ public final class ExtensionDispatchTable {
      * 大候选 Map 路径：HashMap 精确匹配 + ConcurrentHashMap 缓存
      */
     @Nullable
-    private Function resolveLargeCandidates(@NotNull Class<?> targetClass) {
+    private OverloadSet resolveLargeCandidates(@NotNull Class<?> targetClass) {
         // 精确匹配: O(1)
-        Function exact = null;
+        OverloadSet exact = null;
         if (exactMatches != null) {
             exact = exactMatches.get(targetClass);
         }
@@ -152,7 +201,7 @@ public final class ExtensionDispatchTable {
             return exact;
         }
         // 检查缓存
-        Function cached = null;
+        OverloadSet cached = null;
         if (assignableCache != null) {
             cached = assignableCache.get(targetClass);
         }
@@ -160,21 +209,21 @@ public final class ExtensionDispatchTable {
             return cached == NOT_FOUND_SENTINEL ? null : cached;
         }
         // 缓存未命中，执行单趟扫描
-        Function assignable = null;
+        OverloadSet assignable = null;
         if (candidateClasses != null) {
             for (int i = 0; i < candidateClasses.length; i++) {
                 Class<?> c = candidateClasses[i];
                 if (c == targetClass) {
                     // 精确匹配（理论上不应该到这里，因为 exactMatches 已经查过）
-                    if (candidateFunctions != null && assignableCache != null) {
-                        assignableCache.put(targetClass, candidateFunctions[i]);
+                    if (candidateOverloadSets != null && assignableCache != null) {
+                        assignableCache.put(targetClass, candidateOverloadSets[i]);
                     }
-                    if (candidateFunctions != null) {
-                        return candidateFunctions[i];
+                    if (candidateOverloadSets != null) {
+                        return candidateOverloadSets[i];
                     }
                 }
-                if (assignable == null && c.isAssignableFrom(targetClass) && candidateFunctions != null) {
-                    assignable = candidateFunctions[i];
+                if (assignable == null && c.isAssignableFrom(targetClass) && candidateOverloadSets != null) {
+                    assignable = candidateOverloadSets[i];
                 }
             }
         }

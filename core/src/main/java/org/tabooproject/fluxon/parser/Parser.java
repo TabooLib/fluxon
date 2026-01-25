@@ -517,16 +517,23 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
      * @return 扩展函数信息，如果不存在则返回 null
      */
     public ExtensionFunctionPosition getExtensionFunction(String name) {
-        Set<Map.Entry<String, Map<Class<?>, Function>>> map = FluxonRuntime.getInstance().getExtensionFunctions().entrySet();
+        Set<Map.Entry<String, Map<Class<?>, OverloadSet>>> map = FluxonRuntime.getInstance().getExtensionFunctions().entrySet();
         int i = 0;
-        for (Map.Entry<String, Map<Class<?>, Function>> entry : map) {
+        for (Map.Entry<String, Map<Class<?>, OverloadSet>> entry : map) {
             if (entry.getKey().equals(name)) {
-                Map<Class<?>, Function> typeMap = entry.getValue();
-                Map<Class<?>, Function> filteredTypeMap = new HashMap<>();
-                for (Map.Entry<Class<?>, Function> typeEntry : typeMap.entrySet()) {
-                    String namespace = typeEntry.getValue().getNamespace();
-                    if (namespace == null || imports.contains(namespace)) {
-                        filteredTypeMap.put(typeEntry.getKey(), typeEntry.getValue());
+                Map<Class<?>, OverloadSet> typeMap = entry.getValue();
+                Map<Class<?>, OverloadSet> filteredTypeMap = new HashMap<>();
+                for (Map.Entry<Class<?>, OverloadSet> typeEntry : typeMap.entrySet()) {
+                    OverloadSet overloadSet = typeEntry.getValue();
+                    OverloadSet filteredSet = new OverloadSet(overloadSet.getName());
+                    for (Function f : overloadSet.getOverloads()) {
+                        String namespace = f.getNamespace();
+                        if (namespace == null || imports.contains(namespace)) {
+                            filteredSet.add(f);
+                        }
+                    }
+                    if (!filteredSet.isEmpty()) {
+                        filteredTypeMap.put(typeEntry.getKey(), filteredSet);
                     }
                 }
                 if (!filteredTypeMap.isEmpty()) {

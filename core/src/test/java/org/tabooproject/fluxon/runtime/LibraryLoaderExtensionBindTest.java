@@ -18,7 +18,7 @@ class LibraryLoaderExtensionBindTest {
         LibraryLoader loader = new LibraryLoader(runtime);
         try (LibraryLoader.LibraryLoadResult ignored = loader.load(Paths.get("src/test/fs/library_bind.fs"))) {
 
-            Map<String, Map<Class<?>, Function>> extensionFunctions = runtime.getExtensionFunctions();
+            Map<String, Map<Class<?>, OverloadSet>> extensionFunctions = runtime.getExtensionFunctions();
             assertTrue(extensionFunctions.containsKey("extConcat"));
             assertTrue(extensionFunctions.containsKey("extTimes"));
 

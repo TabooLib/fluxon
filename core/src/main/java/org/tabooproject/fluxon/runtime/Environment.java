@@ -128,7 +128,10 @@ public class Environment {
      * @param value          函数对象
      */
     public void defineRootExtensionFunction(Class<?> extensionClass, String name, Function value) {
-        FluxonRuntime.getInstance().getExtensionFunctions().computeIfAbsent(name, k -> new LinkedHashMap<>()).put(extensionClass, value);
+        FluxonRuntime.getInstance().getExtensionFunctions()
+                .computeIfAbsent(name, k -> new LinkedHashMap<>())
+                .computeIfAbsent(extensionClass, c -> new OverloadSet(name))
+                .add(value);
     }
 
     /**
@@ -170,12 +173,13 @@ public class Environment {
      * @param extensionClass 扩展类
      * @param name           函数名（用于错误提示）
      * @param index          派发表索引
+     * @param argCount       参数数量
      * @return 函数值
      * @throws FluxonRuntimeError 如果函数不存在
      */
     @NotNull
-    public Function getExtensionFunction(Class<?> extensionClass, String name, int index) {
-        Function function = getExtensionFunctionOrNull(extensionClass, index);
+    public Function getExtensionFunction(Class<?> extensionClass, String name, int index, int argCount) {
+        Function function = getExtensionFunctionOrNull(extensionClass, index, argCount);
         if (function != null) {
             return function;
         }
@@ -187,12 +191,13 @@ public class Environment {
      *
      * @param extensionClass 扩展类
      * @param index          派发表索引
+     * @param argCount       参数数量
      * @return 函数值
      */
     @Nullable
-    public Function getExtensionFunctionOrNull(Class<?> extensionClass, int index) {
+    public Function getExtensionFunctionOrNull(Class<?> extensionClass, int index, int argCount) {
         ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[index];
-        return dispatchTable.resolve(extensionClass);
+        return dispatchTable.resolve(extensionClass, argCount);
     }
 
     /**
@@ -235,7 +240,7 @@ public class Environment {
      * 获取根环境中的所有扩展函数
      */
     @Export
-    public Map<String, Map<Class<?>, Function>> getRootExtensionFunctions() {
+    public Map<String, Map<Class<?>, OverloadSet>> getRootExtensionFunctions() {
         return FluxonRuntime.getInstance().getExtensionFunctions();
     }
 

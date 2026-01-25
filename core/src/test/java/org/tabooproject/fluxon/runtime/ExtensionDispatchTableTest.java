@@ -27,7 +27,7 @@ public class ExtensionDispatchTableTest {
         Environment env = runtime.newEnvironment();
 
         // String 类型应该精确匹配到 String 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(String.class, getExtensionIndex("length"));
+        Function func = env.getExtensionFunctionOrNull(String.class, getExtensionIndex("length"), 0);
         assertNotNull(func, "String.length 扩展函数应该存在");
     }
 
@@ -36,7 +36,7 @@ public class ExtensionDispatchTableTest {
         Environment env = runtime.newEnvironment();
 
         // ArrayList 应该匹配到 List 或 Collection 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(ArrayList.class, getExtensionIndex("size"));
+        Function func = env.getExtensionFunctionOrNull(ArrayList.class, getExtensionIndex("size"), 0);
         assertNotNull(func, "ArrayList.size 扩展函数应该存在");
     }
 
@@ -48,7 +48,7 @@ public class ExtensionDispatchTableTest {
 
         // 自定义子类应该能匹配到父类的扩展函数
         // LinkedHashMap 是 Map 的实现，应该匹配到 Map 的扩展函数
-        Function func = env.getExtensionFunctionOrNull(LinkedHashMap.class, getExtensionIndex("keySet"));
+        Function func = env.getExtensionFunctionOrNull(LinkedHashMap.class, getExtensionIndex("keySet"), 0);
         assertNotNull(func, "LinkedHashMap 应该匹配到 Map.keySet 扩展函数");
     }
 
@@ -60,9 +60,9 @@ public class ExtensionDispatchTableTest {
         int index = getExtensionIndex("length");
 
         // 对同一目标类型多次调用，应该返回相同的函数实例
-        Function func1 = env.getExtensionFunctionOrNull(String.class, index);
-        Function func2 = env.getExtensionFunctionOrNull(String.class, index);
-        Function func3 = env.getExtensionFunctionOrNull(String.class, index);
+        Function func1 = env.getExtensionFunctionOrNull(String.class, index, 0);
+        Function func2 = env.getExtensionFunctionOrNull(String.class, index, 0);
+        Function func3 = env.getExtensionFunctionOrNull(String.class, index, 0);
 
         assertSame(func1, func2, "多次调用应该返回相同的函数实例");
         assertSame(func2, func3, "多次调用应该返回相同的函数实例");
@@ -74,8 +74,8 @@ public class ExtensionDispatchTableTest {
         int index = getExtensionIndex("size");
 
         // 对可赋值匹配的类型多次调用，应该返回相同的函数实例
-        Function func1 = env.getExtensionFunctionOrNull(ArrayList.class, index);
-        Function func2 = env.getExtensionFunctionOrNull(ArrayList.class, index);
+        Function func1 = env.getExtensionFunctionOrNull(ArrayList.class, index, 0);
+        Function func2 = env.getExtensionFunctionOrNull(ArrayList.class, index, 0);
 
         assertSame(func1, func2, "可赋值匹配的缓存应该稳定");
     }
@@ -143,13 +143,13 @@ public class ExtensionDispatchTableTest {
 
         // 预热
         for (int i = 0; i < 1000; i++) {
-            env.getExtensionFunctionOrNull(String.class, index);
+            env.getExtensionFunctionOrNull(String.class, index, 0);
         }
 
         // 测试派发表性能
         long startTime = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            env.getExtensionFunctionOrNull(String.class, index);
+            env.getExtensionFunctionOrNull(String.class, index, 0);
         }
         long endTime = System.nanoTime();
 
@@ -167,12 +167,12 @@ public class ExtensionDispatchTableTest {
         int iterations = 100000;
 
         // 预热（第一次调用会计算并缓存）
-        env.getExtensionFunctionOrNull(ArrayList.class, index);
+        env.getExtensionFunctionOrNull(ArrayList.class, index, 0);
 
         // 测试缓存后的性能
         long startTime = System.nanoTime();
         for (int i = 0; i < iterations; i++) {
-            env.getExtensionFunctionOrNull(ArrayList.class, index);
+            env.getExtensionFunctionOrNull(ArrayList.class, index, 0);
         }
         long endTime = System.nanoTime();
 

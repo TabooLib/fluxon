@@ -60,25 +60,30 @@ public class FunctionDumper {
     }
 
     private Map<String, List<CatalogFunction>> collectExtensionFunctions() {
-        Map<String, Map<Class<?>, Function>> rawExtensions = runtime.getExtensionFunctions();
-        TreeMap<String, Map<String, Function>> grouped = new TreeMap<>();
-        for (Map.Entry<String, Map<Class<?>, Function>> entry : rawExtensions.entrySet()) {
+        Map<String, Map<Class<?>, OverloadSet>> rawExtensions = runtime.getExtensionFunctions();
+        TreeMap<String, Map<String, List<Function>>> grouped = new TreeMap<>();
+        for (Map.Entry<String, Map<Class<?>, OverloadSet>> entry : rawExtensions.entrySet()) {
             String functionName = entry.getKey();
-            for (Map.Entry<Class<?>, Function> classEntry : entry.getValue().entrySet()) {
+            for (Map.Entry<Class<?>, OverloadSet> classEntry : entry.getValue().entrySet()) {
                 String owner = classEntry.getKey().getName();
-                grouped.computeIfAbsent(owner, key -> new TreeMap<>())
-                    .put(functionName, classEntry.getValue());
+                for (Function f : classEntry.getValue().getOverloads()) {
+                    grouped.computeIfAbsent(owner, key -> new TreeMap<>())
+                        .computeIfAbsent(functionName, key -> new ArrayList<>())
+                        .add(f);
+                }
             }
         }
         Map<String, List<CatalogFunction>> result = new LinkedHashMap<>();
         grouped.entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
             .forEach(entry -> {
-                List<Map.Entry<String, Function>> sorted = new ArrayList<>(entry.getValue().entrySet());
+                List<Map.Entry<String, List<Function>>> sorted = new ArrayList<>(entry.getValue().entrySet());
                 sorted.sort(Comparator.comparing(Map.Entry::getKey));
-                List<CatalogFunction> functions = new ArrayList<>(sorted.size());
-                for (Map.Entry<String, Function> fn : sorted) {
-                    functions.add(toCatalogFunction(fn.getKey(), fn.getValue()));
+                List<CatalogFunction> functions = new ArrayList<>();
+                for (Map.Entry<String, List<Function>> fn : sorted) {
+                    for (Function f : fn.getValue()) {
+                        functions.add(toCatalogFunction(fn.getKey(), f));
+                    }
                 }
                 result.put(entry.getKey(), functions);
             });

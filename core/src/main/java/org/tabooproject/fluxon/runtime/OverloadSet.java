@@ -129,6 +129,48 @@ public class OverloadSet {
     }
 
     /**
+     * 根据索引获取重载
+     */
+    @Nullable
+    public Function get(int index) {
+        return (index >= 0 && index < overloads.size()) ? overloads.get(index) : null;
+    }
+
+    /**
+     * 获取函数在重载列表中的索引
+     */
+    public int indexOf(Function function) {
+        return overloads.indexOf(function);
+    }
+
+    /**
+     * 根据参数数量解析重载（运行时）
+     *
+     * @param argCount 参数数量
+     * @return 匹配的函数，如果没有匹配返回 null
+     */
+    @Nullable
+    public Function resolveByArgCount(int argCount) {
+        if (singleOverload != null) {
+            return singleOverload;
+        }
+        Function fallback = null;
+        for (Function f : overloads) {
+            FunctionSignature sig = f.getSignature();
+            if (sig == null) {
+                if (fallback == null) {
+                    fallback = f;
+                }
+                continue;
+            }
+            if (sig.getParameterCount() == argCount) {
+                return f;
+            }
+        }
+        return fallback;
+    }
+
+    /**
      * 计算签名与参数类型的匹配分数
      *
      * @return 匹配分数，-1 表示不匹配

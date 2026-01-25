@@ -32,8 +32,8 @@ public class FluxonRuntime {
     private final Map<String, OverloadSet> systemFunctions = new LinkedHashMap<>();
     // 系统变量
     private final Map<String, Object> systemVariables = new HashMap<>();
-    // 扩展函数
-    private final Map<String, Map<Class<?>, Function>> extensionFunctions = new LinkedHashMap<>();
+    // 扩展函数（支持重载）
+    private final Map<String, Map<Class<?>, OverloadSet>> extensionFunctions = new LinkedHashMap<>();
 
     // 缓存的系统函数数组（避免每次创建环境时都转换）
     private volatile Function[] cachedSystemFunctions;
@@ -107,23 +107,26 @@ public class FluxonRuntime {
         // 构建系统扩展函数数组和派发表
         List<KV<Class<?>, Function>[]> systemExtensionFunctionsList = new ArrayList<>();
         List<ExtensionDispatchTable> dispatchTablesList = new ArrayList<>();
-        for (Map.Entry<String, Map<Class<?>, Function>> entry : extensionFunctions.entrySet()) {
-            Map<Class<?>, Function> classFunctionMap = entry.getValue();
-            int size = classFunctionMap.size();
+        for (Map.Entry<String, Map<Class<?>, OverloadSet>> entry : extensionFunctions.entrySet()) {
+            Map<Class<?>, OverloadSet> classOverloadSetMap = entry.getValue();
+            int size = classOverloadSetMap.size();
             // 构建候选数组（保持注册顺序）
             Class<?>[] candidateClasses = new Class<?>[size];
-            Function[] candidateFunctions = new Function[size];
+            OverloadSet[] candidateOverloadSets = new OverloadSet[size];
             List<KV<Class<?>, Function>> candidatesList = new ArrayList<>();
             int i = 0;
-            for (Map.Entry<Class<?>, Function> entry2 : classFunctionMap.entrySet()) {
+            for (Map.Entry<Class<?>, OverloadSet> entry2 : classOverloadSetMap.entrySet()) {
                 candidateClasses[i] = entry2.getKey();
-                candidateFunctions[i] = entry2.getValue();
-                candidatesList.add(new KV<>(entry2.getKey(), entry2.getValue()));
+                candidateOverloadSets[i] = entry2.getValue();
+                // 为了兼容旧代码，将重载集合中的所有函数都添加到 candidatesList
+                for (Function f : entry2.getValue().getOverloads()) {
+                    candidatesList.add(new KV<>(entry2.getKey(), f));
+                }
                 i++;
             }
             systemExtensionFunctionsList.add(candidatesList.toArray(new KV[0]));
             // 构建派发表
-            dispatchTablesList.add(new ExtensionDispatchTable(classFunctionMap, candidateClasses, candidateFunctions));
+            dispatchTablesList.add(new ExtensionDispatchTable(classOverloadSetMap, candidateClasses, candidateOverloadSets));
         }
         cachedSystemExtensionFunctions = systemExtensionFunctionsList.toArray(new KV[0][]);
         cachedDispatchTables = dispatchTablesList.toArray(new ExtensionDispatchTable[0]);
@@ -216,7 +219,9 @@ public class FluxonRuntime {
      * 注册扩展函数，直接使用已有 Function 实例
      */
     public <Target> void registerExtensionFunction(Class<Target> extensionClass, Function function) {
-        extensionFunctions.computeIfAbsent(function.getName(), k -> new HashMap<>()).put(extensionClass, function);
+        extensionFunctions.computeIfAbsent(function.getName(), k -> new LinkedHashMap<>())
+                .computeIfAbsent(extensionClass, c -> new OverloadSet(function.getName()))
+                .add(function);
         dirty = true;
     }
 
@@ -231,10 +236,9 @@ public class FluxonRuntime {
             NativeFunction.NativeCallable<Target> implementation,
             boolean isAsync,
             boolean isPrimarySync) {
-        extensionFunctions.computeIfAbsent(name, k -> new HashMap<>()).put(
-                extensionClass,
-                new NativeFunction<>(namespace, name, signature, implementation, isAsync, isPrimarySync)
-        );
+        extensionFunctions.computeIfAbsent(name, k -> new LinkedHashMap<>())
+                .computeIfAbsent(extensionClass, c -> new OverloadSet(name))
+                .add(new NativeFunction<>(namespace, name, signature, implementation, isAsync, isPrimarySync));
         dirty = true;
     }
 
@@ -268,20 +272,25 @@ public class FluxonRuntime {
      * @return 是否成功卸载
      */
     public boolean unregisterExtensionFunction(@NotNull Class<?> extensionClass, @NotNull String name, @NotNull Function function) {
-        Map<Class<?>, Function> classFunctions = extensionFunctions.get(name);
+        Map<Class<?>, OverloadSet> classFunctions = extensionFunctions.get(name);
         if (classFunctions == null) {
             return false;
         }
-        Function current = classFunctions.get(extensionClass);
-        if (current != function) {
+        OverloadSet overloadSet = classFunctions.get(extensionClass);
+        if (overloadSet == null) {
             return false;
         }
-        classFunctions.remove(extensionClass);
-        if (classFunctions.isEmpty()) {
-            extensionFunctions.remove(name);
+        boolean removed = overloadSet.remove(function);
+        if (removed) {
+            if (overloadSet.isEmpty()) {
+                classFunctions.remove(extensionClass);
+            }
+            if (classFunctions.isEmpty()) {
+                extensionFunctions.remove(name);
+            }
+            dirty = true;
         }
-        dirty = true;
-        return true;
+        return removed;
     }
 
     /**
@@ -301,7 +310,7 @@ public class FluxonRuntime {
     /**
      * 获取所有扩展函数信息
      */
-    public Map<String, Map<Class<?>, Function>> getExtensionFunctions() {
+    public Map<String, Map<Class<?>, OverloadSet>> getExtensionFunctions() {
         return extensionFunctions;
     }
 

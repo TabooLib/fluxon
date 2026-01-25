@@ -245,13 +245,14 @@ public abstract class ClassEmitter {
      * 通过扩展派发表获取函数引用
      */
     private void emitLoadFunction(MethodVisitor mv, CodeContext.ResolvedExtFuncInfo info) {
-        // FluxonRuntime.getInstance().getCachedDispatchTables()[dispatchTableIndex].resolve(targetClass)
+        // FluxonRuntime.getInstance().getCachedDispatchTables()[dispatchTableIndex].resolveByIndex(targetClass, overloadIndex)
         mv.visitMethodInsn(INVOKESTATIC, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getInstance", "()Lorg/tabooproject/fluxon/runtime/FluxonRuntime;", false);
         mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getCachedDispatchTables", "()[Lorg/tabooproject/fluxon/runtime/ExtensionDispatchTable;", false);
         mv.visitLdcInsn(info.dispatchTableIndex);
         mv.visitInsn(AALOAD);
         mv.visitLdcInsn(org.objectweb.asm.Type.getType(info.targetClass));
-        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/ExtensionDispatchTable", "resolve", "(Ljava/lang/Class;)" + Function.TYPE.getDescriptor(), false);
+        mv.visitLdcInsn(info.overloadIndex);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/ExtensionDispatchTable", "resolveByIndex", "(Ljava/lang/Class;I)" + Function.TYPE.getDescriptor(), false);
     }
 
     /**
