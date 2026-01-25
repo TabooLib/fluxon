@@ -185,10 +185,7 @@ public final class Intrinsics {
                     function.call(ctx);
                     return getReturnValue(ctx);
                 } finally {
-                    // 归还到原借出线程的池
-                    if (pool != null) {
-                        pool.returnFromOtherThread(ctx);
-                    }
+                    pool.returnFromOtherThread(ctx);
                 }
             });
         } else if (function.isPrimarySync()) {
@@ -208,9 +205,7 @@ public final class Intrinsics {
                     future.completeExceptionally(ex);
                 } finally {
                     // 归还到原借出线程的池
-                    if (pool != null) {
-                        pool.returnFromOtherThread(ctx);
-                    }
+                    pool.returnFromOtherThread(ctx);
                 }
             });
             return future;

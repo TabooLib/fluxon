@@ -13,15 +13,17 @@ public final class FunctionContextPool {
 
     public static final Type TYPE = new Type(FunctionContextPool.class);
 
-    private static final int MAX_POOL_SIZE = 32;
+    private static final int MAX_POOL_SIZE = 64;
     private static final ThreadLocal<FunctionContextPool> LOCAL = ThreadLocal.withInitial(FunctionContextPool::new);
     private static final Object[] EMPTY_REFS = new Object[0];
 
     private final FunctionContext<?>[] pool = new FunctionContext<?>[MAX_POOL_SIZE];
     private final ConcurrentLinkedQueue<FunctionContext<?>> pendingReturns = new ConcurrentLinkedQueue<>();
+    private final Thread ownerThread;
     private int size;
 
     private FunctionContextPool() {
+        this.ownerThread = Thread.currentThread();
     }
 
     /**
@@ -36,17 +38,24 @@ public final class FunctionContextPool {
      * 从线程本地池借用一个 FunctionContext 实例
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
-        FunctionContext<?> context = pollOrCreate(function, target, refs, environment);
+        FunctionContext<?> context = pollOrCreate();
+        if (context.dirty) {
+            context.clearRefs();
+            context.dirty = false;
+        }
         context.reset(function, target, refs, environment);
         return context;
     }
 
     /**
-     * 从线程本地池借用一个 FunctionContext 实例（按参数数量，不分配 Object[] 参数数组）
+     * 从线程本地池借用一个 FunctionContext 实例（按参数数量，复用内部数组）
      */
     public FunctionContext<?> borrow(@NotNull Function function, @Nullable Object target, int argCount, @NotNull Environment environment) {
-        Object[] refs = argCount > 0 ? new Object[argCount] : EMPTY_REFS;
-        FunctionContext<?> context = pollOrCreate(function, target, refs, environment);
+        FunctionContext<?> context = pollOrCreate();
+        if (context.dirty) {
+            context.clearRefs();
+            context.dirty = false;
+        }
         context.reset(function, target, argCount, environment);
         return context;
     }
@@ -54,20 +63,17 @@ public final class FunctionContextPool {
     /**
      * 从池中获取或创建新的 context
      */
-    private FunctionContext<?> pollOrCreate(@NotNull Function function, @Nullable Object target, @NotNull Object[] refs, @NotNull Environment environment) {
-        // 优先从本地池获取（无锁）
+    private FunctionContext<?> pollOrCreate() {
         if (size > 0) {
             FunctionContext<?> context = pool[--size];
-            pool[size] = null;
+            pool[size] = null; // 帮助 GC，防止悬挂引用
             return context;
         }
-        // 本地池为空，尝试从跨线程归还队列回收
         FunctionContext<?> context = pendingReturns.poll();
         if (context != null) {
             return context;
         }
-        // 都没有，新建
-        return new FunctionContext<>(function, target, refs, environment, this);
+        return new FunctionContext<>(this);
     }
 
     /**
@@ -78,20 +84,17 @@ public final class FunctionContextPool {
     }
 
     /**
-     * 归还一个 FunctionContext 实例到线程本地池（仅限同线程调用）
+     * 快速归还，由 FunctionContext.close() 调用
+     * 自动检测线程归属，跨线程归还走安全通道
      */
-    public void release(FunctionContext<?> context) {
-        if (context == null) {
-            return;
+    void releaseUnchecked(FunctionContext<?> context) {
+        if (Thread.currentThread() == ownerThread) {
+            if (size < MAX_POOL_SIZE) {
+                pool[size++] = context;
+            }
+        } else {
+            returnFromOtherThread(context);
         }
-        // 如果满了直接丢弃对象
-        // 不需要做任何清理（GC 会回收它）
-        if (size >= MAX_POOL_SIZE) {
-            return;
-        }
-        // 只有确定要入池，才进行清理
-        context.clearForPooling();
-        pool[size++] = context;
     }
 
     /**
@@ -102,7 +105,7 @@ public final class FunctionContextPool {
         if (context == null) {
             return;
         }
-        context.clearForPooling();
+        context.dirty = true;
         pendingReturns.offer(context);
     }
 }

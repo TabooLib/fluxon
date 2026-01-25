@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.inst;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
-import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,10 +77,14 @@ public class CallbackDispatcher {
             return PROCEED;
         }
         try {
-            FunctionContext<?> context = new FunctionContext<>(callback, null, args, environment);
-            callback.call(context);
-            Object result = context.getReturnRef();
-            return result != null ? result : PROCEED;
+            FunctionContext<?> context = FunctionContextPool.local().borrow(callback, null, args, environment);
+            try {
+                callback.call(context);
+                Object result = context.getReturnRef();
+                return result != null ? result : PROCEED;
+            } finally {
+                context.close();
+            }
         } catch (Exception e) {
             LOGGER.severe("回调执行失败: " + specId + ", 错误: " + e.getMessage());
             throw new RuntimeException("Fluxon 注入回调执行失败: " + e.getMessage(), e);
@@ -124,9 +128,13 @@ public class CallbackDispatcher {
             return null; // 无回调，不修改
         }
         try {
-            FunctionContext<?> context = new FunctionContext<>(callback, null, args, environment);
-            callback.call(context);
-            return context.getReturnRef();
+            FunctionContext<?> context = FunctionContextPool.local().borrow(callback, null, args, environment);
+            try {
+                callback.call(context);
+                return context.getReturnRef();
+            } finally {
+                context.close();
+            }
         } catch (Exception e) {
             throw new RuntimeException("Fluxon AFTER 回调执行失败: " + e.getMessage(), e);
         }

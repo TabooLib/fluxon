@@ -15,7 +15,6 @@ import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.isTrue;
 
-import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +37,8 @@ public class Interpreter {
     private final FunctionContextPool pool;
     // 缓存 lambda -> UserFunction，避免循环中重复创建实例
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
-    // 变量类型映射（position -> Type），用于类型感知的变量读写
-    private Map<Integer, Type> variableTypes = Collections.emptyMap();
+    // 变量类型数组（index = position），用于类型感知的变量读写，O(1) 数组索引访问
+    private Type[] variableTypes = null;
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
@@ -282,16 +281,34 @@ public class Interpreter {
     }
 
     /**
-     * 设置变量类型映射
+     * 设置变量类型映射（转换为数组以提升查询性能）
      */
-    public void setVariableTypes(Map<Integer, Type> variableTypes) {
-        this.variableTypes = variableTypes != null ? variableTypes : Collections.emptyMap();
+    public void setVariableTypes(Map<Integer, Type> types) {
+        if (types == null || types.isEmpty()) {
+            this.variableTypes = null;
+            return;
+        }
+        int maxPos = types.keySet().stream().mapToInt(Integer::intValue).max().orElse(-1);
+        if (maxPos >= 0) {
+            Type[] arr = new Type[maxPos + 1];
+            types.forEach((pos, type) -> {
+                if (pos >= 0) arr[pos] = type;
+            });
+            this.variableTypes = arr;
+        } else {
+            this.variableTypes = null;
+        }
     }
 
     /**
-     * 获取变量类型
+     * 获取变量类型（O(1) 数组索引访问）
      */
     public Type getVariableType(int position) {
-        return variableTypes.getOrDefault(position, Type.OBJECT);
+        Type[] types = variableTypes;
+        if (types != null && position >= 0 && position < types.length) {
+            Type t = types[position];
+            return t != null ? t : Type.OBJECT;
+        }
+        return Type.OBJECT;
     }
 }

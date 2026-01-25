@@ -37,7 +37,7 @@ public class FunctionContextPoolTest {
         int afterBorrow = getPoolSize(pool);
         // 跨线程释放现在会实际添加到池中（因为移除了线程检查）
         // 这不是推荐的使用模式，但不会导致错误
-        Thread t = new Thread(() -> pool.release(context));
+        Thread t = new Thread(context::close);
         t.start();
         t.join();
         int afterCrossThreadRelease = getPoolSize(pool);

@@ -12,7 +12,7 @@ import java.util.Arrays;
  *
  * @author sky
  */
-public class FunctionContext<Target> implements AutoCloseable {
+public final class FunctionContext<Target> implements AutoCloseable {
 
     public static final Type TYPE = new Type(FunctionContext.class);
 
@@ -21,15 +21,20 @@ public class FunctionContext<Target> implements AutoCloseable {
     private static final long[] EMPTY_PRIMITIVES = new long[0];
     private static final byte[] EMPTY_ARG_TYPES = new byte[0];
 
-    @NotNull
+    // 参数类型标记常量
+    static final byte TYPE_REF = 0;
+    static final byte TYPE_INT = 'I';
+    static final byte TYPE_LONG = 'J';
+    static final byte TYPE_FLOAT = 'F';
+    static final byte TYPE_DOUBLE = 'D';
+    static final byte TYPE_BOOL = 'Z';
+
     private Function function;
-    @Nullable
     private Target target;
-    @NotNull
     private Environment environment;
-    @Nullable
-    private FunctionContextPool pool;
-    @Nullable
+    private final FunctionContextPool pool;
+    private boolean detached;
+    boolean dirty;
     private Interpreter interpreter; // Interpreter 实例，用于解释执行时传递执行上下文
 
     private long[] primitives;
@@ -41,30 +46,14 @@ public class FunctionContext<Target> implements AutoCloseable {
     public Object returnRef;
     public Type returnType;
 
-    public FunctionContext(
-            @NotNull Function function,
-            @Nullable Target target,
-            @NotNull Object[] refs,
-            @NotNull Environment environment
-    ) {
-        this(function, target, refs, environment, null);
-    }
-
-    public FunctionContext(
-            @NotNull Function function,
-            @Nullable Target target,
-            @NotNull Object[] refs,
-            @NotNull Environment environment,
-            @Nullable FunctionContextPool pool
-    ) {
-        this.function = function;
-        this.target = target;
-        this.refs = refs;
-        this.argumentCount = refs.length;
+    /**
+     * 池专用构造函数，字段在 reset 时初始化
+     */
+    FunctionContext(@NotNull FunctionContextPool pool) {
+        this.pool = pool;
+        this.refs = EMPTY_REFS;
         this.primitives = EMPTY_PRIMITIVES;
         this.argTypes = EMPTY_ARG_TYPES;
-        this.environment = environment;
-        this.pool = pool;
     }
 
     // ====================== 参数读取 - 原始类型 ======================
@@ -109,65 +98,65 @@ public class FunctionContext<Target> implements AutoCloseable {
         ensurePrimitivesCapacity(index);
         ensureArgTypesCapacity(index);
         primitives[index] = v;
-        argTypes[index] = (byte) 'I';
+        argTypes[index] = TYPE_INT;
     }
 
     public void setLong(int index, long v) {
         ensurePrimitivesCapacity(index);
         ensureArgTypesCapacity(index);
         primitives[index] = v;
-        argTypes[index] = (byte) 'J';
+        argTypes[index] = TYPE_LONG;
     }
 
     public void setDouble(int index, double v) {
         ensurePrimitivesCapacity(index);
         ensureArgTypesCapacity(index);
         primitives[index] = Double.doubleToRawLongBits(v);
-        argTypes[index] = (byte) 'D';
+        argTypes[index] = TYPE_DOUBLE;
     }
 
     public void setFloat(int index, float v) {
         ensurePrimitivesCapacity(index);
         ensureArgTypesCapacity(index);
         primitives[index] = Float.floatToRawIntBits(v);
-        argTypes[index] = (byte) 'F';
+        argTypes[index] = TYPE_FLOAT;
     }
 
     public void setBool(int index, boolean v) {
         ensurePrimitivesCapacity(index);
         ensureArgTypesCapacity(index);
         primitives[index] = v ? 1 : 0;
-        argTypes[index] = (byte) 'Z';
+        argTypes[index] = TYPE_BOOL;
     }
 
     public void setRef(int index, Object v) {
         ensureRefsCapacity(index);
         ensureArgTypesCapacity(index);
         refs[index] = v;
-        argTypes[index] = 0;
+        argTypes[index] = TYPE_REF;
     }
 
     // ====================== 参数类型查询 ======================
 
     public boolean isArgPrimitive(int index) {
-        return index < argTypes.length && argTypes[index] != 0;
+        return index < argTypes.length && argTypes[index] != TYPE_REF;
     }
 
     public byte getArgType(int index) {
-        return index < argTypes.length ? argTypes[index] : 0;
+        return index < argTypes.length ? argTypes[index] : TYPE_REF;
     }
 
     // ====================== 便捷读取 ======================
 
     public double getAsDouble(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : 0;
-        if (t == 0) return ((Number) refs[index]).doubleValue();
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) return ((Number) refs[index]).doubleValue();
         switch (t) {
-            case 'J':
+            case TYPE_LONG:
                 return (double) primitives[index];
-            case 'F':
+            case TYPE_FLOAT:
                 return Float.intBitsToFloat((int) primitives[index]);
-            case 'D':
+            case TYPE_DOUBLE:
                 return Double.longBitsToDouble(primitives[index]);
             default:
                 return (int) primitives[index]; // I, Z
@@ -175,14 +164,14 @@ public class FunctionContext<Target> implements AutoCloseable {
     }
 
     public int getAsInt(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : 0;
-        if (t == 0) return ((Number) refs[index]).intValue();
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) return ((Number) refs[index]).intValue();
         switch (t) {
-            case 'J':
+            case TYPE_LONG:
                 return (int) primitives[index];
-            case 'F':
+            case TYPE_FLOAT:
                 return (int) Float.intBitsToFloat((int) primitives[index]);
-            case 'D':
+            case TYPE_DOUBLE:
                 return (int) Double.longBitsToDouble(primitives[index]);
             default:
                 return (int) primitives[index]; // I, Z
@@ -190,14 +179,14 @@ public class FunctionContext<Target> implements AutoCloseable {
     }
 
     public long getAsLong(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : 0;
-        if (t == 0) return ((Number) refs[index]).longValue();
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) return ((Number) refs[index]).longValue();
         switch (t) {
-            case 'I':
+            case TYPE_INT:
                 return (int) primitives[index]; // sign-extend
-            case 'F':
+            case TYPE_FLOAT:
                 return (long) Float.intBitsToFloat((int) primitives[index]);
-            case 'D':
+            case TYPE_DOUBLE:
                 return (long) Double.longBitsToDouble(primitives[index]);
             default:
                 return primitives[index]; // J, Z
@@ -205,22 +194,23 @@ public class FunctionContext<Target> implements AutoCloseable {
     }
 
     public Object getArgBoxed(int index) {
-        if (index >= argumentCount) return null; // 参数不存在时返回 null
-        byte t = index < argTypes.length ? argTypes[index] : 0;
-        if (t == 0) return refs[index];
+        if (index >= argumentCount) return null;
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) return refs[index];
         switch (t) {
-            case 'I':
+            case TYPE_INT:
                 return (int) primitives[index];
-            case 'J':
+            case TYPE_LONG:
                 return primitives[index];
-            case 'F':
+            case TYPE_FLOAT:
                 return Float.intBitsToFloat((int) primitives[index]);
-            case 'D':
+            case TYPE_DOUBLE:
                 return Double.longBitsToDouble(primitives[index]);
-            case 'Z':
+            case TYPE_BOOL:
                 return primitives[index] != 0;
+            default:
+                return refs[index];
         }
-        return refs[index];
     }
 
     // ====================== 返回值写入 ======================
@@ -298,7 +288,7 @@ public class FunctionContext<Target> implements AutoCloseable {
         return environment;
     }
 
-    @Nullable
+    @NotNull
     public FunctionContextPool getPool() {
         return pool;
     }
@@ -362,24 +352,20 @@ public class FunctionContext<Target> implements AutoCloseable {
      * 从池中分离，close() 变为 no-op（用于 async 转移所有权）
      */
     public void detachFromPool() {
-        this.pool = null;
+        this.detached = true;
     }
 
-    @SuppressWarnings("DataFlowIssue")
-    void clearForPooling() {
-        if (argumentCount > 0) {
-            Arrays.fill(refs, 0, argumentCount, null);
+    /**
+     * 清理引用字段
+     */
+    void clearRefs() {
+        int n = argumentCount;
+        if (n > 0 && n <= refs.length) {
+            Arrays.fill(refs, 0, n, null);
         }
-        // 仅重置必要的引用字段
-        this.target = null;
-        this.environment = null;
-        this.returnRef = null;
-        this.interpreter = null;
-        this.returnType = null;
-        // 基本类型字段完全不需要清零
-        // primitives[], argTypes[], returnPrimitive 等留着旧数据没关系
-        // 只要 reset 时重置了 argumentCount，读取逻辑就不会越界访问到旧数据
-        this.argumentCount = 0;
+        target = null;
+        returnRef = null;
+        argumentCount = 0;
     }
 
     private void ensurePrimitivesCapacity(int index) {
@@ -397,9 +383,6 @@ public class FunctionContext<Target> implements AutoCloseable {
             Object[] newArr = new Object[newCap];
             System.arraycopy(refs, 0, newArr, 0, refs.length);
             refs = newArr;
-            if (argumentCount < newCap) {
-                argumentCount = newCap;
-            }
         }
     }
 
@@ -409,6 +392,9 @@ public class FunctionContext<Target> implements AutoCloseable {
             byte[] newArr = new byte[newCap];
             System.arraycopy(argTypes, 0, newArr, 0, argTypes.length);
             argTypes = newArr;
+        }
+        if (argumentCount <= index) {
+            argumentCount = index + 1;
         }
     }
 
@@ -423,8 +409,9 @@ public class FunctionContext<Target> implements AutoCloseable {
 
     @Override
     public void close() {
-        if (pool != null) {
-            pool.release(this);
+        if (!detached) {
+            dirty = true;
+            pool.releaseUnchecked(this);
         }
     }
 }
