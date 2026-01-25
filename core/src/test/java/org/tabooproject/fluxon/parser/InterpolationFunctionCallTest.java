@@ -45,7 +45,7 @@ public class InterpolationFunctionCallTest {
     @DisplayName("测试插值中嵌套函数调用")
     void testInterpolationWithNestedFunctionCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def double(x) = &x * 2; \"Result: ${double(double(5))}\""
+                "def twice(x) = &x * 2; \"Result: ${twice(twice(5))}\""
         );
         assertEquals("Result: 20", result.getInterpretResult());
         assertTrue(result.isMatch(), "解释器和编译器结果应一致");

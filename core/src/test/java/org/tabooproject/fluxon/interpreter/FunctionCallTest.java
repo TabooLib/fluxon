@@ -82,9 +82,9 @@ public class FunctionCallTest {
         // 测试链式调用
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "def inc(x) = &x + 1; " +
-                        "def double(x) = &x * 2; " +
-                        "double(inc(5))");
-        // double(inc(5)) = double(6) = 12
+                        "def twice(x) = &x * 2; " +
+                        "twice(inc(5))");
+        // twice(inc(5)) = twice(6) = 12
         assertEquals(12, result.getInterpretResult());
         assertEquals(12, result.getCompileResult());
     }
