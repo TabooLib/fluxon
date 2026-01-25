@@ -142,7 +142,7 @@ public class ExtensionFile {
                 })
                 .function("writeText", returns(Type.FILE).params(Type.STRING), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    String content = (String) context.getRef(0);
+                    String content = context.getString(0);
                     try {
                         Files.write(file.toPath(), (content != null ? content : "").getBytes(StandardCharsets.UTF_8));
                         context.setReturnRef(file);
@@ -188,7 +188,7 @@ public class ExtensionFile {
                 })
                 .function("appendText", returns(Type.FILE).params(Type.STRING), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    String content = (String) context.getRef(0);
+                    String content = context.getString(0);
                     try (FileWriter writer = new FileWriter(file, true)) {
                         writer.write(content != null ? content : "");
                         context.setReturnRef(file);
@@ -211,7 +211,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
+                    boolean replaceExisting = context.getBool(1);
                     try {
                         if (replaceExisting) {
                             Files.copy(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -238,7 +238,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
+                    boolean replaceExisting = context.getBool(1);
                     try {
                         if (replaceExisting) {
                             Files.move(file.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -269,7 +269,7 @@ public class ExtensionFile {
                     File file = Objects.requireNonNull(context.getTarget());
                     Object targetArg = context.getRef(0);
                     File target = targetArg instanceof File ? (File) targetArg : new File(targetArg.toString());
-                    boolean replaceExisting = Coerce.asBoolean(context.getArgBoxed(1)).orElse(false);
+                    boolean replaceExisting = context.getBool(1);
                     try {
                         copyRecursively(file.toPath(), target.toPath(), replaceExisting);
                         context.setReturnRef(target);
@@ -289,7 +289,7 @@ public class ExtensionFile {
                     int lastDot = name.lastIndexOf('.');
                     context.setReturnRef(lastDot > 0 ? name.substring(0, lastDot) : name);
                 })
-                .function("walk", returns(Type.OBJECT).noParams(), context -> {
+                .function("walk", returns(Type.LIST).noParams(), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
                     try (Stream<Path> stream = Files.walk(file.toPath())) {
                         context.setReturnRef(stream.map(Path::toFile).collect(Collectors.toList()));
@@ -297,10 +297,9 @@ public class ExtensionFile {
                         throw new RuntimeException("Failed to walk directory tree: " + e.getMessage(), e);
                     }
                 })
-                .function("walk", returns(Type.OBJECT).params(Type.I), context -> {
+                .function("walk", returns(Type.LIST).params(Type.I), context -> {
                     File file = Objects.requireNonNull(context.getTarget());
-                    int maxDepth = Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE);
-                    try (Stream<Path> stream = Files.walk(file.toPath(), maxDepth)) {
+                    try (Stream<Path> stream = Files.walk(file.toPath(), context.getInt(0))) {
                         context.setReturnRef(stream.map(Path::toFile).collect(Collectors.toList()));
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to walk directory tree: " + e.getMessage(), e);

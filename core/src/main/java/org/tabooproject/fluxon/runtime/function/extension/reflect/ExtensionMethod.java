@@ -50,7 +50,7 @@ public class ExtensionMethod {
                 })
                 .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
                     Method method = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArgBoxed(0);
+                    boolean accessible = context.getBool(0);
                     method.setAccessible(accessible);
                 })
                 .function("isAccessible", returns(Type.Z).noParams(), context -> {

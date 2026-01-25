@@ -47,7 +47,7 @@ public class ExtensionField {
                 })
                 .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
                     Field field = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArgBoxed(0);
+                    boolean accessible = context.getBool(0);
                     field.setAccessible(accessible);
                 })
                 .function("isAccessible", returns(Type.Z).noParams(), context -> {

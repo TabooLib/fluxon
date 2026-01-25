@@ -34,7 +34,7 @@ public class FunctionSystem {
             }
         });
         runtime.registerFunction("forName", returns(Type.CLASS).params(Type.STRING), context -> {
-            String className = (String) context.getRef(0);
+            String className = context.getString(0);
             try {
                 context.setReturnRef(Class.forName(className));
             } catch (ClassNotFoundException e) {

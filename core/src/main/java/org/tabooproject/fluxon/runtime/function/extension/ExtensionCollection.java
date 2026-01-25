@@ -62,48 +62,49 @@ public class ExtensionCollection {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     list.clear();
                 })
-                // 转换为字符串 (0-1 params)
+                // 转换为字符串
+                .function("join", returns(Type.STRING).noParams(), (context) -> {
+                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(", ")));
+                })
                 .function("join", returns(Type.STRING).params(Type.STRING), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    String delimiter = ", ";
-                    if (context.getArgumentCount() >= 1) {
-                        String arg = (String) context.getRef(0);
-                        if (arg != null) delimiter = arg;
-                    }
+                    String delimiter = context.getString(0);
+                    if (delimiter == null) delimiter = ", ";
                     context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(delimiter)));
                 })
-                // 随机获取元素 (0-1 params)
+                // 随机获取元素
+                .function("random", returns(Type.OBJECT).noParams(), (context) -> {
+                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
+                    if (list.isEmpty()) {
+                        return;
+                    }
+                    List<Object> tempList = new ArrayList<>(list);
+                    int index = (int) (Math.random() * tempList.size());
+                    context.setReturnRef(tempList.get(index));
+                })
                 .function("random", returns(Type.OBJECT).params(Type.I), (context) -> {
                     Collection<Object> list = Objects.requireNonNull(context.getTarget());
                     if (list.isEmpty()) {
                         return;
                     }
-                    if (context.getArgumentCount() < 1) {
-                        // 返回单个随机元素
-                        List<Object> tempList = new ArrayList<>(list);
-                        int index = (int) (Math.random() * tempList.size());
-                        context.setReturnRef(tempList.get(index));
-                    } else {
-                        int count = context.getInt(0);
-                        if (count <= 0) {
-                            return;
-                        }
-                        // 如果请求数量大于等于列表大小，返回打乱后的整个列表
-                        if (count >= list.size()) {
-                            List<Object> shuffled = new ArrayList<>(list);
-                            Collections.shuffle(shuffled);
-                            context.setReturnRef(shuffled);
-                            return;
-                        }
-                        // 否则返回指定数量的不重复随机元素
-                        List<Object> result = new ArrayList<>(count);
-                        List<Object> copy = new ArrayList<>(list);
-                        Collections.shuffle(copy);
-                        for (int i = 0; i < count; i++) {
-                            result.add(copy.get(i));
-                        }
-                        context.setReturnRef(result);
+                    int count = context.getInt(0);
+                    if (count <= 0) {
+                        return;
                     }
+                    if (count >= list.size()) {
+                        List<Object> shuffled = new ArrayList<>(list);
+                        Collections.shuffle(shuffled);
+                        context.setReturnRef(shuffled);
+                        return;
+                    }
+                    List<Object> result = new ArrayList<>(count);
+                    List<Object> copy = new ArrayList<>(list);
+                    Collections.shuffle(copy);
+                    for (int i = 0; i < count; i++) {
+                        result.add(copy.get(i));
+                    }
+                    context.setReturnRef(result);
                 });
     }
 }

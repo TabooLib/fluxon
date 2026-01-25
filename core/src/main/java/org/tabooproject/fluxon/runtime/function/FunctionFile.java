@@ -14,20 +14,20 @@ public class FunctionFile {
     public static void init(FluxonRuntime runtime) {
         // path(string)
         runtime.registerFunction("fs:io", "path", returns(Type.PATH).params(Type.STRING), context -> {
-            context.setReturnRef(Paths.get((String) context.getRef(0)));
+            context.setReturnRef(Paths.get(context.getString(0)));
         });
         // path(string, string)
         runtime.registerFunction("fs:io", "path", returns(Type.PATH).params(Type.STRING, Type.STRING), context -> {
-            context.setReturnRef(Paths.get((String) context.getRef(0), (String) context.getRef(1)));
+            context.setReturnRef(Paths.get(context.getString(0), context.getString(1)));
         });
         // file(string)
         runtime.registerFunction("fs:io", "file", returns(Type.FILE).params(Type.STRING), context -> {
-            context.setReturnRef(new File((String) context.getRef(0)));
+            context.setReturnRef(new File(context.getString(0)));
         });
         // file(parent, child)
         runtime.registerFunction("fs:io", "file", returns(Type.FILE).params(Type.OBJECT, Type.STRING), context -> {
             Object parent = Objects.requireNonNull(context.getRef(0));
-            String child = (String) context.getRef(1);
+            String child = context.getString(1);
             if (parent instanceof File) {
                 context.setReturnRef(new File((File) parent, child));
             } else {

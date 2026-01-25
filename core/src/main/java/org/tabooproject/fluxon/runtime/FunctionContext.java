@@ -99,6 +99,10 @@ public class FunctionContext<Target> implements AutoCloseable {
         return refs[index];
     }
 
+    public String getString(int index) {
+        return (String) refs[index];
+    }
+
     // ====================== 参数写入 ======================
 
     public void setInt(int index, int v) {

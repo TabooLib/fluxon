@@ -33,7 +33,7 @@ public class ExtensionPath {
                 })
                 .function("resolve", returns(Type.PATH).params(Type.STRING), context -> {
                     Path path = Objects.requireNonNull(context.getTarget());
-                    String other = (String) context.getRef(0);
+                    String other = context.getString(0);
                     context.setReturnRef(path.resolve(other != null ? other : ""));
                 })
                 .function("relativize", returns(Type.PATH).params(Type.OBJECT), context -> {
@@ -82,7 +82,7 @@ public class ExtensionPath {
                     Path path = Objects.requireNonNull(context.getTarget());
                     context.setReturnBool(Files.isSymbolicLink(path));
                 })
-                .function("walk", returns(Type.OBJECT).noParams(), context -> {
+                .function("walk", returns(Type.LIST).noParams(), context -> {
                     Path path = Objects.requireNonNull(context.getTarget());
                     try (Stream<Path> stream = Files.walk(path)) {
                         context.setReturnRef(stream.collect(Collectors.toList()));
@@ -90,10 +90,9 @@ public class ExtensionPath {
                         throw new RuntimeException("Failed to walk directory tree: " + e.getMessage(), e);
                     }
                 })
-                .function("walk", returns(Type.OBJECT).params(Type.I), context -> {
+                .function("walk", returns(Type.LIST).params(Type.I), context -> {
                     Path path = Objects.requireNonNull(context.getTarget());
-                    int maxDepth = Coerce.asInteger(context.getArgBoxed(0)).orElse(Integer.MAX_VALUE);
-                    try (Stream<Path> stream = Files.walk(path, maxDepth)) {
+                    try (Stream<Path> stream = Files.walk(path, context.getInt(0))) {
                         context.setReturnRef(stream.collect(Collectors.toList()));
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to walk directory tree: " + e.getMessage(), e);

@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.runtime.function.extension;
 
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
-import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,57 +45,62 @@ public class ExtensionString {
                 // 字符串分割
                 .function("split", returns(Type.OBJECT).params(Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String delimiter = (String) context.getRef(0);
+                    String delimiter = context.getString(0);
                     context.setReturnRef(Arrays.asList(str.split(delimiter != null ? delimiter : "")));
                 })
                 // 字符串替换
                 .function("replace", returns(Type.STRING).params(Type.STRING, Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String oldStr = (String) context.getRef(0);
-                    String newStr = (String) context.getRef(1);
+                    String oldStr = context.getString(0);
+                    String newStr = context.getString(1);
                     context.setReturnRef(str.replace(oldStr != null ? oldStr : "", newStr != null ? newStr : ""));
                 })
                 // 字符串替换（全部）
                 .function("replaceAll", returns(Type.STRING).params(Type.STRING, Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String regex = (String) context.getRef(0);
-                    String replacement = (String) context.getRef(1);
+                    String regex = context.getString(0);
+                    String replacement = context.getString(1);
                     context.setReturnRef(str.replaceAll(regex != null ? regex : "", replacement != null ? replacement : ""));
                 })
-                // 获取子字符串 (1-2 params)
+                // 获取子字符串
+                .function("substring", returns(Type.STRING).params(Type.I), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    int start = context.getInt(0);
+                    context.setReturnRef(str.substring(start));
+                })
                 .function("substring", returns(Type.STRING).params(Type.I, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int start = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    if (context.getArgumentCount() < 2) {
-                        context.setReturnRef(str.substring(start));
-                    } else {
-                        int end = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
-                        context.setReturnRef(str.substring(start, Math.min(end, str.length())));
-                    }
+                    int start = context.getInt(0);
+                    int end = context.getInt(1);
+                    context.setReturnRef(str.substring(start, Math.min(end, str.length())));
                 })
-                // 查找子字符串位置 (1-2 params)
+                // 查找子字符串位置
+                .function("indexOf", returns(Type.I).params(Type.STRING), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    String searchStr = context.getString(0);
+                    if (searchStr == null) searchStr = "";
+                    context.setReturnInt(str.indexOf(searchStr));
+                })
                 .function("indexOf", returns(Type.I).params(Type.STRING, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String searchStr = (String) context.getRef(0);
+                    String searchStr = context.getString(0);
                     if (searchStr == null) searchStr = "";
-                    if (context.getArgumentCount() < 2) {
-                        context.setReturnInt(str.indexOf(searchStr));
-                    } else {
-                        int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
-                        context.setReturnInt(str.indexOf(searchStr, fromIndex));
-                    }
+                    int fromIndex = context.getInt(1);
+                    context.setReturnInt(str.indexOf(searchStr, fromIndex));
                 })
-                // 查找子字符串最后位置 (1-2 params)
+                // 查找子字符串最后位置
+                .function("lastIndexOf", returns(Type.I).params(Type.STRING), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    String searchStr = context.getString(0);
+                    if (searchStr == null) searchStr = "";
+                    context.setReturnInt(str.lastIndexOf(searchStr));
+                })
                 .function("lastIndexOf", returns(Type.I).params(Type.STRING, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String searchStr = (String) context.getRef(0);
+                    String searchStr = context.getString(0);
                     if (searchStr == null) searchStr = "";
-                    if (context.getArgumentCount() < 2) {
-                        context.setReturnInt(str.lastIndexOf(searchStr));
-                    } else {
-                        int fromIndex = Coerce.asInteger(context.getArgBoxed(1)).orElse(str.length());
-                        context.setReturnInt(str.lastIndexOf(searchStr, fromIndex));
-                    }
+                    int fromIndex = context.getInt(1);
+                    context.setReturnInt(str.lastIndexOf(searchStr, fromIndex));
                 })
                 // 转换为小写
                 .function("lowercase", returns(Type.STRING).noParams(), (context) -> {
@@ -108,48 +112,62 @@ public class ExtensionString {
                     String str = Objects.requireNonNull(context.getTarget());
                     context.setReturnRef(str.toUpperCase());
                 })
-                // 检查是否以指定字符串开始 (1-2 params)
+                // 检查是否以指定字符串开始
+                .function("startsWith", returns(Type.Z).params(Type.STRING), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    String prefix = context.getString(0);
+                    if (prefix == null) prefix = "";
+                    context.setReturnBool(str.startsWith(prefix));
+                })
                 .function("startsWith", returns(Type.Z).params(Type.STRING, Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String prefix = (String) context.getRef(0);
+                    String prefix = context.getString(0);
                     if (prefix == null) prefix = "";
-                    if (context.getArgumentCount() < 2) {
-                        context.setReturnBool(str.startsWith(prefix));
-                    } else {
-                        int offset = Coerce.asInteger(context.getArgBoxed(1)).orElse(0);
-                        context.setReturnBool(str.startsWith(prefix, offset));
-                    }
+                    int offset = context.getInt(1);
+                    context.setReturnBool(str.startsWith(prefix, offset));
                 })
                 // 检查是否以指定字符串结束
                 .function("endsWith", returns(Type.Z).params(Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String suffix = (String) context.getRef(0);
+                    String suffix = context.getString(0);
                     context.setReturnBool(str.endsWith(suffix != null ? suffix : ""));
                 })
-                // 左填充 (1-2 params)
+                // 左填充
+                .function("padLeft", returns(Type.STRING).params(Type.I), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    int totalLength = context.getInt(0);
+                    StringBuilder result = new StringBuilder(str);
+                    while (result.length() < totalLength) {
+                        result.insert(0, ' ');
+                    }
+                    context.setReturnRef(result.toString());
+                })
                 .function("padLeft", returns(Type.STRING).params(Type.I, Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    char padChar = ' ';
-                    if (context.getArgumentCount() >= 2) {
-                        String padStr = (String) context.getRef(1);
-                        if (padStr != null && !padStr.isEmpty()) padChar = padStr.charAt(0);
-                    }
+                    int totalLength = context.getInt(0);
+                    String padStr = context.getString(1);
+                    char padChar = (padStr != null && !padStr.isEmpty()) ? padStr.charAt(0) : ' ';
                     StringBuilder result = new StringBuilder(str);
                     while (result.length() < totalLength) {
                         result.insert(0, padChar);
                     }
                     context.setReturnRef(result.toString());
                 })
-                // 右填充 (1-2 params)
+                // 右填充
+                .function("padRight", returns(Type.STRING).params(Type.I), (context) -> {
+                    String str = Objects.requireNonNull(context.getTarget());
+                    int totalLength = context.getInt(0);
+                    StringBuilder result = new StringBuilder(str);
+                    while (result.length() < totalLength) {
+                        result.append(' ');
+                    }
+                    context.setReturnRef(result.toString());
+                })
                 .function("padRight", returns(Type.STRING).params(Type.I, Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int totalLength = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
-                    char padChar = ' ';
-                    if (context.getArgumentCount() >= 2) {
-                        String padStr = (String) context.getRef(1);
-                        if (padStr != null && !padStr.isEmpty()) padChar = padStr.charAt(0);
-                    }
+                    int totalLength = context.getInt(0);
+                    String padStr = context.getString(1);
+                    char padChar = (padStr != null && !padStr.isEmpty()) ? padStr.charAt(0) : ' ';
                     StringBuilder result = new StringBuilder(str);
                     while (result.length() < totalLength) {
                         result.append(padChar);
@@ -159,19 +177,19 @@ public class ExtensionString {
                 // 检查是否匹配正则表达式
                 .function("matches", returns(Type.Z).params(Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String regex = (String) context.getRef(0);
+                    String regex = context.getString(0);
                     context.setReturnBool(str.matches(regex != null ? regex : ""));
                 })
                 // 检查是否包含子字符串
                 .function("contains", returns(Type.Z).params(Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String searchStr = (String) context.getRef(0);
+                    String searchStr = context.getString(0);
                     context.setReturnBool(str.contains(searchStr != null ? searchStr : ""));
                 })
                 // 重复字符串
                 .function("repeat", returns(Type.STRING).params(Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int count = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
+                    int count = context.getInt(0);
                     if (count <= 0) {
                         context.setReturnRef("");
                         return;
@@ -185,7 +203,7 @@ public class ExtensionString {
                 // 获取字符
                 .function("charAt", returns(Type.STRING).params(Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
+                    int index = context.getInt(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }
@@ -194,7 +212,7 @@ public class ExtensionString {
                 // 获取字符编码
                 .function("charCodeAt", returns(Type.I).params(Type.I), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    int index = Coerce.asInteger(context.getArgBoxed(0)).orElse(0);
+                    int index = context.getInt(0);
                     if (index < 0 || index >= str.length()) {
                         throw new IndexOutOfBoundsException("String index out of range: " + index);
                     }
@@ -236,7 +254,7 @@ public class ExtensionString {
                 // 提取所有匹配的子字符串
                 .function("findAll", returns(Type.OBJECT).params(Type.STRING), (context) -> {
                     String str = Objects.requireNonNull(context.getTarget());
-                    String regex = (String) context.getRef(0);
+                    String regex = context.getString(0);
                     List<String> matches = new ArrayList<>();
                     if (regex != null && !regex.isEmpty()) {
                         Pattern pattern = Pattern.compile(regex);

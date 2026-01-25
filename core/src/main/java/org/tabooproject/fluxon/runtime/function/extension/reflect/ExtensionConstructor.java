@@ -40,8 +40,7 @@ public class ExtensionConstructor {
                 })
                 .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    boolean accessible = (Boolean) context.getArgBoxed(0);
-                    constructor.setAccessible(accessible);
+                    constructor.setAccessible(context.getBool(0));
                 })
                 .function("isAccessible", returns(Type.Z).noParams(), context -> {
                     Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
