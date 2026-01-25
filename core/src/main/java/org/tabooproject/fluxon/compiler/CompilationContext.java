@@ -38,6 +38,8 @@ public class CompilationContext {
 
     // root 变量类型
     private final Map<String, Type> rootVariableTypes = new LinkedHashMap<>();
+    // 强制所有根层级变量使用 localVariables 存储
+    private boolean forceLocalVariables = false;
 
     public CompilationContext(String source) {
         this.source = source;
@@ -194,5 +196,21 @@ public class CompilationContext {
      */
     public Map<String, Type> getRootVariableTypes() {
         return rootVariableTypes;
+    }
+
+    /**
+     * 是否强制所有根层级变量使用 localVariables 存储
+     */
+    public boolean isForceLocalVariables() {
+        return forceLocalVariables;
+    }
+
+    /**
+     * 设置是否强制所有根层级变量使用 localVariables 存储
+     *
+     * @param forceLocalVariables true 表示强制使用临时变量
+     */
+    public void setForceLocalVariables(boolean forceLocalVariables) {
+        this.forceLocalVariables = forceLocalVariables;
     }
 }

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.parser.error.VariableNotFoundException;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.runtime.Environment;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -144,8 +145,32 @@ public class UnderscoreLocalVariableTest {
     @Test
     public void testParsedScriptWithCustomEnvironment() {
         ParsedScript script = Fluxon.parse("_x = 100; &_x");
-        
+
         Environment env = script.newEnvironment();
         assertEquals(100, script.eval(env));
+    }
+
+    /**
+     * 测试 forceLocalVariables 选项
+     */
+    @Test
+    public void testForceLocalVariablesOption() {
+        CompilationContext ctx = new CompilationContext("x = 10; y = 20; &x + &y");
+        ctx.setForceLocalVariables(true);
+        ParsedScript script = Fluxon.parse(ctx);
+
+        // 验证所有变量都被视为局部变量
+        assertEquals(2, script.getRootLocalVariableCount());
+        assertEquals(30, script.eval());
+    }
+
+    /**
+     * 测试 forceLocalVariables 模式下变量无法在函数中访问
+     */
+    @Test
+    public void testForceLocalVariablesCannotAccessInFunction() {
+        CompilationContext ctx = new CompilationContext("x = 100; def foo() = &x; foo()");
+        ctx.setForceLocalVariables(true);
+        assertThrows(VariableNotFoundException.class, () -> Fluxon.parse(ctx));
     }
 }

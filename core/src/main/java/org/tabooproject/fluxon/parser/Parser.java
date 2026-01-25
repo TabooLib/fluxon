@@ -79,6 +79,9 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
             symbolEnvironment.defineRootVariables(rootTypes);
         }
 
+        // 设置强制局部变量模式
+        symbolEnvironment.setForceLocalVariables(context.isForceLocalVariables());
+
         // 解析导入
         try {
             ImportParser.parse(this);

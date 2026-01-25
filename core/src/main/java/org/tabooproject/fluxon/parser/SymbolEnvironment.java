@@ -30,6 +30,8 @@ public class SymbolEnvironment {
     // 当前函数
     @Nullable
     private String currentFunction;
+    // 强制所有根层级变量使用 localVariables 存储
+    private boolean forceLocalVariables = false;
 
     // 是否可以应用 break 语句
     private boolean isBreakable = false;
@@ -55,8 +57,8 @@ public class SymbolEnvironment {
      */
     public void defineVariable(String name) {
         if (currentFunction == null) {
-            // 根层级：_ 前缀变量强制使用 localVariables（临时变量）
-            if (!name.isEmpty() && name.charAt(0) == '_') {
+            // 根层级：强制模式或 _ 前缀变量使用 localVariables（临时变量）
+            if (forceLocalVariables || (!name.isEmpty() && name.charAt(0) == '_')) {
                 localVariables.computeIfAbsent(ROOT_LOCAL_KEY, i -> new LinkedHashSet<>()).add(name);
             } else {
                 rootVariables.putIfAbsent(name, Type.OBJECT);
@@ -238,6 +240,15 @@ public class SymbolEnvironment {
      */
     public void setCurrentFunction(@Nullable String currentFunction) {
         this.currentFunction = currentFunction;
+    }
+
+    /**
+     * 设置是否强制所有根层级变量使用 localVariables 存储
+     *
+     * @param forceLocalVariables true 表示强制使用临时变量
+     */
+    public void setForceLocalVariables(boolean forceLocalVariables) {
+        this.forceLocalVariables = forceLocalVariables;
     }
 
     /**
