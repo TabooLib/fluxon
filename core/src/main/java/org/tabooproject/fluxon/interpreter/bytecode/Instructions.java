@@ -219,6 +219,36 @@ public class Instructions {
         mv.visitMethodInsn(INVOKESTATIC, wrapperClass, "valueOf", "(" + primitiveDesc + ")" + wrapperDesc, false);
     }
 
+    /**
+     * 生成基本类型拆箱代码（按 Type）
+     * 栈输入：[Object]
+     * 栈输出：[primitive]
+     */
+    public static void unbox(MethodVisitor mv, Type type) {
+        switch (type.getDescriptor()) {
+            case "I":
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+                break;
+            case "J":
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+                break;
+            case "F":
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+                break;
+            case "D":
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+                break;
+            case "Z":
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                break;
+        }
+    }
+
     // endregion
 
     // region Map 生成

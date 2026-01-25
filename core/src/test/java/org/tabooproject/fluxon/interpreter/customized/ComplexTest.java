@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.interpreter.customized;
 
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
@@ -23,31 +24,35 @@ public class ComplexTest {
         env.defineRootVariable("location", new TestRuntime.TestLocation(0, 0, 0));
         List<String> lines = Files.readAllLines(new File("effect.fs").toPath());
 
-//        System.out.println("Run:");
-//        ParsedScript script = Fluxon.parse(String.join("\n", lines).trim(), env);
-//        script.eval(env);
-//
+        CompilationContext context = new CompilationContext(String.join("\n", lines).trim());
+        context.defineRootVariable("audience", TestRuntime.TestAudience.class);
+        context.defineRootVariable("location", TestRuntime.TestLocation.class);
+
+        System.out.println("Run:");
+        ParsedScript script = Fluxon.parse(context, env);
+        script.eval(env);
+
         System.out.println("Compile:");
-        CompileResult effect = Fluxon.compile(String.join("\n", lines).trim(), "effect", env);
+        CompileResult effect = Fluxon.compile(env, context, "effect");
         effect.dump(new File("core/dump/effect.class"));
         Class<?> defineClass = effect.defineClass(new FluxonClassLoader());
         RuntimeScriptBase base = (RuntimeScriptBase) defineClass.newInstance();
         base.eval(env);
 
-//        for (int i = 0; i < 30; i++) {
-//            long time = System.currentTimeMillis();
-//            for (int j = 0; j < 1000; j++) {
-//                base.eval(env);
-////                script.eval(env);
-//            }
-//            System.out.println((System.currentTimeMillis() - time) + "ms");
-//        }
-//
-//        for (int i = 0; i < 10; i++) {
-//            long time = System.currentTimeMillis();
-//            base.eval(env);
-////            script.eval(env);
-//            System.out.println((System.currentTimeMillis() - time) + "ms");
-//        }
+        for (int i = 0; i < 30; i++) {
+            long time = System.currentTimeMillis();
+            for (int j = 0; j < 1000; j++) {
+                base.eval(env);
+//                script.eval(env);
+            }
+            System.out.println((System.currentTimeMillis() - time) + "ms");
+        }
+
+        for (int i = 0; i < 10; i++) {
+            long time = System.currentTimeMillis();
+            base.eval(env);
+//            script.eval(env);
+            System.out.println((System.currentTimeMillis() - time) + "ms");
+        }
     }
 }

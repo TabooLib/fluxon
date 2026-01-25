@@ -89,6 +89,10 @@ public class ParsedScript {
         if (varTypes != null) {
             interpreter.setVariableTypes(varTypes);
         }
+        Map<String, Type> rootTypes = context.getRootVariableTypes();
+        if (!rootTypes.isEmpty()) {
+            interpreter.setRootVariableTypes(rootTypes);
+        }
         try {
             interpreter.execute(results);
             return interpreter.resultRef;

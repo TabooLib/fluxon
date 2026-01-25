@@ -41,10 +41,18 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                 return varType;
             }
             interpreter.resultRef = env.getLocalRef(position);
-            return Type.OBJECT;
+            return varType;
         }
-        interpreter.resultRef = Intrinsics.getVariableOrFunction(env, result.getIdentifier().getValue(), result.isOptional(), position);
-        return Type.OBJECT;
+        // root 变量
+        String name = result.getIdentifier().getValue();
+        Object value = Intrinsics.getVariableOrFunction(env, name, result.isOptional(), position);
+        Type rootType = interpreter.getRootVariableType(name);
+        if (rootType.isPrimitive() && value != null) {
+            interpreter.resultPrimitive = Type.unbox(value, rootType);
+            return rootType;
+        }
+        interpreter.resultRef = value;
+        return rootType;
     }
 
     @Override
@@ -64,21 +72,25 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                         "(" + Type.I + ")" + Type.OBJECT,
                         false
                 );
-                return Type.OBJECT;
+                return varType;
             }
-        } else {
-            // 根变量/函数查找: Intrinsics.getVariableOrFunction(env, name, optional, -1)
-            mv.visitLdcInsn(result.getIdentifier().getValue());
-            mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
-            mv.visitLdcInsn(-1);
-            mv.visitMethodInsn(INVOKESTATIC,
-                    Intrinsics.TYPE.getPath(),
-                    "getVariableOrFunction",
-                    "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
-                    false
-            );
         }
-        return Type.OBJECT;
+        // root 变量：先获取 Object，再根据类型拆箱
+        String name = result.getIdentifier().getValue();
+        mv.visitLdcInsn(name);
+        mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+        mv.visitLdcInsn(-1);
+        mv.visitMethodInsn(INVOKESTATIC,
+                Intrinsics.TYPE.getPath(),
+                "getVariableOrFunction",
+                "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
+                false
+        );
+        Type rootType = ctx.getRootVariableType(name);
+        if (rootType.isPrimitive()) {
+            Instructions.unbox(mv, rootType);
+        }
+        return rootType;
     }
 
     @Override
@@ -86,8 +98,9 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         int position = result.getPosition();
         if (position >= 0) {
             return analyzer.getVariableType(position);
+        } else {
+            return analyzer.getRootVariableType(result.getIdentifier().getValue());
         }
-        return Type.OBJECT;
     }
 
     /**

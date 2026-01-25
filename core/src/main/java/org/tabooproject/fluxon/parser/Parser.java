@@ -15,6 +15,7 @@ import org.tabooproject.fluxon.parser.type.StatementParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.OverloadSet;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,6 +72,12 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         this.results = new ArrayList<>();
         this.pendingCalls = new ArrayList<>();
         this.errors = new ArrayList<>();
+
+        // 从 context 加载 root 变量类型
+        Map<String, Type> rootTypes = context.getRootVariableTypes();
+        if (!rootTypes.isEmpty()) {
+            symbolEnvironment.defineRootVariables(rootTypes);
+        }
 
         // 解析导入
         try {
@@ -471,12 +478,12 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
-     * 定义全局变量
+     * 定义全局变量（从值推断类型）
      *
      * @param variables 变量映射
      */
     public void defineRootVariables(Map<String, Object> variables) {
-        symbolEnvironment.defineRootVariables(variables);
+        symbolEnvironment.defineRootVariablesFromValues(variables);
     }
 
     /**

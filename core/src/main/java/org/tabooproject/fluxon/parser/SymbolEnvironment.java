@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Symbolic;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
 
@@ -19,8 +20,8 @@ public class SymbolEnvironment {
 
     // 用户定义的函数
     private final Map<String, SymbolFunction> userFunctions = new HashMap<>();
-    // 全局变量符号表
-    private final Set<String> rootVariables = new LinkedHashSet<>();
+    // 全局变量符号表（变量名 -> 类型）
+    private final Map<String, Type> rootVariables = new LinkedHashMap<>();
     // 局部变量符号表
     private final Map<String, Set<String>> localVariables = new HashMap<>();
     // 常量符号表（名称 -> 字面量 AST 节点）
@@ -58,7 +59,7 @@ public class SymbolEnvironment {
             if (!name.isEmpty() && name.charAt(0) == '_') {
                 localVariables.computeIfAbsent(ROOT_LOCAL_KEY, i -> new LinkedHashSet<>()).add(name);
             } else {
-                rootVariables.add(name);
+                rootVariables.putIfAbsent(name, Type.OBJECT);
             }
         } else {
             localVariables.computeIfAbsent(currentFunction, i -> new LinkedHashSet<>()).add(name);
@@ -77,12 +78,35 @@ public class SymbolEnvironment {
     }
 
     /**
-     * 定义全局变量
+     * 定义单个 root 变量（带类型）
+     *
+     * @param name 变量名
+     * @param type 类型
+     */
+    public void defineRootVariable(String name, Type type) {
+        rootVariables.put(name, type);
+    }
+
+    /**
+     * 批量定义 root 变量（带类型）
+     *
+     * @param variables 变量映射
+     */
+    public void defineRootVariables(Map<String, Type> variables) {
+        rootVariables.putAll(variables);
+    }
+
+    /**
+     * 从值推断类型并定义 root 变量
      *
      * @param variables 变量
      */
-    public void defineRootVariables(Map<String, Object> variables) {
-        rootVariables.addAll(variables.keySet());
+    public void defineRootVariablesFromValues(Map<String, Object> variables) {
+        for (Map.Entry<String, Object> entry : variables.entrySet()) {
+            Object value = entry.getValue();
+            Type type = value != null ? Type.fromClass(value.getClass()) : Type.OBJECT;
+            rootVariables.put(entry.getKey(), type);
+        }
     }
 
     /**
@@ -132,7 +156,7 @@ public class SymbolEnvironment {
      */
     public boolean hasVariable(String name) {
         // 检查普通根变量
-        if (rootVariables.contains(name)) return true;
+        if (rootVariables.containsKey(name)) return true;
         // 检查局部变量（函数内或根层级 _ 前缀变量）
         String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
         Set<String> vars = localVariables.get(key);
@@ -171,8 +195,19 @@ public class SymbolEnvironment {
     /**
      * 获取全局变量符号表
      */
-    public Set<String> getRootVariables() {
+    public Map<String, Type> getRootVariables() {
         return rootVariables;
+    }
+
+    /**
+     * 获取 root 变量类型
+     *
+     * @param name 变量名
+     * @return 类型，不存在则返回 null
+     */
+    @Nullable
+    public Type getRootVariableType(String name) {
+        return rootVariables.get(name);
     }
 
     /**

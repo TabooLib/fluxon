@@ -26,6 +26,8 @@ public class TypeAnalyzer {
     private final Map<Integer, Type> variableTypes = new HashMap<>();
     // 上下文调用的 target 类型栈
     private final Deque<Type> targetTypeStack = new ArrayDeque<>();
+    // root 变量类型
+    private Map<String, Type> rootVariableTypes;
 
     /**
      * 从函数定义初始化参数类型
@@ -34,6 +36,27 @@ public class TypeAnalyzer {
         for (Map.Entry<Integer, Class<?>> entry : parameterTypes.entrySet()) {
             variableTypes.put(entry.getKey(), Type.fromClass(entry.getValue()));
         }
+    }
+
+    /**
+     * 设置 root 变量类型
+     */
+    public void setRootVariableTypes(Map<String, Type> types) {
+        this.rootVariableTypes = types;
+    }
+
+    /**
+     * 获取 root 变量类型
+     *
+     * @param name 变量名
+     * @return 类型，默认返回 OBJECT
+     */
+    public Type getRootVariableType(String name) {
+        if (rootVariableTypes != null) {
+            Type type = rootVariableTypes.get(name);
+            if (type != null) return type;
+        }
+        return Type.OBJECT;
     }
 
     /**

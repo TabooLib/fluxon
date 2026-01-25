@@ -39,6 +39,8 @@ public class Interpreter {
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
     // 变量类型数组（index = position），用于类型感知的变量读写，O(1) 数组索引访问
     private Type[] variableTypes = null;
+    // root 变量类型
+    private Map<String, Type> rootVariableTypes = null;
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
@@ -52,6 +54,7 @@ public class Interpreter {
     public Interpreter createChild() {
         Interpreter child = new Interpreter(this.environment);
         child.variableTypes = this.variableTypes;
+        child.rootVariableTypes = this.rootVariableTypes;
         return child;
     }
 
@@ -308,6 +311,24 @@ public class Interpreter {
         if (types != null && position >= 0 && position < types.length) {
             Type t = types[position];
             return t != null ? t : Type.OBJECT;
+        }
+        return Type.OBJECT;
+    }
+
+    /**
+     * 设置 root 变量类型
+     */
+    public void setRootVariableTypes(Map<String, Type> types) {
+        this.rootVariableTypes = types;
+    }
+
+    /**
+     * 获取 root 变量类型
+     */
+    public Type getRootVariableType(String name) {
+        if (rootVariableTypes != null) {
+            Type type = rootVariableTypes.get(name);
+            if (type != null) return type;
         }
         return Type.OBJECT;
     }

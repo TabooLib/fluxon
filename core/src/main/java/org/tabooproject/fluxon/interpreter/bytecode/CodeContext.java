@@ -293,6 +293,18 @@ public class CodeContext {
     }
 
     /**
+     * 获取 root 变量类型
+     * @param name 变量名
+     * @return 变量类型，如果未知则返回 OBJECT
+     */
+    public Type getRootVariableType(String name) {
+        if (typeAnalyzer != null) {
+            return typeAnalyzer.getRootVariableType(name);
+        }
+        return Type.OBJECT;
+    }
+
+    /**
      * 添加预解析的扩展函数到常量池
      * @param dispatchTableIndex 派发表索引
      * @param targetClass 目标类型

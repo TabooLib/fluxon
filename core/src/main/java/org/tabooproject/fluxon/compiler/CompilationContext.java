@@ -2,8 +2,10 @@ package org.tabooproject.fluxon.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.*;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +35,9 @@ public class CompilationContext {
     private OperatorRegistry operatorRegistry = OperatorRegistry.primary();
     private StatementMacroRegistry statementMacroRegistry = StatementMacroRegistry.primary();
     private PostfixOperatorRegistry postfixOperatorRegistry = PostfixOperatorRegistry.primary();
+
+    // root 变量类型
+    private final Map<String, Type> rootVariableTypes = new LinkedHashMap<>();
 
     public CompilationContext(String source) {
         this.source = source;
@@ -157,5 +162,37 @@ public class CompilationContext {
 
     public void setPostfixOperatorRegistry(@NotNull PostfixOperatorRegistry postfixOperatorRegistry) {
         this.postfixOperatorRegistry = postfixOperatorRegistry;
+    }
+
+    /**
+     * 定义单个 root 变量类型
+     *
+     * @param name 变量名
+     * @param type 类型
+     * @return this
+     */
+    public CompilationContext defineRootVariable(String name, Class<?> type) {
+        rootVariableTypes.put(name, Type.fromClass(type));
+        return this;
+    }
+
+    /**
+     * 批量定义 root 变量类型
+     *
+     * @param variables 变量映射
+     * @return this
+     */
+    public CompilationContext defineRootVariables(Map<String, Class<?>> variables) {
+        for (Map.Entry<String, Class<?>> entry : variables.entrySet()) {
+            rootVariableTypes.put(entry.getKey(), Type.fromClass(entry.getValue()));
+        }
+        return this;
+    }
+
+    /**
+     * 获取 root 变量类型
+     */
+    public Map<String, Type> getRootVariableTypes() {
+        return rootVariableTypes;
     }
 }

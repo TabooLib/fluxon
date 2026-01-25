@@ -122,6 +122,20 @@ public class Type {
     }
 
     /**
+     * 将包装类型拆箱为 long 位模式
+     */
+    public static long unbox(Object value, Type type) {
+        if (type == I || type == Z) {
+            if (value instanceof Number) return ((Number) value).intValue();
+            if (value instanceof Boolean) return ((Boolean) value) ? 1 : 0;
+        }
+        if (type == J) return ((Number) value).longValue();
+        if (type == D) return Double.doubleToRawLongBits(((Number) value).doubleValue());
+        if (type == F) return Float.floatToRawIntBits(((Number) value).floatValue());
+        throw new IllegalArgumentException("Cannot unbox type: " + type);
+    }
+
+    /**
      * 将 Java Class 转换为对应的 Type
      * 用于参数类型注解的类型映射
      */
