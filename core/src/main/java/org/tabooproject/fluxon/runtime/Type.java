@@ -1,5 +1,8 @@
 package org.tabooproject.fluxon.runtime;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class Type {
 
     public static final Type VOID = new Type(void.class);
@@ -17,6 +20,8 @@ public class Type {
     public static final Type F = new Type(float.class);
     public static final Type D = new Type(double.class);
     public static final Type Z = new Type(boolean.class);
+
+    public static final Map<Class<?>, Type> TYPE_MAP = new ConcurrentHashMap<>();
 
     // 类对象
     private final Class<?> source;
@@ -97,7 +102,7 @@ public class Type {
         if (clazz == float.class || clazz == Float.class) return F;
         if (clazz == double.class || clazz == Double.class) return D;
         if (clazz == boolean.class || clazz == Boolean.class) return Z;
-        return OBJECT;
+        return TYPE_MAP.computeIfAbsent(clazz, Type::new);
     }
 
     @Override

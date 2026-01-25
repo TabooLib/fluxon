@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.parser.ExtensionFunctionPosition;
 import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -286,6 +287,23 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             Function function = overloadSet.resolve(argTypes);
             if (function != null) {
                 return function.getReturnType();
+            }
+        }
+        // 尝试从扩展函数推断返回类型
+        ExtensionFunctionPosition extPos = result.getExtensionPosition();
+        if (extPos != null && extPos.getFunctions() != null) {
+            Type commonType = null;
+            for (Function func : extPos.getFunctions().values()) {
+                Type rt = func.getReturnType();
+                if (commonType == null) {
+                    commonType = rt;
+                } else if (!commonType.equals(rt)) {
+                    // 返回类型不一致，无法推断
+                    return Type.OBJECT;
+                }
+            }
+            if (commonType != null) {
+                return commonType;
             }
         }
         return Type.OBJECT;

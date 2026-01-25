@@ -65,5 +65,4 @@ def createComplete3DShape(center, radius: int, height: int, segments: int) = {
   &particles
 }
 
-playerPos = &audience::location()
-particles = createComplete3DShape(&playerPos, 2, 6, 20)
+particles = createComplete3DShape(&audience::location(), 2, 6, 20)

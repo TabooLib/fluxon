@@ -243,12 +243,29 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         emitLoadAny(rt, rightSlot, mv);
         boxing(rt, mv);
         ctx.restoreLocalVarIndex(saved);
+        // 算术运算：根据推断的结果类型选择基本类型方法
+        if (operator.arithmetic && ctx.getTypeAnalyzer() != null) {
+            Type resultType = ctx.getTypeAnalyzer().inferBinaryResultType(lt, rt, opType);
+            if (resultType.isPrimitive()) {
+                String suffix = getPrimitiveSuffix(resultType);
+                String descriptor = "(" + Type.OBJECT + Type.OBJECT + ")" + resultType.getDescriptor();
+                mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), operator.name + suffix, descriptor, false);
+                return resultType;
+            }
+        }
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), operator.name, operator.descriptor, false);
         if (operator.xor) {
             mv.visitInsn(ICONST_1);
             mv.visitInsn(IXOR);
         }
         return operator.type;
+    }
+
+    private static String getPrimitiveSuffix(Type type) {
+        if (type == Type.I || type == Type.Z) return "Int";
+        if (type == Type.J) return "Long";
+        if (type == Type.D) return "Double";
+        return "";
     }
 
     /**
@@ -513,34 +530,40 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     private static final Map<TokenType, BinaryOperator> OPERATORS = new EnumMap<>(TokenType.class);
 
     static {
-        OPERATORS.put(TokenType.PLUS, new BinaryOperator("add", Type.OBJECT));
-        OPERATORS.put(TokenType.MINUS, new BinaryOperator("subtract", Type.OBJECT));
-        OPERATORS.put(TokenType.MULTIPLY, new BinaryOperator("multiply", Type.OBJECT));
-        OPERATORS.put(TokenType.DIVIDE, new BinaryOperator("divide", Type.OBJECT));
-        OPERATORS.put(TokenType.MODULO, new BinaryOperator("modulo", Type.OBJECT));
+        OPERATORS.put(TokenType.PLUS, new BinaryOperator("add", Type.OBJECT, true));
+        OPERATORS.put(TokenType.MINUS, new BinaryOperator("subtract", Type.OBJECT, true));
+        OPERATORS.put(TokenType.MULTIPLY, new BinaryOperator("multiply", Type.OBJECT, true));
+        OPERATORS.put(TokenType.DIVIDE, new BinaryOperator("divide", Type.OBJECT, true));
+        OPERATORS.put(TokenType.MODULO, new BinaryOperator("modulo", Type.OBJECT, true));
         OPERATORS.put(TokenType.GREATER, new BinaryOperator("isGreater", Type.Z));
         OPERATORS.put(TokenType.GREATER_EQUAL, new BinaryOperator("isGreaterEqual", Type.Z));
         OPERATORS.put(TokenType.LESS, new BinaryOperator("isLess", Type.Z));
         OPERATORS.put(TokenType.LESS_EQUAL, new BinaryOperator("isLessEqual", Type.Z));
         OPERATORS.put(TokenType.EQUAL, new BinaryOperator("isEqual", Type.Z));
-        OPERATORS.put(TokenType.NOT_EQUAL, new BinaryOperator("isEqual", Type.Z, true));
+        OPERATORS.put(TokenType.NOT_EQUAL, new BinaryOperator("isEqual", Type.Z, false, true));
     }
 
     private static class BinaryOperator {
 
         private final String name;
         private final String descriptor;
+        private final boolean arithmetic;
         private final boolean xor;
         private final Type type;
 
         public BinaryOperator(String name, Type type) {
-            this(name, type, false);
+            this(name, type, false, false);
         }
 
-        public BinaryOperator(String name, Type type, boolean xor) {
+        public BinaryOperator(String name, Type type, boolean arithmetic) {
+            this(name, type, arithmetic, false);
+        }
+
+        public BinaryOperator(String name, Type type, boolean arithmetic, boolean xor) {
             this.name = name;
             this.descriptor = "(" + Type.OBJECT + Type.OBJECT + ")" + type;
             this.type = type;
+            this.arithmetic = arithmetic;
             this.xor = xor;
         }
     }

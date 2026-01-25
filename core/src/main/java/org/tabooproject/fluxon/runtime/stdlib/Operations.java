@@ -126,6 +126,10 @@ public final class Operations {
         }
     }
 
+    public static int addInt(Object a, Object b) { return ((Number) a).intValue() + ((Number) b).intValue(); }
+    public static long addLong(Object a, Object b) { return ((Number) a).longValue() + ((Number) b).longValue(); }
+    public static double addDouble(Object a, Object b) { return ((Number) a).doubleValue() + ((Number) b).doubleValue(); }
+
     /**
      * 对两个操作数进行减法运算
      * 如果两个操作数都是数字类型，则进行数字减法
@@ -177,6 +181,10 @@ public final class Operations {
         }
     }
 
+    public static int subtractInt(Object a, Object b) { return ((Number) a).intValue() - ((Number) b).intValue(); }
+    public static long subtractLong(Object a, Object b) { return ((Number) a).longValue() - ((Number) b).longValue(); }
+    public static double subtractDouble(Object a, Object b) { return ((Number) a).doubleValue() - ((Number) b).doubleValue(); }
+
     /**
      * 对两个操作数进行乘法运算
      *
@@ -212,6 +220,10 @@ public final class Operations {
         }
     }
 
+    public static int multiplyInt(Object a, Object b) { return ((Number) a).intValue() * ((Number) b).intValue(); }
+    public static long multiplyLong(Object a, Object b) { return ((Number) a).longValue() * ((Number) b).longValue(); }
+    public static double multiplyDouble(Object a, Object b) { return ((Number) a).doubleValue() * ((Number) b).doubleValue(); }
+
     /**
      * 对两个操作数进行除法运算
      *
@@ -241,6 +253,10 @@ public final class Operations {
         return (double)la / divisor;
     }
 
+    public static int divideInt(Object a, Object b) { return ((Number) a).intValue() / ((Number) b).intValue(); }
+    public static long divideLong(Object a, Object b) { return ((Number) a).longValue() / ((Number) b).longValue(); }
+    public static double divideDouble(Object a, Object b) { return ((Number) a).doubleValue() / ((Number) b).doubleValue(); }
+
     /**
      * 对两个操作数进行取模运算
      *
@@ -265,6 +281,10 @@ public final class Operations {
             default:     return a.intValue() % b.intValue();
         }
     }
+
+    public static int moduloInt(Object a, Object b) { return ((Number) a).intValue() % ((Number) b).intValue(); }
+    public static long moduloLong(Object a, Object b) { return ((Number) a).longValue() % ((Number) b).longValue(); }
+    public static double moduloDouble(Object a, Object b) { return ((Number) a).doubleValue() % ((Number) b).doubleValue(); }
 
     /**
      * 比较两个数字是否满足大于关系
