@@ -60,8 +60,10 @@ public class MainClassEmitter extends ClassEmitter {
         for (LambdaFunctionDefinition lambdaDef : ownedMainLambdas) {
             emitLambdaFieldDeclaration(lambdaDef);
         }
+        // 为预解析的扩展函数声明静态字段
+        emitResolvedExtensionFunctionsField(ctx);
         // 生成静态初始化块
-        emitStaticInit(ownedMainLambdas);
+        emitStaticInit(ownedMainLambdas, ctx);
         // 生成 clone 函数
         emitCloneMethod();
         return new EmitResult(endClass(), lambdaDefinitions, ctx);
@@ -171,7 +173,7 @@ public class MainClassEmitter extends ClassEmitter {
     /**
      * 生成主类的静态初始化块
      */
-    private void emitStaticInit(List<LambdaFunctionDefinition> ownedLambdas) {
+    private void emitStaticInit(List<LambdaFunctionDefinition> ownedLambdas, CodeContext ctx) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
         // 初始化用户函数静态字段
@@ -192,6 +194,8 @@ public class MainClassEmitter extends ClassEmitter {
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
             emitLambdaInitialization(mv, lambdaDef, className);
         }
+        // 初始化预解析的扩展函数数组
+        emitResolvedExtensionFunctionsInit(mv, ctx, className);
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();

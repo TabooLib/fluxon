@@ -45,6 +45,21 @@ public class CodeContext {
     // Command 解析数据（运行时通过 index 访问）
     private final List<Object> commandDataList = new ArrayList<>();
 
+    // 预解析的扩展函数常量池（编译期确定，运行时通过索引访问）
+    private final List<ResolvedExtFuncInfo> resolvedExtensionFunctions = new ArrayList<>();
+
+    /**
+     * 预解析扩展函数信息
+     */
+    public static class ResolvedExtFuncInfo {
+        public final int dispatchTableIndex;
+        public final Class<?> targetClass;
+        public ResolvedExtFuncInfo(int dispatchTableIndex, Class<?> targetClass) {
+            this.dispatchTableIndex = dispatchTableIndex;
+            this.targetClass = targetClass;
+        }
+    }
+
     // 类型分析器（用于编译期优化局部变量存储）
     private TypeAnalyzer typeAnalyzer;
 
@@ -273,5 +288,40 @@ public class CodeContext {
             return typeAnalyzer.getVariableType(position);
         }
         return Type.OBJECT;
+    }
+
+    /**
+     * 添加预解析的扩展函数到常量池
+     * @param dispatchTableIndex 派发表索引
+     * @param targetClass 目标类型
+     * @return 函数在常量池中的索引
+     */
+    public int addResolvedExtensionFunction(int dispatchTableIndex, Class<?> targetClass) {
+        // 检查是否已存在相同的组合
+        for (int i = 0; i < resolvedExtensionFunctions.size(); i++) {
+            ResolvedExtFuncInfo info = resolvedExtensionFunctions.get(i);
+            if (info.dispatchTableIndex == dispatchTableIndex && info.targetClass == targetClass) {
+                return i;
+            }
+        }
+        int index = resolvedExtensionFunctions.size();
+        resolvedExtensionFunctions.add(new ResolvedExtFuncInfo(dispatchTableIndex, targetClass));
+        return index;
+    }
+
+    /**
+     * 获取预解析的扩展函数常量池
+     * @return 预解析函数信息列表
+     */
+    public List<ResolvedExtFuncInfo> getResolvedExtensionFunctions() {
+        return resolvedExtensionFunctions;
+    }
+
+    /**
+     * 获取类的内部名称
+     * @return 内部类名
+     */
+    public String getInternalName() {
+        return className;
     }
 }

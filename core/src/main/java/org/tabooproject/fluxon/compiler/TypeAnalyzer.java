@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.compiler;
 
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
@@ -54,6 +56,19 @@ public class TypeAnalyzer {
         } else if (node instanceof Statement) {
             Statement stmt = (Statement) node;
             stmt.getStatementType().evaluator.analyzeTypes(node, this);
+        } else if (node instanceof FunctionDefinition) {
+            // 分析用户定义函数体（需要临时初始化参数类型）
+            FunctionDefinition funcDef = (FunctionDefinition) node;
+            Map<Integer, Type> savedTypes = new HashMap<>(variableTypes);
+            // 初始化参数类型
+            for (Map.Entry<Integer, Class<?>> entry : funcDef.getParameterTypes().entrySet()) {
+                variableTypes.put(entry.getKey(), Type.fromClass(entry.getValue()));
+            }
+            // 分析函数体
+            analyzeNode(funcDef.getBody());
+            // 恢复变量类型（函数作用域隔离）
+            variableTypes.clear();
+            variableTypes.putAll(savedTypes);
         }
     }
 

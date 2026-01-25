@@ -149,6 +149,21 @@ public final class Intrinsics {
     }
 
     /**
+     * 直接准备函数调用：跳过动态解析，直接使用编译期已解析的函数
+     *
+     * @param pool        函数上下文池
+     * @param environment 脚本运行环境
+     * @param function    编译期已解析的函数
+     * @param argCount    参数数量
+     * @return 准备好的 FunctionContext
+     */
+    public static FunctionContext<?> prepareCallDirect(FunctionContextPool pool, Environment environment, Function function, int argCount) {
+        if (pool == null) pool = FunctionContextPool.local();
+        Object target = environment.getTarget();
+        return pool.borrow(function, target, argCount, environment);
+    }
+
+    /**
      * 完成函数调用（无 interpreter）
      */
     public static Object finishCall(FunctionContext<?> ctx) {

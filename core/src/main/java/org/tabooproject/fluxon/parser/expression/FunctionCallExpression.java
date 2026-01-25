@@ -24,6 +24,11 @@ public class FunctionCallExpression extends Expression {
     // 类型分析后解析的具体扩展函数（基于 target 类型）
     @Nullable
     private Function resolvedExtensionFunction;
+    // 预解析扩展函数的派发表索引（用于编译期优化）
+    private int resolvedDispatchTableIndex = -1;
+    // 预解析扩展函数的目标类型（用于编译期优化）
+    @Nullable
+    private Class<?> resolvedTargetClass;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -59,6 +64,29 @@ public class FunctionCallExpression extends Expression {
      */
     public void setResolvedExtensionFunction(@Nullable Function function) {
         this.resolvedExtensionFunction = function;
+    }
+
+    /**
+     * 设置预解析扩展函数的元信息（用于编译期优化）
+     */
+    public void setResolvedExtensionInfo(int dispatchTableIndex, @Nullable Class<?> targetClass) {
+        this.resolvedDispatchTableIndex = dispatchTableIndex;
+        this.resolvedTargetClass = targetClass;
+    }
+
+    /**
+     * 获取预解析扩展函数的派发表索引
+     */
+    public int getResolvedDispatchTableIndex() {
+        return resolvedDispatchTableIndex;
+    }
+
+    /**
+     * 获取预解析扩展函数的目标类型
+     */
+    @Nullable
+    public Class<?> getResolvedTargetClass() {
+        return resolvedTargetClass;
     }
 
     /**

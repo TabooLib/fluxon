@@ -1,4 +1,9 @@
-def createComplete3DShape(center, radius: int, height: int, segments: int) = {
+def createComplete3DShape(
+    center: org.tabooproject.fluxon.type.TestRuntime$TestLocation,
+    radius: int,
+    height: int,
+    segments: int
+) = {
   particles = []
 
   // 圆柱体部分

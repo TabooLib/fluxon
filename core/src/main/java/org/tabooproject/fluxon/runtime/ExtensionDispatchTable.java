@@ -20,7 +20,7 @@ public final class ExtensionDispatchTable {
     /**
      * 缓存标记：未命中时的占位符
      */
-    private static final Function NOT_FOUND_SENTINEL = new NativeFunction<>(null, (FunctionSignature) null, ctx -> {});
+    private static final Function NOT_FOUND_SENTINEL = new NativeFunction<>(null, null, ctx -> {});
 
     /**
      * 启用 Map + 缓存的阈值：候选数量超过此值时才启用

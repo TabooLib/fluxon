@@ -2,9 +2,11 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassWriter;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 
 import java.util.ArrayList;
@@ -197,6 +199,59 @@ public abstract class ClassEmitter {
             }
         }
         return owned;
+    }
+
+    /**
+     * 声明 RESOLVED_EXT_FUNCTIONS 静态字段（如果需要）
+     *
+     * @param ctx CodeContext 用于检查是否有预解析函数
+     */
+    protected void emitResolvedExtensionFunctionsField(CodeContext ctx) {
+        if (!ctx.getResolvedExtensionFunctions().isEmpty()) {
+            emitField(ACC_PUBLIC | ACC_STATIC, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor(), null);
+        }
+    }
+
+    /**
+     * 在 clinit 中初始化 RESOLVED_EXT_FUNCTIONS 数组
+     *
+     * @param mv         静态初始化方法 visitor
+     * @param ctx        CodeContext 包含预解析函数列表
+     * @param ownerClass 静态字段所属类
+     */
+    protected void emitResolvedExtensionFunctionsInit(MethodVisitor mv, CodeContext ctx, String ownerClass) {
+        List<CodeContext.ResolvedExtFuncInfo> functions = ctx.getResolvedExtensionFunctions();
+        if (functions.isEmpty()) {
+            return;
+        }
+        // 创建数组: new Function[size]
+        mv.visitLdcInsn(functions.size());
+        mv.visitTypeInsn(ANEWARRAY, Function.TYPE.getPath());
+        // 填充数组元素
+        for (int i = 0; i < functions.size(); i++) {
+            CodeContext.ResolvedExtFuncInfo info = functions.get(i);
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            // 通过 FluxonRuntime 获取派发表，然后调用 resolve(targetClass)
+            emitLoadFunction(mv, info);
+            mv.visitInsn(AASTORE);
+        }
+        // 存入静态字段
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor());
+    }
+
+    /**
+     * 生成加载预解析函数的字节码
+     * 通过扩展派发表获取函数引用
+     */
+    private void emitLoadFunction(MethodVisitor mv, CodeContext.ResolvedExtFuncInfo info) {
+        // FluxonRuntime.getInstance().getCachedDispatchTables()[dispatchTableIndex].resolve(targetClass)
+        mv.visitMethodInsn(INVOKESTATIC, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getInstance", "()Lorg/tabooproject/fluxon/runtime/FluxonRuntime;", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getCachedDispatchTables", "()[Lorg/tabooproject/fluxon/runtime/ExtensionDispatchTable;", false);
+        mv.visitLdcInsn(info.dispatchTableIndex);
+        mv.visitInsn(AALOAD);
+        mv.visitLdcInsn(org.objectweb.asm.Type.getType(info.targetClass));
+        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/ExtensionDispatchTable", "resolve", "(Ljava/lang/Class;)" + Function.TYPE.getDescriptor(), false);
     }
 
     /**

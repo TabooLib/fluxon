@@ -60,6 +60,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     @Override
     public EmitResult emit() {
         List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
+        CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
         // 类声明
         beginClass(ACC_PUBLIC, fileName);
         emitSourceMetadataFields(source, fileName);
@@ -69,14 +70,16 @@ public class FunctionClassEmitter extends ClassEmitter {
         // 生成构造函数
         emitDefaultConstructor();
         // 实现 Function 接口方法
-        emitFunctionInterfaceMethods(lambdaDefinitions);
+        emitFunctionInterfaceMethods(lambdaDefinitions, funcCtx);
         // 为此函数类的 lambda 创建静态字段
         List<LambdaFunctionDefinition> ownedLambdas = getOwnedLambdas(className, lambdaDefinitions);
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
             emitLambdaFieldDeclaration(lambdaDef);
         }
+        // 为预解析的扩展函数声明静态字段
+        emitResolvedExtensionFunctionsField(funcCtx);
         // 生成静态初始化块
-        emitStaticInit(ownedLambdas);
+        emitStaticInit(ownedLambdas, funcCtx);
         // 生成 clone 方法
         emitCloneMethod();
         return new EmitResult(endClass(), lambdaDefinitions);
@@ -84,14 +87,14 @@ public class FunctionClassEmitter extends ClassEmitter {
 
     // ========== Function 接口方法生成 ==========
 
-    private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions) {
+    private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx) {
         emitGetNameMethod();
         emitGetNamespaceMethod();
         emitGetSignatureMethod();
         emitIsAsyncMethod();
         emitIsPrimarySyncMethod();
         emitGetAnnotationsMethod();
-        emitCallMethod(lambdaDefinitions);
+        emitCallMethod(lambdaDefinitions, funcCtx);
     }
 
     private void emitGetNameMethod() {
@@ -149,12 +152,11 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitEnd();
     }
 
-    private void emitCallMethod(List<LambdaFunctionDefinition> lambdaDefinitions) {
+    private void emitCallMethod(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx) {
         // 生成 Function.call(FunctionContext) 方法（void 返回）
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")V", null, null);
         mv.visitCode();
         // 初始化代码上下文，预留 slot 0 (this) 和 slot 1 (FunctionContext 参数)
-        CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 0: this
         funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext
         // 对函数体进行类型分析
@@ -275,7 +277,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitInsn(ATHROW);
     }
 
-    private void emitStaticInit(List<LambdaFunctionDefinition> ownedLambdas) {
+    private void emitStaticInit(List<LambdaFunctionDefinition> ownedLambdas, CodeContext funcCtx) {
         MethodVisitor mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
         mv.visitCode();
         // 初始化参数位置映射表: Map<String, Integer>
@@ -287,6 +289,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
             emitLambdaInitialization(mv, lambdaDef, className);
         }
+        // 初始化预解析的扩展函数数组
+        emitResolvedExtensionFunctionsInit(mv, funcCtx, className);
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();

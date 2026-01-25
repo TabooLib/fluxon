@@ -39,14 +39,41 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Type evaluate(Interpreter interpreter, FunctionCallExpression result) {
         ParseResult[] expressionArguments = result.getArguments();
         int argumentCount = expressionArguments.length;
-        FunctionContext<?> ctx = Intrinsics.prepareCall(
-                FunctionContextPool.local(),
-                interpreter.getEnvironment(),
-                result.getFunctionName(),
-                argumentCount,
-                result.getPositionIndex(),
-                result.getExtensionPositionIndex()
-        );
+        // 优先使用预解析的扩展函数（跳过动态解析）
+        Function resolvedExt = result.getResolvedExtensionFunction();
+        // 懒加载：解释模式下首次执行时解析扩展函数
+        if (resolvedExt == null) {
+            ExtensionFunctionPosition extPos = result.getExtensionPosition();
+            if (extPos != null) {
+                Object target = interpreter.getEnvironment().getTarget();
+                if (target != null) {
+                    ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
+                    resolvedExt = dispatchTable.resolve(target.getClass());
+                    if (resolvedExt != null) {
+                        result.setResolvedExtensionFunction(resolvedExt);
+                        result.setResolvedExtensionInfo(extPos.getIndex(), target.getClass());
+                    }
+                }
+            }
+        }
+        FunctionContext<?> ctx;
+        if (resolvedExt != null) {
+            ctx = Intrinsics.prepareCallDirect(
+                    FunctionContextPool.local(),
+                    interpreter.getEnvironment(),
+                    resolvedExt,
+                    argumentCount
+            );
+        } else {
+            ctx = Intrinsics.prepareCall(
+                    FunctionContextPool.local(),
+                    interpreter.getEnvironment(),
+                    result.getFunctionName(),
+                    argumentCount,
+                    result.getPositionIndex(),
+                    result.getExtensionPositionIndex()
+            );
+        }
         // 获取函数期望的参数类型
         Function function = ctx.getFunction();
         Type[] expectedTypes = function.getSignature() != null ? function.getSignature().getParameterTypes() : null;
@@ -125,20 +152,40 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int savedLocalVar = ctx.getLocalVarIndex();
         // 获取函数签名的期望参数类型
         Type[] expectedTypes = resolveExpectedTypes(result, ctx);
-        // 1. 调用 prepareCall → FunctionContext
-        Instructions.loadPool(mv, ctx);
-        Instructions.loadEnvironment(mv, ctx);
-        mv.visitLdcInsn(result.getFunctionName());
-        mv.visitLdcInsn(argumentCount);
-        mv.visitLdcInsn(result.getPositionIndex());
-        mv.visitLdcInsn(result.getExtensionPositionIndex());
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "prepareCall",
-                "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + "III)" + FunctionContext.TYPE,
-                false
-        );
+        // 1. 调用 prepareCall / prepareCallDirect → FunctionContext
+        Function resolvedExt = result.getResolvedExtensionFunction();
+        if (resolvedExt != null && result.getResolvedTargetClass() != null) {
+            // 编译期已解析扩展函数，使用 prepareCallDirect
+            int funcSlot = ctx.addResolvedExtensionFunction(result.getResolvedDispatchTableIndex(), result.getResolvedTargetClass());
+            Instructions.loadPool(mv, ctx);
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitFieldInsn(GETSTATIC, ctx.getInternalName(), "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor());
+            mv.visitLdcInsn(funcSlot);
+            mv.visitInsn(AALOAD);
+            mv.visitLdcInsn(argumentCount);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Intrinsics.TYPE.getPath(),
+                    "prepareCallDirect",
+                    "(" + FunctionContextPool.TYPE + Environment.TYPE + Function.TYPE + "I)" + FunctionContext.TYPE,
+                    false
+            );
+        } else {
+            // 动态解析路径
+            Instructions.loadPool(mv, ctx);
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(result.getFunctionName());
+            mv.visitLdcInsn(argumentCount);
+            mv.visitLdcInsn(result.getPositionIndex());
+            mv.visitLdcInsn(result.getExtensionPositionIndex());
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Intrinsics.TYPE.getPath(),
+                    "prepareCall",
+                    "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + "III)" + FunctionContext.TYPE,
+                    false
+            );
+        }
         // 2. 存入局部变量
         int ctxSlot = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, ctxSlot);
@@ -282,6 +329,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 Function resolved = dispatchTable.resolve(targetType.getSource());
                 if (resolved != null) {
                     result.setResolvedExtensionFunction(resolved);
+                    result.setResolvedExtensionInfo(extPos.getIndex(), targetType.getSource());
                 }
             }
         }
