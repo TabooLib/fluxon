@@ -8,6 +8,7 @@ import org.tabooproject.fluxon.parser.SyntaxMacro;
 import org.tabooproject.fluxon.parser.Trampoline;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
+import org.tabooproject.fluxon.parser.type.StatementParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public class WhenSyntaxMacro implements SyntaxMacro {
         // 检查 else 分支
         if (parser.match(TokenType.ELSE)) {
             parser.consume(TokenType.ARROW, "Expected '->' after else");
-            return ExpressionParser.parse(parser, branchResult -> {
+            return StatementParser.parseSubToExpr(parser, branchResult -> {
                 branches.add(new WhenExpression.WhenBranch(WhenExpression.MatchType.EQUAL, null, branchResult, null));
                 parser.match(TokenType.SEMICOLON);
                 return parseBranch(parser, condition, branches, continuation, whenToken);
@@ -74,7 +75,7 @@ public class WhenSyntaxMacro implements SyntaxMacro {
                 // 对于 IS 类型，直接跳到箭头和结果解析
                 parser.consume(TokenType.ARROW, "Expected '->' after is type");
                 Class<?> finalTargetClass = targetClass;
-                return ExpressionParser.parse(parser, branchResult -> {
+                return StatementParser.parseSubToExpr(parser, branchResult -> {
                     branches.add(new WhenExpression.WhenBranch(matchType, null, branchResult, finalTargetClass));
                     parser.match(TokenType.SEMICOLON);
                     return parseBranch(parser, condition, branches, continuation, whenToken);
@@ -99,7 +100,7 @@ public class WhenSyntaxMacro implements SyntaxMacro {
         // 解析条件表达式和结果
         return ExpressionParser.parse(parser, branchCondition -> {
             parser.consume(TokenType.ARROW, "Expected '->' after condition");
-            return ExpressionParser.parse(parser, branchResult -> {
+            return StatementParser.parseSubToExpr(parser, branchResult -> {
                 branches.add(new WhenExpression.WhenBranch(matchType, branchCondition, branchResult, null));
                 parser.match(TokenType.SEMICOLON);
                 return parseBranch(parser, condition, branches, continuation, whenToken);

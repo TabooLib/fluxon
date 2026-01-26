@@ -161,4 +161,46 @@ public class BreakContinueTest {
         assertEquals("1:odd,2:skipped,3:odd,4:skipped,5:odd,", testResult.getInterpretResult());
         assertEquals("1:odd,2:skipped,3:odd,4:skipped,5:odd,", testResult.getCompileResult());
     }
+
+    @Test
+    public void testBreakInWhen() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..5 {\n" +
+                "    when &i {\n" +
+                "        3 -> break\n" +
+                "        else -> output = &output + &i\n" +
+                "    }\n" +
+                "}\n" +
+                "&output");
+        assertEquals("12", testResult.getInterpretResult());
+        assertEquals("12", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testContinueInWhen() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..5 {\n" +
+                "    when &i {\n" +
+                "        3 -> continue\n" +
+                "        else -> output = &output + &i\n" +
+                "    }\n" +
+                "}\n" +
+                "&output");
+        assertEquals("1245", testResult.getInterpretResult());
+        assertEquals("1245", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testBreakInWhenWithCondition() {
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..10 {\n" +
+                "    when {\n" +
+                "        &i > 5 -> break\n" +
+                "        else -> output = &output + &i\n" +
+                "    }\n" +
+                "}\n" +
+                "&output");
+        assertEquals("12345", testResult.getInterpretResult());
+        assertEquals("12345", testResult.getCompileResult());
+    }
 }
