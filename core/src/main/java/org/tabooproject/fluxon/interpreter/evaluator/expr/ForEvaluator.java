@@ -43,8 +43,6 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
-        Type last = Type.VOID;
-        Object lastRef = null;
         boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
         // 迭代集合元素
         while (iterator.hasNext()) {
@@ -55,15 +53,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             }
             // 执行循环体
             try {
-                last = interpreter.evaluate(result.getBody());
-                lastRef = interpreter.resultRef;
+                interpreter.evaluate(result.getBody());
             } catch (ContinueException ignored) {
             } catch (BreakException ignored) {
                 break;
             }
         }
-        interpreter.resultRef = lastRef;
-        return last;
+        return Type.VOID;
     }
 
     /*

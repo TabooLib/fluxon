@@ -29,20 +29,20 @@ public class LogicalEvaluator extends ExpressionEvaluator<LogicalExpression> {
         boolean left = interpreter.isResultTrue(lt);
         if (result.getOperator().getType() == TokenType.OR) {
             if (left) {
-                interpreter.resultRef = true;
+                interpreter.resultPrimitive = 1;
             } else {
                 Type rt = interpreter.evaluate(result.getRight());
-                interpreter.resultRef = interpreter.isResultTrue(rt);
+                interpreter.resultPrimitive = interpreter.isResultTrue(rt) ? 1 : 0;
             }
         } else {
             if (!left) {
-                interpreter.resultRef = false;
+                interpreter.resultPrimitive = 0;
             } else {
                 Type rt = interpreter.evaluate(result.getRight());
-                interpreter.resultRef = interpreter.isResultTrue(rt);
+                interpreter.resultPrimitive = interpreter.isResultTrue(rt) ? 1 : 0;
             }
         }
-        return Type.BOOLEAN;
+        return Type.Z;
     }
 
     @SuppressWarnings("DuplicatedCode")

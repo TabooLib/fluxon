@@ -31,8 +31,8 @@ public class IsEvaluator extends ExpressionEvaluator<IsExpression> {
     public Type evaluate(Interpreter interpreter, IsExpression expr) {
         Type t = interpreter.evaluate(expr.getLeft());
         Object obj = interpreter.getResultBoxed(t);
-        interpreter.resultRef = Intrinsics.isInstanceOf(obj, expr.getTargetClass());
-        return Type.BOOLEAN;
+        interpreter.resultPrimitive = Intrinsics.isInstanceOf(obj, expr.getTargetClass()) ? 1 : 0;
+        return Type.Z;
     }
 
     @Override
