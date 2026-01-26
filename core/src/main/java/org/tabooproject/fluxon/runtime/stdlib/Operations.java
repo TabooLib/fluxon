@@ -287,6 +287,23 @@ public final class Operations {
     public static double moduloDouble(Object a, Object b) { return ((Number) a).doubleValue() % ((Number) b).doubleValue(); }
 
     /**
+     * 对两个操作数进行幂运算
+     *
+     * @param a 底数
+     * @param b 指数
+     * @return 幂运算结果
+     * @throws OperationException 当操作数不是数字类型时抛出异常
+     */
+    public static Object power(Object a, Object b) {
+        checkNumberOperands(a, b);
+        return Math.pow(((Number) a).doubleValue(), ((Number) b).doubleValue());
+    }
+
+    public static double powerDouble(Object a, Object b) {
+        return Math.pow(((Number) a).doubleValue(), ((Number) b).doubleValue());
+    }
+
+    /**
      * 比较两个数字是否满足大于关系
      *
      * @param a 第一个操作数

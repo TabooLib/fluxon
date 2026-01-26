@@ -51,6 +51,7 @@ public enum TokenType {
     MULTIPLY("*"),         // 乘法
     DIVIDE("/"),           // 除法
     MODULO("%"),           // 取模
+    POWER("^"),            // 幂运算
 
     EQUAL("=="),           // 等于
     NOT_EQUAL("!="),       // 不等于
@@ -146,6 +147,7 @@ public enum TokenType {
             case MULTIPLY:
             case DIVIDE:
             case MODULO:
+            case POWER:
             case EQUAL:
             case NOT_EQUAL:
             case IDENTICAL:

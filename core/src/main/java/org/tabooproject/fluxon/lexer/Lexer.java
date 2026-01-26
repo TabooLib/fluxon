@@ -99,6 +99,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         SINGLE_CHAR_TOKENS.put('*', TokenType.MULTIPLY);
         SINGLE_CHAR_TOKENS.put('/', TokenType.DIVIDE);
         SINGLE_CHAR_TOKENS.put('%', TokenType.MODULO);
+        SINGLE_CHAR_TOKENS.put('^', TokenType.POWER);
         SINGLE_CHAR_TOKENS.put('=', TokenType.ASSIGN);
         SINGLE_CHAR_TOKENS.put('>', TokenType.GREATER);
         SINGLE_CHAR_TOKENS.put('<', TokenType.LESS);

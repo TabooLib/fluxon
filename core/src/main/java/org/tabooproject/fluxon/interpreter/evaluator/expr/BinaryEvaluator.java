@@ -73,6 +73,10 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             case DIVIDE:
             case MODULO:
                 return evalPrimitiveArith(interpreter, common, lt, leftBits, rt, rightBits, opType);
+            case POWER:
+                // 幂运算始终返回 double
+                interpreter.resultPrimitive = Double.doubleToRawLongBits(Math.pow(toDouble(lt, leftBits), toDouble(rt, rightBits)));
+                return Type.D;
             default:
                 return evalPrimitiveCmp(interpreter, common, lt, leftBits, rt, rightBits, opType);
         }
@@ -183,6 +187,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             case MULTIPLY:      interpreter.resultRef = multiply(left, right); return Type.OBJECT;
             case DIVIDE:        interpreter.resultRef = divide(left, right); return Type.OBJECT;
             case MODULO:        interpreter.resultRef = modulo(left, right); return Type.OBJECT;
+            case POWER:         interpreter.resultRef = power(left, right); return Type.OBJECT;
             case GREATER:       interpreter.resultPrimitive = isGreater(left, right) ? 1 : 0; return Type.Z;
             case GREATER_EQUAL: interpreter.resultPrimitive = isGreaterEqual(left, right) ? 1 : 0; return Type.Z;
             case LESS:          interpreter.resultPrimitive = isLess(left, right) ? 1 : 0; return Type.Z;
@@ -218,6 +223,18 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         }
         // primitive 直通优化
         if (lt.isPrimitive() && rt.isPrimitive()) {
+            // POWER 需要特殊处理，因为 Math.pow 需要两个 double
+            if (opType == TokenType.POWER) {
+                int saved = ctx.getLocalVarIndex();
+                int rightSlot = ctx.allocateLocalVar(rt);
+                emitStore(rt, rightSlot, mv);
+                emitWidening(lt, Type.D, mv);
+                emitLoad(rt, rightSlot, mv);
+                emitWidening(rt, Type.D, mv);
+                ctx.restoreLocalVarIndex(saved);
+                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "pow", "(DD)D", false);
+                return Type.D;
+            }
             Type common = promoteType(lt, rt);
             if (lt != common || rt != common) {
                 // 混合类型：存 right 到临时变量，widen left，重新加载并 widen right
@@ -304,6 +321,10 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             case DIVIDE:
             case MODULO:
                 return emitArithmetic(common, opType, mv);
+            case POWER:
+                // 调用方已保证两个操作数都是 double
+                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "pow", "(DD)D", false);
+                return Type.D;
             default:
                 return emitComparison(common, opType, mv);
         }
@@ -535,6 +556,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         OPERATORS.put(TokenType.MULTIPLY, new BinaryOperator("multiply", Type.OBJECT, true));
         OPERATORS.put(TokenType.DIVIDE, new BinaryOperator("divide", Type.OBJECT, true));
         OPERATORS.put(TokenType.MODULO, new BinaryOperator("modulo", Type.OBJECT, true));
+        OPERATORS.put(TokenType.POWER, new BinaryOperator("power", Type.OBJECT, false));
         OPERATORS.put(TokenType.GREATER, new BinaryOperator("isGreater", Type.Z));
         OPERATORS.put(TokenType.GREATER_EQUAL, new BinaryOperator("isGreaterEqual", Type.Z));
         OPERATORS.put(TokenType.LESS, new BinaryOperator("isLess", Type.Z));

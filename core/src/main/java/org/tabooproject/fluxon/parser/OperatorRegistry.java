@@ -109,6 +109,8 @@ public class OperatorRegistry {
         registry.registerInfix(new TermInfixOperator());
         // Factor (100) - 左结合
         registry.registerInfix(new FactorInfixOperator());
+        // Power (105) - 右结合
+        registry.registerInfix(new PowerInfixOperator());
         // ContextCall (110) - 左结合
         registry.registerInfix(new ContextCallInfixOperator());
         // MemberAccess (115) - 左结合（特性开关检查在 parse 中进行）

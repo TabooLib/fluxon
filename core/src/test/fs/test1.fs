@@ -56,3 +56,5 @@ try throw('error')
 try throw('error') finally print("ok")
 try throw('error') catch 'ok' finally print("ok")
 try throw('error') catch (e) 'ok' finally print("ok")
+
+eval = 6.5*7.8^2.3 + (3.5^3+7/2)^3 -(5*4/(2-3))*4 + 6.5*7.8^2.3 + (3.5^3+7/2)^3 -(5*4/(2-3))*4 + 6.5*7.8^2.3 + (3.5^3+7/2)^3 -(5*4/(2-3))*4 + 6.5*7.8^2.3 + (3.5^3+7/2)^3 -(5*4/(2-3))*4
