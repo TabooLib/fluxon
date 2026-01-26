@@ -139,6 +139,40 @@ public class ListEvaluator extends ExpressionEvaluator<ListExpression> {
 
     @Override
     public Type inferResultType(ListExpression result, TypeAnalyzer analyzer) {
-        return result.isImmutable() ? IMMUTABLE_LIST : ARRAY_LIST;
+        Type baseType = result.isImmutable() ? IMMUTABLE_LIST : ARRAY_LIST;
+        List<ParseResult> elements = result.getElements();
+        if (elements.isEmpty()) {
+            return baseType;
+        }
+        // 推断元素类型：取所有元素类型的公共类型
+        Type elementType = null;
+        for (ParseResult element : elements) {
+            Type t = analyzer.inferType(element);
+            elementType = (elementType == null) ? t : unifyTypes(elementType, t);
+        }
+        return baseType.withElementType(elementType);
+    }
+
+    /**
+     * 统一两个类型，用于推断公共类型
+     */
+    private Type unifyTypes(Type a, Type b) {
+        if (a.equals(b)) return a;
+        // 数值类型提升
+        if (isNumeric(a) && isNumeric(b)) {
+            return promoteNumericType(a, b);
+        }
+        return Type.OBJECT;
+    }
+
+    private boolean isNumeric(Type t) {
+        return t == Type.I || t == Type.J || t == Type.F || t == Type.D;
+    }
+
+    private Type promoteNumericType(Type a, Type b) {
+        if (a == Type.D || b == Type.D) return Type.D;
+        if (a == Type.F || b == Type.F) return Type.F;
+        if (a == Type.J || b == Type.J) return Type.J;
+        return Type.I;
     }
 }

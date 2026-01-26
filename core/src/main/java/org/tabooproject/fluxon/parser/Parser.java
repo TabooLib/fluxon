@@ -587,6 +587,16 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
     }
 
     /**
+     * 检查标识符是否在任意作用域为已知变量（用于引用检查）
+     *
+     * @param name 标识符名称
+     * @return 是否为已知变量
+     */
+    public boolean hasVariableInAnyScope(String name) {
+        return symbolEnvironment.hasVariableInAnyScope(name);
+    }
+
+    /**
      * 获取当前符号环境
      */
     public SymbolEnvironment getSymbolEnvironment() {

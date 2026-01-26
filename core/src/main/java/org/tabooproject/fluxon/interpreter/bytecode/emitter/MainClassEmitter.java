@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
@@ -112,9 +113,13 @@ public class MainClassEmitter extends ClassEmitter {
         ctx.setEnvironmentLocalSlot(1);
         ctx.setExpectedReturnType(Object.class);
         // 设置类型分析器（如果可用）
+        TypeAnalyzer typeAnalyzer = null;
         if (generator instanceof DefaultBytecodeGenerator) {
-            ctx.setTypeAnalyzer(((DefaultBytecodeGenerator) generator).getTypeAnalyzer());
+            typeAnalyzer = ((DefaultBytecodeGenerator) generator).getTypeAnalyzer();
+            ctx.setTypeAnalyzer(typeAnalyzer);
         }
+        // 设置 variableTypes 数组（用于 destructure 的类型感知赋值）
+        emitVariableTypesInit(mv, typeAnalyzer);
         // 获取 FunctionContextPool 并存入局部变量（避免重复 ThreadLocal.get()）
         mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
         int poolSlot = ctx.allocateLocalVar(Type.OBJECT);
@@ -168,6 +173,59 @@ public class MainClassEmitter extends ClassEmitter {
         String functionClassName = className + funcDef.getName();
         mv.visitFieldInsn(GETSTATIC, className, funcDef.getName(), "L" + functionClassName + ";");
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "defineRootFunction", "(" + STRING + Function.TYPE + ")V", false);
+    }
+
+    /**
+     * 生成设置 variableTypes 数组的代码
+     * 只有当存在原始类型变量时才生成
+     */
+    private void emitVariableTypesInit(MethodVisitor mv, TypeAnalyzer typeAnalyzer) {
+        if (typeAnalyzer == null) return;
+        java.util.Map<Integer, Type> varTypes = typeAnalyzer.getVariableTypes();
+        if (varTypes.isEmpty()) return;
+        // 检查是否有原始类型变量
+        boolean hasPrimitive = false;
+        int maxPos = 0;
+        for (java.util.Map.Entry<Integer, Type> entry : varTypes.entrySet()) {
+            if (entry.getValue().isPrimitive()) {
+                hasPrimitive = true;
+            }
+            maxPos = Math.max(maxPos, entry.getKey());
+        }
+        if (!hasPrimitive) return;
+        // 创建 Type[] 数组
+        mv.visitVarInsn(ALOAD, 0); // this
+        mv.visitLdcInsn(maxPos + 1);
+        mv.visitTypeInsn(ANEWARRAY, Type.SELF.getPath());
+        // 只设置原始类型的位置
+        for (java.util.Map.Entry<Integer, Type> entry : varTypes.entrySet()) {
+            Type type = entry.getValue();
+            if (!type.isPrimitive()) continue;
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(entry.getKey());
+            // 加载对应的 Type 常量
+            String fieldName = getTypeFieldName(type);
+            if (fieldName != null) {
+                mv.visitFieldInsn(GETSTATIC, Type.SELF.getPath(), fieldName, Type.SELF.getDescriptor());
+            } else {
+                mv.visitInsn(ACONST_NULL);
+            }
+            mv.visitInsn(AASTORE);
+        }
+        // this.variableTypes = types
+        mv.visitFieldInsn(PUTFIELD, className, "variableTypes", "[" + Type.SELF.getDescriptor());
+    }
+
+    /**
+     * 获取 Type 常量对应的字段名
+     */
+    private String getTypeFieldName(Type type) {
+        if (type == Type.I) return "I";
+        if (type == Type.J) return "J";
+        if (type == Type.F) return "F";
+        if (type == Type.D) return "D";
+        if (type == Type.Z) return "Z";
+        return null;
     }
 
     /**

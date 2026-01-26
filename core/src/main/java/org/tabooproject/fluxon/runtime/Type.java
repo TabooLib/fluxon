@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Type {
 
+    public static final Type SELF = new Type(Type.class);
     public static final Type VOID = new Type(void.class);
     public static final Type OBJECT = new Type(Object.class);
     public static final Type NUMBER = new Type(Number.class);
@@ -40,8 +41,10 @@ public class Type {
 
     // 类对象
     private final Class<?> source;
-    // 纬度
+    // 维度
     private final int dimension;
+    // 元素类型（用于容器类型如 List、Range）
+    private final Type elementType;
     // 类路径
     private final String path;
     // 类签名
@@ -62,12 +65,17 @@ public class Type {
     }
 
     public Type(Class<?> source) {
-        this(source, 0);
+        this(source, 0, null);
     }
 
     public Type(Class<?> source, int dimension) {
+        this(source, dimension, null);
+    }
+
+    public Type(Class<?> source, int dimension, Type elementType) {
         this.source = source;
         this.dimension = dimension;
+        this.elementType = elementType;
         // 获取类路径
         this.path = source.getName().replace('.', '/');
         // 获取类签名
@@ -76,6 +84,27 @@ public class Type {
             descriptor.insert(0, "[");
         }
         this.descriptor = descriptor.toString();
+    }
+
+    /**
+     * 创建带元素类型的新 Type
+     */
+    public Type withElementType(Type elementType) {
+        return new Type(this.source, this.dimension, elementType);
+    }
+
+    /**
+     * 获取元素类型
+     */
+    public Type getElementType() {
+        return elementType;
+    }
+
+    /**
+     * 是否有元素类型信息
+     */
+    public boolean hasElementType() {
+        return elementType != null;
     }
 
     /**

@@ -151,15 +151,31 @@ public class SymbolEnvironment {
     }
 
     /**
-     * 变量是否存在
+     * 变量是否存在（用于赋值时判断是否需要定义新变量）
+     * 函数内部只检查函数局部变量，允许遮蔽根变量
      *
      * @param name 变量名
      * @return 是否存在
      */
     public boolean hasVariable(String name) {
-        // 检查普通根变量
+        String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
+        Set<String> vars = localVariables.get(key);
+        if (vars != null && vars.contains(name)) return true;
+        // 函数内部不检查根变量（允许遮蔽）
+        if (currentFunction != null) return false;
+        // 根层级检查根变量
+        return rootVariables.containsKey(name);
+    }
+
+    /**
+     * 变量是否在任意作用域存在（用于引用检查）
+     * 检查局部变量和根变量
+     *
+     * @param name 变量名
+     * @return 是否存在
+     */
+    public boolean hasVariableInAnyScope(String name) {
         if (rootVariables.containsKey(name)) return true;
-        // 检查局部变量（函数内或根层级 _ 前缀变量）
         String key = currentFunction != null ? currentFunction : ROOT_LOCAL_KEY;
         Set<String> vars = localVariables.get(key);
         return vars != null && vars.contains(name);

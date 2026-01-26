@@ -114,8 +114,32 @@ public class TypeAnalyzer {
         if (existing == null) {
             variableTypes.put(position, valueType);
         } else if (!existing.equals(valueType)) {
-            variableTypes.put(position, Type.OBJECT);
+            variableTypes.put(position, mergeTypes(existing, valueType));
         }
+    }
+
+    /**
+     * 强制设置变量类型（不合并，直接覆盖）
+     * 用于循环变量等类型由上下文完全决定的场景
+     */
+    public void forceType(int position, Type valueType) {
+        variableTypes.put(position, valueType);
+    }
+
+    /**
+     * 合并两个类型
+     */
+    private Type mergeTypes(Type a, Type b) {
+        // 如果容器类型相同，尝试合并元素类型
+        if (a.getSource().equals(b.getSource())) {
+            Type elemA = a.getElementType();
+            Type elemB = b.getElementType();
+            if (elemA != null && elemB != null) {
+                Type mergedElem = elemA.equals(elemB) ? elemA : Type.OBJECT;
+                return a.withElementType(mergedElem);
+            }
+        }
+        return Type.OBJECT;
     }
 
     /**

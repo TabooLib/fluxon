@@ -13,6 +13,8 @@ public abstract class RuntimeScriptBase {
     protected Environment environment;
     // Command 解析数据
     protected Object[] commandData;
+    // 变量类型映射（编译时生成）
+    protected Type[] variableTypes;
 
     // 克隆当前脚本
     abstract public RuntimeScriptBase clone();
@@ -50,6 +52,19 @@ public abstract class RuntimeScriptBase {
     // 设置 Command 解析数据
     public void setCommandData(Object[] commandData) {
         this.commandData = commandData;
+    }
+
+    // 获取变量类型
+    public Type getVariableType(int index) {
+        if (variableTypes == null || index < 0 || index >= variableTypes.length) {
+            return null;
+        }
+        return variableTypes[index];
+    }
+
+    // 设置变量类型映射
+    public void setVariableTypes(Type[] variableTypes) {
+        this.variableTypes = variableTypes;
     }
 
     /**

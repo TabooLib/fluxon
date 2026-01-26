@@ -70,4 +70,4 @@ def createComplete3DShape(
   &particles
 }
 
-particles = createComplete3DShape(&audience::location(), 2, 6, 20)
+createComplete3DShape(&audience::location(), 2, 6, 20)

@@ -68,18 +68,21 @@ public class UnderscoreLocalVariableTest {
     }
 
     /**
-     * 测试普通根变量可以跨函数访问
+     * 测试函数内部赋值会遮蔽根变量
+     * 函数内的赋值创建局部变量，不会修改外部根变量
      */
     @Test
-    public void testGlobalVariableCrossFunctionAccess() {
+    public void testFunctionAssignmentShadowsRootVariable() {
         String source =
             "global = 50\n" +
-            "def increment() { global = &global + 1 }\n" +
-            "increment()\n" +
-            "increment()\n" +
-            "&global";
+            "def test() { global = 100; &global }\n" +
+            "result = test()\n" +
+            "[&global, &result]";
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(source);
-        FluxonTestUtil.assertBothEqual(52, result);
+        // 函数内 global 是局部变量，赋值为 100
+        // 根变量 global 保持为 50
+        assertEquals("[50, 100]", result.getInterpretResult().toString());
+        assertEquals("[50, 100]", result.getCompileResult().toString());
     }
 
     /**

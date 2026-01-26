@@ -27,7 +27,8 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         int position = result.getPosition();
         Environment env = interpreter.getEnvironment();
         if (position >= 0) {
-            Type varType = interpreter.getVariableType(position);
+            // 使用当前环境的类型（作用域隔离）
+            Type varType = env.getVariableType(position);
             if (varType.isPrimitive()) {
                 if (varType == Type.I || varType == Type.Z) {
                     interpreter.resultPrimitive = env.getLocalInt(position);

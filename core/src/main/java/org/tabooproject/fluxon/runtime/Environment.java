@@ -38,6 +38,9 @@ public class Environment {
     // 局部变量对照表
     @Nullable
     protected String[] localVariableNames;
+    // 局部变量类型（解释模式下使用，作用域隔离）
+    @Nullable
+    protected Type[] variableTypes;
     // 上下文目标
     @Nullable
     protected Object target;
@@ -425,6 +428,29 @@ public class Environment {
      */
     public String[] getLocalVariableNames() {
         return localVariableNames;
+    }
+
+    /**
+     * 获取变量类型（作用域隔离）
+     *
+     * @param pos 变量位置
+     * @return 类型，默认返回 OBJECT
+     */
+    public Type getVariableType(int pos) {
+        if (variableTypes != null && pos >= 0 && pos < variableTypes.length) {
+            Type t = variableTypes[pos];
+            if (t != null) return t;
+        }
+        return Type.OBJECT;
+    }
+
+    /**
+     * 设置变量类型数组
+     *
+     * @param variableTypes 变量类型数组
+     */
+    public void setVariableTypes(Type[] variableTypes) {
+        this.variableTypes = variableTypes;
     }
 
     // endregion

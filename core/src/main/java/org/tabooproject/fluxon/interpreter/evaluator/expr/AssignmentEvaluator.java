@@ -43,7 +43,8 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         if (target instanceof Identifier) {
             int position = result.getPosition();
             if (position >= 0) {
-                Type varType = interpreter.getVariableType(position);
+                // 使用当前环境的类型（作用域隔离）
+                Type varType = env.getVariableType(position);
                 if (result.getOperator().getType() != TokenType.ASSIGN) {
                     // 复合赋值
                     Object current, value = interpreter.getResultBoxed(vt);

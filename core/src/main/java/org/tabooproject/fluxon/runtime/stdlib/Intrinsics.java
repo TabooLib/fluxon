@@ -81,7 +81,7 @@ public final class Intrinsics {
      */
     public static void destructure(RuntimeScriptBase scriptBase, Map<String, Integer> variables, Object element) {
         Environment environment = scriptBase.getEnvironment();
-        DestructuringRegistry.getInstance().destructure(environment, variables, element);
+        DestructuringRegistry.getInstance().destructure(environment, variables, element, scriptBase::getVariableType);
     }
 
     /**

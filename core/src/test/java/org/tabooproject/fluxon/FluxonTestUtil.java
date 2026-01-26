@@ -18,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("deprecation")
 public class FluxonTestUtil {
 
+    /** 是否 dump 编译结果到文件（默认关闭，需要时设为 true） */
+    private static final boolean DUMP_ENABLED = Boolean.getBoolean("fluxon.test.dump");
+
     /**
      * 创建启用了所有测试特性的编译上下文
      */
@@ -245,11 +248,13 @@ public class FluxonTestUtil {
         syncRegistries(compileCtx, compileParseEnv);
         CompileResult compileResultObj = Fluxon.compile(compileParseEnv, compileCtx, className);
         compileTime = System.currentTimeMillis() - startCompile;
-        // 输出编译字节码
-        try {
-            compileResultObj.dump(new File("dump/TestScript.class"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        // 输出编译字节码（仅在启用时）
+        if (DUMP_ENABLED) {
+            try {
+                compileResultObj.dump(new File("dump/TestScript.class"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
         // 3. 执行
@@ -402,11 +407,13 @@ public class FluxonTestUtil {
         envSetup.accept(compileParseEnv);
         CompileResult compileResultObj = Fluxon.compile(source, className, compileParseEnv);
         compileTime = System.currentTimeMillis() - startCompile;
-        // 输出编译字节码
-        try {
-            compileResultObj.dump(new File("dump/TestScript.class"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        // 输出编译字节码（仅在启用时）
+        if (DUMP_ENABLED) {
+            try {
+                compileResultObj.dump(new File("dump/TestScript.class"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
 
         // 3. 执行

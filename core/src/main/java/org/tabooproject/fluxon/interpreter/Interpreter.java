@@ -37,8 +37,6 @@ public class Interpreter {
     private final FunctionContextPool pool;
     // 缓存 lambda -> UserFunction，避免循环中重复创建实例
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
-    // 变量类型数组（index = position），用于类型感知的变量读写，O(1) 数组索引访问
-    private Type[] variableTypes = null;
     // root 变量类型
     private Map<String, Type> rootVariableTypes = null;
 
@@ -48,12 +46,11 @@ public class Interpreter {
     }
 
     /**
-     * 创建子解释器（独立 result slots + lambdaCache，共享 environment 和 variableTypes）
+     * 创建子解释器（独立 result slots + lambdaCache，共享 environment）
      * 用于异步执行时隔离线程间的 result 竞争
      */
     public Interpreter createChild() {
         Interpreter child = new Interpreter(this.environment);
-        child.variableTypes = this.variableTypes;
         child.rootVariableTypes = this.rootVariableTypes;
         return child;
     }
@@ -284,11 +281,11 @@ public class Interpreter {
     }
 
     /**
-     * 设置变量类型映射（转换为数组以提升查询性能）
+     * 设置变量类型映射（转换为数组并设置到当前 Environment）
      */
     public void setVariableTypes(Map<Integer, Type> types) {
         if (types == null || types.isEmpty()) {
-            this.variableTypes = null;
+            this.environment.setVariableTypes(null);
             return;
         }
         int maxPos = types.keySet().stream().mapToInt(Integer::intValue).max().orElse(-1);
@@ -297,22 +294,10 @@ public class Interpreter {
             types.forEach((pos, type) -> {
                 if (pos >= 0) arr[pos] = type;
             });
-            this.variableTypes = arr;
+            this.environment.setVariableTypes(arr);
         } else {
-            this.variableTypes = null;
+            this.environment.setVariableTypes(null);
         }
-    }
-
-    /**
-     * 获取变量类型（O(1) 数组索引访问）
-     */
-    public Type getVariableType(int position) {
-        Type[] types = variableTypes;
-        if (types != null && position >= 0 && position < types.length) {
-            Type t = types[position];
-            return t != null ? t : Type.OBJECT;
-        }
-        return Type.OBJECT;
     }
 
     /**

@@ -67,4 +67,10 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         analyzer.analyzeNode(result.getStart());
         analyzer.analyzeNode(result.getEnd());
     }
+
+    @Override
+    public Type inferResultType(RangeExpression result, TypeAnalyzer analyzer) {
+        // Range 始终产生 int 元素（Intrinsics.createRange 强制转 int）
+        return IntRange.TYPE.withElementType(Type.I);
+    }
 }

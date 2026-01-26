@@ -44,10 +44,12 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
         boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
+        // 使用当前环境的类型提供器（作用域隔离）
+        Environment env = interpreter.getEnvironment();
         // 迭代集合元素
         while (iterator.hasNext()) {
             // 使用解构器注册表执行解构
-            DestructuringRegistry.getInstance().destructure(interpreter.getEnvironment(), variables, iterator.next(), interpreter::getVariableType);
+            DestructuringRegistry.getInstance().destructure(env, variables, iterator.next(), env::getVariableType);
             if (!bodyIsStatement) {
                 interpreter.consumeCostStep();
             }
@@ -130,20 +132,40 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitMethodInsn(INVOKEINTERFACE, ITERATOR.getPath(), "hasNext", "()Z", true);
         mv.visitJumpInsn(IFEQ, whileEnd); // 如果没有更多元素，跳转到结束
 
-        // 执行解构操作：准备参数
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitVarInsn(ALOAD, variablesMapVar); // 变量 Map
-        
         // 获取下一个元素
         mv.visitVarInsn(ALOAD, iteratorVar);
         mv.visitMethodInsn(INVOKEINTERFACE, ITERATOR.getPath(), "next", "()" + Type.OBJECT, true);
 
-        // 调用解构方法
-        mv.visitMethodInsn(
-                INVOKESTATIC,
-                Intrinsics.TYPE.getPath(),
-                "destructure",
-                "(" + RuntimeScriptBase.TYPE + MAP + Type.OBJECT + ")V", false);
+        Map<String, Integer> variables = result.getVariables();
+        if (variables.size() == 1) {
+            // 单变量：内联赋值，避免 destructure 跨作用域类型冲突
+            Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
+            int varPos = entry.getValue();
+            Type varType = ctx.getVariableType(varPos);
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitInsn(SWAP);
+            mv.visitLdcInsn(varPos);
+            mv.visitInsn(SWAP);
+            if (varType.isPrimitive()) {
+                // 拆箱并存入原始槽位
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                emitSetLocalPrimitive(varType, mv);
+            } else {
+                // 存入引用槽位
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
+            }
+        } else {
+            // 多变量：使用 destructure
+            mv.visitVarInsn(ALOAD, 0); // this
+            mv.visitInsn(SWAP);
+            mv.visitVarInsn(ALOAD, variablesMapVar);
+            mv.visitInsn(SWAP);
+            mv.visitMethodInsn(
+                    INVOKESTATIC,
+                    Intrinsics.TYPE.getPath(),
+                    "destructure",
+                    "(" + RuntimeScriptBase.TYPE + MAP + Type.OBJECT + ")V", false);
+        }
 
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
@@ -155,9 +177,56 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     private static final Type ITERATOR = new Type(Iterator.class);
     private static final Type MAP = new Type(Map.class);
 
+    /**
+     * 生成原始类型设置字节码
+     * 栈输入: [env, pos, Number]
+     * 栈输出: []
+     */
+    private void emitSetLocalPrimitive(Type type, MethodVisitor mv) {
+        String methodName;
+        String desc;
+        switch (type.getDescriptor()) {
+            case "I":
+            case "Z":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+                methodName = "setLocalInt";
+                desc = "(II)V";
+                break;
+            case "J":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
+                methodName = "setLocalLong";
+                desc = "(IJ)V";
+                break;
+            case "D":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
+                methodName = "setLocalDouble";
+                desc = "(ID)V";
+                break;
+            case "F":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
+                methodName = "setLocalFloat";
+                desc = "(IF)V";
+                break;
+            default:
+                // 非数字原始类型，回退到 Object
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
+                return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), methodName, desc, false);
+    }
+
     @Override
     public void analyzeTypes(ForExpression result, TypeAnalyzer analyzer) {
         analyzer.analyzeNode(result.getCollection());
+        // 推断集合元素类型并记录变量类型
+        Type collectionType = analyzer.inferType(result.getCollection());
+        Type elementType = collectionType.getElementType();
+        if (elementType != null) {
+            // 循环变量类型由集合决定，强制覆盖（避免与同 position 的其他变量合并）
+            for (Integer pos : result.getVariables().values()) {
+                analyzer.forceType(pos, elementType);
+            }
+        }
         analyzer.analyzeNode(result.getBody());
     }
 }

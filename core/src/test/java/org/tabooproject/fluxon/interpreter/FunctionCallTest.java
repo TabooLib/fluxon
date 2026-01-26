@@ -374,4 +374,22 @@ public class FunctionCallTest {
             assertTrue(e.getMessage().contains("Double::replace(args=2)"));
         }
     }
+
+    @Test
+    public void testFunctionWithNestedLoopsAndListDeclaration() {
+        // 测试函数内声明列表变量并使用嵌套循环
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def buildList(n) = {\n" +
+                        "  result = []\n" +
+                        "  for y in 0..&n {\n" +
+                        "    for x in 0..&n {\n" +
+                        "      &result::add(&x + &y * 10)\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "  &result\n" +
+                        "}\n" +
+                        "buildList(2)");
+        assertEquals("[0, 1, 2, 10, 11, 12, 20, 21, 22]", result.getInterpretResult().toString());
+        assertEquals("[0, 1, 2, 10, 11, 12, 20, 21, 22]", result.getCompileResult().toString());
+    }
 }

@@ -131,13 +131,13 @@ public class TestRuntime {
             ));
         });
         runtime.registerExtensionFunction(TestAudience.class, null, "location", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation()), false, false);
-        runtime.registerExtensionFunction(TestAudience.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getY()), false, false);
-        runtime.registerExtensionFunction(TestAudience.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
-        runtime.registerExtensionFunction(TestAudience.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
-        runtime.registerExtensionFunction(TestLocation.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getY()), false, false);
-        runtime.registerExtensionFunction(TestLocation.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
-        runtime.registerExtensionFunction(TestLocation.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
-        runtime.registerExtensionFunction(TestLocation.class, null, "yaw", returns(Type.F).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getYaw()), false, false);
-        runtime.registerExtensionFunction(TestLocation.class, null, "pitch", returns(Type.F).noParams(), (context) -> context.setReturnRef(Objects.requireNonNull(context.getTarget()).getPitch()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getLocation().getY()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
+        runtime.registerExtensionFunction(TestAudience.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getLocation().getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "x", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getY()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "y", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "z", returns(Type.D).noParams(), (context) -> context.setReturnDouble(Objects.requireNonNull(context.getTarget()).getZ()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "yaw", returns(Type.F).noParams(), (context) -> context.setReturnFloat(Objects.requireNonNull(context.getTarget()).getYaw()), false, false);
+        runtime.registerExtensionFunction(TestLocation.class, null, "pitch", returns(Type.F).noParams(), (context) -> context.setReturnFloat(Objects.requireNonNull(context.getTarget()).getPitch()), false, false);
     }
 }
