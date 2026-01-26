@@ -2,7 +2,6 @@ package org.tabooproject.fluxon.compiler;
 
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
-import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
@@ -43,6 +42,18 @@ public class TypeAnalyzer {
      */
     public void setRootVariableTypes(Map<String, Type> types) {
         this.rootVariableTypes = types;
+    }
+
+    /**
+     * 设置参数类型
+     *
+     * @param parameters 参数映射（name -> ParameterInfo）
+     */
+    public void setParameterTypes(Map<String, ParameterInfo> parameters) {
+        if (parameters == null || parameters.isEmpty()) return;
+        for (ParameterInfo info : parameters.values()) {
+            variableTypes.put(info.getIndex(), info.getType());
+        }
     }
 
     /**

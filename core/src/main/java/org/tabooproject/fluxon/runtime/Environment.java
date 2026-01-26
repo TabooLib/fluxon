@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.compiler.ParameterInfo;
 import org.tabooproject.fluxon.parser.CommandRegistry;
 import org.tabooproject.fluxon.parser.DomainRegistry;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
@@ -277,6 +278,64 @@ public class Environment {
             this.localRefs = new Object[count];
             this.localVariableNames = new String[count];
         }
+    }
+
+    /**
+     * 设置参数信息（由 ParsedScript.newEnvironment() 调用）
+     *
+     * @param parameters 参数映射
+     */
+    public void setParameters(@Nullable Map<String, ParameterInfo> parameters) {
+        root.rootState.parameters = parameters;
+    }
+
+    /**
+     * 获取参数信息（内部方法）
+     */
+    @NotNull
+    private ParameterInfo getParameterInfo(@NotNull String name) {
+        Map<String, ParameterInfo> params = root.rootState.parameters;
+        if (params == null) {
+            throw new IllegalStateException("No parameters defined");
+        }
+        ParameterInfo info = params.get(name);
+        if (info == null) {
+            throw new IllegalArgumentException("Unknown parameter: " + name);
+        }
+        return info;
+    }
+
+    /**
+     * 设置参数值（通用方法）
+     *
+     * @param name  参数名
+     * @param value 参数值
+     */
+    public void setParameter(@NotNull String name, @Nullable Object value) {
+        ParameterInfo info = getParameterInfo(name);
+        int index = info.getIndex();
+        Type type = info.getType();
+        if (type == Type.DOUBLE) {
+            setLocalDouble(index, ((Number) value).doubleValue());
+        } else if (type == Type.LONG) {
+            setLocalLong(index, ((Number) value).longValue());
+        } else {
+            setLocalRef(index, value);
+        }
+    }
+
+    /**
+     * 设置 double 类型参数值
+     */
+    public void setParameter(@NotNull String name, double value) {
+        setLocalDouble(getParameterInfo(name).getIndex(), value);
+    }
+
+    /**
+     * 设置 long 类型参数值
+     */
+    public void setParameter(@NotNull String name, long value) {
+        setLocalLong(getParameterInfo(name).getIndex(), value);
     }
 
     /**

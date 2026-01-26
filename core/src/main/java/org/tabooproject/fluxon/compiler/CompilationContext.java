@@ -40,6 +40,8 @@ public class CompilationContext {
     private final Map<String, Type> rootVariableTypes = new LinkedHashMap<>();
     // 强制所有根层级变量使用 localVariables 存储
     private boolean forceLocalVariables = false;
+    // 参数变量（使用数组访问，而非 HashMap）
+    private final LinkedHashMap<String, ParameterInfo> parameters = new LinkedHashMap<>();
 
     public CompilationContext(String source) {
         this.source = source;
@@ -212,5 +214,45 @@ public class CompilationContext {
      */
     public void setForceLocalVariables(boolean forceLocalVariables) {
         this.forceLocalVariables = forceLocalVariables;
+    }
+
+    /**
+     * 定义参数变量
+     * 参数变量使用数组访问（localDouble/localObject），而非 HashMap 查找
+     *
+     * @param name 参数名
+     * @param type 参数类型
+     */
+    public void defineParameter(String name, Class<?> type) {
+        if (parameters.containsKey(name)) {
+            throw new IllegalArgumentException("Parameter already defined: " + name);
+        }
+        int index = parameters.size();
+        parameters.put(name, new ParameterInfo(name, Type.fromClass(type), index));
+    }
+
+    /**
+     * 获取参数索引
+     *
+     * @param name 参数名
+     * @return 参数索引，如果不存在则返回 -1
+     */
+    public int getParameterIndex(String name) {
+        ParameterInfo info = parameters.get(name);
+        return info != null ? info.getIndex() : -1;
+    }
+
+    /**
+     * 获取所有参数
+     */
+    public LinkedHashMap<String, ParameterInfo> getParameters() {
+        return parameters;
+    }
+
+    /**
+     * 获取参数数量
+     */
+    public int getParameterCount() {
+        return parameters.size();
     }
 }

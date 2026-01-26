@@ -78,6 +78,10 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         if (!rootTypes.isEmpty()) {
             symbolEnvironment.defineRootVariables(rootTypes);
         }
+        // 从 context 加载参数变量
+        if (!context.getParameters().isEmpty()) {
+            symbolEnvironment.defineParameters(context.getParameters());
+        }
 
         // 设置强制局部变量模式
         symbolEnvironment.setForceLocalVariables(context.isForceLocalVariables());

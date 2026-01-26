@@ -68,6 +68,7 @@ public class Fluxon {
         // 类型分析
         TypeAnalyzer analyzer = new TypeAnalyzer();
         analyzer.setRootVariableTypes(context.getRootVariableTypes());
+        analyzer.setParameterTypes(context.getParameters());
         analyzer.analyze(results);
         context.setAttribute("variableTypes", analyzer.getVariableTypes());
         Integer rootLocalVarCount = context.getAttribute("rootLocalVariableCount");
@@ -176,6 +177,7 @@ public class Fluxon {
         // 类型分析阶段
         TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
         typeAnalyzer.setRootVariableTypes(context.getRootVariableTypes());
+        typeAnalyzer.setParameterTypes(context.getParameters());
         typeAnalyzer.analyze(results);
         generator.setTypeAnalyzer(typeAnalyzer);
         // 分离语句和定义

@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Symbolic;
+import org.tabooproject.fluxon.compiler.ParameterInfo;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
@@ -96,6 +97,18 @@ public class SymbolEnvironment {
      */
     public void defineRootVariables(Map<String, Type> variables) {
         rootVariables.putAll(variables);
+    }
+
+    /**
+     * 定义参数变量
+     * 参数变量会被加入 localVariables[ROOT_LOCAL_KEY]，使得解析时获得 position >= 0
+     *
+     * @param parameters 参数映射
+     */
+    public void defineParameters(Map<String, ParameterInfo> parameters) {
+        for (String name : parameters.keySet()) {
+            localVariables.computeIfAbsent(ROOT_LOCAL_KEY, i -> new LinkedHashSet<>()).add(name);
+        }
     }
 
     /**

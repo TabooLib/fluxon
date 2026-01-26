@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.runtime;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.tabooproject.fluxon.compiler.ParameterInfo;
 import org.tabooproject.fluxon.parser.CommandRegistry;
 import org.tabooproject.fluxon.parser.DomainRegistry;
 import org.tabooproject.fluxon.runtime.collection.CopyOnWriteMap;
@@ -32,6 +33,10 @@ public final class EnvironmentState {
     // 根变量表（CopyOnWrite 隔离）
     @NotNull
     final Map<String, Object> rootVariables;
+
+    // 参数信息（name -> ParameterInfo）
+    @Nullable
+    Map<String, ParameterInfo> parameters;
 
     // IO
     @NotNull
