@@ -95,43 +95,31 @@ public final class FunctionContext<Target> implements AutoCloseable {
     // ====================== 参数写入 ======================
 
     public void setInt(int index, int v) {
-        ensurePrimitivesCapacity(index);
-        ensureArgTypesCapacity(index);
         primitives[index] = v;
         argTypes[index] = TYPE_INT;
     }
 
     public void setLong(int index, long v) {
-        ensurePrimitivesCapacity(index);
-        ensureArgTypesCapacity(index);
         primitives[index] = v;
         argTypes[index] = TYPE_LONG;
     }
 
     public void setDouble(int index, double v) {
-        ensurePrimitivesCapacity(index);
-        ensureArgTypesCapacity(index);
         primitives[index] = Double.doubleToRawLongBits(v);
         argTypes[index] = TYPE_DOUBLE;
     }
 
     public void setFloat(int index, float v) {
-        ensurePrimitivesCapacity(index);
-        ensureArgTypesCapacity(index);
         primitives[index] = Float.floatToRawIntBits(v);
         argTypes[index] = TYPE_FLOAT;
     }
 
     public void setBool(int index, boolean v) {
-        ensurePrimitivesCapacity(index);
-        ensureArgTypesCapacity(index);
         primitives[index] = v ? 1 : 0;
         argTypes[index] = TYPE_BOOL;
     }
 
     public void setRef(int index, Object v) {
-        ensureRefsCapacity(index);
-        ensureArgTypesCapacity(index);
         refs[index] = v;
         argTypes[index] = TYPE_REF;
     }
@@ -336,10 +324,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
             @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
-        // 复用已有数组，仅在不够大时才扩容
-        if (refs.length < argCount) {
-            refs = new Object[argCount];
-        }
+        ensureCapacity(argCount);
         this.argumentCount = argCount;
         this.environment = environment;
         this.returnPrimitive = 0;
@@ -368,33 +353,15 @@ public final class FunctionContext<Target> implements AutoCloseable {
         argumentCount = 0;
     }
 
-    private void ensurePrimitivesCapacity(int index) {
-        if (primitives.length <= index) {
-            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
-            long[] newArr = new long[newCap];
-            System.arraycopy(primitives, 0, newArr, 0, primitives.length);
-            primitives = newArr;
+    private void ensureCapacity(int count) {
+        if (primitives.length < count) {
+            primitives = new long[count];
         }
-    }
-
-    private void ensureRefsCapacity(int index) {
-        if (refs.length <= index) {
-            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
-            Object[] newArr = new Object[newCap];
-            System.arraycopy(refs, 0, newArr, 0, refs.length);
-            refs = newArr;
+        if (refs.length < count) {
+            refs = new Object[count];
         }
-    }
-
-    private void ensureArgTypesCapacity(int index) {
-        if (argTypes.length <= index) {
-            int newCap = Math.max(INITIAL_CAPACITY, index + 1);
-            byte[] newArr = new byte[newCap];
-            System.arraycopy(argTypes, 0, newArr, 0, argTypes.length);
-            argTypes = newArr;
-        }
-        if (argumentCount <= index) {
-            argumentCount = index + 1;
+        if (argTypes.length < count) {
+            argTypes = new byte[count];
         }
     }
 
