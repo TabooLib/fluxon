@@ -24,6 +24,7 @@ public class CompilationContext {
     private boolean allowImport = FluxonFeatures.DEFAULT_ALLOW_IMPORT;
     private boolean allowReflectionAccess = FluxonFeatures.DEFAULT_ALLOW_REFLECTION_ACCESS;
     private boolean allowJavaConstruction = FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION;
+    private boolean enableConstantFolding = FluxonFeatures.DEFAULT_ENABLE_CONSTANT_FOLDING;
 
     private final List<String> packageAutoImport = FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT;
     private final List<String> packageBlacklist = FluxonFeatures.DEFAULT_PACKAGE_BLACKLIST;
@@ -99,6 +100,14 @@ public class CompilationContext {
 
     public void setAllowJavaConstruction(boolean allowJavaConstruction) {
         this.allowJavaConstruction = allowJavaConstruction;
+    }
+
+    public boolean isEnableConstantFolding() {
+        return enableConstantFolding;
+    }
+
+    public void setEnableConstantFolding(boolean enableConstantFolding) {
+        this.enableConstantFolding = enableConstantFolding;
     }
 
     public void setAttribute(String key, Object value) {

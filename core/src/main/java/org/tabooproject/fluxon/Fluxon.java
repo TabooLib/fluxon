@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.lexer.Lexer;
 import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.optimizer.ConstantFolder;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.parser.Parser;
@@ -85,7 +86,12 @@ public class Fluxon {
         Parser parser = new Parser();
         parser.defineRootVariables(env.getRootVariables());
         parser.defineUserFunction(env.getUserFunctions());
-        return parser.process(context);
+        List<ParseResult> results = parser.process(context);
+        // 常量折叠优化
+        if (context.isEnableConstantFolding()) {
+            results = new ConstantFolder().foldAll(results);
+        }
+        return results;
     }
 
     /**

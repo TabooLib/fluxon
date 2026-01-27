@@ -46,4 +46,11 @@ public class FluxonFeatures {
      * 默认值：无
      */
     public static List<String> DEFAULT_PACKAGE_BLACKLIST = new ArrayList<>();
+
+    /**
+     * 全局特性：是否启用常量折叠优化
+     * 当启用时，编译时会计算常量表达式（如 1 + 2 优化为 3）
+     * 默认值：true（启用），减少运行时开销
+     */
+    public static boolean DEFAULT_ENABLE_CONSTANT_FOLDING = true;
 }
