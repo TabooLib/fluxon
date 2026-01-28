@@ -4,7 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.type.TestRuntime;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -59,7 +61,10 @@ public class BytecodeTest {
         System.out.println("---------------------------------");
         System.out.println("Running: " + file);
         List<String> strings = Files.readAllLines(file.toPath());
-        Object result = Fluxon.eval(String.join("\n", strings));
+        CompilationContext context = new CompilationContext(String.join("\n", strings));
+        context.setAllowJavaConstruction(true);
+        context.setAllowReflectionAccess(true);
+        Object result = Fluxon.parse(context).eval();
         System.out.println("Result: " + result);
     }
 
@@ -68,12 +73,16 @@ public class BytecodeTest {
         System.out.println("Compiling: " + file);
         List<String> strings = Files.readAllLines(file.toPath());
         String className = file.getName().replace(".fs", "");
-        CompileResult result = Fluxon.compile(String.join("\n", strings), className);
+        CompilationContext context = new CompilationContext(String.join("\n", strings));
+        context.setAllowJavaConstruction(true);
+        context.setAllowReflectionAccess(true);
+        Environment environment = FluxonRuntime.getInstance().newEnvironment();
+        CompileResult result = Fluxon.compile(environment, context, className);
         result.dump(new File(file.getParentFile(), className + ".class"));
         // 加载并执行
         Class<?> scriptClass = result.defineClass(new FluxonClassLoader());
         RuntimeScriptBase base = (RuntimeScriptBase) scriptClass.newInstance();
         // 使用注册中心初始化环境
-        System.out.println("Result: " + base.eval(FluxonRuntime.getInstance().newEnvironment()));
+        System.out.println("Result: " + base.eval(environment));
     }
 }

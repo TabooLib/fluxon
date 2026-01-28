@@ -9,10 +9,7 @@ def instance(name) = {
 print(env::rootExtensionFunctions()::keySet()::size())
 print(env::rootExtensionFunctions()::keySet())
 
-return instance("org.tabooproject.fluxon.runtime.FluxonRuntime")
+instance("org.tabooproject.fluxon.runtime.FluxonRuntime")
 
-if (true) {
-    1
-} else {
-    a = 1
-}
+_code = 0
+print(static (org.tabooproject.fluxon.util.StringUtils).getCode("1234", &_code))

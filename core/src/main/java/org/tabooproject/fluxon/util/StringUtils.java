@@ -105,7 +105,7 @@ public class StringUtils {
         return result.toString();
     }
 
-    private static int getCode(String input, int j) {
+    public static int getCode(String input, int j) {
         int code = 0;
         for (int k = 0; k < 4; k++) {
             char hex = input.charAt(j + k);
