@@ -73,6 +73,25 @@ public final class FieldResolver {
     }
 
     /**
+     * 尝试创建 setter 方法的 MethodHandle
+     * 查找顺序：setXxx(value)
+     */
+    public static MethodHandle tryCreateSetterHandle(Class<?> targetClass, String fieldName) {
+        String capitalized = StringUtils.capitalize(fieldName);
+        String setterName = "set" + capitalized;
+        for (Method method : targetClass.getMethods()) {
+            if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
+                try {
+                    MethodHandle mh = LOOKUP.unreflect(method);
+                    return mh.asType(MethodType.methodType(void.class, Object.class, Object.class));
+                } catch (IllegalAccessException ignored) {
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * 获取 Lookup 实例
      */
     public static MethodHandles.Lookup getLookup() {

@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.runtime.reflection;
 
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.MemberAccessError;
 import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
 import org.tabooproject.fluxon.runtime.reflection.cache.ConstructorCache;
@@ -32,6 +33,8 @@ import java.util.List;
  */
 public class ReflectionHelper {
 
+    public static final Type TYPE = new Type(ReflectionHelper.class);
+
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
     /**
@@ -49,6 +52,47 @@ public class ReflectionHelper {
         }
         // 2. 慢路径：查找并缓存
         return getFieldSlow(target, clazz, fieldName);
+    }
+
+    /**
+     * 设置字段值（优先 setter 方法，回退到直接字段访问）
+     */
+    public static void setField(Object target, String fieldName, Object value) throws Throwable {
+        if (target == null) {
+            throw new NullPointerException("Cannot set field '" + fieldName + "' on null object");
+        }
+        Class<?> clazz = target.getClass();
+        // 1. 快速路径：检查缓存
+        MethodHandle cached = FieldCache.getSetter(clazz, fieldName);
+        if (cached != null) {
+            cached.invoke(target, value);
+            return;
+        }
+        // 2. 慢路径：查找并缓存
+        setFieldSlow(target, clazz, fieldName, value);
+    }
+
+    /**
+     * 字段写入慢路径
+     */
+    private static void setFieldSlow(Object target, Class<?> clazz, String fieldName, Object value) throws Throwable {
+        MethodHandle setter = FieldResolver.tryCreateSetterHandle(clazz, fieldName);
+        if (setter == null) {
+            Field field = FieldResolver.findField(clazz, fieldName);
+            if (field != null && !Modifier.isFinal(field.getModifiers())) {
+                try {
+                    MethodHandle mh = LOOKUP.unreflectSetter(field);
+                    setter = mh.asType(MethodType.methodType(void.class, Object.class, Object.class));
+                } catch (IllegalAccessException e) {
+                    throw new MemberAccessError("Cannot access field: " + fieldName, e);
+                }
+            }
+        }
+        if (setter == null) {
+            throw new MemberNotFoundError(clazz, fieldName);
+        }
+        FieldCache.putSetter(clazz, fieldName, setter);
+        setter.invoke(target, value);
     }
 
     /**

@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.*;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
+import org.tabooproject.fluxon.parser.expression.MemberAccessExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.Literal;
@@ -76,6 +77,12 @@ public class AssignmentInfixOperator implements InfixOperator {
             }
             return new AssignmentTarget(target, position);
         } else if (target instanceof IndexAccessExpression) {
+            return new AssignmentTarget(target, -1);
+        } else if (target instanceof MemberAccessExpression) {
+            MemberAccessExpression memberAccess = (MemberAccessExpression) target;
+            if (memberAccess.isMethodCall()) {
+                throw parser.createParseException("Cannot assign to method call result", operator);
+            }
             return new AssignmentTarget(target, -1);
         }
         throw parser.createParseException("Invalid assignment target: " + target, operator);
