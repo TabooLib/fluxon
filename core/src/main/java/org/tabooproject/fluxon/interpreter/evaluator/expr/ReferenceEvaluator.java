@@ -109,7 +109,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
      * 栈输入：[env, index]
      * 栈输出：[value]
      */
-    static void emitGetLocal(Type type, MethodVisitor mv) {
+    public static void emitGetLocal(Type type, MethodVisitor mv) {
         String name;
         String desc;
         if (type == Type.I || type == Type.Z) {
@@ -133,7 +133,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
      * 栈输入：[env, index, value]
      * 栈输出：[]
      */
-    static void emitSetLocal(Type type, MethodVisitor mv) {
+    public static void emitSetLocal(Type type, MethodVisitor mv) {
         String name;
         String desc;
         if (type == Type.I || type == Type.Z) {

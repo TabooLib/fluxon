@@ -28,7 +28,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         return Type.VOID;
     }
 
-    protected static void generateCondition(
+    public static void generateCondition(
             @NotNull CodeContext ctx,
             @NotNull MethodVisitor mv,
             @NotNull ParseResult condition,
@@ -57,12 +57,10 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         }
     }
 
-    // ========== 分支类型统一工具方法 ==========
-
     /**
      * 统一两个分支的类型（用于 if-then-else、三元运算符等）
      */
-    protected static Type unifyBranchTypes(Type trueType, Type falseType) {
+    public static Type unifyBranchTypes(Type trueType, Type falseType) {
         if (trueType.isPrimitive() && trueType.equals(falseType)) {
             return trueType;
         }
@@ -78,13 +76,13 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     /**
      * 推断分支统一类型（用于 TypeAnalyzer）
      */
-    protected static Type inferBranchType(ParseResult trueBranch, ParseResult falseBranch, TypeAnalyzer analyzer) {
+    public static Type inferBranchType(ParseResult trueBranch, ParseResult falseBranch, TypeAnalyzer analyzer) {
         Type trueType = analyzer.inferType(trueBranch);
         Type falseType = falseBranch != null ? analyzer.inferType(falseBranch) : Type.OBJECT;
         return unifyBranchTypes(trueType, falseType);
     }
 
-    protected static int storeOpcode(Type type) {
+    public static int storeOpcode(Type type) {
         if (type == Type.I || type == Type.Z) return ISTORE;
         if (type == Type.J) return LSTORE;
         if (type == Type.F) return FSTORE;
@@ -92,7 +90,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         return ASTORE;
     }
 
-    protected static int loadOpcode(Type type) {
+    public static int loadOpcode(Type type) {
         if (type == Type.I || type == Type.Z) return ILOAD;
         if (type == Type.J) return LLOAD;
         if (type == Type.F) return FLOAD;
@@ -103,7 +101,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     /**
      * 原始类型转换
      */
-    protected static void emitConvertPrimitive(Type from, Type to, MethodVisitor mv) {
+    public static void emitConvertPrimitive(Type from, Type to, MethodVisitor mv) {
         if (from.equals(to)) return;
         if (!from.isPrimitive()) {
             emitUnbox(to, mv);
@@ -128,7 +126,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         }
     }
 
-    protected static void emitUnbox(Type type, MethodVisitor mv) {
+    public static void emitUnbox(Type type, MethodVisitor mv) {
         if (type == Type.I) {
             mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
@@ -150,7 +148,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     /**
      * 存储分支结果到局部变量
      */
-    protected static void storeBranchResult(Type branchType, Type unifiedType, int storeId, MethodVisitor mv) {
+    public static void storeBranchResult(Type branchType, Type unifiedType, int storeId, MethodVisitor mv) {
         if (unifiedType.isPrimitive()) {
             emitConvertPrimitive(branchType, unifiedType, mv);
             mv.visitVarInsn(storeOpcode(unifiedType), storeId);
@@ -167,7 +165,7 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     /**
      * 生成循环体结束代码（丢弃返回值、跳回开始、结束标签、退出上下文）
      */
-    protected static void finishLoopBody(Type bodyType, MethodVisitor mv, CodeContext ctx, Label loopStart, Label loopEnd) {
+    public static void finishLoopBody(Type bodyType, MethodVisitor mv, CodeContext ctx, Label loopStart, Label loopEnd) {
         if (bodyType != Type.VOID) {
             mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
         }

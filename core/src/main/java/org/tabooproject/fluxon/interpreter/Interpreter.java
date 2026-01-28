@@ -28,6 +28,7 @@ public class Interpreter {
     // 双槽结果传递
     public long resultPrimitive;
     public Object resultRef;
+    public Type lastResultType;
 
     // 当前环境
     @NotNull
