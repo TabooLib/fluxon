@@ -13,7 +13,6 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.ExtensionDispatchTable;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
@@ -42,35 +41,16 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         // 优先使用预解析的扩展函数（跳过动态解析）
         Function resolvedExt = result.getResolvedExtensionFunction();
         // 懒加载：解释模式下首次执行时解析扩展函数
-        if (resolvedExt == null) {
-            ExtensionFunctionPosition extPos = result.getExtensionPosition();
-            if (extPos != null) {
-                Object target = interpreter.getEnvironment().getTarget();
-                if (target != null) {
-                    ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
-                    // 使用参数数量解析正确的重载
-                    Type[] argTypes = new Type[argumentCount];
-                    OverloadSet overloadSet = dispatchTable.resolveOverloadSet(target.getClass());
-                    if (overloadSet != null) {
-                        resolvedExt = overloadSet.resolve(argTypes);
-                        if (resolvedExt != null) {
-                            int overloadIndex = overloadSet.indexOf(resolvedExt);
-                            result.setResolvedExtensionFunction(resolvedExt);
-                            result.setResolvedExtensionInfo(extPos.getIndex(), target.getClass(), overloadIndex);
-                        }
-                    }
-                }
+        if (resolvedExt == null && result.getExtensionPosition() != null) {
+            Object target = interpreter.getEnvironment().getTarget();
+            if (target != null) {
+                resolvedExt = result.resolveExtensionFunction(target.getClass(), new Type[argumentCount]);
             }
         }
         FunctionContextPool pool = interpreter.getPool();
         FunctionContext<?> ctx;
         if (resolvedExt != null) {
-            ctx = Intrinsics.prepareCallDirect(
-                    pool,
-                    interpreter.getEnvironment(),
-                    resolvedExt,
-                    argumentCount
-            );
+            ctx = Intrinsics.prepareCallDirect(pool, interpreter.getEnvironment(), resolvedExt, argumentCount);
         } else {
             ctx = Intrinsics.prepareCall(
                     pool,
@@ -158,7 +138,15 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int argumentCount = arguments.length;
         int savedLocalVar = ctx.getLocalVarIndex();
         // 获取函数签名的期望参数类型
-        Type[] expectedTypes = resolveExpectedTypes(result, ctx);
+        Type[] expectedTypes = null;
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        if (analyzer != null) {
+            Type[] argTypes = new Type[argumentCount];
+            for (int i = 0; i < argumentCount; i++) {
+                argTypes[i] = analyzer.inferType(arguments[i]);
+            }
+            expectedTypes = result.resolveExpectedParameterTypes(argTypes);
+        }
         // 1. 调用 prepareCall / prepareCallDirect → FunctionContext
         Function resolvedExt = result.getResolvedExtensionFunction();
         if (resolvedExt != null && result.getResolvedTargetClass() != null) {
@@ -212,7 +200,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             emitSetArg(t, expected, mv);
         }
         // 推断返回类型
-        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type returnType = Type.OBJECT;
         if (analyzer != null) {
             Type inferred = inferResultType(result, analyzer);
@@ -227,27 +214,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         // 释放临时变量槽位
         ctx.restoreLocalVarIndex(savedLocalVar);
         return returnType;
-    }
-
-    /**
-     * 解析函数期望的参数类型
-     */
-    private Type[] resolveExpectedTypes(FunctionCallExpression result, CodeContext ctx) {
-        FunctionPosition position = result.getPosition();
-        if (position == null) return null;
-        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
-        if (analyzer == null) return null;
-        // 收集参数类型
-        ParseResult[] args = result.getArguments();
-        Type[] argTypes = new Type[args.length];
-        for (int i = 0; i < args.length; i++) {
-            argTypes[i] = analyzer.inferType(args[i]);
-        }
-        Function function = position.resolve(argTypes);
-        if (function != null && function.getSignature() != null) {
-            return function.getSignature().getParameterTypes();
-        }
-        return null;
     }
 
     /**
@@ -328,21 +294,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             result.setResolvedPositionIndex(resolvedIndex);
         }
         // 基于 target 类型预解析扩展函数
-        ExtensionFunctionPosition extPos = result.getExtensionPosition();
-        if (extPos != null) {
-            Type targetType = analyzer.getCurrentTargetType();
-            if (targetType != null && targetType.getSource() != null && targetType.getSource() != Object.class) {
-                ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
-                OverloadSet overloadSet = dispatchTable.resolveOverloadSet(targetType.getSource());
-                if (overloadSet != null) {
-                    Function resolved = overloadSet.resolve(argTypes);
-                    if (resolved != null) {
-                        int overloadIndex = overloadSet.indexOf(resolved);
-                        result.setResolvedExtensionFunction(resolved);
-                        result.setResolvedExtensionInfo(extPos.getIndex(), targetType.getSource(), overloadIndex);
-                    }
-                }
-            }
+        Type targetType = analyzer.getCurrentTargetType();
+        if (targetType != null && targetType.getSource() != null) {
+            result.resolveExtensionFunction(targetType.getSource(), argTypes);
         }
     }
 

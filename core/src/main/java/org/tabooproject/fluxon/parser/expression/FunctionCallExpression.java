@@ -4,7 +4,11 @@ import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.ExtensionFunctionPosition;
 import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.runtime.ExtensionDispatchTable;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.OverloadSet;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.Arrays;
 
@@ -75,6 +79,43 @@ public class FunctionCallExpression extends Expression {
         this.resolvedDispatchTableIndex = dispatchTableIndex;
         this.resolvedTargetClass = targetClass;
         this.resolvedOverloadIndex = overloadIndex;
+    }
+
+    /**
+     * 解析扩展函数并缓存结果
+     */
+    @Nullable
+    public Function resolveExtensionFunction(Class<?> targetClass, Type[] argTypes) {
+        if (extensionPosition == null || targetClass == Object.class) {
+            return null;
+        }
+        ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extensionPosition.getIndex()];
+        OverloadSet overloadSet = dispatchTable.resolveOverloadSet(targetClass);
+        if (overloadSet == null) {
+            return null;
+        }
+        Function resolved = overloadSet.resolve(argTypes);
+        if (resolved != null) {
+            int overloadIndex = overloadSet.indexOf(resolved);
+            this.resolvedExtensionFunction = resolved;
+            setResolvedExtensionInfo(extensionPosition.getIndex(), targetClass, overloadIndex);
+        }
+        return resolved;
+    }
+
+    /**
+     * 解析函数期望的参数类型
+     */
+    @Nullable
+    public Type[] resolveExpectedParameterTypes(Type[] argTypes) {
+        if (position == null) {
+            return null;
+        }
+        Function function = position.resolve(argTypes);
+        if (function != null && function.getSignature() != null) {
+            return function.getSignature().getParameterTypes();
+        }
+        return null;
     }
 
     /**
