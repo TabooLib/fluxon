@@ -17,6 +17,8 @@ import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 
+import java.util.Map;
+
 import static org.objectweb.asm.Opcodes.ALOAD;
 
 /**
@@ -53,8 +55,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int savedLocalVar = ctx.getLocalVarIndex();
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type[] argTypes = inferArgTypes(args, analyzer);
-        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes);
-        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE;
+        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer);
+        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
         // 延迟解析时不使用 expectedTypes，让运行时处理类型转换
         Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
         PrepareCallResult prepareResult = handler.generatePrepareCall(expr, ctx, mv, argCount);
@@ -98,21 +100,65 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return DynamicResolutionHandler.INSTANCE;
     }
 
-    private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes) {
+    private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes, TypeAnalyzer analyzer) {
+        // 扩展函数已在编译时解析
         if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
             return ResolvedExtensionHandler.INSTANCE;
         }
-        // 检查扩展函数是否有多个重载且参数类型未知
+        int argCount = argTypes != null ? argTypes.length : expr.getArguments().length;
+        // 检查扩展函数重载
         ExtensionFunctionPosition extPos = expr.getExtensionPosition();
-        if (extPos != null && hasUnknownType(argTypes)) {
-            // 扩展函数可能有多个重载，需要延迟解析
+        if (extPos != null && needsDeferredExtensionResolution(extPos, argCount, analyzer)) {
             return DeferredExtensionHandler.INSTANCE;
         }
+        // 检查系统函数重载
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1 && hasUnknownType(argTypes)) {
             return DeferredOverloadHandler.INSTANCE;
         }
         return DynamicResolutionHandler.INSTANCE;
+    }
+
+    /**
+     * 判断扩展函数是否需要延迟重载解析
+     */
+    private boolean needsDeferredExtensionResolution(ExtensionFunctionPosition extPos, int argCount, TypeAnalyzer analyzer) {
+        Type targetType = analyzer != null ? analyzer.getCurrentTargetType() : null;
+        boolean isUnknownTarget = targetType == null || targetType == Type.OBJECT;
+        // target 类型未知时，检查所有 OverloadSet
+        if (isUnknownTarget) {
+            for (OverloadSet overloadSet : extPos.getOverloadSets().values()) {
+                if (countMatchingOverloads(overloadSet, argCount) > 1) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        // target 类型已知时，查找匹配的 OverloadSet
+        Class<?> targetClass = targetType.getSource();
+        if (targetClass == null) {
+            return false;
+        }
+        for (Map.Entry<Class<?>, OverloadSet> entry : extPos.getOverloadSets().entrySet()) {
+            if (entry.getKey().isAssignableFrom(targetClass)) {
+                return countMatchingOverloads(entry.getValue(), argCount) > 1;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 统计参数数量匹配的重载个数
+     */
+    private int countMatchingOverloads(OverloadSet overloadSet, int argCount) {
+        int count = 0;
+        for (Function f : overloadSet.getOverloads()) {
+            FunctionSignature sig = f.getSignature();
+            if (sig == null || sig.getParameterCount() == argCount) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @Override

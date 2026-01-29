@@ -109,7 +109,20 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setTarget", "(" + Type.OBJECT + ")V", false);
 
         // 在新环境中求值上下文表达式
-        Type resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
+        // 为字节码生成阶段也设置 target 类型，确保 FunctionCallEvaluator 能正确选择 handler
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        if (analyzer != null) {
+            Type targetTypeForBytecode = analyzer.inferType(expression.getTarget());
+            analyzer.pushTargetType(targetTypeForBytecode);
+        }
+        Type resultType;
+        try {
+            resultType = contextEval.generateBytecode(expression.getContext(), ctx, mv);
+        } finally {
+            if (analyzer != null) {
+                analyzer.popTargetType();
+            }
+        }
         // 安全调用时需要装箱，确保与 null 分支的栈帧类型一致
         if (endLabel != null && resultType.isPrimitive()) {
             boxing(resultType, mv);

@@ -296,4 +296,62 @@ public class OverloadResolutionTest {
         assertEquals("Vector(1.0,1.5,2.0)", result.getInterpretResult().toString());
         assertEquals("Vector(1.0,1.5,2.0)", result.getCompileResult().toString());
     }
+
+    @Test
+    void testRandomWithDynamicDoubleArgs() {
+        // 测试 random(-&offsetJitter, &offsetJitter) 场景
+        // offsetJitter 通过 &?var ?: default 语法定义
+        // 问题：编译器可能选择 random(I, I) 而不是 random(D, D)
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "offsetJitter = &?offsetJitter ?: 0.5\nrandom(-&offsetJitter, &offsetJitter)",
+                ctx -> {},
+                env -> {}
+        );
+        System.out.println("Interpret: " + result.getInterpretResult() + " (" + result.getInterpretResult().getClass().getSimpleName() + ")");
+        System.out.println("Compile: " + result.getCompileResult() + " (" + result.getCompileResult().getClass().getSimpleName() + ")");
+        // 结果应该是 double 类型，在 [-0.5, 0.5) 范围内
+        assertTrue(result.getInterpretResult() instanceof Double, "Interpret should return Double, got: " + result.getInterpretResult().getClass());
+        assertTrue(result.getCompileResult() instanceof Double, "Compile should return Double, got: " + result.getCompileResult().getClass());
+        double interpretVal = ((Number) result.getInterpretResult()).doubleValue();
+        double compileVal = ((Number) result.getCompileResult()).doubleValue();
+        assertTrue(interpretVal >= -0.5 && interpretVal < 0.5, "Interpret result out of range: " + interpretVal);
+        assertTrue(compileVal >= -0.5 && compileVal < 0.5, "Compile result out of range: " + compileVal);
+    }
+
+    @Test
+    void testRandomWithDynamicIntArgs() {
+        // 用整数测试，如果选了 random(I, I)，-1 到 1 的范围内只有 -1 和 0
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "random(-&offsetJitter, &offsetJitter)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("offsetJitter", 5);
+                }
+        );
+        System.out.println("Interpret: " + result.getInterpretResult());
+        System.out.println("Compile: " + result.getCompileResult());
+        // 整数结果应该在 [-5, 5) 范围内
+        int interpretVal = ((Number) result.getInterpretResult()).intValue();
+        int compileVal = ((Number) result.getCompileResult()).intValue();
+        assertTrue(interpretVal >= -5 && interpretVal < 5, "Interpret result out of range: " + interpretVal);
+        assertTrue(compileVal >= -5 && compileVal < 5, "Compile result out of range: " + compileVal);
+    }
+
+    @Test
+    void testSystemFunctionWithExtensionFunctionSameName() {
+        // 复现问题：random 既是系统函数也是扩展函数 (Collection::random)
+        // 在 :: 链式调用环境中，当参数类型未知时，不应该错误地使用 DeferredExtensionHandler
+        // 关键：在扩展函数链内调用 random
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "val = 0.5\n&vec::multiply(random(-&val, &val))",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", new MockVector(1.0, 1.0, 1.0));
+                }
+        );
+        System.out.println("Interpret: " + result.getInterpretResult());
+        System.out.println("Compile: " + result.getCompileResult());
+        // 应该正常执行，不报错
+        assertNotNull(result.getCompileResult());
+    }
 }
