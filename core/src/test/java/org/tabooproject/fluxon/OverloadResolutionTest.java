@@ -104,17 +104,68 @@ public class OverloadResolutionTest {
         // 扩展函数：MockVector::multiply(MockVector)
         runtime.registerExtensionFunction(MockVector.class, null, "multiply",
                 returns(Type.fromClass(MockVector.class)).params(Type.fromClass(MockVector.class)), ctx -> {
-            MockVector target = (MockVector) ctx.getTarget();
+            MockVector target = ctx.getTarget();
             MockVector other = (MockVector) ctx.getRef(0);
             ctx.setReturnRef(target.multiply(other));
         }, false, false);
         // 扩展函数：MockVector::multiply(D)
         runtime.registerExtensionFunction(MockVector.class, null, "multiply",
                 returns(Type.fromClass(MockVector.class)).params(Type.D), ctx -> {
-            MockVector target = (MockVector) ctx.getTarget();
+            MockVector target = ctx.getTarget();
             double d = ctx.getDouble(0);
             ctx.setReturnRef(target.multiply(d));
         }, false, false);
+        // 扩展函数：MockVector::add(MockVector) — 链式调用测试
+        runtime.registerExtensionFunction(MockVector.class, null, "add",
+                returns(Type.fromClass(MockVector.class)).params(Type.fromClass(MockVector.class)), ctx -> {
+            MockVector target = ctx.getTarget();
+            MockVector other = (MockVector) ctx.getRef(0);
+            ctx.setReturnRef(new MockVector(target.x + other.x, target.y + other.y, target.z + other.z));
+        }, false, false);
+        // 扩展函数：MockVector::scale(I) — int 参数
+        runtime.registerExtensionFunction(MockVector.class, null, "scale",
+                returns(Type.fromClass(MockVector.class)).params(Type.I), ctx -> {
+            MockVector target = ctx.getTarget();
+            int i = ctx.getInt(0);
+            ctx.setReturnRef(new MockVector(target.x * i, target.y * i, target.z * i));
+        }, false, false);
+        // 扩展函数：MockVector::scale(D) — double 参数
+        runtime.registerExtensionFunction(MockVector.class, null, "scale",
+                returns(Type.fromClass(MockVector.class)).params(Type.D), ctx -> {
+            MockVector target = ctx.getTarget();
+            double d = ctx.getDouble(0);
+            ctx.setReturnRef(new MockVector(target.x * d, target.y * d, target.z * d));
+        }, false, false);
+        // 扩展函数：MockVector::x()
+        runtime.registerExtensionFunction(MockVector.class, null, "x",
+                returns(Type.D).noParams(), ctx -> {
+            MockVector target = ctx.getTarget();
+            ctx.setReturnRef(target.x);
+        }, false, false);
+        // 扩展函数：MockVector::y()
+        runtime.registerExtensionFunction(MockVector.class, null, "y",
+                returns(Type.D).noParams(), ctx -> {
+            MockVector target = ctx.getTarget();
+            ctx.setReturnRef(target.y);
+        }, false, false);
+        // 扩展函数：MockVector::z()
+        runtime.registerExtensionFunction(MockVector.class, null, "z",
+                returns(Type.D).noParams(), ctx -> {
+            MockVector target = ctx.getTarget();
+            ctx.setReturnRef(target.z);
+        }, false, false);
+        // compute(String, D) -> "sd:" + ...
+        runtime.registerFunction("compute", returns(Type.STRING).params(Type.STRING, Type.D), ctx -> {
+            ctx.setReturnRef("sd:" + ctx.getString(0) + "," + ctx.getDouble(1));
+        });
+        // compute(String, I) -> "si:" + ...
+        runtime.registerFunction("compute", returns(Type.STRING).params(Type.STRING, Type.I), ctx -> {
+            ctx.setReturnRef("si:" + ctx.getString(0) + "," + ctx.getInt(1));
+        });
+        // compute(String, String) -> "ss:" + ...
+        runtime.registerFunction("compute", returns(Type.STRING).params(Type.STRING, Type.STRING), ctx -> {
+            ctx.setReturnRef("ss:" + ctx.getString(0) + "," + ctx.getString(1));
+        });
     }
 
     @Test
@@ -310,8 +361,8 @@ public class OverloadResolutionTest {
         System.out.println("Interpret: " + result.getInterpretResult() + " (" + result.getInterpretResult().getClass().getSimpleName() + ")");
         System.out.println("Compile: " + result.getCompileResult() + " (" + result.getCompileResult().getClass().getSimpleName() + ")");
         // 结果应该是 double 类型，在 [-0.5, 0.5) 范围内
-        assertTrue(result.getInterpretResult() instanceof Double, "Interpret should return Double, got: " + result.getInterpretResult().getClass());
-        assertTrue(result.getCompileResult() instanceof Double, "Compile should return Double, got: " + result.getCompileResult().getClass());
+        assertInstanceOf(Double.class, result.getInterpretResult(), "Interpret should return Double, got: " + result.getInterpretResult().getClass());
+        assertInstanceOf(Double.class, result.getCompileResult(), "Compile should return Double, got: " + result.getCompileResult().getClass());
         double interpretVal = ((Number) result.getInterpretResult()).doubleValue();
         double compileVal = ((Number) result.getCompileResult()).doubleValue();
         assertTrue(interpretVal >= -0.5 && interpretVal < 0.5, "Interpret result out of range: " + interpretVal);
@@ -353,5 +404,513 @@ public class OverloadResolutionTest {
         System.out.println("Compile: " + result.getCompileResult());
         // 应该正常执行，不报错
         assertNotNull(result.getCompileResult());
+    }
+
+    // ==================== A. 扩展函数链式调用 ====================
+
+    @Test
+    void testExtensionChainWithLiterals() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(2.0)::multiply(3.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // (1*2*3, 2*2*3, 3*2*3) = (6.0, 12.0, 18.0)
+        assertEquals("Vector(6.0,12.0,18.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(6.0,12.0,18.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionChainWithDynamicArgs() {
+        // 链式调用，每步延迟解析（注入变量）
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&factor)::multiply(&factor)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("factor", 2.0);
+                }
+        );
+        // (1*2*2, 2*2*2, 3*2*2) = (4.0, 8.0, 12.0)
+        assertEquals("Vector(4.0,8.0,12.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(4.0,8.0,12.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionChainMixedFunctions() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        MockVector offset = new MockVector(10.0, 20.0, 30.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::add(&offset)::multiply(2.0)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("offset", offset);
+                }
+        );
+        // (1+10, 2+20, 3+30) * 2 = (22.0, 44.0, 66.0)
+        assertEquals("Vector(22.0,44.0,66.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(22.0,44.0,66.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionChainThreeSteps() {
+        MockVector vec = new MockVector(1.0, 1.0, 1.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "a = 2.0\n&vec::multiply(&a)::multiply(&a)::multiply(&a)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // 1 * 2 * 2 * 2 = 8.0
+        assertEquals("Vector(8.0,8.0,8.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(8.0,8.0,8.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionChainWithVectorArg() {
+        MockVector vec = new MockVector(2.0, 3.0, 4.0);
+        MockVector other = new MockVector(5.0, 6.0, 7.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&other)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("other", other);
+                }
+        );
+        // (2*5, 3*6, 4*7) = (10.0, 18.0, 28.0)
+        assertEquals("Vector(10.0,18.0,28.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(10.0,18.0,28.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== B. 嵌套扩展函数调用 ====================
+
+    @Test
+    void testNestedExtensionCallVectorResult() {
+        MockVector vec1 = new MockVector(2.0, 3.0, 4.0);
+        MockVector vec2 = new MockVector(1.0, 1.0, 1.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec1::multiply(&vec2::multiply(2.0))",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec1", vec1);
+                    env.setRootVariable("vec2", vec2);
+                }
+        );
+        // vec2 * 2.0 = (2,2,2), vec1 * (2,2,2) = (4,6,8)
+        assertEquals("Vector(4.0,6.0,8.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(4.0,6.0,8.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testNestedExtensionCallDoubleResult() {
+        MockVector vec1 = new MockVector(2.0, 3.0, 4.0);
+        MockVector vec2 = new MockVector(5.0, 6.0, 7.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "d = 0.5\n&vec1::multiply(&vec2::multiply(&d))",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec1", vec1);
+                    env.setRootVariable("vec2", vec2);
+                }
+        );
+        // vec2 * 0.5 = (2.5,3.0,3.5), vec1 * (2.5,3.0,3.5) = (5.0, 9.0, 14.0)
+        assertEquals("Vector(5.0,9.0,14.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(5.0,9.0,14.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionArgFromSystemFunction() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(abs(-2.0))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // abs(-2.0) = 2.0, vec * 2.0 = (2.0, 4.0, 6.0)
+        assertEquals("Vector(2.0,4.0,6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testExtensionArgFromNestedSystem() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "p = -2.0\nq = 4.0\n&vec::multiply(max(abs(&p), abs(&q)))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // abs(-2.0) = 2.0, abs(4.0) = 4.0, max = 4.0, vec * 4.0
+        assertEquals("Vector(4.0,8.0,12.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(4.0,8.0,12.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== C. :: 链中系统函数与扩展函数同名 ====================
+
+    @Test
+    void testSystemRandomInChainWithLiterals() {
+        MockVector vec = new MockVector(1.0, 1.0, 1.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(random(-1.0, 1.0))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertNotNull(result.getInterpretResult());
+        assertNotNull(result.getCompileResult());
+    }
+
+    @Test
+    void testSystemRandomInChainNoArgs() {
+        MockVector vec = new MockVector(1.0, 1.0, 1.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(random())",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertNotNull(result.getInterpretResult());
+        assertNotNull(result.getCompileResult());
+    }
+
+    @Test
+    void testSystemAbsInChainWithDynamic() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "v = -2.0\n&vec::multiply(abs(&v))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // abs(-2.0) = 2.0
+        assertEquals("Vector(2.0,4.0,6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testSystemMaxInChainWithDynamic() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "a = 1.5\nb = 2.5\n&vec::multiply(max(&a, &b))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // max(1.5, 2.5) = 2.5
+        assertEquals("Vector(2.5,5.0,7.5)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.5,5.0,7.5)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testSystemMinInChainWithDynamic() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "a = 1.5\nb = 0.5\n&vec::multiply(min(&a, &b))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // min(1.5, 0.5) = 0.5
+        assertEquals("Vector(0.5,1.0,1.5)", result.getInterpretResult().toString());
+        assertEquals("Vector(0.5,1.0,1.5)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testSystemRoundInChainDivision() {
+        MockVector vec = new MockVector(10.0, 20.0, 30.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "v = 3.7\n&vec::multiply(round(&v) / 10.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // round(3.7) = 4, 4 / 10.0 = 0.4
+        assertEquals("Vector(4.0,8.0,12.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(4.0,8.0,12.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== D. 类型转换与拓宽 ====================
+
+    @Test
+    void testIntWideningToDoubleInExtension() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&intVal)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("intVal", 5);
+                }
+        );
+        // int 5 → double 5.0, vec * 5.0 = (5.0, 10.0, 15.0)
+        assertEquals("Vector(5.0,10.0,15.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(5.0,10.0,15.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testLongWideningToDoubleInExtension() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&longVal)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("longVal", 5L);
+                }
+        );
+        assertEquals("Vector(5.0,10.0,15.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(5.0,10.0,15.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testFloatWideningToDoubleInExtension() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&floatVal)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("floatVal", 2.5f);
+                }
+        );
+        assertEquals("Vector(2.5,5.0,7.5)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.5,5.0,7.5)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testScaleOverloadIntVsDouble() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult resultInt = FluxonTestUtil.runSilent(
+                "&vec::scale(3)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        FluxonTestUtil.TestResult resultDouble = FluxonTestUtil.runSilent(
+                "&vec::scale(3.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // 数值结果相同，但应分别选中 scale(I) 和 scale(D)
+        assertEquals("Vector(3.0,6.0,9.0)", resultInt.getInterpretResult().toString());
+        assertEquals("Vector(3.0,6.0,9.0)", resultInt.getCompileResult().toString());
+        assertEquals("Vector(3.0,6.0,9.0)", resultDouble.getInterpretResult().toString());
+        assertEquals("Vector(3.0,6.0,9.0)", resultDouble.getCompileResult().toString());
+    }
+
+    @Test
+    void testScaleOverloadDynamicInt() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::scale(&v)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("v", 3);
+                }
+        );
+        assertEquals("Vector(3.0,6.0,9.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(3.0,6.0,9.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testScaleOverloadDynamicDouble() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::scale(&v)",
+                ctx -> {},
+                env -> {
+                    env.setRootVariable("vec", vec);
+                    env.setRootVariable("v", 3.0);
+                }
+        );
+        assertEquals("Vector(3.0,6.0,9.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(3.0,6.0,9.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== E. 安全调用 ====================
+
+    @Test
+    void testSafeCallWithNonNull() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec?::multiply(2.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertEquals("Vector(2.0,4.0,6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testSafeCallWithNull() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec?::multiply(2.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", null)
+        );
+        assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
+    }
+
+    @Test
+    void testSafeCallChain() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec?::multiply(2.0)?::multiply(3.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertEquals("Vector(6.0,12.0,18.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(6.0,12.0,18.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== F. 复杂表达式作为参数 ====================
+
+    @Test
+    void testArithmeticExprAsArg() {
+        MockVector vec = new MockVector(10.0, 20.0, 30.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "v = 10.0\n&vec::multiply(&v / 2.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // 10.0 / 2.0 = 5.0
+        assertEquals("Vector(50.0,100.0,150.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(50.0,100.0,150.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testUnaryNegationAsArg() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "v = 2.0\n&vec::multiply(-&v)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertEquals("Vector(-2.0,-4.0,-6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(-2.0,-4.0,-6.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testTernaryAsArg() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "flag = true\n&vec::multiply(if &flag then 2.0 else 0.5)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertEquals("Vector(2.0,4.0,6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testElvisAsArg() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(&?val ?: 2.0)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // val 未定义，使用默认 2.0
+        assertEquals("Vector(2.0,4.0,6.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
+    }
+
+    // ==================== G. 混合类型系统函数重载 ====================
+
+    @Test
+    void testComputeWithDynamicDouble() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "compute(\"test\", &d)",
+                ctx -> {},
+                env -> env.setRootVariable("d", 3.14)
+        );
+        assertEquals("sd:test,3.14", result.getInterpretResult());
+        assertEquals("sd:test,3.14", result.getCompileResult());
+    }
+
+    @Test
+    void testComputeWithDynamicInt() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "compute(\"test\", &i)",
+                ctx -> {},
+                env -> env.setRootVariable("i", 42)
+        );
+        assertEquals("si:test,42", result.getInterpretResult());
+        assertEquals("si:test,42", result.getCompileResult());
+    }
+
+    @Test
+    void testComputeWithDynamicString() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "compute(\"test\", &s)",
+                ctx -> {},
+                env -> env.setRootVariable("s", "hello")
+        );
+        assertEquals("ss:test,hello", result.getInterpretResult());
+        assertEquals("ss:test,hello", result.getCompileResult());
+    }
+
+    @Test
+    void testComputeWithLiteralMixed() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("compute(\"test\", 3.14)");
+        assertEquals("sd:test,3.14", result.getInterpretResult());
+        assertEquals("sd:test,3.14", result.getCompileResult());
+    }
+
+    // ==================== H. 边界与回归 ====================
+
+    @Test
+    void testOverloadNoArgs() {
+        // random() 在 :: 链内外都正常
+        FluxonTestUtil.TestResult standalone = FluxonTestUtil.runSilent("random()");
+        assertNotNull(standalone.getInterpretResult());
+        assertNotNull(standalone.getCompileResult());
+        MockVector vec = new MockVector(1.0, 1.0, 1.0);
+        FluxonTestUtil.TestResult inChain = FluxonTestUtil.runSilent(
+                "&vec::multiply(random())",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertNotNull(inChain.getInterpretResult());
+        assertNotNull(inChain.getCompileResult());
+    }
+
+    @Test
+    void testChainedSystemCallsBeforeExtension() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&vec::multiply(abs(-0.5))",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // abs(-0.5) = 0.5
+        assertEquals("Vector(0.5,1.0,1.5)", result.getInterpretResult().toString());
+        assertEquals("Vector(0.5,1.0,1.5)", result.getCompileResult().toString());
+    }
+
+    @Test
+    void testMultipleExtensionArgsInSystemFunc() {
+        MockVector vec = new MockVector(10.0, 20.0, 30.0);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "location(&vec.x, &vec.y, &vec.z)",
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        assertEquals("xyz:10.0,20.0,30.0", result.getInterpretResult());
+        assertEquals("xyz:10.0,20.0,30.0", result.getCompileResult());
+    }
+
+    @Test
+    void testSameScriptRepeatedCalls() {
+        MockVector vec = new MockVector(1.0, 2.0, 3.0);
+        String script = "a = 2.0\nb = 3\n" +
+                "r1 = &vec::multiply(&a)\n" +
+                "r2 = &vec::scale(&b)\n" +
+                "&r1::add(&r2)";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                script,
+                ctx -> {},
+                env -> env.setRootVariable("vec", vec)
+        );
+        // r1 = vec * 2.0 = (2,4,6), r2 = vec * 3 = (3,6,9), r1 + r2 = (5,10,15)
+        assertEquals("Vector(5.0,10.0,15.0)", result.getInterpretResult().toString());
+        assertEquals("Vector(5.0,10.0,15.0)", result.getCompileResult().toString());
     }
 }
