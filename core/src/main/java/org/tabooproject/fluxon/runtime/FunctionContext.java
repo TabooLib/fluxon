@@ -334,12 +334,9 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * 转换参数类型以匹配期望类型
      */
     private void convertArgType(int index, Type actual, Type expected) {
-        if (actual.equals(expected)) {
-            return;
-        }
         byte t = argTypes[index];
+        // 即使类型相等，如果存储方式不匹配也要转换（例如 Double 对象存在 refs 但期望 primitive）
         if (t == TYPE_REF) {
-            // 引用类型转原始类型
             if (expected.isPrimitive()) {
                 Object ref = refs[index];
                 if (ref instanceof Number) {
@@ -356,7 +353,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
                     }
                 }
             }
-        } else if (expected.isPrimitive()) {
+        } else if (expected.isPrimitive() && !actual.equals(expected)) {
             // 原始类型之间的转换
             double value = getAsDouble(index);
             String desc = expected.getDescriptor();

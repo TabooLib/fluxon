@@ -53,8 +53,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int savedLocalVar = ctx.getLocalVarIndex();
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type[] argTypes = inferArgTypes(args, analyzer);
-        Type[] expectedTypes = expr.resolveExpectedParameterTypes(argTypes);
         FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes);
+        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE;
+        // 延迟解析时不使用 expectedTypes，让运行时处理类型转换
+        Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
         PrepareCallResult prepareResult = handler.generatePrepareCall(expr, ctx, mv, argCount);
         for (int i = 0; i < argCount; i++) {
             mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
@@ -66,7 +68,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : null;
             FunctionCallHandlers.emitSetArg(t, expected, mv);
         }
-        Type returnType = inferReturnType(expr, analyzer, handler == DeferredOverloadHandler.INSTANCE);
+        Type returnType = inferReturnType(expr, analyzer, isDeferred);
         Type actualReturn = handler.generateFinishCall(expr, ctx, mv, prepareResult, returnType);
         ctx.restoreLocalVarIndex(savedLocalVar);
         return actualReturn;
@@ -74,9 +76,17 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     private FunctionCallHandler selectHandler(Interpreter interpreter, FunctionCallExpression expr) {
         Function resolvedExt = expr.getResolvedExtensionFunction();
-        if (resolvedExt == null && expr.getExtensionPosition() != null) {
+        ExtensionFunctionPosition extPos = expr.getExtensionPosition();
+        if (resolvedExt == null && extPos != null) {
             Object target = interpreter.getEnvironment().getTarget();
             if (target != null) {
+                // 检查扩展函数是否有多个重载
+                ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
+                OverloadSet overloadSet = dispatchTable.resolveOverloadSet(target.getClass());
+                if (overloadSet != null && overloadSet.size() > 1) {
+                    // 有多个重载，延迟到运行时根据实际参数类型解析
+                    return DeferredExtensionHandler.INSTANCE;
+                }
                 resolvedExt = expr.resolveExtensionFunction(target.getClass(), new Type[expr.getArguments().length]);
             }
         }
@@ -91,6 +101,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes) {
         if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
             return ResolvedExtensionHandler.INSTANCE;
+        }
+        // 检查扩展函数是否有多个重载且参数类型未知
+        ExtensionFunctionPosition extPos = expr.getExtensionPosition();
+        if (extPos != null && hasUnknownType(argTypes)) {
+            // 扩展函数可能有多个重载，需要延迟解析
+            return DeferredExtensionHandler.INSTANCE;
         }
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1 && hasUnknownType(argTypes)) {

@@ -185,6 +185,28 @@ public final class Intrinsics {
     }
 
     /**
+     * 准备延迟解析的扩展函数调用
+     *
+     * @param pool        函数上下文池
+     * @param environment 脚本运行环境
+     * @param target      目标对象
+     * @param extPosIndex 扩展函数位置索引
+     * @param argCount    参数数量
+     * @return 准备好的 FunctionContext
+     */
+    public static FunctionContext<?> prepareCallDeferredExtension(FunctionContextPool pool, Environment environment, Object target, int extPosIndex, int argCount) {
+        if (pool == null) pool = FunctionContextPool.local();
+        // 使用参数数量匹配的重载作为占位
+        ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPosIndex];
+        Function placeholder = dispatchTable.resolve(target.getClass(), argCount);
+        if (placeholder == null) {
+            OverloadSet overloadSet = dispatchTable.resolveOverloadSet(target.getClass());
+            placeholder = overloadSet != null ? overloadSet.first() : null;
+        }
+        return pool.borrow(Objects.requireNonNull(placeholder), target, argCount, environment);
+    }
+
+    /**
      * 完成函数调用（无 interpreter）
      */
     public static Object finishCall(FunctionContext<?> ctx) {
@@ -326,6 +348,30 @@ public final class Intrinsics {
             } else {
                 resolved = ctx.getFunction(); // fallback
             }
+        }
+        ctx.setFunctionAndConvertArgs(resolved, argTypes);
+        try {
+            resolved.call(ctx);
+            return getReturnValue(ctx);
+        } finally {
+            ctx.close();
+        }
+    }
+
+    /**
+     * 完成延迟解析的扩展函数调用（编译模式使用）
+     *
+     * @param ctx         函数上下文
+     * @param extPosIndex 扩展函数位置索引
+     * @return 函数返回值
+     */
+    public static Object finishCallDeferredExtension(FunctionContext<?> ctx, int extPosIndex) {
+        Object target = ctx.getTarget();
+        Type[] argTypes = ctx.collectArgTypes();
+        ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPosIndex];
+        Function resolved = dispatchTable.resolve(target.getClass(), argTypes);
+        if (resolved == null) {
+            resolved = ctx.getFunction(); // fallback
         }
         ctx.setFunctionAndConvertArgs(resolved, argTypes);
         try {
