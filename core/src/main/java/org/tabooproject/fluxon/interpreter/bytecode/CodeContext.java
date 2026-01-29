@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.ArrayList;
@@ -61,6 +62,9 @@ public class CodeContext {
             this.overloadIndex = overloadIndex;
         }
     }
+
+    // 延迟重载解析的 OverloadSet 常量池
+    private final List<OverloadSet> deferredOverloadSets = new ArrayList<>();
 
     // 类型分析器（用于编译期优化局部变量存储）
     private TypeAnalyzer typeAnalyzer;
@@ -330,6 +334,30 @@ public class CodeContext {
      */
     public List<ResolvedExtFuncInfo> getResolvedExtensionFunctions() {
         return resolvedExtensionFunctions;
+    }
+
+    /**
+     * 添加延迟重载解析的 OverloadSet 到常量池
+     * @param overloadSet 重载集合
+     * @return 在常量池中的索引
+     */
+    public int addDeferredOverloadSet(OverloadSet overloadSet) {
+        // 检查是否已存在
+        int existing = deferredOverloadSets.indexOf(overloadSet);
+        if (existing >= 0) {
+            return existing;
+        }
+        int index = deferredOverloadSets.size();
+        deferredOverloadSets.add(overloadSet);
+        return index;
+    }
+
+    /**
+     * 获取延迟重载解析的 OverloadSet 常量池
+     * @return OverloadSet 列表
+     */
+    public List<OverloadSet> getDeferredOverloadSets() {
+        return deferredOverloadSets;
     }
 
     /**

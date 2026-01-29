@@ -296,6 +296,96 @@ public final class FunctionContext<Target> implements AutoCloseable {
         return interpreter;
     }
 
+    /**
+     * 设置函数并根据签名转换参数类型（延迟解析使用）
+     *
+     * @param resolved    解析后的函数
+     * @param actualTypes 实际参数类型
+     */
+    public void setFunctionAndConvertArgs(Function resolved, Type[] actualTypes) {
+        this.function = resolved;
+        FunctionSignature sig = resolved.getSignature();
+        if (sig != null) {
+            Type[] expectedTypes = sig.getParameterTypes();
+            for (int i = 0; i < argumentCount && i < expectedTypes.length; i++) {
+                convertArgType(i, actualTypes[i], expectedTypes[i]);
+            }
+        }
+    }
+
+    /**
+     * 收集实际参数类型
+     */
+    public Type[] collectArgTypes() {
+        Type[] types = new Type[argumentCount];
+        for (int i = 0; i < argumentCount; i++) {
+            byte t = argTypes[i];
+            if (t == TYPE_REF) {
+                Object ref = refs[i];
+                types[i] = ref != null ? Type.fromClass(ref.getClass()) : Type.OBJECT;
+            } else {
+                types[i] = primitiveByteToType(t);
+            }
+        }
+        return types;
+    }
+
+    /**
+     * 转换参数类型以匹配期望类型
+     */
+    private void convertArgType(int index, Type actual, Type expected) {
+        if (actual.equals(expected)) {
+            return;
+        }
+        byte t = argTypes[index];
+        if (t == TYPE_REF) {
+            // 引用类型转原始类型
+            if (expected.isPrimitive()) {
+                Object ref = refs[index];
+                if (ref instanceof Number) {
+                    Number num = (Number) ref;
+                    String desc = expected.getDescriptor();
+                    if ("I".equals(desc) || "Z".equals(desc)) {
+                        setInt(index, num.intValue());
+                    } else if ("J".equals(desc)) {
+                        setLong(index, num.longValue());
+                    } else if ("F".equals(desc)) {
+                        setFloat(index, num.floatValue());
+                    } else if ("D".equals(desc)) {
+                        setDouble(index, num.doubleValue());
+                    }
+                }
+            }
+        } else if (expected.isPrimitive()) {
+            // 原始类型之间的转换
+            double value = getAsDouble(index);
+            String desc = expected.getDescriptor();
+            if ("I".equals(desc) || "Z".equals(desc)) {
+                setInt(index, (int) value);
+            } else if ("J".equals(desc)) {
+                setLong(index, (long) value);
+            } else if ("F".equals(desc)) {
+                setFloat(index, (float) value);
+            } else if ("D".equals(desc)) {
+                setDouble(index, value);
+            }
+        }
+    }
+
+    /**
+     * 将参数类型字节转换为 Type
+     */
+    private static Type primitiveByteToType(byte t) {
+        switch (t) {
+            case TYPE_INT: return Type.I;
+            case TYPE_LONG: return Type.J;
+            case TYPE_FLOAT: return Type.F;
+            case TYPE_DOUBLE: return Type.D;
+            case TYPE_BOOL: return Type.Z;
+            default: return Type.OBJECT;
+        }
+    }
+
     // ====================== 内部方法 ======================
 
     @SuppressWarnings("unchecked")

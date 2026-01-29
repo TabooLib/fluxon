@@ -76,8 +76,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
             emitLambdaFieldDeclaration(lambdaDef);
         }
-        // 为预解析的扩展函数声明静态字段
-        emitResolvedExtensionFunctionsField(funcCtx);
+        // 声明编译期优化相关的静态字段
+        emitCompiledFunctionFields(funcCtx);
         // 生成静态初始化块
         emitStaticInit(ownedLambdas, funcCtx);
         // 生成 clone 方法
@@ -289,8 +289,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
             emitLambdaInitialization(mv, lambdaDef, className);
         }
-        // 初始化预解析的扩展函数数组
-        emitResolvedExtensionFunctionsInit(mv, funcCtx, className);
+        // 初始化编译期优化相关的静态数组
+        emitCompiledFunctionInits(mv, funcCtx, className);
         mv.visitInsn(RETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();

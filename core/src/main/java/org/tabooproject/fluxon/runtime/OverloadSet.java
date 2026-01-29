@@ -13,6 +13,8 @@ import java.util.List;
  */
 public class OverloadSet {
 
+    public static final Type TYPE = new Type(OverloadSet.class);
+
     private final String name;
     private final List<Function> overloads = new ArrayList<>();
 
@@ -214,10 +216,13 @@ public class OverloadSet {
         }
         Class<?> actualClass = actual.getSource();
         Class<?> expectedClass = expected.getSource();
-        // 数值类型拓宽
+        // 数值类型转换
         if (isNumeric(actual) && isNumeric(expected)) {
             if (isNumericAssignable(actualClass, expectedClass)) {
-                return 2;
+                return 2; // 拓宽转换
+            }
+            if (isNumericNarrowable(actualClass, expectedClass)) {
+                return 1; // 收窄转换（较低优先级）
             }
             return -1;
         }
@@ -250,32 +255,33 @@ public class OverloadSet {
     }
 
     /**
+     * 获取数值类型的等级（用于比较转换方向）
+     * int=1, long=2, float=3, double=4, 非数值=0
+     */
+    private int numericRank(Class<?> c) {
+        if (c == int.class || c == Integer.class) return 1;
+        if (c == long.class || c == Long.class) return 2;
+        if (c == float.class || c == Float.class) return 3;
+        if (c == double.class || c == Double.class) return 4;
+        return 0;
+    }
+
+    /**
      * 检查数值类型是否可以拓宽赋值
      */
     private boolean isNumericAssignable(Class<?> from, Class<?> to) {
-        // int -> long, float, double
-        if (from == int.class || from == Integer.class) {
-            return to == int.class || to == Integer.class
-                    || to == long.class || to == Long.class
-                    || to == float.class || to == Float.class
-                    || to == double.class || to == Double.class;
-        }
-        // long -> float, double
-        if (from == long.class || from == Long.class) {
-            return to == long.class || to == Long.class
-                    || to == float.class || to == Float.class
-                    || to == double.class || to == Double.class;
-        }
-        // float -> double
-        if (from == float.class || from == Float.class) {
-            return to == float.class || to == Float.class
-                    || to == double.class || to == Double.class;
-        }
-        // double -> double
-        if (from == double.class || from == Double.class) {
-            return to == double.class || to == Double.class;
-        }
-        return false;
+        int fromRank = numericRank(from);
+        int toRank = numericRank(to);
+        return fromRank > 0 && toRank > 0 && fromRank <= toRank;
+    }
+
+    /**
+     * 检查数值类型是否可以收窄赋值
+     */
+    private boolean isNumericNarrowable(Class<?> from, Class<?> to) {
+        int fromRank = numericRank(from);
+        int toRank = numericRank(to);
+        return toRank > 0 && fromRank > toRank;
     }
 
     /**

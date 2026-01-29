@@ -610,17 +610,17 @@ public class FunctionMathBoundaryTest {
 
     @Test
     void testRandomInvalidEndThrowsError() {
-        runExpectingError("random(0)", "random end value must be positive");
-        runExpectingError("random(-5)", "random end value must be positive");
-        runExpectingError("random(0.0)", "random end value must be positive");
-        runExpectingError("random(-5.0)", "random end value must be positive");
+        runExpectingError("random(0)", "random 0 must be positive");
+        runExpectingError("random(-5)", "random -5 must be positive");
+        runExpectingError("random(0.0)", "random 0.0 must be positive");
+        runExpectingError("random(-5.0)", "random -5.0 must be positive");
     }
 
     @Test
     void testRandomInvalidRangeThrowsError() {
-        runExpectingError("random(10, 5)", "random start value must be less than end value");
-        runExpectingError("random(5, 5)", "random start value must be less than end value");
-        runExpectingError("random(10.0, 5.0)", "random start value must be less than end value");
+        runExpectingError("random(10, 5)", "random 10 must be less than 5");
+        runExpectingError("random(5, 5)", "random 5 must be less than 5");
+        runExpectingError("random(10.0, 5.0)", "random 10.0 must be less than 5.0");
     }
 
     // ========== 常数测试 ==========

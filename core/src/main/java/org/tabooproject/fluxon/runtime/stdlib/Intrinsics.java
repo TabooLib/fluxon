@@ -164,6 +164,27 @@ public final class Intrinsics {
     }
 
     /**
+     * 准备延迟重载解析的函数调用
+     * 当编译期无法确定具体重载时使用，运行时根据实际参数类型选择
+     *
+     * @param pool        函数上下文池
+     * @param environment 脚本运行环境
+     * @param overloadSet 重载集合
+     * @param argCount    参数数量
+     * @return 准备好的 FunctionContext
+     */
+    public static FunctionContext<?> prepareCallDeferred(FunctionContextPool pool, Environment environment, OverloadSet overloadSet, int argCount) {
+        if (pool == null) pool = FunctionContextPool.local();
+        Object target = environment.getTarget();
+        // 使用参数数量匹配的重载作为占位
+        Function placeholder = overloadSet.resolveByArgCount(argCount);
+        if (placeholder == null) {
+            placeholder = overloadSet.first();
+        }
+        return pool.borrow(Objects.requireNonNull(placeholder), target, argCount, environment);
+    }
+
+    /**
      * 完成函数调用（无 interpreter）
      */
     public static Object finishCall(FunctionContext<?> ctx) {
@@ -184,6 +205,9 @@ public final class Intrinsics {
                 try {
                     function.call(ctx);
                     return getReturnValue(ctx);
+                } catch (Throwable ex) {
+                    if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
+                    return null;
                 } finally {
                     pool.returnFromOtherThread(ctx);
                 }
@@ -199,9 +223,7 @@ public final class Intrinsics {
                     function.call(ctx);
                     future.complete(getReturnValue(ctx));
                 } catch (Throwable ex) {
-                    if (AnnotationAccess.hasAnnotation(function, "except")) {
-                        ex.printStackTrace();
-                    }
+                    if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
                     future.completeExceptionally(ex);
                 } finally {
                     // 归还到原借出线程的池
@@ -219,9 +241,7 @@ public final class Intrinsics {
             return result;
         } catch (Throwable ex) {
             ctx.close();
-            if (AnnotationAccess.hasAnnotation(function, "except")) {
-                ex.printStackTrace();
-            }
+            if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
             throw ex;
         }
     }
@@ -283,6 +303,36 @@ public final class Intrinsics {
         } catch (Throwable ex) {
             ctx.close();
             throw ex;
+        }
+    }
+
+    /**
+     * 完成延迟解析的函数调用（编译模式使用）
+     * 首次调用时解析并缓存，后续调用直接使用缓存
+     *
+     * @param ctx         函数上下文
+     * @param overloadSet 重载集合
+     * @param cache       缓存数组
+     * @param slot        缓存槽位
+     * @return 函数返回值
+     */
+    public static Object finishCallDeferred(FunctionContext<?> ctx, OverloadSet overloadSet, Function[] cache, int slot) {
+        Function resolved = cache[slot];
+        Type[] argTypes = ctx.collectArgTypes();
+        if (resolved == null) {
+            resolved = overloadSet.resolve(argTypes);
+            if (resolved != null) {
+                cache[slot] = resolved;
+            } else {
+                resolved = ctx.getFunction(); // fallback
+            }
+        }
+        ctx.setFunctionAndConvertArgs(resolved, argTypes);
+        try {
+            resolved.call(ctx);
+            return getReturnValue(ctx);
+        } finally {
+            ctx.close();
         }
     }
 
@@ -621,7 +671,7 @@ public final class Intrinsics {
             return executor.execute(environment, parsedData);
         } catch (RuntimeException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             throw new RuntimeException("Error executing command '" + commandName + "': " + ex.getMessage(), ex);
         }
     }
@@ -652,7 +702,7 @@ public final class Intrinsics {
             return executor.execute(environment, body);
         } catch (RuntimeException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             throw new RuntimeException("Error executing domain '" + domainName + "': " + ex.getMessage(), ex);
         }
     }

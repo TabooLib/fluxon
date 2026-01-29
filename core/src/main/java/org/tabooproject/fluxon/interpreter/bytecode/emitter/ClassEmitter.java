@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassWriter;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 
 import java.util.ArrayList;
@@ -213,6 +214,29 @@ public abstract class ClassEmitter {
     }
 
     /**
+     * 声明 DEFERRED_OVERLOAD_SETS 静态字段（如果需要）
+     *
+     * @param ctx CodeContext 用于检查是否有延迟重载集合
+     */
+    protected void emitDeferredOverloadSetsField(CodeContext ctx) {
+        if (!ctx.getDeferredOverloadSets().isEmpty()) {
+            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE.getDescriptor(), null);
+        }
+    }
+
+    /**
+     * 声明 DEFERRED_CACHE 静态字段（如果需要）
+     * 用于缓存延迟解析后的函数
+     *
+     * @param ctx CodeContext 用于检查是否有延迟重载集合
+     */
+    protected void emitDeferredCacheField(CodeContext ctx) {
+        if (!ctx.getDeferredOverloadSets().isEmpty()) {
+            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_CACHE", "[" + Function.TYPE.getDescriptor(), null);
+        }
+    }
+
+    /**
      * 在 clinit 中初始化 RESOLVED_EXT_FUNCTIONS 数组
      *
      * @param mv         静态初始化方法 visitor
@@ -238,6 +262,76 @@ public abstract class ClassEmitter {
         }
         // 存入静态字段
         mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor());
+    }
+
+    /**
+     * 在 clinit 中初始化 DEFERRED_OVERLOAD_SETS 数组
+     *
+     * @param mv         静态初始化方法 visitor
+     * @param ctx        CodeContext 包含延迟重载集合列表
+     * @param ownerClass 静态字段所属类
+     */
+    protected void emitDeferredOverloadSetsInit(MethodVisitor mv, CodeContext ctx, String ownerClass) {
+        List<OverloadSet> overloadSets = ctx.getDeferredOverloadSets();
+        if (overloadSets.isEmpty()) {
+            return;
+        }
+        // 创建数组: new OverloadSet[size]
+        mv.visitLdcInsn(overloadSets.size());
+        mv.visitTypeInsn(ANEWARRAY, OverloadSet.TYPE.getPath());
+        // 填充数组元素
+        for (int i = 0; i < overloadSets.size(); i++) {
+            OverloadSet set = overloadSets.get(i);
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            // FluxonRuntime.getInstance().getSystemFunctions().get(name)
+            mv.visitMethodInsn(INVOKESTATIC, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getInstance", "()Lorg/tabooproject/fluxon/runtime/FluxonRuntime;", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getSystemFunctions", "()Ljava/util/Map;", false);
+            mv.visitLdcInsn(set.getName());
+            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
+            mv.visitTypeInsn(CHECKCAST, OverloadSet.TYPE.getPath());
+            mv.visitInsn(AASTORE);
+        }
+        // 存入静态字段
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE.getDescriptor());
+    }
+
+    /**
+     * 在 clinit 中初始化 DEFERRED_CACHE 数组
+     * 创建与 DEFERRED_OVERLOAD_SETS 相同大小的空数组
+     *
+     * @param mv         静态初始化方法 visitor
+     * @param ctx        CodeContext 包含延迟重载集合列表
+     * @param ownerClass 静态字段所属类
+     */
+    protected void emitDeferredCacheInit(MethodVisitor mv, CodeContext ctx, String ownerClass) {
+        List<OverloadSet> overloadSets = ctx.getDeferredOverloadSets();
+        if (overloadSets.isEmpty()) {
+            return;
+        }
+        // 创建空数组: new Function[size]
+        mv.visitLdcInsn(overloadSets.size());
+        mv.visitTypeInsn(ANEWARRAY, Function.TYPE.getPath());
+        // 存入静态字段
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_CACHE", "[" + Function.TYPE.getDescriptor());
+    }
+
+    /**
+     * 声明编译期优化相关的静态字段（组合方法）
+     */
+    protected void emitCompiledFunctionFields(CodeContext ctx) {
+        emitResolvedExtensionFunctionsField(ctx);
+        emitDeferredOverloadSetsField(ctx);
+        emitDeferredCacheField(ctx);
+    }
+
+    /**
+     * 初始化编译期优化相关的静态数组（组合方法）
+     */
+    protected void emitCompiledFunctionInits(MethodVisitor mv, CodeContext ctx, String ownerClass) {
+        emitResolvedExtensionFunctionsInit(mv, ctx, ownerClass);
+        emitDeferredOverloadSetsInit(mv, ctx, ownerClass);
+        emitDeferredCacheInit(mv, ctx, ownerClass);
     }
 
     /**
