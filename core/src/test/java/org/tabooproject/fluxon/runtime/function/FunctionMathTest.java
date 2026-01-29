@@ -177,6 +177,13 @@ public class FunctionMathTest {
         assertTrue(val >= 5.0 && val < 10.0);
     }
 
+    @Test
+    void testRandomDoubleRange2() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("random(1.5, 2)");
+        System.out.println(result.getInterpretResult());
+        System.out.println(result.getCompileResult());
+    }
+
     // ========== 三角函数测试 ==========
 
     @Test

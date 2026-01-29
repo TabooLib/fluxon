@@ -145,27 +145,27 @@ public class FunctionMath {
         // random(end) - int 版本返回 [0, end) 的整数
         runtime.registerFunction("random", returns(Type.I).params(Type.I), ctx -> {
             int end = ctx.getInt(0);
-            if (end <= 0) throw new IllegalArgumentException("random end value must be positive");
+            if (end <= 0) throw new IllegalArgumentException("random " + end + " must be positive");
             ctx.setReturnInt((int) (Math.random() * end));
         });
         // random(end) - double 版本返回 [0, end) 的浮点数
         runtime.registerFunction("random", returns(Type.D).params(Type.D), ctx -> {
             double end = ctx.getDouble(0);
-            if (end <= 0) throw new IllegalArgumentException("random end value must be positive");
+            if (end <= 0) throw new IllegalArgumentException("random " + end + " must be positive");
             ctx.setReturnDouble(Math.random() * end);
         });
         // random(start, end) - int 版本返回 [start, end) 的整数
         runtime.registerFunction("random", returns(Type.I).params(Type.I, Type.I), ctx -> {
             int start = ctx.getInt(0);
             int end = ctx.getInt(1);
-            if (start >= end) throw new IllegalArgumentException("random start value must be less than end value");
+            if (start >= end) throw new IllegalArgumentException("random " + start + " must be less than " + end);
             ctx.setReturnInt(start + (int) (Math.random() * (end - start)));
         });
         // random(start, end) - double 版本返回 [start, end) 的浮点数
         runtime.registerFunction("random", returns(Type.D).params(Type.D, Type.D), ctx -> {
             double start = ctx.getDouble(0);
             double end = ctx.getDouble(1);
-            if (start >= end) throw new IllegalArgumentException("random start value must be less than end value");
+            if (start >= end) throw new IllegalArgumentException("random " + start + " must be less than " + end);
             ctx.setReturnDouble(start + Math.random() * (end - start));
         });
 

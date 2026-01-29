@@ -23,8 +23,6 @@ import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.util.Map;
-
 import static org.objectweb.asm.Opcodes.*;
 
 public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpression> {
@@ -68,40 +66,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             Type t = interpreter.evaluate(expressionArguments[i]);
             Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : Type.OBJECT;
             if (t.isPrimitive()) {
-                switch (t.getDescriptor()) {
-                    case "I":
-                    case "Z":
-                        ctx.setInt(i, (int) interpreter.resultPrimitive);
-                        break;
-                    case "J":
-                        ctx.setLong(i, interpreter.resultPrimitive);
-                        break;
-                    case "F":
-                        ctx.setFloat(i, Float.intBitsToFloat((int) interpreter.resultPrimitive));
-                        break;
-                    case "D":
-                        ctx.setDouble(i, Double.longBitsToDouble(interpreter.resultPrimitive));
-                        break;
-                }
+                Type target = (expected.isPrimitive() && !t.equals(expected)) ? expected : t;
+                setPrimitiveArg(ctx, i, target, t, interpreter.resultPrimitive);
             } else if (expected.isPrimitive()) {
-                // 期望 primitive 但得到 Object，尝试转换
-                Object ref = interpreter.resultRef;
-                if (ref instanceof Number) {
-                    Number num = (Number) ref;
-                    if (expected == Type.I || expected == Type.Z) {
-                        ctx.setInt(i, num.intValue());
-                    } else if (expected == Type.J) {
-                        ctx.setLong(i, num.longValue());
-                    } else if (expected == Type.F) {
-                        ctx.setFloat(i, num.floatValue());
-                    } else if (expected == Type.D) {
-                        ctx.setDouble(i, num.doubleValue());
-                    }
-                } else if (ref instanceof Boolean) {
-                    ctx.setInt(i, (Boolean) ref ? 1 : 0);
-                } else {
-                    throw new ClassCastException("Cannot convert " + (ref == null ? "null" : ref.getClass().getName()) + " to " + expected);
-                }
+                setArgFromObject(ctx, i, expected, interpreter.resultRef);
             } else {
                 ctx.setRef(i, interpreter.resultRef);
             }
@@ -236,11 +204,41 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
 
     /**
      * 根据参数类型生成对应的 FunctionContext setter 调用
-     * 如果表达式类型是 OBJECT 但期望类型是 primitive，生成类型转换代码
      */
     private static void emitSetArg(Type t, Type expected, MethodVisitor mv) {
         String ctxPath = FunctionContext.TYPE.getPath();
-        // 表达式类型是 primitive，直接设置
+        if (t.isPrimitive()) {
+            Type target = (expected != null && expected.isPrimitive()) ? expected : t;
+            emitWideningConversion(t, target, mv);
+            emitSetPrimitive(target, ctxPath, mv);
+        } else if (expected != null && expected.isPrimitive()) {
+            emitUnboxToPrimitive(expected, ctxPath, mv);
+        } else {
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
+        }
+    }
+
+    /**
+     * 生成 primitive 拓宽转换指令
+     */
+    private static void emitWideningConversion(Type from, Type to, MethodVisitor mv) {
+        if (from == to) return;
+        if (from == Type.I || from == Type.Z) {
+            if (to == Type.J) mv.visitInsn(I2L);
+            else if (to == Type.F) mv.visitInsn(I2F);
+            else if (to == Type.D) mv.visitInsn(I2D);
+        } else if (from == Type.J) {
+            if (to == Type.F) mv.visitInsn(L2F);
+            else if (to == Type.D) mv.visitInsn(L2D);
+        } else if (from == Type.F) {
+            if (to == Type.D) mv.visitInsn(F2D);
+        }
+    }
+
+    /**
+     * 生成 primitive setter 调用
+     */
+    private static void emitSetPrimitive(Type t, String ctxPath, MethodVisitor mv) {
         if (t == Type.I || t == Type.Z) {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
         } else if (t == Type.J) {
@@ -249,28 +247,27 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
         } else if (t == Type.D) {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
-        } else if (expected != null && expected.isPrimitive()) {
-            // 表达式类型是 OBJECT 但期望 primitive，生成转换代码
-            // 栈：ctx, index, value(Object)
-            // 先将 Object 转换为 Number，再调用对应的 xxxValue 方法
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            if (expected == Type.I || expected == Type.Z) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
-            } else if (expected == Type.J) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setLong", "(IJ)V", false);
-            } else if (expected == Type.F) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
-            } else if (expected == Type.D) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
-            } else {
-                mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
-            }
+        }
+    }
+
+    /**
+     * 生成 Object -> primitive 拆箱并设置
+     */
+    private static void emitUnboxToPrimitive(Type expected, String ctxPath, MethodVisitor mv) {
+        mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+        if (expected == Type.I || expected == Type.Z) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setInt", "(II)V", false);
+        } else if (expected == Type.J) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setLong", "(IJ)V", false);
+        } else if (expected == Type.F) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setFloat", "(IF)V", false);
+        } else if (expected == Type.D) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setDouble", "(ID)V", false);
         } else {
-            // Object 类型
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
         }
     }
@@ -290,8 +287,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         // 解析具体重载并设置索引
         FunctionPosition position = result.getPosition();
         if (position != null) {
-            int resolvedIndex = position.resolveIndex(argTypes);
-            result.setResolvedPositionIndex(resolvedIndex);
+            result.setResolvedPositionIndex(position.resolveIndex(argTypes));
         }
         // 基于 target 类型预解析扩展函数
         Type targetType = analyzer.getCurrentTargetType();
@@ -322,27 +318,71 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 return function.getReturnType();
             }
         }
-        // 尝试从扩展函数推断返回类型（回退：统一类型检查）
+        // 尝试从扩展函数推断返回类型
         ExtensionFunctionPosition extPos = result.getExtensionPosition();
-        if (extPos != null && extPos.getOverloadSets() != null) {
-            Map<Class<?>, OverloadSet> overloadSets = extPos.getOverloadSets();
-            Type commonType = null;
-            for (OverloadSet set : overloadSets.values()) {
-                Function func = set.resolve(argTypes);
-                if (func != null) {
-                    Type rt = func.getReturnType();
-                    if (commonType == null) {
-                        commonType = rt;
-                    } else if (!commonType.equals(rt)) {
-                        // 返回类型不一致，无法推断
-                        return Type.OBJECT;
-                    }
-                }
-            }
-            if (commonType != null) {
-                return commonType;
+        if (extPos != null) {
+            Type inferred = extPos.inferReturnType(argTypes);
+            if (inferred != null) {
+                return inferred;
             }
         }
         return Type.OBJECT;
+    }
+
+    /**
+     * 将 primitive 值按目标类型设置到 FunctionContext
+     */
+    private static void setPrimitiveArg(FunctionContext<?> ctx, int i, Type target, Type source, long raw) {
+        double value = readPrimitiveAsDouble(source, raw);
+        switch (target.getDescriptor()) {
+            case "I":
+            case "Z":
+                ctx.setInt(i, (int) value);
+                break;
+            case "J":
+                ctx.setLong(i, (long) value);
+                break;
+            case "F":
+                ctx.setFloat(i, (float) value);
+                break;
+            case "D":
+                ctx.setDouble(i, value);
+                break;
+        }
+    }
+
+    /**
+     * 从 raw bits 读取 primitive 值为 double
+     */
+    private static double readPrimitiveAsDouble(Type t, long raw) {
+        switch (t.getDescriptor()) {
+            case "I": case "Z": return (int) raw;
+            case "J": return raw;
+            case "F": return Float.intBitsToFloat((int) raw);
+            case "D": return Double.longBitsToDouble(raw);
+            default: return 0;
+        }
+    }
+
+    /**
+     * 从 Object 转换为 primitive 并设置到 FunctionContext
+     */
+    private static void setArgFromObject(FunctionContext<?> ctx, int i, Type expected, Object ref) {
+        if (ref instanceof Number) {
+            Number num = (Number) ref;
+            if (expected == Type.I || expected == Type.Z) {
+                ctx.setInt(i, num.intValue());
+            } else if (expected == Type.J) {
+                ctx.setLong(i, num.longValue());
+            } else if (expected == Type.F) {
+                ctx.setFloat(i, num.floatValue());
+            } else if (expected == Type.D) {
+                ctx.setDouble(i, num.doubleValue());
+            }
+        } else if (ref instanceof Boolean) {
+            ctx.setInt(i, (Boolean) ref ? 1 : 0);
+        } else {
+            throw new ClassCastException("Cannot convert " + (ref == null ? "null" : ref.getClass().getName()) + " to " + expected);
+        }
     }
 }
