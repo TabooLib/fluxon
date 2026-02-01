@@ -25,6 +25,9 @@ import java.util.concurrent.Executors;
  */
 public class FluxonRuntime {
 
+    // 类型
+    public static final Type TYPE = new Type(FluxonRuntime.class);
+
     // 单例实例
     private static final FluxonRuntime INSTANCE = new FluxonRuntime();
 

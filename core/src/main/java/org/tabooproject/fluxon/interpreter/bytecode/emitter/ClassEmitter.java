@@ -5,10 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassWriter;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
-import org.tabooproject.fluxon.runtime.Environment;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.OverloadSet;
-import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
+import org.tabooproject.fluxon.runtime.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -209,7 +206,7 @@ public abstract class ClassEmitter {
      */
     protected void emitResolvedExtensionFunctionsField(CodeContext ctx) {
         if (!ctx.getResolvedExtensionFunctions().isEmpty()) {
-            emitField(ACC_PUBLIC | ACC_STATIC, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor(), null);
+            emitField(ACC_PUBLIC | ACC_STATIC, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE, null);
         }
     }
 
@@ -220,7 +217,7 @@ public abstract class ClassEmitter {
      */
     protected void emitDeferredOverloadSetsField(CodeContext ctx) {
         if (!ctx.getDeferredOverloadSets().isEmpty()) {
-            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE.getDescriptor(), null);
+            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE, null);
         }
     }
 
@@ -232,7 +229,7 @@ public abstract class ClassEmitter {
      */
     protected void emitDeferredCacheField(CodeContext ctx) {
         if (!ctx.getDeferredOverloadSets().isEmpty()) {
-            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_CACHE", "[" + Function.TYPE.getDescriptor(), null);
+            emitField(ACC_PUBLIC | ACC_STATIC, "DEFERRED_CACHE", "[" + Function.TYPE, null);
         }
     }
 
@@ -261,7 +258,7 @@ public abstract class ClassEmitter {
             mv.visitInsn(AASTORE);
         }
         // 存入静态字段
-        mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE.getDescriptor());
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE);
     }
 
     /**
@@ -285,15 +282,15 @@ public abstract class ClassEmitter {
             mv.visitInsn(DUP);
             mv.visitLdcInsn(i);
             // FluxonRuntime.getInstance().getSystemFunctions().get(name)
-            mv.visitMethodInsn(INVOKESTATIC, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getInstance", "()Lorg/tabooproject/fluxon/runtime/FluxonRuntime;", false);
-            mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getSystemFunctions", "()Ljava/util/Map;", false);
+            mv.visitMethodInsn(INVOKESTATIC, FluxonRuntime.TYPE.getPath(), "getInstance", "()" + FluxonRuntime.TYPE, false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, FluxonRuntime.TYPE.getPath(), "getSystemFunctions", "()Ljava/util/Map;", false);
             mv.visitLdcInsn(set.getName());
             mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
             mv.visitTypeInsn(CHECKCAST, OverloadSet.TYPE.getPath());
             mv.visitInsn(AASTORE);
         }
         // 存入静态字段
-        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE.getDescriptor());
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_OVERLOAD_SETS", "[" + OverloadSet.TYPE);
     }
 
     /**
@@ -313,7 +310,7 @@ public abstract class ClassEmitter {
         mv.visitLdcInsn(overloadSets.size());
         mv.visitTypeInsn(ANEWARRAY, Function.TYPE.getPath());
         // 存入静态字段
-        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_CACHE", "[" + Function.TYPE.getDescriptor());
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "DEFERRED_CACHE", "[" + Function.TYPE);
     }
 
     /**
@@ -340,13 +337,13 @@ public abstract class ClassEmitter {
      */
     private void emitLoadFunction(MethodVisitor mv, CodeContext.ResolvedExtFuncInfo info) {
         // FluxonRuntime.getInstance().getCachedDispatchTables()[dispatchTableIndex].resolveByIndex(targetClass, overloadIndex)
-        mv.visitMethodInsn(INVOKESTATIC, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getInstance", "()Lorg/tabooproject/fluxon/runtime/FluxonRuntime;", false);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/FluxonRuntime", "getCachedDispatchTables", "()[Lorg/tabooproject/fluxon/runtime/ExtensionDispatchTable;", false);
+        mv.visitMethodInsn(INVOKESTATIC, FluxonRuntime.TYPE.getPath(), "getInstance", "()" + FluxonRuntime.TYPE, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FluxonRuntime.TYPE.getPath(), "getCachedDispatchTables", "()[" + ExtensionDispatchTable.TYPE, false);
         mv.visitLdcInsn(info.dispatchTableIndex);
         mv.visitInsn(AALOAD);
         mv.visitLdcInsn(org.objectweb.asm.Type.getType(info.targetClass));
         mv.visitLdcInsn(info.overloadIndex);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "org/tabooproject/fluxon/runtime/ExtensionDispatchTable", "resolveByIndex", "(Ljava/lang/Class;I)" + Function.TYPE.getDescriptor(), false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, ExtensionDispatchTable.TYPE.getPath(), "resolveByIndex", "(Ljava/lang/Class;I)" + Function.TYPE, false);
     }
 
     /**

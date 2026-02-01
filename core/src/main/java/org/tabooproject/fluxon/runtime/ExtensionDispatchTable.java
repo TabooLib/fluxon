@@ -17,6 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ExtensionDispatchTable {
 
+    // 类型
+    public static final Type TYPE = new Type(ExtensionDispatchTable.class);
+
     /**
      * 缓存标记：未命中时的占位符
      */
