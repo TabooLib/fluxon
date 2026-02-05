@@ -104,25 +104,20 @@ public final class Intrinsics {
     }
 
     /**
-     * 获取变量或函数
+     * 获取变量
      *
      * @param environment 脚本运行环境
-     * @param name        变量或函数名称
+     * @param name        变量名称
      * @param isOptional  是否为可选参数
      * @param index       索引
-     * @return 变量或函数对象
+     * @return 变量对象
      */
-    public static Object getVariableOrFunction(Environment environment, String name, boolean isOptional, int index) {
+    public static Object getVariable(Environment environment, String name, boolean isOptional, int index) {
         // 局部变量直接索引访问
         if (index >= 0) return environment.getLocalRef(index);
         // 根变量
         if (environment.hasRootVariable(name)) {
             return environment.getRootVariable(name);
-        }
-        // 获取函数
-        Function fun = environment.getFunctionOrNull(name);
-        if (fun != null) {
-            return fun;
         }
         if (isOptional) {
             return null;

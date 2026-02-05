@@ -100,27 +100,6 @@ public class FunctionCallTest {
         assertEquals(26, result.getCompileResult());
     }
 
-    // ========== 引用函数测试 ==========
-
-    @Test
-    public void testRefCall1() {
-        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def test = 'Hello'; " +
-                        "call(&test)");
-        assertEquals("Hello", result.getInterpretResult());
-        assertEquals("Hello", result.getCompileResult());
-    }
-
-    @Test
-    public void testRefCall2() {
-        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
-                "def inc(x) = &x + 1; " +
-                        "ref = &inc; " +
-                        "call(&ref, [1])");
-        assertEquals(2, result.getInterpretResult());
-        assertEquals(2, result.getCompileResult());
-    }
-
     // ========== 函数返回值测试 ==========
 
     @Test

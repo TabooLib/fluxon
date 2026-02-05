@@ -46,7 +46,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         }
         // root 变量
         String name = result.getIdentifier().getValue();
-        Object value = Intrinsics.getVariableOrFunction(env, name, result.isOptional(), position);
+        Object value = Intrinsics.getVariable(env, name, result.isOptional(), position);
         Type rootType = interpreter.getRootVariableType(name);
         if (rootType.isPrimitive() && value != null) {
             interpreter.resultPrimitive = Type.unbox(value, rootType);
@@ -83,7 +83,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         mv.visitLdcInsn(-1);
         mv.visitMethodInsn(INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
-                "getVariableOrFunction",
+                "getVariable",
                 "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
                 false
         );

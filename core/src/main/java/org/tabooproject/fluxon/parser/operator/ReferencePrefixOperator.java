@@ -49,7 +49,7 @@ public class ReferencePrefixOperator implements PrefixOperator {
             Integer captured = parser.getCapturedIndex(name);
             if (captured != null) {
                 ref = new ReferenceExpression(new Identifier(name), false, captured);
-            } else if (parser.getContext().isAllowInvalidReference() || parser.isFunction(name) || parser.hasVariableInAnyScope(name)) {
+            } else if (parser.getContext().isAllowInvalidReference() || parser.hasVariableInAnyScope(name)) {
                 ref = new ReferenceExpression(
                         new Identifier(name),
                         parser.getContext().isAllowInvalidReference(),
