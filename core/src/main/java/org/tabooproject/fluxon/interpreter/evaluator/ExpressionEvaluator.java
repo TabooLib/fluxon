@@ -82,6 +82,24 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         return unifyBranchTypes(trueType, falseType);
     }
 
+    /**
+     * 生成安全访问的 null 短路字节码
+     * 栈顶为 target 引用，若为 null 则弹出并压入 null 跳转到 endLabel
+     *
+     * @return endLabel，调用方需在逻辑末尾 visitLabel(endLabel)
+     */
+    public static Label emitNullShortCircuit(MethodVisitor mv) {
+        Label endLabel = new Label();
+        Label notNullLabel = new Label();
+        mv.visitInsn(DUP);
+        mv.visitJumpInsn(IFNONNULL, notNullLabel);
+        mv.visitInsn(POP);
+        mv.visitInsn(ACONST_NULL);
+        mv.visitJumpInsn(GOTO, endLabel);
+        mv.visitLabel(notNullLabel);
+        return endLabel;
+    }
+
     public static int storeOpcode(Type type) {
         if (type == Type.I || type == Type.Z) return ISTORE;
         if (type == Type.J) return LSTORE;

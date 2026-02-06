@@ -87,18 +87,7 @@ public class MemberAccessEvaluator extends ExpressionEvaluator<MemberAccessExpre
         // 处理安全访问（?.）的 null 短路逻辑
         Label endLabel = null;
         if (expression.isSafe()) {
-            endLabel = new Label();
-            Label notNullLabel = new Label();
-            // 复制 target 引用用于 null 检查
-            mv.visitInsn(DUP);
-            // 检查是否为 null
-            mv.visitJumpInsn(IFNONNULL, notNullLabel);
-            // null 分支：弹出 target，压入 null 并跳转到结束
-            mv.visitInsn(POP);
-            mv.visitInsn(ACONST_NULL);
-            mv.visitJumpInsn(GOTO, endLabel);
-            // 非 null 分支
-            mv.visitLabel(notNullLabel);
+            endLabel = emitNullShortCircuit(mv);
         }
 
         if (expression.isMethodCall()) {

@@ -270,4 +270,66 @@ public class SafeAccessTest {
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
     }
+
+    // ========== 安全索引访问 (?[) 测试 ==========
+
+    @Test
+    public void testSafeIndexAccessOnNullMap() {
+        // map 为 null 时，?[ 返回 null
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("map = null; &map?['key']");
+        assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
+    }
+
+    @Test
+    public void testSafeIndexAccessOnNonNullMap() {
+        // map 不为 null 时，?[ 正常访问
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("map = [a: 1]; &map?['a']");
+        assertEquals(1, result.getInterpretResult());
+        assertEquals(1, result.getCompileResult());
+    }
+
+    @Test
+    public void testSafeIndexAccessOnNullList() {
+        // list 为 null 时，?[ 返回 null
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("list = null; &list?[0]");
+        assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
+    }
+
+    @Test
+    public void testSafeIndexAccessOnNonNullList() {
+        // list 不为 null 时，?[ 正常访问
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("list = [1, 2, 3]; &list?[0]");
+        assertEquals(1, result.getInterpretResult());
+        assertEquals(1, result.getCompileResult());
+    }
+
+    @Test
+    public void testSafeIndexAccessChainedWithSafeMember() {
+        // 链式：?[ 与 ?. 组合
+        FluxonTestUtil.TestResult result;
+
+        result = FluxonTestUtil.runSilent("map = null; &map?['a']?.toString()");
+        assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
+
+        result = FluxonTestUtil.runSilent("map = [a: 1]; &map?['a']?.toString()");
+        assertEquals("1", result.getInterpretResult());
+        assertEquals("1", result.getCompileResult());
+    }
+
+    @Test
+    public void testSafeIndexAccessWithElvis() {
+        // ?[ 与 Elvis 组合
+        FluxonTestUtil.TestResult result;
+
+        result = FluxonTestUtil.runSilent("map = null; &map?['key'] ?: 'default'");
+        assertEquals("default", result.getInterpretResult());
+        assertEquals("default", result.getCompileResult());
+
+        result = FluxonTestUtil.runSilent("map = [key: 'value']; &map?['key'] ?: 'default'");
+        assertEquals("value", result.getInterpretResult());
+        assertEquals("value", result.getCompileResult());
+    }
 }

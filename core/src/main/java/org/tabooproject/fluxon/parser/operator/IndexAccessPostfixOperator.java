@@ -20,6 +20,9 @@ public class IndexAccessPostfixOperator implements PostfixOperator {
 
     @Override
     public boolean matches(Parser parser, ParseResult expr) {
+        if (parser.check(TokenType.QUESTION_BRACKET)) {
+            return true;
+        }
         if (!parser.check(TokenType.LEFT_BRACKET)) {
             return false;
         }
@@ -30,7 +33,8 @@ public class IndexAccessPostfixOperator implements PostfixOperator {
 
     @Override
     public ParseResult parse(Parser parser, ParseResult expr) {
-        Token leftBracket = parser.consume(); // 消费 [
+        boolean safe = parser.check(TokenType.QUESTION_BRACKET);
+        Token leftBracket = parser.consume(); // 消费 [ 或 ?[
         // 解析索引参数（支持多个，用逗号分隔）
         List<ParseResult> indices = new ArrayList<>();
         if (!parser.check(TokenType.RIGHT_BRACKET)) {
@@ -44,7 +48,7 @@ public class IndexAccessPostfixOperator implements PostfixOperator {
         if (indices.isEmpty()) {
             throw parser.createParseException("Index access requires at least one index", parser.peek());
         }
-        return parser.attachSource(new IndexAccessExpression(expr, indices, -1), leftBracket);
+        return parser.attachSource(new IndexAccessExpression(expr, indices, -1, safe), leftBracket);
     }
 
     @Override

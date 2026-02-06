@@ -14,12 +14,18 @@ public class IndexAccessExpression extends Expression {
     private final ParseResult target;
     private final List<ParseResult> indices;
     private final int position;
+    private final boolean safe;
 
     public IndexAccessExpression(ParseResult target, List<ParseResult> indices, int position) {
+        this(target, indices, position, false);
+    }
+
+    public IndexAccessExpression(ParseResult target, List<ParseResult> indices, int position, boolean safe) {
         super(ExpressionType.INDEX_ACCESS);
         this.target = target;
         this.indices = indices;
         this.position = position;
+        this.safe = safe;
     }
 
     public ParseResult getTarget() {
@@ -32,6 +38,10 @@ public class IndexAccessExpression extends Expression {
 
     public int getPosition() {
         return position;
+    }
+
+    public boolean isSafe() {
+        return safe;
     }
 
     @Override
@@ -47,7 +57,7 @@ public class IndexAccessExpression extends Expression {
     @Override
     public String toPseudoCode() {
         StringBuilder sb = new StringBuilder();
-        sb.append(target.toPseudoCode()).append("[");
+        sb.append(target.toPseudoCode()).append(safe ? "?[" : "[");
         for (int i = 0; i < indices.size(); i++) {
             if (i > 0) {
                 sb.append(", ");

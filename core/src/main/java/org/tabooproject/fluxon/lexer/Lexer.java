@@ -131,6 +131,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         MULTI_CHAR_TOKENS.put(charPairKey('/', '='), encode(TokenType.DIVIDE_ASSIGN));
         MULTI_CHAR_TOKENS.put(charPairKey('%', '='), encode(TokenType.MODULO_ASSIGN));
         MULTI_CHAR_TOKENS.put(charPairKey('?', '.'), encode(TokenType.QUESTION_DOT));
+        MULTI_CHAR_TOKENS.put(charPairKey('?', '['), encode(TokenType.QUESTION_BRACKET));
         MULTI_CHAR_TOKENS.put(charPairKey(':', ':'), encode(TokenType.CONTEXT_CALL));
         // 可延续的双字符操作符（.. → ..<, ?: → ?::）
         MULTI_CHAR_TOKENS.put(charPairKey('.', '.'), encode(TokenType.RANGE, '<', TokenType.RANGE_EXCLUSIVE));

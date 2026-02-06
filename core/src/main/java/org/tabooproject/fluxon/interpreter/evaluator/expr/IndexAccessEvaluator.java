@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
@@ -16,7 +17,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.List;
 
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.*;
 
 /**
  * 索引访问表达式求值器
@@ -34,6 +35,11 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
     public Type evaluate(Interpreter interpreter, IndexAccessExpression expr) {
         Type tt = interpreter.evaluate(expr.getTarget());
         Object target = interpreter.getResultBoxed(tt);
+        // 安全索引访问：target 为 null 时返回 null
+        if (target == null && expr.isSafe()) {
+            interpreter.resultRef = null;
+            return Type.OBJECT;
+        }
         List<ParseResult> indices = expr.getIndices();
         // 单索引访问
         if (indices.size() == 1) {
@@ -67,6 +73,13 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
             throw new VoidError("Void type is not allowed for index access target");
         }
         boxing(targetType, mv);
+
+        // 处理安全索引访问（?[）的 null 短路逻辑
+        Label endLabel = null;
+        if (expr.isSafe()) {
+            endLabel = emitNullShortCircuit(mv);
+        }
+
         List<ParseResult> indices = expr.getIndices();
         // 对每个索引依次调用 Intrinsics.getIndex
         for (ParseResult indexExpr : indices) {
@@ -90,6 +103,10 @@ public class IndexAccessEvaluator extends ExpressionEvaluator<IndexAccessExpress
                     false
             );
             // 如果还有更多索引，当前结果将作为下一次调用的 target
+        }
+
+        if (endLabel != null) {
+            mv.visitLabel(endLabel);
         }
         return Type.OBJECT;
     }
