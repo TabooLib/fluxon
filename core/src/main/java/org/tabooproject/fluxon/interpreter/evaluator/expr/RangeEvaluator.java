@@ -27,7 +27,18 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
     @Override
     public Type evaluate(Interpreter interpreter, RangeExpression result) {
         Type st = interpreter.evaluate(result.getStart());
-        Object start = interpreter.getResultBoxed(st);
+        if (st.isPrimitive()) {
+            int startInt = (int) interpreter.resultPrimitive;
+            Type et = interpreter.evaluate(result.getEnd());
+            if (et.isPrimitive()) {
+                interpreter.resultRef = Intrinsics.createRange(startInt, (int) interpreter.resultPrimitive, result.isInclusive());
+                return Type.OBJECT;
+            }
+            Object end = interpreter.resultRef;
+            interpreter.resultRef = Intrinsics.createRange(startInt, end, result.isInclusive());
+            return Type.OBJECT;
+        }
+        Object start = interpreter.resultRef;
         Type et = interpreter.evaluate(result.getEnd());
         Object end = interpreter.getResultBoxed(et);
         interpreter.resultRef = Intrinsics.createRange(start, end, result.isInclusive());

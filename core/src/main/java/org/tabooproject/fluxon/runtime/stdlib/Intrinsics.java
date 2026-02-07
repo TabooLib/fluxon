@@ -95,12 +95,17 @@ public final class Intrinsics {
      */
     public static IntRange createRange(Object start, Object end, boolean isInclusive) {
         Operations.checkNumberOperands(start, end);
-        int startInt = ((Number) start).intValue();
-        int endInt = ((Number) end).intValue();
+        return createRange(((Number) start).intValue(), ((Number) end).intValue(), isInclusive);
+    }
+
+    /**
+     * 创建数字范围列表（primitive 快速路径，避免装箱）
+     */
+    public static IntRange createRange(int start, int end, boolean isInclusive) {
         if (!isInclusive) {
-            endInt += (startInt <= endInt) ? -1 : 1;
+            end += (start <= end) ? -1 : 1;
         }
-        return new IntRange(startInt, endInt);
+        return new IntRange(start, end);
     }
 
     /**

@@ -26,7 +26,8 @@ import static org.tabooproject.fluxon.runtime.Type.*;
 public class IndexAccessAssignHandler implements AssignmentTargetHandler<IndexAccessExpression> {
 
     @Override
-    public void assign(Interpreter interpreter, AssignExpression expr, IndexAccessExpression target, Object value, TokenType op) {
+    public void assign(Interpreter interpreter, AssignExpression expr, IndexAccessExpression target, Type vt, TokenType op) {
+        Object value = interpreter.getResultBoxed(vt);
         Type tt = interpreter.evaluate(target.getTarget());
         Object container = interpreter.getResultBoxed(tt);
         List<ParseResult> indices = target.getIndices();

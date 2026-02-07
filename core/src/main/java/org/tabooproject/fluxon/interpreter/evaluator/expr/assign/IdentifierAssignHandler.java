@@ -26,26 +26,28 @@ import static org.tabooproject.fluxon.runtime.Type.*;
 public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifier> {
 
     @Override
-    public void assign(Interpreter interpreter, AssignExpression expr, Identifier target, Object value, TokenType op) {
+    public void assign(Interpreter interpreter, AssignExpression expr, Identifier target, Type vt, TokenType op) {
         Environment env = interpreter.getEnvironment();
         int position = expr.getPosition();
         if (position >= 0) {
             Type varType = env.getVariableType(position);
             if (op != TokenType.ASSIGN) {
+                Object value = interpreter.getResultBoxed(vt);
                 Object current = getLocalBoxed(env, position, varType);
                 Object newValue = applyCompoundOperation(current, value, op);
                 setLocalFromBoxed(env, position, varType, newValue);
+            } else if (vt == varType && vt.isPrimitive()) {
+                setLocalFromBits(env, position, vt, interpreter.resultPrimitive);
             } else {
-                Type vt = interpreter.lastResultType;
-                if (vt == varType && vt.isPrimitive()) {
-                    setLocalFromBits(env, position, vt, interpreter.resultPrimitive);
-                } else if (varType.isPrimitive()) {
+                Object value = interpreter.getResultBoxed(vt);
+                if (varType.isPrimitive()) {
                     setLocalFromBoxed(env, position, varType, value);
                 } else {
                     env.setLocalRef(position, value);
                 }
             }
         } else {
+            Object value = interpreter.getResultBoxed(vt);
             String name = target.getValue();
             if (op != TokenType.ASSIGN) {
                 value = applyCompoundOperation(env.getRootVariable(name), value, op);

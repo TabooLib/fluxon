@@ -50,14 +50,26 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 long rightBits = interpreter.resultPrimitive;
                 return evaluatePrimitive(interpreter, lt, leftBits, rt, rightBits, opType);
             }
-            // 右操作数非 primitive，回退到装箱路径
-            Object left = Type.box(leftBits, lt);
+            // 右操作数非 primitive，尝试拆箱 right 走 primitive 路径
             Object right = interpreter.resultRef;
-            return evaluateBoxed(interpreter, left, right, opType);
+            Type rightPrimType = toPrimitiveType(right);
+            if (rightPrimType != null) {
+                return evaluatePrimitive(interpreter, lt, leftBits, rightPrimType, Type.unbox(right, rightPrimType), opType);
+            }
+            return evaluateBoxed(interpreter, Type.box(leftBits, lt), right, opType);
         }
         Object left = interpreter.resultRef;
         Type rt = interpreter.evaluate(result.getRight());
-        Object right = interpreter.getResultBoxed(rt);
+        if (rt.isPrimitive()) {
+            // 左操作数非 primitive，尝试拆箱 left 走 primitive 路径
+            long rightBits = interpreter.resultPrimitive;
+            Type leftPrimType = toPrimitiveType(left);
+            if (leftPrimType != null) {
+                return evaluatePrimitive(interpreter, leftPrimType, Type.unbox(left, leftPrimType), rt, rightBits, opType);
+            }
+            return evaluateBoxed(interpreter, left, Type.box(rightBits, rt), opType);
+        }
+        Object right = interpreter.resultRef;
         return evaluateBoxed(interpreter, left, right, opType);
     }
 
@@ -533,6 +545,17 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (t == Type.F) return Float.intBitsToFloat((int) bits);
         if (t == Type.J) return (double) bits;
         return (int) bits;
+    }
+
+    /**
+     * 尝试将 boxed Number 映射为 primitive Type，非 Number 返回 null
+     */
+    private static Type toPrimitiveType(Object value) {
+        if (value instanceof Integer) return Type.I;
+        if (value instanceof Double) return Type.D;
+        if (value instanceof Long) return Type.J;
+        if (value instanceof Float) return Type.F;
+        return null;
     }
 
     @Override

@@ -25,7 +25,8 @@ import static org.tabooproject.fluxon.runtime.Type.*;
 public class MemberAccessAssignHandler implements AssignmentTargetHandler<MemberAccessExpression> {
 
     @Override
-    public void assign(Interpreter interpreter, AssignExpression expr, MemberAccessExpression target, Object value, TokenType op) {
+    public void assign(Interpreter interpreter, AssignExpression expr, MemberAccessExpression target, Type vt, TokenType op) {
+        Object value = interpreter.getResultBoxed(vt);
         Type tt = interpreter.evaluate(target.getTarget());
         Object targetObj = interpreter.getResultBoxed(tt);
         if (targetObj == null) {
