@@ -38,6 +38,8 @@ public class FunctionCallExpression extends Expression {
     // 延迟解析后缓存的函数（解释模式使用）
     @Nullable
     private Function deferredResolvedFunction;
+    // 缓存的解释模式 handler 标记（避免重复 selectHandler 计算）
+    private int cachedHandlerTag;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -220,6 +222,14 @@ public class FunctionCallExpression extends Expression {
     @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.FUNCTION_CALL;
+    }
+
+    public int getCachedHandlerTag() {
+        return cachedHandlerTag;
+    }
+
+    public void setCachedHandlerTag(int tag) {
+        this.cachedHandlerTag = tag;
     }
 
     @Override

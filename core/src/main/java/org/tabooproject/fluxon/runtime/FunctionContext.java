@@ -4,8 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 
-import java.util.Arrays;
-
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
@@ -16,7 +14,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
 
     public static final Type TYPE = new Type(FunctionContext.class);
 
-    private static final int INITIAL_CAPACITY = 8;
     private static final Object[] EMPTY_REFS = new Object[0];
     private static final long[] EMPTY_PRIMITIVES = new long[0];
     private static final byte[] EMPTY_ARG_TYPES = new byte[0];
@@ -33,13 +30,13 @@ public final class FunctionContext<Target> implements AutoCloseable {
     private Target target;
     private Environment environment;
     private final FunctionContextPool pool;
-    private boolean detached;
-    boolean dirty;
-    private Interpreter interpreter; // Interpreter 实例，用于解释执行时传递执行上下文
+    private Interpreter interpreter;
+    int stackIndex = -1;
 
     private long[] primitives;
     private Object[] refs;
-    private byte[] argTypes; // 0=ref, 'I'/'J'/'F'/'D'/'Z'=primitive
+    private byte[] argTypes;
+    private int capacity;
     private int argumentCount;
 
     public long returnPrimitive;
@@ -54,6 +51,18 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.refs = EMPTY_REFS;
         this.primitives = EMPTY_PRIMITIVES;
         this.argTypes = EMPTY_ARG_TYPES;
+        this.capacity = 0;
+    }
+
+    /**
+     * 预分配构造函数，初始化指定容量的数组
+     */
+    FunctionContext(@NotNull FunctionContextPool pool, int capacity) {
+        this.pool = pool;
+        this.primitives = new long[capacity];
+        this.refs = new Object[capacity];
+        this.argTypes = new byte[capacity];
+        this.capacity = capacity;
     }
 
     // ====================== 参数读取 - 原始类型 ======================
@@ -395,12 +404,8 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.target = (Target) target;
         this.refs = refs;
         this.argumentCount = refs.length;
-        this.argTypes = EMPTY_ARG_TYPES; // 通过 refs 传参时，所有参数都是引用类型
+        this.argTypes = EMPTY_ARG_TYPES;
         this.environment = environment;
-        this.returnPrimitive = 0;
-        this.returnRef = null;
-        this.returnType = null;
-        this.interpreter = null;
     }
 
     @SuppressWarnings("unchecked")
@@ -414,41 +419,30 @@ public final class FunctionContext<Target> implements AutoCloseable {
         ensureCapacity(argCount);
         this.argumentCount = argCount;
         this.environment = environment;
-        this.returnPrimitive = 0;
-        this.returnRef = null;
-        this.returnType = null;
-        this.interpreter = null;
     }
 
     /**
-     * 从池中分离，close() 变为 no-op（用于 async 转移所有权）
+     * 从池中分离（用于 async 转移所有权）
+     * 用新 context 替换自己在栈中的槽位，使 close() 无需 detached 检查
      */
     public void detachFromPool() {
-        this.detached = true;
+        pool.detach(this);
     }
 
     /**
-     * 清理引用字段
+     * 清理 GC 敏感字段（归还栈时调用）
      */
-    void clearRefs() {
-        int n = argumentCount;
-        if (n > 0 && n <= refs.length) {
-            Arrays.fill(refs, 0, n, null);
-        }
+    void clearGcSensitive() {
         target = null;
         returnRef = null;
-        argumentCount = 0;
     }
 
     private void ensureCapacity(int count) {
-        if (primitives.length < count) {
+        if (capacity < count) {
             primitives = new long[count];
-        }
-        if (refs.length < count) {
             refs = new Object[count];
-        }
-        if (argTypes.length < count) {
             argTypes = new byte[count];
+            capacity = count;
         }
     }
 
@@ -463,9 +457,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
 
     @Override
     public void close() {
-        if (!detached) {
-            dirty = true;
-            pool.releaseUnchecked(this);
-        }
+        pool.releaseUnchecked(this);
     }
 }

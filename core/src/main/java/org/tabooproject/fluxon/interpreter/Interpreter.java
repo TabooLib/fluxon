@@ -116,10 +116,10 @@ public class Interpreter {
      */
     public Type evaluate(ParseResult result) {
         try {
-            consumeCostIfNeeded(result);
             if (result instanceof Expression) {
                 return evaluateExpression((Expression) result);
             } else if (result instanceof Statement) {
+                environment.consumeCostStep();
                 return evaluateStatement((Statement) result);
             } else if (result instanceof Definition) {
                 evaluateDefinition((Definition) result);
@@ -213,15 +213,6 @@ public class Interpreter {
     private void attachSource(FluxonRuntimeError error, ParseResult result) {
         if (error.getSourceExcerpt() == null) {
             error.attachSource(SourceTrace.get(result));
-        }
-    }
-
-    /**
-     * 消耗执行成本（如果启用且结果为语句）
-     */
-    private void consumeCostIfNeeded(ParseResult result) {
-        if (result instanceof Statement) {
-            environment.consumeCostStep();
         }
     }
 

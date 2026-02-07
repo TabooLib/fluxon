@@ -61,7 +61,9 @@ public class ResolvedExtensionHandler implements FunctionCallHandler {
     @Override
     public Type generateFinishCall(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv, PrepareCallResult prepareResult, Type returnType) {
         mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
-        FunctionCallHandlers.emitFinishCall(returnType, mv);
+        Function resolved = expr.getResolvedExtensionFunction();
+        boolean knownSync = resolved != null && !resolved.isAsync() && !resolved.isPrimarySync();
+        FunctionCallHandlers.emitFinishCall(returnType, knownSync, mv);
         return returnType;
     }
 }

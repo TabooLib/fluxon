@@ -118,7 +118,7 @@ public final class FunctionCallHandlers {
         }
     }
 
-    public static void emitFinishCall(Type returnType, MethodVisitor mv) {
+    public static void emitFinishCall(Type returnType, boolean knownSync, MethodVisitor mv) {
         String ctxDesc = FunctionContext.TYPE.getDescriptor();
         String method, returnDesc;
         if (returnType == Type.I || returnType == Type.Z) {
@@ -130,7 +130,8 @@ public final class FunctionCallHandlers {
         } else if (returnType == Type.F) {
             method = "finishCallFloat"; returnDesc = "F";
         } else {
-            method = "finishCall"; returnDesc = Type.OBJECT.getDescriptor();
+            method = knownSync ? "finishCallSync" : "finishCall";
+            returnDesc = Type.OBJECT.getDescriptor();
         }
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), method, "(" + ctxDesc + ")" + returnDesc, false);
     }

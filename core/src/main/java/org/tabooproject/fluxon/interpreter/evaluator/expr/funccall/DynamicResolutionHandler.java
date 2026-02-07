@@ -4,6 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
@@ -61,7 +62,23 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
     @Override
     public Type generateFinishCall(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv, PrepareCallResult prepareResult, Type returnType) {
         mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
-        FunctionCallHandlers.emitFinishCall(returnType, mv);
+        FunctionCallHandlers.emitFinishCall(returnType, isKnownSync(expr), mv);
         return returnType;
+    }
+
+    /**
+     * 编译期判断函数是否确定为同步调用
+     */
+    private static boolean isKnownSync(FunctionCallExpression expr) {
+        // 无扩展函数时，检查系统函数位置
+        FunctionPosition position = expr.getPosition();
+        if (position != null) {
+            for (Function f : position.getOverloadSet().getOverloads()) {
+                if (f.isAsync() || f.isPrimarySync()) return false;
+            }
+            return true;
+        }
+        // 无位置信息，无法确定
+        return false;
     }
 }

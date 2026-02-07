@@ -207,6 +207,22 @@ public final class Intrinsics {
     }
 
     /**
+     * 完成同步函数调用（编译期已确认非 async/primarySync 时使用）
+     * 跳过 isAsync/isPrimarySync 检查，减少虚方法调用和分支预测开销
+     */
+    public static Object finishCallSync(FunctionContext<?> ctx) {
+        try {
+            ctx.getFunction().call(ctx);
+            Object result = getReturnValue(ctx);
+            ctx.close();
+            return result;
+        } catch (Throwable ex) {
+            ctx.close();
+            throw ex;
+        }
+    }
+
+    /**
      * 完成函数调用（无 interpreter）
      */
     public static Object finishCall(FunctionContext<?> ctx) {
@@ -219,7 +235,6 @@ public final class Intrinsics {
     public static Object finishCall(FunctionContext<?> ctx, @Nullable Interpreter interpreter) {
         Function function = ctx.getFunction();
         if (function.isAsync()) {
-            FunctionContextPool pool = ctx.getPool();
             Interpreter child = interpreter != null ? interpreter.createChild() : null;
             ctx.setInterpreter(child);
             ctx.detachFromPool();
@@ -230,12 +245,9 @@ public final class Intrinsics {
                 } catch (Throwable ex) {
                     if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
                     return null;
-                } finally {
-                    pool.returnFromOtherThread(ctx);
                 }
             });
         } else if (function.isPrimarySync()) {
-            FunctionContextPool pool = ctx.getPool();
             Interpreter child = interpreter != null ? interpreter.createChild() : null;
             ctx.setInterpreter(child);
             ctx.detachFromPool();
@@ -247,9 +259,6 @@ public final class Intrinsics {
                 } catch (Throwable ex) {
                     if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
                     future.completeExceptionally(ex);
-                } finally {
-                    // 归还到原借出线程的池
-                    pool.returnFromOtherThread(ctx);
                 }
             });
             return future;
@@ -391,13 +400,11 @@ public final class Intrinsics {
             return ctx.getReturnRef();
         }
         long raw = ctx.getReturnPrimitive();
-        switch (t.getDescriptor()) {
-            case "I": return (int) raw;
-            case "J": return raw;
-            case "D": return Double.longBitsToDouble(raw);
-            case "F": return Float.intBitsToFloat((int) raw);
-            case "Z": return raw != 0;
-        }
+        if (t == Type.I) return (int) raw;
+        if (t == Type.J) return raw;
+        if (t == Type.D) return Double.longBitsToDouble(raw);
+        if (t == Type.F) return Float.intBitsToFloat((int) raw);
+        if (t == Type.Z) return raw != 0;
         return ctx.getReturnRef();
     }
 
