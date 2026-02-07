@@ -211,13 +211,14 @@ public final class Intrinsics {
      * 跳过 isAsync/isPrimarySync 检查，减少虚方法调用和分支预测开销
      */
     public static Object finishCallSync(FunctionContext<?> ctx) {
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.getFunction().call(ctx);
             Object result = getReturnValue(ctx);
-            ctx.close();
+            pool.releaseTop();
             return result;
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }
@@ -281,13 +282,14 @@ public final class Intrinsics {
      * 完成同步函数调用，返回 int
      */
     public static int finishCallInt(FunctionContext<?> ctx) {
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.getFunction().call(ctx);
             int result = (int) ctx.getReturnPrimitive();
-            ctx.close();
+            pool.releaseTop();
             return result;
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }
@@ -296,13 +298,14 @@ public final class Intrinsics {
      * 完成同步函数调用，返回 long
      */
     public static long finishCallLong(FunctionContext<?> ctx) {
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.getFunction().call(ctx);
             long result = ctx.getReturnPrimitive();
-            ctx.close();
+            pool.releaseTop();
             return result;
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }
@@ -311,13 +314,14 @@ public final class Intrinsics {
      * 完成同步函数调用，返回 double
      */
     public static double finishCallDouble(FunctionContext<?> ctx) {
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.getFunction().call(ctx);
             double result = Double.longBitsToDouble(ctx.getReturnPrimitive());
-            ctx.close();
+            pool.releaseTop();
             return result;
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }
@@ -326,13 +330,14 @@ public final class Intrinsics {
      * 完成同步函数调用，返回 float
      */
     public static float finishCallFloat(FunctionContext<?> ctx) {
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.getFunction().call(ctx);
             float result = Float.intBitsToFloat((int) ctx.getReturnPrimitive());
-            ctx.close();
+            pool.releaseTop();
             return result;
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }

@@ -61,12 +61,12 @@ public final class FunctionContextPool {
         return borrow(context.getFunction(), context.getTarget(), refs != null ? refs : EMPTY_REFS, context.getEnvironment());
     }
 
-    private FunctionContext<?> acquire() {
-        if (depth < MAX_DEPTH) {
-            return stack[depth++];
-        }
-        // 溢出时分配堆上的 context，stackIndex = -1 表示不在栈中
-        return new FunctionContext<>(this);
+    /**
+     * 同步热路径专用归还，跳过 stackIndex 校验
+     * 调用者保证 LIFO 顺序（同步解释执行天然满足）
+     */
+    public void releaseTop() {
+        depth--;
     }
 
     /**
@@ -93,5 +93,13 @@ public final class FunctionContextPool {
             stack[idx] = new FunctionContext<>(this, INITIAL_CAPACITY, idx);
         }
         context.stackIndex = -1;
+    }
+
+    private FunctionContext<?> acquire() {
+        if (depth < MAX_DEPTH) {
+            return stack[depth++];
+        }
+        // 溢出时分配堆上的 context，stackIndex = -1 表示不在栈中
+        return new FunctionContext<>(this);
     }
 }

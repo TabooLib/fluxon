@@ -4,6 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
@@ -36,21 +37,22 @@ public final class FunctionCallHandlers {
             interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
             return Type.OBJECT;
         }
+        FunctionContextPool pool = ctx.getPool();
         try {
             ctx.setInterpreter(interpreter);
             function.call(ctx);
             Type returnType = ctx.getReturnType();
             if (returnType != null && returnType != Type.VOID && returnType.isPrimitive()) {
                 interpreter.resultPrimitive = ctx.getReturnPrimitive();
-                ctx.close();
+                pool.releaseTop();
                 return returnType;
             } else {
                 interpreter.resultRef = ctx.getReturnRef();
-                ctx.close();
+                pool.releaseTop();
                 return Type.OBJECT;
             }
         } catch (Throwable ex) {
-            ctx.close();
+            pool.releaseTop();
             throw ex;
         }
     }
