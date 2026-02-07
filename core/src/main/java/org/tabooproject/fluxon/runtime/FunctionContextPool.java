@@ -24,7 +24,7 @@ public final class FunctionContextPool {
     private FunctionContextPool() {
         stack = new FunctionContext<?>[MAX_DEPTH];
         for (int i = 0; i < MAX_DEPTH; i++) {
-            stack[i] = new FunctionContext<>(this, INITIAL_CAPACITY);
+            stack[i] = new FunctionContext<>(this, INITIAL_CAPACITY, i);
         }
     }
 
@@ -63,13 +63,10 @@ public final class FunctionContextPool {
 
     private FunctionContext<?> acquire() {
         if (depth < MAX_DEPTH) {
-            FunctionContext<?> ctx = stack[depth];
-            ctx.stackIndex = depth;
-            depth++;
-            return ctx;
+            return stack[depth++];
         }
         // 溢出时分配堆上的 context，stackIndex = -1 表示不在栈中
-        return new FunctionContext<>(this, INITIAL_CAPACITY);
+        return new FunctionContext<>(this);
     }
 
     /**
@@ -77,10 +74,13 @@ public final class FunctionContextPool {
      * 栈式分配保证 LIFO 顺序，只需递减 depth
      */
     void releaseUnchecked(FunctionContext<?> context) {
-        if (depth > 0 && stack[depth - 1] == context) {
+        if (context.stackIndex == depth - 1) {
             depth--;
-            context.clearGcSensitive();
         }
+    }
+
+    int getDepth() {
+        return depth;
     }
 
     /**
@@ -90,7 +90,7 @@ public final class FunctionContextPool {
     void detach(FunctionContext<?> context) {
         int idx = context.stackIndex;
         if (idx >= 0 && idx < MAX_DEPTH && stack[idx] == context) {
-            stack[idx] = new FunctionContext<>(this, INITIAL_CAPACITY);
+            stack[idx] = new FunctionContext<>(this, INITIAL_CAPACITY, idx);
         }
         context.stackIndex = -1;
     }

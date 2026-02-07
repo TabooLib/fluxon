@@ -112,7 +112,7 @@ public class Environment {
         EnvironmentState m = root.rootState;
         OverloadSet existing = m.functions.get(name);
         if (existing != null) {
-            m.functions.put(name, existing.copyWithFirst(value));
+            existing.addFirst(value);
         } else {
             OverloadSet set = new OverloadSet(name);
             set.add(value);

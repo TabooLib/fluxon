@@ -38,13 +38,16 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 setLocalFromBoxed(env, position, varType, newValue);
             } else if (vt == varType && vt.isPrimitive()) {
                 setLocalFromBits(env, position, vt, interpreter.resultPrimitive);
-            } else {
-                Object value = interpreter.getResultBoxed(vt);
+            } else if (vt.isPrimitive()) {
                 if (varType.isPrimitive()) {
-                    setLocalFromBoxed(env, position, varType, value);
+                    setLocalPrimitiveConverted(env, position, varType, vt, interpreter.resultPrimitive);
                 } else {
-                    env.setLocalRef(position, value);
+                    env.setLocalRef(position, Type.box(interpreter.resultPrimitive, vt));
                 }
+            } else if (varType.isPrimitive()) {
+                setLocalFromBoxed(env, position, varType, interpreter.resultRef);
+            } else {
+                env.setLocalRef(position, interpreter.resultRef);
             }
         } else {
             Object value = interpreter.getResultBoxed(vt);

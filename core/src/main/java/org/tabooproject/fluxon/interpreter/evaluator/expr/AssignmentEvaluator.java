@@ -144,6 +144,22 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         }
     }
 
+    /**
+     * primitive → 不同 primitive 的直接转换，避免装箱
+     */
+    public static void setLocalPrimitiveConverted(Environment env, int pos, Type target, Type source, long bits) {
+        double v;
+        if (source == Type.I || source == Type.Z) v = (int) bits;
+        else if (source == Type.J) v = (double) bits;
+        else if (source == Type.F) v = Float.intBitsToFloat((int) bits);
+        else if (source == Type.D) v = Double.longBitsToDouble(bits);
+        else return;
+        if (target == Type.I || target == Type.Z) env.setLocalInt(pos, (int) v);
+        else if (target == Type.J) env.setLocalLong(pos, (long) v);
+        else if (target == Type.F) env.setLocalFloat(pos, (float) v);
+        else if (target == Type.D) env.setLocalDouble(pos, v);
+    }
+
     public static Object applyCompoundOperation(Object current, Object value, TokenType operator) {
         switch (operator) {
             case PLUS_ASSIGN: return add(current, value);

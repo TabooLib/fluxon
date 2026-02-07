@@ -3,7 +3,6 @@ package org.tabooproject.fluxon.runtime;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -23,27 +22,28 @@ public class FunctionContextPoolTest {
     /**
      * 测试跨线程释放行为。
      * <p>
-     * 注意：优化后移除了 ownerThread 检查，依赖 ThreadLocal 保障线程隔离。
-     * 正确的使用模式是：每个线程应通过 FunctionContextPool.local() 获取自己的池实例。
-     * 此测试验证：即使错误地传递池引用跨线程，release 操作仍能正常执行（虽然语义上不推荐）。
+     * 栈式分配器依赖 LIFO 顺序和 stackIndex 校验，
+     * 跨线程 close() 会通过 stackIndex 匹配成功释放。
+     * 此测试验证跨线程 close 不会破坏池状态。
      */
     @Test
     public void closeFromOtherThreadIsIgnored() throws Exception {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         Environment environment = runtime.newEnvironment();
         Function function = new NativeFunction<>("poolGuard", returns(Type.VOID).noParams(), ctx -> {});
-        FunctionContextPool pool = currentThreadPool();
+        FunctionContextPool pool = FunctionContextPool.local();
+        // 先借后还，确保栈内有空间
+        FunctionContext<?> warmup = pool.borrow(function, null, new Object[0], environment);
+        warmup.close();
+        int baseline = pool.getDepth();
         FunctionContext<?> context = pool.borrow(function, null, new Object[0], environment);
-        int afterBorrow = getPoolSize(pool);
-        // 跨线程释放现在会实际添加到池中（因为移除了线程检查）
-        // 这不是推荐的使用模式，但不会导致错误
+        assertEquals(baseline + 1, pool.getDepth(), "Borrow should increment depth");
+        // 跨线程 close
         Thread t = new Thread(context::close);
         t.start();
         t.join();
-        int afterCrossThreadRelease = getPoolSize(pool);
-        // 跨线程释放现在会增加池大小（优化后的行为）
-        assertTrue(afterCrossThreadRelease >= afterBorrow, "Cross-thread release now adds to pool (optimization removed thread guard)");
-        // 不再重复释放，因为 context 已经被释放
+        // 栈式池中跨线程 close 通过 stackIndex 匹配释放
+        assertEquals(baseline, pool.getDepth(), "Cross-thread close should release via stackIndex match");
     }
 
     @Test
@@ -100,19 +100,5 @@ public class FunctionContextPoolTest {
             primaryExecutor.shutdownNow();
             runtime.setPrimaryThreadExecutor(previousPrimary);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static FunctionContextPool currentThreadPool() throws Exception {
-        Field localField = FunctionContextPool.class.getDeclaredField("LOCAL");
-        localField.setAccessible(true);
-        ThreadLocal<FunctionContextPool> local = (ThreadLocal<FunctionContextPool>) localField.get(null);
-        return local.get();
-    }
-
-    private static int getPoolSize(FunctionContextPool pool) throws Exception {
-        Field sizeField = FunctionContextPool.class.getDeclaredField("size");
-        sizeField.setAccessible(true);
-        return sizeField.getInt(pool);
     }
 }

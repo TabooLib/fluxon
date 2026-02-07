@@ -55,14 +55,15 @@ public final class FunctionContext<Target> implements AutoCloseable {
     }
 
     /**
-     * 预分配构造函数，初始化指定容量的数组
+     * 栈槽位构造函数，stackIndex 固化到构造期
      */
-    FunctionContext(@NotNull FunctionContextPool pool, int capacity) {
+    FunctionContext(@NotNull FunctionContextPool pool, int capacity, int stackIndex) {
         this.pool = pool;
         this.primitives = new long[capacity];
         this.refs = new Object[capacity];
         this.argTypes = new byte[capacity];
         this.capacity = capacity;
+        this.stackIndex = stackIndex;
     }
 
     // ====================== 参数读取 - 原始类型 ======================
@@ -405,7 +406,11 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.refs = refs;
         this.argumentCount = refs.length;
         this.argTypes = EMPTY_ARG_TYPES;
+        this.capacity = 0;
         this.environment = environment;
+        this.returnRef = null;
+        this.returnType = null;
+        this.interpreter = null;
     }
 
     @SuppressWarnings("unchecked")
@@ -419,6 +424,9 @@ public final class FunctionContext<Target> implements AutoCloseable {
         ensureCapacity(argCount);
         this.argumentCount = argCount;
         this.environment = environment;
+        this.returnRef = null;
+        this.returnType = null;
+        this.interpreter = null;
     }
 
     /**
@@ -427,14 +435,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
      */
     public void detachFromPool() {
         pool.detach(this);
-    }
-
-    /**
-     * 清理 GC 敏感字段（归还栈时调用）
-     */
-    void clearGcSensitive() {
-        target = null;
-        returnRef = null;
     }
 
     private void ensureCapacity(int count) {
