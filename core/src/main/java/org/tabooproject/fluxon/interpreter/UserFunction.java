@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.SymbolFunction;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.FunctionContext;
@@ -79,6 +80,9 @@ public class UserFunction implements Function, Symbolic {
                 context,
                 definition.getLocalVariables().size()
         );
+        if (definition instanceof LambdaFunctionDefinition) {
+            functionEnv.setCaptureOffset(((LambdaFunctionDefinition) definition).getCaptureOffset());
+        }
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
             exec.consumeCostStep();
         }

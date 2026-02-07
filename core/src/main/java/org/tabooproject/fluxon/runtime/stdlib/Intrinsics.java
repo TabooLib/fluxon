@@ -490,11 +490,13 @@ public final class Intrinsics {
             return functionEnv;
         }
         final int len = context.getArgumentCount();
+        int argIndex = 0;
         for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
             final int slot = entry.getValue();
-            final Object value = (slot >= 0 && slot < len) ? context.getArgBoxed(slot) : null;
+            final Object value = (argIndex < len) ? context.getArgBoxed(argIndex) : null;
             functionEnv.setLocalRef(slot, value);
             functionEnv.getLocalVariableNames()[slot] = entry.getKey();
+            argIndex++;
         }
         return functionEnv;
     }

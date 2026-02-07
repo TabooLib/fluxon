@@ -84,4 +84,78 @@ public class LambdaTest {
         assertEquals(4, result.getInterpretResult());
         assertTrue(result.isMatch());
     }
+
+    /**
+     * 测试 lambda 捕获函数参数
+     * 复现问题：函数参数在 lambda 内部被错误地解析为其他值
+     */
+    @Test
+    public void testLambdaCaptureFunctionParameter() {
+        // 函数参数被 lambda 捕获（注意：变量取值必须使用 &name）
+        String script = ""
+                + "def testCapture(shooter) = {\n"
+                + "  list = [1, 2, 3]\n"
+                + "  print('shooter before each: ' + &shooter)\n"
+                + "  &list::filter(|it| {\n"
+                + "    print('it: ' + &it + ', shooter: ' + &shooter)\n"
+                + "    &it != &shooter\n"
+                + "  })\n"
+                + "}\n"
+                + "testCapture(2)";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        // 预期结果：[1, 3]（过滤掉 shooter=2）
+        assertEquals(Arrays.asList(1, 3), result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试 lambda 中多次访问捕获的函数参数
+     * 确保捕获的值在多次访问时保持一致
+     */
+    @Test
+    public void testLambdaCaptureFunctionParameterMultipleAccess() {
+        String script = ""
+                + "def multiAccess(value) = {\n"
+                + "  list = [1, 2, 3, 4, 5]\n"
+                + "  count = 0\n"
+                + "  &list::each(|it| {\n"
+                + "    if &it == &value {\n"
+                + "      count += 1\n"
+                + "    }\n"
+                + "  })\n"
+                + "  &count\n"
+                + "}\n"
+                + "multiAccess(3)";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        // 预期结果：1（只有 3 匹配）
+        assertEquals(1, result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试嵌套 lambda 捕获外部函数参数
+     */
+    @Test
+    public void testNestedLambdaCaptureFunctionParameter() {
+        String script = ""
+                + "def outerFunc(target) = {\n"
+                + "  list1 = [1, 2]\n"
+                + "  count = 0\n"
+                + "  &list1::each(|x| {\n"
+                + "    list2 = [3, 4]\n"
+                + "    &list2::each(|y| {\n"
+                + "      sum = &x + &y\n"
+                + "      if &sum != &target {\n"
+                + "        count += 1\n"
+                + "      }\n"
+                + "    })\n"
+                + "  })\n"
+                + "  &count\n"
+                + "}\n"
+                + "outerFunc(5)";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        // 1+3=4, 1+4=5(skip), 2+3=5(skip), 2+4=6 -> count = 2
+        assertEquals(2, result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
 }

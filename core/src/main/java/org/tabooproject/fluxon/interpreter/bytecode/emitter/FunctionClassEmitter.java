@@ -207,17 +207,27 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitInsn(SWAP);
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
         funcCtx.setEnvironmentLocalSlot(envSlot);
+        // Lambda 闭包捕获偏移
+        if (funcDef instanceof LambdaFunctionDefinition) {
+            int captureOffset = ((LambdaFunctionDefinition) funcDef).getCaptureOffset();
+            if (captureOffset > 0) {
+                mv.visitVarInsn(ALOAD, envSlot);
+                mv.visitLdcInsn(captureOffset);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setCaptureOffset", "(" + I + ")V", false);
+            }
+        }
         // 内联绑定每个参数（编译时确定类型，无运行时分支）
+        int argIndex = 0;
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
             String name = entry.getKey();
             int slot = entry.getValue();
-            Class<?> declaredType = parameterTypes.get(slot);
+            Class<?> declaredType = parameterTypes.get(argIndex);
             Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
-            // env.setLocalXxx(slot, context.getXxx(slot))
+            // env.setLocalXxx(slot, context.getXxx(argIndex))
             mv.visitVarInsn(ALOAD, envSlot);
             mv.visitLdcInsn(slot);
             mv.visitVarInsn(ALOAD, 1);
-            mv.visitLdcInsn(slot);
+            mv.visitLdcInsn(argIndex);
             if (type == Type.I || type == Type.Z) {
                 mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getInt", "(" + I + ")" + I, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(" + I + I + ")V", false);
@@ -235,6 +245,7 @@ public class FunctionClassEmitter extends ClassEmitter {
                 mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")V", false);
             }
+            argIndex++;
         }
     }
 

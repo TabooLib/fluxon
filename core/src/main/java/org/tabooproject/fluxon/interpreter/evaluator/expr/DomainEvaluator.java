@@ -68,7 +68,8 @@ public class DomainEvaluator extends Evaluator<DomainExpression> {
             lambdaName,
             new LinkedHashMap<>(),  // 无参数
             expr.getBody(),
-            Collections.emptySet()  // 无局部变量（继承外部作用域）
+            Collections.emptySet(), // 无局部变量（继承外部作用域）
+            0  // 无捕获
         );
         LambdaFunctionDefinition lambdaDef = (LambdaFunctionDefinition) bodyLambda.toFunctionDefinition(ctx.getClassName());
         ctx.addLambdaDefinition(lambdaDef);

@@ -17,13 +17,15 @@ public class LambdaExpression extends Expression {
     private final LinkedHashMap<String, Integer> parameters;
     private final ParseResult body;
     private final Set<String> localVariables;
+    private final int captureOffset;
 
-    public LambdaExpression(String name, LinkedHashMap<String, Integer> parameters, ParseResult body, Set<String> localVariables) {
+    public LambdaExpression(String name, LinkedHashMap<String, Integer> parameters, ParseResult body, Set<String> localVariables, int captureOffset) {
         super(ExpressionType.LAMBDA);
         this.name = name;
         this.parameters = parameters;
         this.body = body;
         this.localVariables = localVariables;
+        this.captureOffset = captureOffset;
     }
 
     public String getName() {
@@ -40,6 +42,10 @@ public class LambdaExpression extends Expression {
 
     public Set<String> getLocalVariables() {
         return localVariables;
+    }
+
+    public int getCaptureOffset() {
+        return captureOffset;
     }
 
     @Override
@@ -75,7 +81,8 @@ public class LambdaExpression extends Expression {
                 false,
                 Collections.emptyList(),
                 localVariables,
-                ownerClassName
+                ownerClassName,
+                captureOffset
         );
     }
 }

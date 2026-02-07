@@ -13,6 +13,7 @@ import java.util.Set;
 public class LambdaFunctionDefinition extends FunctionDefinition {
 
     private final String ownerClassName;
+    private final int captureOffset;
 
     public LambdaFunctionDefinition(
             String name,
@@ -22,14 +23,20 @@ public class LambdaFunctionDefinition extends FunctionDefinition {
             boolean isPrimarySync,
             @NotNull List<Annotation> annotations,
             @NotNull Set<String> localVariables,
-            String ownerClassName
+            String ownerClassName,
+            int captureOffset
     ) {
         super(name, parameters, body, isAsync, isPrimarySync, annotations, localVariables, false);
         this.ownerClassName = ownerClassName;
+        this.captureOffset = captureOffset;
     }
 
     public String getOwnerClassName() {
         return ownerClassName;
+    }
+
+    public int getCaptureOffset() {
+        return captureOffset;
     }
 }
 

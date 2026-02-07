@@ -46,7 +46,12 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
         // 捕获父函数局部变量索引，支持闭包
         Map<String, Integer> parentCaptures = captureParentLocals(parser, previousFunction);
         parser.pushCapture(parentCaptures);
-        return parseParameters(parser, usedOrToken, parameters -> parseLambdaBody(parser, lambdaName, previousFunction, parameters, continuation, lambdaStart));
+        // 将捕获的父变量名添加到 lambda 作用域，使 lambda 自身参数的索引偏移到捕获变量之后
+        int captureOffset = parentCaptures.size();
+        for (String capturedName : parentCaptures.keySet()) {
+            parser.defineVariable(capturedName);
+        }
+        return parseParameters(parser, usedOrToken, parameters -> parseLambdaBody(parser, lambdaName, previousFunction, parameters, captureOffset, continuation, lambdaStart));
     }
 
     /**
@@ -105,6 +110,7 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
             String lambdaName,
             String previousFunction,
             LinkedHashMap<String, Integer> parameters,
+            int captureOffset,
             Trampoline.Continuation<ParseResult> continuation,
             Token lambdaStart
     ) {
@@ -116,7 +122,7 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
             }
             parser.getSymbolEnvironment().setCurrentFunction(previousFunction);
             parser.popCapture();
-            return continuation.apply(parser.attachSource(new LambdaExpression(lambdaName, parameters, body, locals), lambdaStart));
+            return continuation.apply(parser.attachSource(new LambdaExpression(lambdaName, parameters, body, locals, captureOffset), lambdaStart));
         };
         if (parser.match(TokenType.LEFT_BRACE)) {
             return BlockParser.parse(parser, finish);

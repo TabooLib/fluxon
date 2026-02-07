@@ -42,6 +42,8 @@ public class Environment {
     // 局部变量类型（解释模式下使用，作用域隔离）
     @Nullable
     protected Type[] variableTypes;
+    // 闭包捕获偏移量：索引 < captureOffset 的变量走父环境链
+    protected int captureOffset;
     // 上下文目标
     @Nullable
     protected Object target;
@@ -389,6 +391,9 @@ public class Environment {
      */
     @Nullable
     public Object getLocalRef(int index) {
+        if (index < captureOffset && parent != null) {
+            return parent.getLocalRef(index);
+        }
         if (localRefs != null && index < localRefs.length) {
             return localRefs[index];
         }
@@ -405,6 +410,10 @@ public class Environment {
      * @param value 变量值
      */
     public void setLocalRef(int index, @Nullable Object value) {
+        if (index < captureOffset && parent != null) {
+            parent.setLocalRef(index, value);
+            return;
+        }
         if (localRefs != null && index < localRefs.length) {
             localRefs[index] = value;
         } else if (parent != null) {
@@ -412,6 +421,13 @@ public class Environment {
         }
     }
 
+    /**
+     * 设置闭包捕获偏移量
+     * 索引 < captureOffset 的局部变量访问将被委托到父环境
+     */
+    public void setCaptureOffset(int captureOffset) {
+        this.captureOffset = captureOffset;
+    }
     // endregion
 
     // region 局部变量 - 原始类型
