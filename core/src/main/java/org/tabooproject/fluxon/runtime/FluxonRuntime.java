@@ -167,7 +167,7 @@ public class FluxonRuntime {
      *
      * @param function 函数实例
      */
-    public void registerFunction(@NotNull Function function) {
+    public synchronized void registerFunction(@NotNull Function function) {
         systemFunctions.computeIfAbsent(function.getName(), OverloadSet::new).add(function);
         dirty = true;
     }
@@ -175,7 +175,7 @@ public class FluxonRuntime {
     /**
      * 注册系统函数
      */
-    public void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+    public synchronized void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(name, signature, implementation));
         dirty = true;
     }
@@ -183,7 +183,7 @@ public class FluxonRuntime {
     /**
      * 注册系统函数（带命名空间）
      */
-    public void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+    public synchronized void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(namespace, name, signature, implementation));
         dirty = true;
     }
@@ -191,7 +191,7 @@ public class FluxonRuntime {
     /**
      * 注册异步系统函数
      */
-    public void registerAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+    public synchronized void registerAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, true, false));
         dirty = true;
     }
@@ -199,7 +199,7 @@ public class FluxonRuntime {
     /**
      * 注册主线程同步系统函数
      */
-    public void registerPrimarySyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+    public synchronized void registerPrimarySyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, false, true));
         dirty = true;
     }
@@ -221,7 +221,7 @@ public class FluxonRuntime {
     /**
      * 注册扩展函数，直接使用已有 Function 实例
      */
-    public <Target> void registerExtensionFunction(Class<Target> extensionClass, Function function) {
+    public synchronized <Target> void registerExtensionFunction(Class<Target> extensionClass, Function function) {
         extensionFunctions.computeIfAbsent(function.getName(), k -> new LinkedHashMap<>())
                 .computeIfAbsent(extensionClass, c -> new OverloadSet(function.getName()))
                 .add(function);
@@ -231,7 +231,7 @@ public class FluxonRuntime {
     /**
      * 注册扩展函数
      */
-    public <Target> void registerExtensionFunction(
+    public synchronized <Target> void registerExtensionFunction(
             Class<Target> extensionClass,
             String namespace,
             String name,
@@ -251,7 +251,7 @@ public class FluxonRuntime {
      * @param function 待卸载的函数实例
      * @return 是否成功卸载
      */
-    public boolean unregisterFunction(@NotNull Function function) {
+    public synchronized boolean unregisterFunction(@NotNull Function function) {
         OverloadSet set = systemFunctions.get(function.getName());
         if (set == null) {
             return false;
@@ -274,7 +274,7 @@ public class FluxonRuntime {
      * @param function       待卸载的函数实例
      * @return 是否成功卸载
      */
-    public boolean unregisterExtensionFunction(@NotNull Class<?> extensionClass, @NotNull String name, @NotNull Function function) {
+    public synchronized boolean unregisterExtensionFunction(@NotNull Class<?> extensionClass, @NotNull String name, @NotNull Function function) {
         Map<Class<?>, OverloadSet> classFunctions = extensionFunctions.get(name);
         if (classFunctions == null) {
             return false;
