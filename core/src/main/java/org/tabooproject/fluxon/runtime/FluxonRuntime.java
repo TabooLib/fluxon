@@ -46,6 +46,8 @@ public class FluxonRuntime {
     private volatile ExtensionDispatchTable[] cachedDispatchTables;
     // 脏标记：当注册新函数时标记为 true，下次创建环境时会重新构建缓存
     private volatile boolean dirty = false;
+    // 注册锁定标记：锁定后禁止注册新函数，用于定位并发注册问题
+    private volatile boolean registrationLocked = false;
 
     // Export 注册中心
     private final ExportRegistry exportRegistry = new ExportRegistry(this);
@@ -93,6 +95,12 @@ public class FluxonRuntime {
         FunctionType.init(this);
         // Domain
         DomainExtension.init();
+    }
+
+    private void checkRegistrationLock() {
+        if (registrationLocked) {
+            throw new IllegalStateException("Function registration is locked. Unlock before registering new functions.");
+        }
     }
 
     /**
@@ -163,11 +171,26 @@ public class FluxonRuntime {
     }
 
     /**
+     * 锁定函数注册，锁定后任何注册操作会抛出异常（含完整堆栈）
+     */
+    public void lockRegistration() {
+        registrationLocked = true;
+    }
+
+    /**
+     * 解锁函数注册
+     */
+    public void unlockRegistration() {
+        registrationLocked = false;
+    }
+
+    /**
      * 注册已有的函数实例
      *
      * @param function 函数实例
      */
     public synchronized void registerFunction(@NotNull Function function) {
+        checkRegistrationLock();
         systemFunctions.computeIfAbsent(function.getName(), OverloadSet::new).add(function);
         dirty = true;
     }
@@ -176,6 +199,7 @@ public class FluxonRuntime {
      * 注册系统函数
      */
     public synchronized void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        checkRegistrationLock();
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(name, signature, implementation));
         dirty = true;
     }
@@ -184,6 +208,7 @@ public class FluxonRuntime {
      * 注册系统函数（带命名空间）
      */
     public synchronized void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        checkRegistrationLock();
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(namespace, name, signature, implementation));
         dirty = true;
     }
@@ -192,6 +217,7 @@ public class FluxonRuntime {
      * 注册异步系统函数
      */
     public synchronized void registerAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        checkRegistrationLock();
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, true, false));
         dirty = true;
     }
@@ -200,6 +226,7 @@ public class FluxonRuntime {
      * 注册主线程同步系统函数
      */
     public synchronized void registerPrimarySyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
+        checkRegistrationLock();
         systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(null, name, signature, implementation, false, true));
         dirty = true;
     }
