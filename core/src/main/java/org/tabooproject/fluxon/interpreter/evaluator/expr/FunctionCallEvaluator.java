@@ -76,48 +76,23 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return actualReturn;
     }
 
-    // handler tag 常量
-    private static final int TAG_DYNAMIC = 1;
-    private static final int TAG_DEFERRED_OVERLOAD = 2;
-    private static final int TAG_RESOLVED_EXTENSION = 3;
-    private static final int TAG_DEFERRED_EXTENSION = 4;
-
     private FunctionCallHandler selectHandler(Interpreter interpreter, FunctionCallExpression expr) {
-        int tag = expr.getCachedHandlerTag();
-        if (tag != 0) {
-            switch (tag) {
-                case TAG_DYNAMIC: return DynamicResolutionHandler.INSTANCE;
-                case TAG_DEFERRED_OVERLOAD: return DeferredOverloadHandler.INSTANCE;
-                case TAG_RESOLVED_EXTENSION: return ResolvedExtensionHandler.INSTANCE;
-                case TAG_DEFERRED_EXTENSION: return DeferredExtensionHandler.INSTANCE;
-            }
-        }
-        Function resolvedExt = expr.getResolvedExtensionFunction();
+        // 无状态判断：不写入共享 AST，避免多线程缓存竞争
         ExtensionFunctionPosition extPos = expr.getExtensionPosition();
-        if (resolvedExt == null && extPos != null) {
+        if (extPos != null) {
             Object target = interpreter.getEnvironment().getTarget();
             if (target != null) {
                 ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
                 OverloadSet overloadSet = dispatchTable.resolveOverloadSet(target.getClass());
                 if (overloadSet != null && overloadSet.size() > 1) {
-                    expr.setCachedHandlerTag(TAG_DEFERRED_EXTENSION);
                     return DeferredExtensionHandler.INSTANCE;
                 }
-                resolvedExt = expr.resolveExtensionFunction(target.getClass(), new Type[expr.getArguments().length]);
             }
         }
-        if (resolvedExt != null) {
-            expr.setCachedHandlerTag(TAG_RESOLVED_EXTENSION);
-            return ResolvedExtensionHandler.INSTANCE;
-        }
-        Function cachedDeferred = expr.getDeferredResolvedFunction();
-        if (cachedDeferred != null) return new CachedDeferredHandler(cachedDeferred);
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1) {
-            expr.setCachedHandlerTag(TAG_DEFERRED_OVERLOAD);
             return DeferredOverloadHandler.INSTANCE;
         }
-        expr.setCachedHandlerTag(TAG_DYNAMIC);
         return DynamicResolutionHandler.INSTANCE;
     }
 

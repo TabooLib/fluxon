@@ -35,11 +35,6 @@ public class FunctionCallExpression extends Expression {
     private Class<?> resolvedTargetClass;
     // 预解析扩展函数在 OverloadSet 中的索引
     private int resolvedOverloadIndex = -1;
-    // 延迟解析后缓存的函数（解释模式使用）
-    @Nullable
-    private Function deferredResolvedFunction;
-    // 缓存的解释模式 handler 标记（避免重复 selectHandler 计算）
-    private int cachedHandlerTag;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);
@@ -154,21 +149,6 @@ public class FunctionCallExpression extends Expression {
     }
 
     /**
-     * 获取延迟解析后缓存的函数
-     */
-    @Nullable
-    public Function getDeferredResolvedFunction() {
-        return deferredResolvedFunction;
-    }
-
-    /**
-     * 设置延迟解析后缓存的函数
-     */
-    public void setDeferredResolvedFunction(@Nullable Function function) {
-        this.deferredResolvedFunction = function;
-    }
-
-    /**
      * 获取函数名
      */
     public String getFunctionName() {
@@ -222,14 +202,6 @@ public class FunctionCallExpression extends Expression {
     @Override
     public ExpressionType getExpressionType() {
         return ExpressionType.FUNCTION_CALL;
-    }
-
-    public int getCachedHandlerTag() {
-        return cachedHandlerTag;
-    }
-
-    public void setCachedHandlerTag(int tag) {
-        this.cachedHandlerTag = tag;
     }
 
     @Override

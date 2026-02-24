@@ -37,7 +37,6 @@ public class DeferredOverloadHandler implements FunctionCallHandler {
         Function resolved = position.getOverloadSet().resolve(argTypes);
         if (resolved != null) {
             ctx.setFunctionAndConvertArgs(resolved, argTypes);
-            expr.setDeferredResolvedFunction(resolved);
         } else {
             resolved = ctx.getFunction();
         }
