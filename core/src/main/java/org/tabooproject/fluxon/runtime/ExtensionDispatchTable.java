@@ -171,19 +171,24 @@ public final class ExtensionDispatchTable {
 
     /**
      * 小候选数组路径：单趟扫描
-     * 同时处理精确匹配和可赋值回退，避免两次遍历
+     * 同时处理精确匹配和最具体可赋值回退，避免两次遍历
      */
     @Nullable
     private OverloadSet resolveSmallCandidates(@NotNull Class<?> targetClass) {
         OverloadSet assignable = null;
-        if (candidateClasses != null) {
+        Class<?> assignableClass = null;
+        if (candidateClasses != null && candidateOverloadSets != null) {
             for (int i = 0; i < candidateClasses.length; i++) {
                 Class<?> c = candidateClasses[i];
-                if (c == targetClass && candidateOverloadSets != null) {
+                if (c == targetClass) {
                     return candidateOverloadSets[i];
                 }
-                if (assignable == null && c.isAssignableFrom(targetClass) && candidateOverloadSets != null) {
-                    assignable = candidateOverloadSets[i];
+                // 选择最具体的可赋值类型：新候选是当前最佳的子类型时替换
+                if (c.isAssignableFrom(targetClass)) {
+                    if (assignable == null || assignableClass.isAssignableFrom(c)) {
+                        assignable = candidateOverloadSets[i];
+                        assignableClass = c;
+                    }
                 }
             }
         }
@@ -211,22 +216,24 @@ public final class ExtensionDispatchTable {
         if (cached != null) {
             return cached == NOT_FOUND_SENTINEL ? null : cached;
         }
-        // 缓存未命中，执行单趟扫描
+        // 缓存未命中，执行单趟扫描（选择最具体的可赋值类型）
         OverloadSet assignable = null;
-        if (candidateClasses != null) {
+        Class<?> assignableClass = null;
+        if (candidateClasses != null && candidateOverloadSets != null) {
             for (int i = 0; i < candidateClasses.length; i++) {
                 Class<?> c = candidateClasses[i];
                 if (c == targetClass) {
                     // 精确匹配（理论上不应该到这里，因为 exactMatches 已经查过）
-                    if (candidateOverloadSets != null && assignableCache != null) {
+                    if (assignableCache != null) {
                         assignableCache.put(targetClass, candidateOverloadSets[i]);
                     }
-                    if (candidateOverloadSets != null) {
-                        return candidateOverloadSets[i];
-                    }
+                    return candidateOverloadSets[i];
                 }
-                if (assignable == null && c.isAssignableFrom(targetClass) && candidateOverloadSets != null) {
-                    assignable = candidateOverloadSets[i];
+                if (c.isAssignableFrom(targetClass)) {
+                    if (assignable == null || assignableClass.isAssignableFrom(c)) {
+                        assignable = candidateOverloadSets[i];
+                        assignableClass = c;
+                    }
                 }
             }
         }

@@ -130,17 +130,22 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             }
             return false;
         }
-        // target 类型已知时，查找匹配的 OverloadSet
+        // target 类型已知时，查找最具体的匹配 OverloadSet
         Class<?> targetClass = targetType.getSource();
         if (targetClass == null) {
             return false;
         }
+        OverloadSet bestMatch = null;
+        Class<?> bestClass = null;
         for (Map.Entry<Class<?>, OverloadSet> entry : extPos.getOverloadSets().entrySet()) {
             if (entry.getKey().isAssignableFrom(targetClass)) {
-                return countMatchingOverloads(entry.getValue(), argCount) > 1;
+                if (bestClass == null || bestClass.isAssignableFrom(entry.getKey())) {
+                    bestMatch = entry.getValue();
+                    bestClass = entry.getKey();
+                }
             }
         }
-        return false;
+        return bestMatch != null && countMatchingOverloads(bestMatch, argCount) > 1;
     }
 
     /**

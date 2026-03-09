@@ -70,13 +70,29 @@ public class ExportRegistry {
         for (ExportMethod exportMethod : exportMethods) {
             Method method = exportMethod.getMethod();
             String methodName = exportMethod.getTransformedName();
+            Class<?> returnClass = method.getReturnType();
             NativeFunction.NativeCallable<T> callable = context -> {
                 int argCount = context.getArgumentCount();
                 Object[] args = new Object[argCount];
                 for (int i = 0; i < argCount; i++) args[i] = context.getArgBoxed(i);
                 Object target = context.getTarget();
                 Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
-                context.setReturnRef(bridge.invoke(methodName, target, args));
+                Object result = bridge.invoke(methodName, target, args);
+                // 原始类型返回值必须使用对应的 primitive setter，
+                // 否则编译模式下 finishCallLong/Int 等直接读取 returnPrimitive 字段会得到错误值
+                if (returnClass == long.class) {
+                    context.setReturnLong((Long) result);
+                } else if (returnClass == int.class) {
+                    context.setReturnInt((Integer) result);
+                } else if (returnClass == double.class) {
+                    context.setReturnDouble((Double) result);
+                } else if (returnClass == float.class) {
+                    context.setReturnFloat((Float) result);
+                } else if (returnClass == boolean.class) {
+                    context.setReturnBool((Boolean) result);
+                } else {
+                    context.setReturnRef(result);
+                }
             };
             Class<?>[] parameterTypes = method.getParameterTypes();
             Type[] paramTypes = new Type[parameterTypes.length];
