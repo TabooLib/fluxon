@@ -3,8 +3,6 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
-import org.tabooproject.fluxon.interpreter.BreakException;
-import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -28,15 +26,7 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         while (true) {
             Type ct = interpreter.evaluate(result.getCondition());
             if (!interpreter.isResultTrue(ct)) break;
-            if (!bodyIsStatement) {
-                interpreter.consumeCostStep();
-            }
-            try {
-                interpreter.evaluate(result.getBody());
-            } catch (ContinueException ignored) {
-            } catch (BreakException ignored) {
-                break;
-            }
+            if (executeLoopBody(interpreter, result.getBody(), bodyIsStatement)) break;
         }
         return Type.VOID;
     }

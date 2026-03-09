@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.jsr223;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.Interpreter;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.parser.SourceExcerpt;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -72,8 +73,8 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
             // 应用执行成本限制
             applyCostLimit(interpreter, context);
             // 解析并执行脚本
-            interpreter.execute(Fluxon.parse(script, interpreter.getEnvironment()).getResults());
-            Object result = interpreter.resultRef;
+            ParsedScript parsed = Fluxon.parse(script, interpreter.getEnvironment());
+            Object result = parsed.eval(interpreter);
             // 保存环境供 Invocable 使用（线程隔离）
             this.threadLocalEnvironment.set(interpreter.getEnvironment());
             // 从 Fluxon 环境中提取变量回到上下文

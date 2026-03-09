@@ -38,12 +38,10 @@ public class UnaryEvaluator extends ExpressionEvaluator<UnaryExpression> {
                     interpreter.resultPrimitive = -interpreter.resultPrimitive;
                     return Type.J;
                 } else if (t == Type.F) {
-                    // 翻转符号位，等价于 FNEG
-                    interpreter.resultPrimitive ^= 0x80000000L;
+                    interpreter.resultPrimitive = interpreter.resultPrimitive ^ 0x80000000L;
                     return Type.F;
                 } else if (t == Type.D) {
-                    // 翻转符号位，等价于 DNEG
-                    interpreter.resultPrimitive ^= 0x8000000000000000L;
+                    interpreter.resultPrimitive = interpreter.resultPrimitive ^ 0x8000000000000000L;
                     return Type.D;
                 } else {
                     Object rightObj = interpreter.resultRef;

@@ -25,10 +25,12 @@ import java.util.Map;
  */
 public class Interpreter {
 
-    // 双槽结果传递
+    // 单字段结果传递
     public long resultPrimitive;
     public Object resultRef;
-    public Type lastResultType;
+
+    // 缓存 costLimitEnabled，避免每次通过 environment.root.rootState 间接读取
+    boolean costLimitEnabled;
 
     // 当前环境
     @NotNull
@@ -44,11 +46,11 @@ public class Interpreter {
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
         this.pool = FunctionContextPool.local();
+        this.costLimitEnabled = environment.isCostLimitEnabled();
     }
 
     /**
-     * 创建子解释器（独立 result slots + lambdaCache，共享 environment）
-     * 用于异步执行时隔离线程间的 result 竞争
+     * 创建子解释器（独立结果字段，共享 environment）
      */
     public Interpreter createChild() {
         Interpreter child = new Interpreter(this.environment);
@@ -57,7 +59,7 @@ public class Interpreter {
     }
 
     /**
-     * 根据返回的 Type 读取对应槽位并装箱
+     * 读取单字段结果并装箱
      */
     public Object getResultBoxed(Type type) {
         if (type == Type.VOID) return null;
@@ -66,7 +68,7 @@ public class Interpreter {
     }
 
     /**
-     * 直接判断结果是否为真（避免装箱）
+     * 直接判断单字段结果是否为真（避免装箱）
      */
     public boolean isResultTrue(Type type) {
         if (!type.isPrimitive()) return isTrue(resultRef);
@@ -75,30 +77,27 @@ public class Interpreter {
         return resultPrimitive != 0;
     }
 
-
     /**
-     * 执行 AST
-     * 结果存入 resultRef
+     * 执行 AST，返回最终结果
      */
-    public void execute(List<ParseResult> parseResults) {
+    public Object execute(List<ParseResult> parseResults) {
         for (ParseResult result : parseResults) {
             if (result instanceof Definition) {
                 evaluateDefinition((Definition) result);
             }
         }
-        // 第二遍：真正执行表达式和语句；定义节点已经处理过，直接跳过即可
-        resultRef = null;
+        Object finalResult = null;
         for (ParseResult result : parseResults) {
             if (!(result instanceof Definition)) {
                 Type t = evaluate(result);
-                resultRef = getResultBoxed(t);
+                finalResult = getResultBoxed(t);
             }
         }
+        return finalResult;
     }
 
     /**
      * 使用指定环境执行单个节点
-     * 结果存入双槽
      */
     public Type executeWithEnvironment(ParseResult result, Environment env) {
         Environment previous = this.environment;
@@ -112,20 +111,21 @@ public class Interpreter {
 
     /**
      * 评估单个解析结果
-     * 使用 instanceof 进行类型判断，避免 getType() 的虚方法调用开销
+     * Expression 路径不包裹 try-catch（evaluateExpression 已有独立的异常处理）
      */
     public Type evaluate(ParseResult result) {
+        if (result instanceof Expression) {
+            return evaluateExpression((Expression) result);
+        }
         try {
-            if (result instanceof Expression) {
-                return evaluateExpression((Expression) result);
-            } else if (result instanceof Statement) {
-                environment.consumeCostStep();
+            if (result instanceof Statement) {
+                if (costLimitEnabled) environment.consumeCostStep();
                 return evaluateStatement((Statement) result);
-            } else if (result instanceof Definition) {
+            }
+            if (result instanceof Definition) {
                 evaluateDefinition((Definition) result);
                 return Type.OBJECT;
             }
-            resultRef = null;
             return Type.VOID;
         } catch (FluxonRuntimeError ex) {
             attachSource(ex, result);
@@ -134,7 +134,7 @@ public class Interpreter {
     }
 
     /**
-     * 直接评估表达式，使用缓存的 evaluator 引用避免 getExpressionType() 调用
+     * 评估表达式
      */
     public Type evaluateExpression(Expression expression) {
         try {
@@ -146,7 +146,7 @@ public class Interpreter {
     }
 
     /**
-     * 直接评估语句，使用缓存的 evaluator 引用避免 getStatementType() 调用
+     * 评估语句
      */
     public Type evaluateStatement(Statement statement) {
         try {
@@ -158,7 +158,7 @@ public class Interpreter {
     }
 
     /**
-     * 直接评估定义
+     * 评估定义
      */
     public void evaluateDefinition(Definition definition) {
         try {
@@ -166,7 +166,6 @@ public class Interpreter {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
                 UserFunction function = new UserFunction(funcDef, this);
                 environment.defineRootFunction(funcDef.getName(), function);
-                resultRef = function;
                 return;
             }
             throw new RuntimeException("Unknown definition type: " + definition.getClass().getName());
@@ -208,7 +207,7 @@ public class Interpreter {
     }
 
     /**
-     * 为错误添加源信息（如果不存在）
+     * 为错误添加源信息
      */
     private void attachSource(FluxonRuntimeError error, ParseResult result) {
         if (error.getSourceExcerpt() == null) {
@@ -217,57 +216,47 @@ public class Interpreter {
     }
 
     /**
-     * 消耗执行成本一步（委托给 environment）
+     * 消耗执行成本一步（costLimitEnabled 为 false 时直接跳过）
      */
     public void consumeCostStep() {
-        environment.consumeCostStep();
+        if (costLimitEnabled) environment.consumeCostStep();
     }
 
     /**
-     * 设置执行成本限制（委托给 environment）
+     * 设置执行成本限制
      */
     public void setCostLimit(long costLimit) {
         environment.setCostLimit(costLimit);
+        this.costLimitEnabled = true;
     }
 
     /**
-     * 禁用执行成本限制（委托给 environment）
+     * 禁用执行成本限制
      */
     public void disableCostLimit() {
         environment.disableCostLimit();
+        this.costLimitEnabled = false;
     }
 
     /**
-     * 设置每次执行成本消耗（委托给 environment）
+     * 设置每次执行成本消耗
      */
     public void setCostPerStep(long costPerStep) {
         environment.setCostPerStep(costPerStep);
     }
 
-    /**
-     * 获取执行成本限制
-     */
     public long getCostLimit() {
         return environment.getCostLimit();
     }
 
-    /**
-     * 获取当前执行成本剩余
-     */
     public long getCostRemaining() {
         return environment.getCostRemaining();
     }
 
-    /**
-     * 获取每次执行成本消耗
-     */
     public long getCostPerStep() {
         return environment.getCostPerStep();
     }
 
-    /**
-     * 获取是否启用执行成本限制
-     */
     public boolean isCostLimitEnabled() {
         return environment.isCostLimitEnabled();
     }

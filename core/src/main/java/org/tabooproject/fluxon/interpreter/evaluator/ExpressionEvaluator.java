@@ -5,6 +5,9 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
+import org.tabooproject.fluxon.interpreter.BreakException;
+import org.tabooproject.fluxon.interpreter.ContinueException;
+import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -190,5 +193,23 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         mv.visitJumpInsn(GOTO, loopStart);
         mv.visitLabel(loopEnd);
         ctx.exitLoop();
+    }
+
+    /**
+     * 执行循环体（含 costStep + break/continue 处理）
+     *
+     * @return true 表示 break，调用方应退出循环
+     */
+    protected static boolean executeLoopBody(Interpreter interpreter, ParseResult body, boolean bodyIsStatement) {
+        if (!bodyIsStatement) {
+            interpreter.consumeCostStep();
+        }
+        try {
+            interpreter.evaluate(body);
+        } catch (ContinueException ignored) {
+        } catch (BreakException ignored) {
+            return true;
+        }
+        return false;
     }
 }

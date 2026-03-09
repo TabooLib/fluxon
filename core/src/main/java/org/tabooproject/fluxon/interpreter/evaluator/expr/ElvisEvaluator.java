@@ -32,8 +32,10 @@ public class ElvisEvaluator extends ExpressionEvaluator<ElvisExpression> {
             return Type.OBJECT;
         }
         if (interpreter.resultRef == null) {
+            // condition 为 null，评估 alternative（pass-through，结果已在 single fields）
             return interpreter.evaluate(result.getAlternative());
         }
+        // condition 非 null，resultRef 已持有正确值
         return Type.OBJECT;
     }
 

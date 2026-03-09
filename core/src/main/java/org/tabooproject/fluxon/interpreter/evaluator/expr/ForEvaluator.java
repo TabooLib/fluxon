@@ -3,8 +3,6 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
-import org.tabooproject.fluxon.interpreter.BreakException;
-import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -14,7 +12,6 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
-import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
@@ -24,6 +21,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.IntFunction;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -43,23 +41,14 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
-        boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
-        // 使用当前环境的类型提供器（作用域隔离）
         Environment env = interpreter.getEnvironment();
+        boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
+        // 提前创建类型提供器，避免循环内每次迭代分配 lambda
+        IntFunction<Type> typeProvider = env::getVariableType;
         // 迭代集合元素
         while (iterator.hasNext()) {
-            // 使用解构器注册表执行解构
-            DestructuringRegistry.getInstance().destructure(env, variables, iterator.next(), env::getVariableType);
-            if (!bodyIsStatement) {
-                interpreter.consumeCostStep();
-            }
-            // 执行循环体
-            try {
-                interpreter.evaluate(result.getBody());
-            } catch (ContinueException ignored) {
-            } catch (BreakException ignored) {
-                break;
-            }
+            DestructuringRegistry.getInstance().destructure(env, variables, iterator.next(), typeProvider);
+            if (executeLoopBody(interpreter, result.getBody(), bodyIsStatement)) break;
         }
         return Type.VOID;
     }

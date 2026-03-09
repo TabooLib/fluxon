@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.parser.definition;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceTrace;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

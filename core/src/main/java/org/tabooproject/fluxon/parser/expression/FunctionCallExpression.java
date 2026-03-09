@@ -35,6 +35,8 @@ public class FunctionCallExpression extends Expression {
     private Class<?> resolvedTargetClass;
     // 预解析扩展函数在 OverloadSet 中的索引
     private int resolvedOverloadIndex = -1;
+    // 运行时函数解析缓存（单引用写入保证原子性，避免多线程 tearing）
+    public Object[] cachedResolution;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);

@@ -46,9 +46,11 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
             }
         }
         if (result.getFinallyBody() != null) {
-            // 保存 try/catch 的结果，finally 不应覆盖
+            // finally body 不影响 try/catch 的结果，保存/恢复 single fields
+            long savedPrim = interpreter.resultPrimitive;
             Object savedRef = interpreter.resultRef;
             interpreter.evaluate(result.getFinallyBody());
+            interpreter.resultPrimitive = savedPrim;
             interpreter.resultRef = savedRef;
         }
         return valueType;

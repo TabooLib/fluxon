@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser.definition;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceTrace;
 
 import java.util.List;
 import java.util.Set;

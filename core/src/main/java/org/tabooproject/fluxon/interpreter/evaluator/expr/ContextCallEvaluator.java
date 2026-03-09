@@ -40,15 +40,13 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
             interpreter.resultRef = null;
             return Type.OBJECT;
         }
-        // 获取之前的目标
-        Object before = interpreter.getEnvironment().getTarget();
-        // 覆盖目标
-        interpreter.getEnvironment().setTarget(targetValue);
+        Environment env = interpreter.getEnvironment();
+        Object before = env.getTarget();
+        env.setTarget(targetValue);
         try {
             return interpreter.evaluate(expression.getContext());
         } finally {
-            // 恢复目标
-            interpreter.getEnvironment().setTarget(before);
+            env.setTarget(before);
         }
     }
 

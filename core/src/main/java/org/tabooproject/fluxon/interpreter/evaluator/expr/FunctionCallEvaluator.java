@@ -37,15 +37,53 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     public Type evaluate(Interpreter interpreter, FunctionCallExpression expr) {
         ParseResult[] args = expr.getArguments();
         int argCount = args.length;
+        Environment env = interpreter.getEnvironment();
+        // 快速路径：使用缓存的解析结果，跳过 selectHandler + resolveFunction
+        // cachedResolution = [Function, Type[], Class<?>?]
+        Object[] cached = expr.cachedResolution;
+        if (cached != null) {
+            Function fn = (Function) cached[0];
+            // 扩展函数需要校验 target class 是否匹配
+            Class<?> guardClass = (Class<?>) cached[2];
+            if (guardClass != null) {
+                Object target = env.getTarget();
+                if (target == null || target.getClass() != guardClass) {
+                    cached = null;
+                }
+            }
+            if (cached != null) {
+                FunctionContext<?> ctx = interpreter.getPool().borrow(fn, env.getTarget(), argCount, env);
+                evaluateArguments(interpreter, ctx, args, argCount, (Type[]) cached[1]);
+                return FunctionCallHandlers.executeSync(interpreter, ctx, fn);
+            }
+        }
+        // 慢速路径：完整解析
         FunctionCallHandler handler = selectHandler(interpreter, expr);
         FunctionContext<?> ctx = handler.prepareCall(interpreter, expr, argCount);
-        Type[] expectedTypes = getExpectedTypes(ctx.getFunction(), handler == DeferredOverloadHandler.INSTANCE);
+        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
+        Type[] expectedTypes = getExpectedTypes(ctx.getFunction(), isDeferred);
+        evaluateArguments(interpreter, ctx, args, argCount, expectedTypes);
+        // 缓存非延迟、非异步的函数解析结果（单引用写入保证原子性）
+        if (!isDeferred) {
+            Function resolved = ctx.getFunction();
+            if (!resolved.isAsync() && !resolved.isPrimarySync()) {
+                Class<?> extGuard = null;
+                if (expr.getExtensionPosition() != null) {
+                    Object target = env.getTarget();
+                    extGuard = target != null ? target.getClass() : null;
+                }
+                expr.cachedResolution = new Object[]{resolved, expectedTypes, extGuard};
+            }
+        }
+        return handler.finishCall(interpreter, expr, ctx);
+    }
+
+    private static void evaluateArguments(Interpreter interpreter, FunctionContext<?> ctx, ParseResult[] args, int argCount, Type[] expectedTypes) {
         for (int i = 0; i < argCount; i++) {
             Type t = interpreter.evaluate(args[i]);
             Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : Type.OBJECT;
-            FunctionCallHandlers.setArgument(ctx, i, t, expected, interpreter);
+            FunctionCallHandlers.setArgument(interpreter, ctx, i, t, expected);
         }
-        return handler.finishCall(interpreter, expr, ctx);
     }
 
     @Override

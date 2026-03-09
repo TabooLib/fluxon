@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.runtime.function.extension;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 
+import java.util.LinkedHashMap;
+
 import static org.tabooproject.fluxon.FluxonTestUtil.*;
 
 /**
@@ -102,5 +104,50 @@ class ExtensionMapTest {
     @Test
     void testMultipleKeys() {
         assertBothEqual(3, runSilent("[a: 1, b: 2, c: 3]::get('c')"));
+    }
+
+    @Test
+    void testLinkedHashMapSizeWithEnv() {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&map::size()",
+                ctx -> {},
+                env -> env.defineRootVariable("map", map)
+        );
+        assertBothEqual(2, result);
+    }
+
+    // Bug 1: 5+ 条目的 Map 字面量创建 LinkedHashMap，size() 在编译模式下应正常工作
+    @Test
+    void testLinkedHashMapLiteralSize() {
+        assertBothEqual(5, runSilent("[a: 1, b: 2, c: 3, d: 4, e: 5]::size()"));
+    }
+
+    @Test
+    void testLinkedHashMapLiteralSizeSix() {
+        assertBothEqual(6, runSilent("[a: 1, b: 2, c: 3, d: 4, e: 5, f: 6]::size()"));
+    }
+
+    @Test
+    void testLinkedHashMapLiteralGet() {
+        assertBothEqual(5, runSilent("[a: 1, b: 2, c: 3, d: 4, e: 5]::get('e')"));
+    }
+
+    @Test
+    void testLinkedHashMapEnvSize5() {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        map.put("a", 1);
+        map.put("b", 2);
+        map.put("c", 3);
+        map.put("d", 4);
+        map.put("e", 5);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&map::size()",
+                ctx -> {},
+                env -> env.defineRootVariable("map", map)
+        );
+        assertBothEqual(5, result);
     }
 }

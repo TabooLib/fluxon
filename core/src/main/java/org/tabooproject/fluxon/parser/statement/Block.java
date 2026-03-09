@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser.statement;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.SourceTrace;
 
 import java.util.Arrays;
 

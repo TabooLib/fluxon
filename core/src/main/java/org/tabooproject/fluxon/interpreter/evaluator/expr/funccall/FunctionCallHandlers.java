@@ -57,7 +57,7 @@ public final class FunctionCallHandlers {
         }
     }
 
-    public static void setArgument(FunctionContext<?> ctx, int i, Type t, Type expected, Interpreter interpreter) {
+    public static void setArgument(Interpreter interpreter, FunctionContext<?> ctx, int i, Type t, Type expected) {
         if (t.isPrimitive()) {
             Type target = (expected.isPrimitive() && !t.equals(expected)) ? expected : t;
             setPrimitiveArg(ctx, i, target, t, interpreter.resultPrimitive);
@@ -69,18 +69,13 @@ public final class FunctionCallHandlers {
     }
 
     private static void setPrimitiveArg(FunctionContext<?> ctx, int i, Type target, Type source, long raw) {
-        switch (target.getDescriptor()) {
-            case "I": ctx.setInt(i, readAsInt(source, raw)); break;
-            case "Z":
-                if (source == Type.Z) {
-                    ctx.setBool(i, readAsLong(source, raw) != 0L);
-                } else {
-                    ctx.setInt(i, readAsInt(source, raw));
-                }
-                break;
-            case "J": ctx.setLong(i, readAsLong(source, raw)); break;
-            case "F": ctx.setFloat(i, (float) readAsDouble(source, raw)); break;
-            case "D": ctx.setDouble(i, readAsDouble(source, raw)); break;
+        if (target == Type.I) { ctx.setInt(i, readAsInt(source, raw)); }
+        else if (target == Type.D) { ctx.setDouble(i, readAsDouble(source, raw)); }
+        else if (target == Type.J) { ctx.setLong(i, readAsLong(source, raw)); }
+        else if (target == Type.F) { ctx.setFloat(i, (float) readAsDouble(source, raw)); }
+        else if (target == Type.Z) {
+            if (source == Type.Z) { ctx.setBool(i, raw != 0L); }
+            else { ctx.setInt(i, readAsInt(source, raw)); }
         }
     }
 
@@ -105,32 +100,26 @@ public final class FunctionCallHandlers {
     }
 
     private static int readAsInt(Type t, long raw) {
-        switch (t.getDescriptor()) {
-            case "I": case "Z": case "J": return (int) raw;
-            case "F": return (int) Float.intBitsToFloat((int) raw);
-            case "D": return (int) Double.longBitsToDouble(raw);
-            default: return 0;
-        }
+        if (t == Type.I || t == Type.Z || t == Type.J) return (int) raw;
+        if (t == Type.F) return (int) Float.intBitsToFloat((int) raw);
+        if (t == Type.D) return (int) Double.longBitsToDouble(raw);
+        return 0;
     }
 
     private static long readAsLong(Type t, long raw) {
-        switch (t.getDescriptor()) {
-            case "I": case "Z": return (int) raw;
-            case "J": return raw;
-            case "F": return (long) Float.intBitsToFloat((int) raw);
-            case "D": return (long) Double.longBitsToDouble(raw);
-            default: return 0;
-        }
+        if (t == Type.I || t == Type.Z) return (int) raw;
+        if (t == Type.J) return raw;
+        if (t == Type.F) return (long) Float.intBitsToFloat((int) raw);
+        if (t == Type.D) return (long) Double.longBitsToDouble(raw);
+        return 0;
     }
 
     private static double readAsDouble(Type t, long raw) {
-        switch (t.getDescriptor()) {
-            case "I": case "Z": return (int) raw;
-            case "J": return raw;
-            case "F": return Float.intBitsToFloat((int) raw);
-            case "D": return Double.longBitsToDouble(raw);
-            default: return 0;
-        }
+        if (t == Type.D) return Double.longBitsToDouble(raw);
+        if (t == Type.I || t == Type.Z) return (int) raw;
+        if (t == Type.J) return raw;
+        if (t == Type.F) return Float.intBitsToFloat((int) raw);
+        return 0;
     }
 
     public static void emitFinishCall(Type returnType, boolean knownSync, MethodVisitor mv) {

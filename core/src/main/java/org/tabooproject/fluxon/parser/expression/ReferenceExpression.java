@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.parser.expression;
 
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 
 /**

@@ -106,7 +106,7 @@ public class ParsedScript {
 
     /**
      * 使用指定环境执行脚本
-     * 会自动初始化根层级局部变量
+     * 线程安全：每次执行创建独立的 Interpreter 结果数组
      */
     public Object eval(Environment env) {
         if (rootLocalVariableCount > 0) {
@@ -122,8 +122,7 @@ public class ParsedScript {
             interpreter.setRootVariableTypes(rootTypes);
         }
         try {
-            interpreter.execute(results);
-            return interpreter.resultRef;
+            return interpreter.execute(results);
         } catch (ReturnValue ex) {
             return ex.getValue();
         }
@@ -139,8 +138,7 @@ public class ParsedScript {
             env.initializeRootLocalVariables(rootLocalVariableCount);
         }
         try {
-            interpreter.execute(results);
-            return interpreter.resultRef;
+            return interpreter.execute(results);
         } catch (ReturnValue ex) {
             return ex.getValue();
         }

@@ -33,7 +33,7 @@ public class MapEvaluator extends ExpressionEvaluator<MapExpression> {
         int size = entries.size();
         if (result.isImmutable()) {
             if (size == 0) {
-                interpreter.resultRef = ImmutableMap.empty();
+            interpreter.resultRef = ImmutableMap.empty();
                 return Type.OBJECT;
             }
             Object[] keys = new Object[size];

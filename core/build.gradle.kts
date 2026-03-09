@@ -16,6 +16,15 @@ tasks.register<JavaExec>("dumpFluxonCatalog") {
     args(layout.buildDirectory.file("fluxon-functions.json").get().asFile.absolutePath)
 }
 
+tasks.register<JavaExec>("benchmark") {
+    group = "fluxon"
+    description = "Run interpreter benchmark"
+    mainClass.set("org.tabooproject.fluxon.interpreter.customized.ComplexTest")
+    classpath = sourceSets["test"].runtimeClasspath
+    maxHeapSize = "8g"
+    jvmArgs("-XX:+UseSerialGC", "-Xmn7g")
+}
+
 tasks.jar {
     archiveBaseName = "fluxon-core"
 }

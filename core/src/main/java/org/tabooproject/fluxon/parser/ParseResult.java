@@ -8,15 +8,11 @@ public interface ParseResult {
 
     /**
      * 获取结果类型
-     *
-     * @return 结果类型
      */
     ResultType getType();
 
     /**
      * 生成伪代码表示
-     *
-     * @return 伪代码字符串
      */
     String toPseudoCode();
 
@@ -24,13 +20,9 @@ public interface ParseResult {
      * 结果类型枚举
      */
     enum ResultType {
-        // 定义
         DEFINITION,
-        // 表达式
         EXPRESSION,
-        // 语句
         STATEMENT,
-        // 注解
         ANNOTATION
     }
 }

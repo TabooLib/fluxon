@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -198,5 +199,63 @@ public class ExtensionDispatchTableTest {
             index++;
         }
         return -1;
+    }
+
+    // ========== 最具体类型匹配测试 ==========
+
+    @Test
+    void testMostSpecificMatchInHierarchy() {
+        // 构造候选：Iterable（注册在前）, Collection（更具体，注册在后）
+        // 修复前 resolveSmallCandidates 会返回第一个可赋值的 Iterable
+        // 修复后应返回最具体的 Collection
+        OverloadSet iterableSet = new OverloadSet("test");
+        iterableSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(-1)));
+        OverloadSet collectionSet = new OverloadSet("test");
+        collectionSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(1)));
+        Map<Class<?>, OverloadSet> exactMap = new LinkedHashMap<>();
+        exactMap.put(Iterable.class, iterableSet);
+        exactMap.put(java.util.Collection.class, collectionSet);
+        Class<?>[] candidateClasses = { Iterable.class, java.util.Collection.class };
+        OverloadSet[] candidateOverloadSets = { iterableSet, collectionSet };
+        ExtensionDispatchTable table = new ExtensionDispatchTable(exactMap, candidateClasses, candidateOverloadSets);
+        // ArrayList implements Collection (which extends Iterable)
+        // 应当匹配到更具体的 Collection，而非 Iterable
+        OverloadSet resolved = table.resolveOverloadSet(ArrayList.class);
+        assertSame(collectionSet, resolved, "Should resolve to Collection (most specific), not Iterable");
+    }
+
+    @Test
+    void testMostSpecificMatchReversedOrder() {
+        // 候选顺序反转：Collection 在前，Iterable 在后
+        // 无论注册顺序如何，都应选择最具体的 Collection
+        OverloadSet collectionSet = new OverloadSet("test");
+        collectionSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(1)));
+        OverloadSet iterableSet = new OverloadSet("test");
+        iterableSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(-1)));
+        Map<Class<?>, OverloadSet> exactMap = new LinkedHashMap<>();
+        exactMap.put(java.util.Collection.class, collectionSet);
+        exactMap.put(Iterable.class, iterableSet);
+        Class<?>[] candidateClasses = { java.util.Collection.class, Iterable.class };
+        OverloadSet[] candidateOverloadSets = { collectionSet, iterableSet };
+        ExtensionDispatchTable table = new ExtensionDispatchTable(exactMap, candidateClasses, candidateOverloadSets);
+        OverloadSet resolved = table.resolveOverloadSet(ArrayList.class);
+        assertSame(collectionSet, resolved, "Should resolve to Collection regardless of registration order");
+    }
+
+    @Test
+    void testUnrelatedCandidatesStillWork() {
+        // Collection 和 Map 是不相关的接口，LinkedHashMap 只匹配 Map
+        OverloadSet collectionSet = new OverloadSet("test");
+        collectionSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(-1)));
+        OverloadSet mapSet = new OverloadSet("test");
+        mapSet.add(new NativeFunction<>("test", FunctionSignature.returns(Type.I).noParams(), ctx -> ctx.setReturnInt(1)));
+        Map<Class<?>, OverloadSet> exactMap = new LinkedHashMap<>();
+        exactMap.put(java.util.Collection.class, collectionSet);
+        exactMap.put(java.util.Map.class, mapSet);
+        Class<?>[] candidateClasses = { java.util.Collection.class, java.util.Map.class };
+        OverloadSet[] candidateOverloadSets = { collectionSet, mapSet };
+        ExtensionDispatchTable table = new ExtensionDispatchTable(exactMap, candidateClasses, candidateOverloadSets);
+        OverloadSet resolved = table.resolveOverloadSet(LinkedHashMap.class);
+        assertSame(mapSet, resolved, "LinkedHashMap should match Map, not Collection");
     }
 }

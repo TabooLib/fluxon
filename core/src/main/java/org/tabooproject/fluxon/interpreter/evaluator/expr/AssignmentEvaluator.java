@@ -47,7 +47,6 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     public Type evaluate(Interpreter interpreter, AssignExpression result) {
         ParseResult target = result.getTarget();
         Type vt = interpreter.evaluate(result.getValue());
-        interpreter.lastResultType = vt;
         AssignmentTargetHandler handler = HANDLERS.get(target.getClass());
         handler.assign(interpreter, result, target, vt, result.getOperator().getType());
         interpreter.resultRef = null;
