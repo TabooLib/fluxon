@@ -70,7 +70,6 @@ public class ComplexTest {
         System.out.println("[" + label + "] Average (last " + (rounds / 2) + " rounds): " + (sum / (rounds / 2)) + "ms / 1000 evals");
     }
 
-    @Test
     public void benchmarkInterpret() throws Exception {
         Environment env = createEnv();
         String source = loadEffectSource();
@@ -79,7 +78,6 @@ public class ComplexTest {
         runBenchmark("Interpret", () -> script.eval(env));
     }
 
-    @Test
     public void benchmarkCompile() throws Exception {
         Environment env = createEnv();
         String source = loadEffectSource();
