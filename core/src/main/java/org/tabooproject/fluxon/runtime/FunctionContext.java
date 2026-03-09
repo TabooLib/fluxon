@@ -349,10 +349,26 @@ public final class FunctionContext<Target> implements AutoCloseable {
         if (t == TYPE_REF) {
             if (expected.isPrimitive()) {
                 Object ref = refs[index];
-                if (ref instanceof Number) {
+                if (ref instanceof Boolean) {
+                    boolean value = (Boolean) ref;
+                    String desc = expected.getDescriptor();
+                    if ("Z".equals(desc)) {
+                        setBool(index, value);
+                    } else if ("I".equals(desc)) {
+                        setInt(index, value ? 1 : 0);
+                    } else if ("J".equals(desc)) {
+                        setLong(index, value ? 1L : 0L);
+                    } else if ("F".equals(desc)) {
+                        setFloat(index, value ? 1F : 0F);
+                    } else if ("D".equals(desc)) {
+                        setDouble(index, value ? 1D : 0D);
+                    }
+                } else if (ref instanceof Number) {
                     Number num = (Number) ref;
                     String desc = expected.getDescriptor();
-                    if ("I".equals(desc) || "Z".equals(desc)) {
+                    if ("I".equals(desc)) {
+                        setInt(index, num.intValue());
+                    } else if ("Z".equals(desc)) {
                         setInt(index, num.intValue());
                     } else if ("J".equals(desc)) {
                         setLong(index, num.longValue());
@@ -367,7 +383,9 @@ public final class FunctionContext<Target> implements AutoCloseable {
             // 原始类型之间的转换
             double value = getAsDouble(index);
             String desc = expected.getDescriptor();
-            if ("I".equals(desc) || "Z".equals(desc)) {
+            if ("I".equals(desc)) {
+                setInt(index, (int) value);
+            } else if ("Z".equals(desc)) {
                 setInt(index, (int) value);
             } else if ("J".equals(desc)) {
                 setLong(index, (long) value);

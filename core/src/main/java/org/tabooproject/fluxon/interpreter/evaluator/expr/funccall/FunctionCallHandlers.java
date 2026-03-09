@@ -70,7 +70,14 @@ public final class FunctionCallHandlers {
 
     private static void setPrimitiveArg(FunctionContext<?> ctx, int i, Type target, Type source, long raw) {
         switch (target.getDescriptor()) {
-            case "I": case "Z": ctx.setInt(i, readAsInt(source, raw)); break;
+            case "I": ctx.setInt(i, readAsInt(source, raw)); break;
+            case "Z":
+                if (source == Type.Z) {
+                    ctx.setBool(i, readAsLong(source, raw) != 0L);
+                } else {
+                    ctx.setInt(i, readAsInt(source, raw));
+                }
+                break;
             case "J": ctx.setLong(i, readAsLong(source, raw)); break;
             case "F": ctx.setFloat(i, (float) readAsDouble(source, raw)); break;
             case "D": ctx.setDouble(i, readAsDouble(source, raw)); break;
@@ -80,12 +87,18 @@ public final class FunctionCallHandlers {
     private static void setArgFromObject(FunctionContext<?> ctx, int i, Type expected, Object ref) {
         if (ref instanceof Number) {
             Number num = (Number) ref;
-            if (expected == Type.I || expected == Type.Z) ctx.setInt(i, num.intValue());
+            if (expected == Type.I) ctx.setInt(i, num.intValue());
+            else if (expected == Type.Z) ctx.setInt(i, num.intValue());
             else if (expected == Type.J) ctx.setLong(i, num.longValue());
             else if (expected == Type.F) ctx.setFloat(i, num.floatValue());
             else if (expected == Type.D) ctx.setDouble(i, num.doubleValue());
         } else if (ref instanceof Boolean) {
-            ctx.setInt(i, (Boolean) ref ? 1 : 0);
+            boolean value = (Boolean) ref;
+            if (expected == Type.Z) ctx.setBool(i, value);
+            else if (expected == Type.I) ctx.setInt(i, value ? 1 : 0);
+            else if (expected == Type.J) ctx.setLong(i, value ? 1L : 0L);
+            else if (expected == Type.F) ctx.setFloat(i, value ? 1F : 0F);
+            else if (expected == Type.D) ctx.setDouble(i, value ? 1D : 0D);
         } else {
             throw new ClassCastException("Cannot convert " + (ref == null ? "null" : ref.getClass().getName()) + " to " + expected);
         }
@@ -160,7 +173,8 @@ public final class FunctionCallHandlers {
 
     private static void emitSetPrimitive(Type t, String ctxPath, MethodVisitor mv) {
         String method, desc;
-        if (t == Type.I || t == Type.Z) { method = "setInt"; desc = "(II)V"; }
+        if (t == Type.I) { method = "setInt"; desc = "(II)V"; }
+        else if (t == Type.Z) { method = "setBool"; desc = "(IZ)V"; }
         else if (t == Type.J) { method = "setLong"; desc = "(IJ)V"; }
         else if (t == Type.F) { method = "setFloat"; desc = "(IF)V"; }
         else if (t == Type.D) { method = "setDouble"; desc = "(ID)V"; }
@@ -169,9 +183,15 @@ public final class FunctionCallHandlers {
     }
 
     private static void emitUnboxToPrimitive(Type expected, String ctxPath, MethodVisitor mv) {
-        mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
         String valueMethod, setMethod, setDesc, retDesc;
-        if (expected == Type.I || expected == Type.Z) {
+        if (expected == Type.Z) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setBool", "(IZ)V", false);
+            return;
+        }
+        mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+        if (expected == Type.I) {
             valueMethod = "intValue"; setMethod = "setInt"; setDesc = "(II)V"; retDesc = "I";
         } else if (expected == Type.J) {
             valueMethod = "longValue"; setMethod = "setLong"; setDesc = "(IJ)V"; retDesc = "J";
