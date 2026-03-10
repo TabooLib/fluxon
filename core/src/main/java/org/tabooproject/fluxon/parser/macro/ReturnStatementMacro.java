@@ -29,7 +29,7 @@ public class ReturnStatementMacro implements StatementMacro {
     @Override
     public ParseResult parseTopLevel(Parser parser) {
         Token returnToken = parser.consume(TokenType.RETURN, "Expected 'return'");
-        if (parser.isEndOfExpression()) {
+        if (parser.isEndOfExpression() || parser.isStatementBoundary()) {
             parser.match(TokenType.SEMICOLON);
             return parser.attachSource(new ReturnStatement(null), returnToken);
         }
@@ -41,7 +41,7 @@ public class ReturnStatementMacro implements StatementMacro {
     @Override
     public Trampoline<ParseResult> parseSub(Parser parser, Trampoline.Continuation<ParseResult> continuation) {
         Token returnToken = parser.consume(TokenType.RETURN, "Expected 'return'");
-        if (parser.isEndOfExpression()) {
+        if (parser.isEndOfExpression() || parser.isStatementBoundary()) {
             parser.match(TokenType.SEMICOLON);
             return continuation.apply(parser.attachSource(new ReturnStatement(null), returnToken));
         }

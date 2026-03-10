@@ -132,6 +132,81 @@ public class BreakContinueTest {
     }
 
     @Test
+    public void testElvisReturnNextLine() {
+        // elvis + return 后下一行不应被返回
+        FluxonTestUtil.TestResult r1 = FluxonTestUtil.runSilent("def foo(x) = {\n" +
+                "    a = &x ?: return\n" +
+                "    'next_line'\n" +
+                "}\n" +
+                "foo(null)");
+        // null ?: return 应该提前返回 null，不应该返回 'next_line'
+        assertEquals(null, r1.getInterpretResult(), "elvis+return should return null, not next line");
+        assertEquals(null, r1.getCompileResult(), "elvis+return should return null, not next line (compile)");
+    }
+
+    @Test
+    public void testElvisReturnValueNextLine() {
+        // elvis + return 带值，下一行不应影响返回值
+        FluxonTestUtil.TestResult r2 = FluxonTestUtil.runSilent("def foo(x) = {\n" +
+                "    a = &x ?: return 'early'\n" +
+                "    'should_not_reach'\n" +
+                "}\n" +
+                "foo(null)");
+        assertEquals("early", r2.getInterpretResult(), "elvis+return with value should return 'early'");
+        assertEquals("early", r2.getCompileResult(), "elvis+return with value should return 'early' (compile)");
+    }
+
+    @Test
+    public void testElvisReturnNonNull() {
+        // 非 null 时 elvis 右侧不执行
+        FluxonTestUtil.TestResult r3 = FluxonTestUtil.runSilent("def foo(x) = {\n" +
+                "    a = &x ?: return 'early'\n" +
+                "    &a + '!'\n" +
+                "}\n" +
+                "foo('hello')");
+        assertEquals("hello!", r3.getInterpretResult());
+        assertEquals("hello!", r3.getCompileResult());
+    }
+
+    @Test
+    public void testElvisBreakNextLine() {
+        // elvis + break 后下一行不应被跳过
+        FluxonTestUtil.TestResult r = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..3 {\n" +
+                "    null ?: break\n" +
+                "    output = &output + 'x'\n" +
+                "}\n" +
+                "&output");
+        assertEquals("", r.getInterpretResult(), "elvis+break should exit loop immediately");
+        assertEquals("", r.getCompileResult(), "elvis+break should exit loop immediately (compile)");
+    }
+
+    @Test
+    public void testElvisContinueNextLine() {
+        // elvis + continue 后下一行仍应执行（下一轮循环）
+        FluxonTestUtil.TestResult r = FluxonTestUtil.runSilent("output = ''\n" +
+                "for i in 1..3 {\n" +
+                "    null ?: continue\n" +
+                "    output = &output + &i\n" +
+                "}\n" +
+                "&output");
+        assertEquals("", r.getInterpretResult(), "elvis+continue should skip rest of loop body");
+        assertEquals("", r.getCompileResult(), "elvis+continue should skip rest of loop body (compile)");
+    }
+
+    @Test
+    public void testElvisReturnSameLine() {
+        // return 值在同一行时应正确解析
+        FluxonTestUtil.TestResult r = FluxonTestUtil.runSilent("def foo(x) = {\n" +
+                "    a = &x ?: return 'fallback'\n" +
+                "    &a\n" +
+                "}\n" +
+                "foo(null)");
+        assertEquals("fallback", r.getInterpretResult());
+        assertEquals("fallback", r.getCompileResult());
+    }
+
+    @Test
     public void testBreakWithCondition() {
         FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("result = 'continue'\n" +
                 "sum = 0\n" +
