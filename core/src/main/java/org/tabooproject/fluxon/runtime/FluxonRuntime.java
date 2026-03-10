@@ -146,17 +146,24 @@ public class FluxonRuntime {
     }
 
     /**
-     * 初始化解释器环境
+     * 确保缓存数组与当前注册状态一致。
+     * 在读取缓存数组前调用，避免 dirty 状态下读取到旧索引表。
      */
-    public Environment newEnvironment() {
-        // 如果缓存被标记为脏（有新函数注册），则重新构建缓存
-        if (dirty) {
+    private void ensureBaked() {
+        if (dirty || cachedSystemFunctions == null || cachedSystemExtensionFunctions == null || cachedDispatchTables == null) {
             synchronized (this) {
-                if (dirty) {
+                if (dirty || cachedSystemFunctions == null || cachedSystemExtensionFunctions == null || cachedDispatchTables == null) {
                     bake();
                 }
             }
         }
+    }
+
+    /**
+     * 初始化解释器环境
+     */
+    public Environment newEnvironment() {
+        ensureBaked();
         return new Environment(systemFunctions, systemVariables);
     }
 
@@ -348,6 +355,7 @@ public class FluxonRuntime {
      * 获取缓存的系统函数数组
      */
     public Function[] getCachedSystemFunctions() {
+        ensureBaked();
         return cachedSystemFunctions;
     }
 
@@ -356,6 +364,7 @@ public class FluxonRuntime {
      */
     @SuppressWarnings("unchecked")
     public KV<Class<?>, Function>[][] getCachedSystemExtensionFunctions() {
+        ensureBaked();
         return cachedSystemExtensionFunctions;
     }
 
@@ -363,6 +372,7 @@ public class FluxonRuntime {
      * 获取缓存的扩展函数派发表
      */
     public ExtensionDispatchTable[] getCachedDispatchTables() {
+        ensureBaked();
         return cachedDispatchTables;
     }
 
