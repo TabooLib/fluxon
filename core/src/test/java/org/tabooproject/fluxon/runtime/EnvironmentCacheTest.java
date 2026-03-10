@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.runtime;
 
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
@@ -131,6 +133,32 @@ public class EnvironmentCacheTest {
     }
 
     @Test
+    public void testCompileWithStaleEnvironmentAfterRegisterExtensionFunction() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+
+        // 先创建环境，触发一次缓存构建
+        Environment staleEnv = runtime.newEnvironment();
+
+        // 在环境创建后新增扩展函数，制造 dirty 状态
+        String extensionName = "testExtCompileDirty" + System.nanoTime();
+        runtime.registerExtensionFunction(
+                String.class,
+                null,
+                extensionName,
+                returns(Type.OBJECT).noParams(),
+                ctx -> ctx.setReturnRef("ok"),
+                false,
+                false
+        );
+
+        // 使用旧环境走编译流程，验证不会因 cachedDispatchTables 滞后而越界
+        String source = "'hello'::" + extensionName + "()";
+        CompilationContext context = new CompilationContext(source);
+        String className = "DirtyDispatchCompileTest" + System.nanoTime();
+        assertDoesNotThrow(() -> Fluxon.compile(staleEnv, context, className));
+    }
+
+    @Test
     public void testRootVariablesNotShared() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
 
@@ -191,4 +219,3 @@ public class EnvironmentCacheTest {
                 "创建环境应该很快（< 100μs），因为数组已经被缓存");
     }
 }
-

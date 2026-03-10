@@ -49,6 +49,11 @@ public class HostAccessTest {
             return "Other method called with arg: " + arg;
         }
 
+        @Export
+        public String boolArg(boolean value) {
+            return "Boolean argument method called with arg: " + value;
+        }
+
     }
 
     /**
@@ -132,6 +137,14 @@ public class HostAccessTest {
         assertEquals("Single argument method called with arg: I'm a arg", singleArgResult);
         Object doubleArgResult = Fluxon.eval("access :: method('test', 42)");
         assertEquals("test".hashCode() + 42, doubleArgResult);
+    }
+
+    @Test
+    public void testExportBooleanArgument() {
+        Object trueResult = Fluxon.eval("access :: boolArg(true)");
+        assertEquals("Boolean argument method called with arg: true", trueResult);
+        Object falseResult = Fluxon.eval("access :: boolArg(false)");
+        assertEquals("Boolean argument method called with arg: false", falseResult);
     }
 
     @Test
