@@ -86,11 +86,19 @@ public final class FunctionContextPool {
     /**
      * 分离 context（async 转移所有权）
      * 用新 context 替换栈槽位，使 close() 时身份校验自然失败
+     * 同时回收 depth 以防泄漏：栈顶 context 被分离后，该槽位立即可复用
      */
     void detach(FunctionContext<?> context) {
         int idx = context.stackIndex;
         if (idx >= 0 && idx < MAX_DEPTH && stack[idx] == context) {
             stack[idx] = new FunctionContext<>(this, INITIAL_CAPACITY, idx);
+            // 栈顶分离时回收 depth，避免 async 调用累积导致 depth 泄漏
+            if (idx == depth - 1) {
+                depth--;
+            }
+        } else if (idx == -1 && depth > MAX_DEPTH) {
+            // 堆溢出 context 的分离也回收 depth
+            depth--;
         }
         context.stackIndex = -1;
     }
@@ -100,6 +108,8 @@ public final class FunctionContextPool {
             return stack[depth++];
         }
         // 溢出时分配堆上的 context，stackIndex = -1 表示不在栈中
+        // 仍然递增 depth 以保持 borrow/releaseTop 配对平衡
+        depth++;
         return new FunctionContext<>(this);
     }
 }
