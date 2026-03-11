@@ -89,3 +89,52 @@ System.out.println(result); // 3
 
 - 反射成员访问 `.` 与 Java 构造 `new` 都是可开关能力；对不可信脚本建议保持禁用。
 - `import` 可通过编译上下文禁用，并支持黑名单（见 `core/src/main/java/org/tabooproject/fluxon/compiler/CompilationContext.java`）。
+
+## 跨 ClassLoader 函数共享
+
+支持不同 ClassLoader 中的 Fluxon 运行时实例之间共享函数（典型场景：Bukkit 插件间共享）。
+
+底层使用 `System.getProperties()` 作为 JVM 全局单例锚点，通过 `MethodHandle` + 版本化 `Object[]` 元组实现零依赖的跨 CL 调用。
+
+### 导出函数
+
+```java
+FluxonRuntime runtime = FluxonRuntime.getInstance();
+runtime.setSharingIdentity("MyPlugin");  // 通常用 plugin.getName()
+
+// 方式 1：直接导出 MethodHandle
+MethodHandle mh = MethodHandles.lookup().findStatic(MyClass.class, "heal", MethodType.methodType(int.class, int.class));
+runtime.exportFunction("heal", mh);
+
+// 方式 2：导出已注册的函数
+runtime.registerFunction("greet", sig, ctx -> { ... });
+runtime.exportRegisteredFunction("greet");
+
+// 方式 3：通过 ExtensionBuilder 一步注册+导出
+runtime.registerExtension(Player.class).sharedFunction("heal", sig, ctx -> { ... });
+
+// 方式 4：@Export(shared = true) 注解自动导出
+```
+
+### 导入函数
+
+```java
+// 导入指定函数
+runtime.importSharedFunction("OtherPlugin", "heal");
+
+// 导入指定插件的所有共享函数
+runtime.importAllSharedFunctions("OtherPlugin");
+
+// 导入所有插件的所有共享函数
+runtime.importAllSharedFunctions();
+
+// 显式查找（不自动注册到本地运行时）
+Function f = env.getSharedFunction("OtherPlugin", "heal");
+```
+
+### 插件卸载
+
+```java
+// 移除所有已导出的共享函数
+runtime.unexportAll();
+```

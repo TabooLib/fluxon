@@ -31,6 +31,35 @@ public class ExtensionBuilder<Target> {
         return this;
     }
 
+    /**
+     * 注册扩展函数并同时导出到全局共享注册表。
+     * 等价于 function() + exportRegisteredExtensionFunction()，但避免二次查找。
+     * 要求 runtime 已设置 sharingIdentity。
+     */
+    public ExtensionBuilder<Target> sharedFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, false, false);
+        runtime.exportRegisteredExtensionFunction(name, extensionClass);
+        return this;
+    }
+
+    /**
+     * 注册异步扩展函数并同时导出到全局共享注册表。
+     */
+    public ExtensionBuilder<Target> sharedAsyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, true, false);
+        runtime.exportRegisteredExtensionFunction(name, extensionClass);
+        return this;
+    }
+
+    /**
+     * 注册主线程同步扩展函数并同时导出到全局共享注册表。
+     */
+    public ExtensionBuilder<Target> sharedSyncFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<Target> implementation) {
+        runtime.registerExtensionFunction(extensionClass, namespace, name, signature, implementation, false, true);
+        runtime.exportRegisteredExtensionFunction(name, extensionClass);
+        return this;
+    }
+
 
     public Class<Target> getExtensionClass() {
         return extensionClass;

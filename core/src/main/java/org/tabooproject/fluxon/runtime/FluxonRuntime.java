@@ -12,8 +12,14 @@ import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMetho
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
 import org.tabooproject.fluxon.runtime.library.LibraryLoader;
 import org.tabooproject.fluxon.runtime.library.LibraryLoader.LibraryLoadResult;
+import org.tabooproject.fluxon.runtime.sharing.SharedFunctionAdapter;
+import org.tabooproject.fluxon.runtime.sharing.SharedFunctionEntry;
+import org.tabooproject.fluxon.runtime.sharing.SharedFunctionRegistry;
 import org.tabooproject.fluxon.util.KV;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -54,6 +60,9 @@ public class FluxonRuntime {
 
     // 主线程执行器
     private Executor primaryThreadExecutor = Executors.newSingleThreadExecutor();
+
+    // 共享身份标识
+    private String sharingIdentity;
 
     /**
      * 获取单例实例
@@ -406,4 +415,192 @@ public class FluxonRuntime {
     public LibraryLoadResult loadLibrary(Path path) {
         return new LibraryLoader(this).load(path);
     }
+
+    // region 函数共享
+
+    /**
+     * 设置共享身份标识
+     */
+    public void setSharingIdentity(String identity) {
+        this.sharingIdentity = identity;
+    }
+
+    /**
+     * 获取共享身份标识
+     */
+    public String getSharingIdentity() {
+        return sharingIdentity;
+    }
+
+    /**
+     * 导出函数（直接传 MethodHandle）
+     */
+    public void exportFunction(String name, MethodHandle handle) {
+        requireSharingIdentity();
+        SharedFunctionRegistry.register(sharingIdentity, name, handle);
+    }
+
+    /**
+     * 导出扩展函数（直接传 MethodHandle）
+     */
+    public void exportExtensionFunction(String name, MethodHandle handle, Class<?> extensionTarget) {
+        requireSharingIdentity();
+        SharedFunctionRegistry.registerExtension(sharingIdentity, name, handle, extensionTarget);
+    }
+
+    /**
+     * 导出已注册的普通函数
+     * 内部通过 MethodHandle 包装 Function.call()
+     */
+    public void exportRegisteredFunction(String name) {
+        requireSharingIdentity();
+        OverloadSet set = systemFunctions.get(name);
+        if (set == null || set.isEmpty()) {
+            throw new IllegalArgumentException("Function not found: " + name);
+        }
+        Function function = set.first();
+        try {
+            MethodHandle mh = MethodHandles.lookup().findStatic(
+                    FluxonRuntime.class,
+                    "invokeSharedFunction",
+                    MethodType.methodType(Object.class, Function.class, Object[].class));
+            mh = mh.bindTo(function).asVarargsCollector(Object[].class);
+            SharedFunctionRegistry.register(sharingIdentity, name, mh);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to create MethodHandle for shared function: " + name, e);
+        }
+    }
+
+    /**
+     * 导出已注册的扩展函数
+     */
+    public void exportRegisteredExtensionFunction(String name, Class<?> extensionTarget) {
+        requireSharingIdentity();
+        Map<Class<?>, OverloadSet> classFunctions = extensionFunctions.get(name);
+        if (classFunctions == null) {
+            throw new IllegalArgumentException("Extension function not found: " + name);
+        }
+        OverloadSet set = classFunctions.get(extensionTarget);
+        if (set == null || set.isEmpty()) {
+            throw new IllegalArgumentException("Extension function not found: " + name + " for " + extensionTarget.getName());
+        }
+        Function function = set.first();
+        try {
+            MethodHandle mh = MethodHandles.lookup().findStatic(
+                    FluxonRuntime.class,
+                    "invokeSharedExtensionFunction",
+                    MethodType.methodType(Object.class, Function.class, Object.class, Object[].class));
+            mh = mh.bindTo(function).asVarargsCollector(Object[].class);
+            SharedFunctionRegistry.registerExtension(sharingIdentity, name, mh, extensionTarget);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to create MethodHandle for shared extension function: " + name, e);
+        }
+    }
+
+    /**
+     * 从共享注册表导入函数
+     */
+    public boolean importSharedFunction(String owner, String name) {
+        Object[] entry = SharedFunctionRegistry.find(owner, name);
+        if (entry == null) return false;
+        importEntry(entry);
+        return true;
+    }
+
+    /**
+     * 导入指定 owner 的所有共享函数
+     */
+    public int importAllSharedFunctions(String owner) {
+        int count = 0;
+        String prefix = owner + ":";
+        for (Map.Entry<String, Object[]> e : SharedFunctionRegistry.getGlobalRegistry().entrySet()) {
+            if (e.getKey().startsWith(prefix)) {
+                importEntry(e.getValue());
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 导入所有 owner 的所有共享函数
+     */
+    public int importAllSharedFunctions() {
+        int count = 0;
+        for (Map.Entry<String, Object[]> e : SharedFunctionRegistry.getGlobalRegistry().entrySet()) {
+            importEntry(e.getValue());
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * 将 entry 适配并注册到本地运行时
+     */
+    private void importEntry(Object[] entry) {
+        NativeFunction<?> adapted = SharedFunctionAdapter.adapt(entry);
+        if (SharedFunctionEntry.isExtension(entry)) {
+            Class<?> targetClass = SharedFunctionEntry.extensionTarget(entry);
+            registerExtensionFunction(targetClass, adapted);
+        } else {
+            registerFunction(adapted);
+        }
+    }
+
+    /**
+     * 卸载所有已导出的共享函数
+     */
+    public void unexportAll() {
+        if (sharingIdentity != null) {
+            SharedFunctionRegistry.unregisterAll(sharingIdentity);
+        }
+    }
+
+    private void requireSharingIdentity() {
+        if (sharingIdentity == null) {
+            throw new IllegalStateException("Sharing identity not set. Call setSharingIdentity() first.");
+        }
+    }
+
+    /**
+     * 内部桥接：通过 FunctionContext 调用普通函数并返回结果
+     */
+    static Object invokeSharedFunction(Function function, Object... args) {
+        FunctionContextPool pool = FunctionContextPool.local();
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        try (FunctionContext<?> ctx = pool.borrow(function, null, args, env)) {
+            function.call(ctx);
+            if (ctx.returnType != null && ctx.returnType.isPrimitive()) {
+                return boxReturnPrimitive(ctx);
+            }
+            return ctx.getReturnRef();
+        }
+    }
+
+    /**
+     * 内部桥接：通过 FunctionContext 调用扩展函数并返回结果
+     */
+    static Object invokeSharedExtensionFunction(Function function, Object target, Object... args) {
+        FunctionContextPool pool = FunctionContextPool.local();
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        try (FunctionContext<?> ctx = pool.borrow(function, target, args, env)) {
+            function.call(ctx);
+            if (ctx.returnType != null && ctx.returnType.isPrimitive()) {
+                return boxReturnPrimitive(ctx);
+            }
+            return ctx.getReturnRef();
+        }
+    }
+
+    private static Object boxReturnPrimitive(FunctionContext<?> ctx) {
+        Type rt = ctx.returnType;
+        long bits = ctx.returnPrimitive;
+        if (rt == Type.I || rt == Type.Z) return (int) bits;
+        if (rt == Type.J) return bits;
+        if (rt == Type.D) return Double.longBitsToDouble(bits);
+        if (rt == Type.F) return Float.intBitsToFloat((int) bits);
+        return null;
+    }
+
+    // endregion
 }

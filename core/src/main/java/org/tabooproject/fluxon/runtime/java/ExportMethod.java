@@ -10,6 +10,7 @@ public class ExportMethod {
     private final Method method;
     private final boolean async;
     private final boolean sync;
+    private final boolean shared;
     private final String transformedName;
     
     /**
@@ -23,6 +24,7 @@ public class ExportMethod {
         Export export = method.getAnnotation(Export.class);
         this.async = export != null && export.async();
         this.sync = export != null && export.sync();
+        this.shared = export != null && export.shared();
         this.transformedName = transformedName;
     }
     
@@ -45,6 +47,13 @@ public class ExportMethod {
      */
     public boolean isSync() {
         return sync;
+    }
+    
+    /**
+     * 是否共享到其他 Fluxon 实例
+     */
+    public boolean isShared() {
+        return shared;
     }
     
     /**

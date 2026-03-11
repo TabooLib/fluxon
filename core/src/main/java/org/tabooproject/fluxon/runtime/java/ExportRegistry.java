@@ -7,9 +7,12 @@ import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.FunctionSignature;
 import org.tabooproject.fluxon.runtime.NativeFunction;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.sharing.SharedFunctionRegistry;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.util.StringUtils;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -103,6 +106,15 @@ public class ExportRegistry {
             boolean isAsync = exportMethod.isAsync();
             boolean isSync = exportMethod.isSync();
             runtime.registerExtensionFunction(clazz, namespace, methodName, signature, callable, isAsync, isSync);
+            // 自动导出 shared=true 的方法到全局共享注册表
+            if (exportMethod.isShared() && runtime.getSharingIdentity() != null) {
+                try {
+                    MethodHandle mh = MethodHandles.publicLookup().unreflect(method);
+                    SharedFunctionRegistry.registerExtension(runtime.getSharingIdentity(), methodName, mh, clazz);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException("Failed to export shared method: " + methodName, e);
+                }
+            }
         }
     }
 

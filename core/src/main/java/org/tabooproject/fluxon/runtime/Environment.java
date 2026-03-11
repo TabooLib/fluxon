@@ -13,6 +13,9 @@ import org.tabooproject.fluxon.util.KV;
 import java.io.PrintStream;
 import java.util.*;
 
+import static org.tabooproject.fluxon.runtime.sharing.SharedFunctionAdapter.*;
+import static org.tabooproject.fluxon.runtime.sharing.SharedFunctionRegistry.*;
+
 /**
  * 运行时环境
  * 用于管理运行时期间的函数和变量
@@ -171,6 +174,20 @@ public class Environment {
     public Function getFunctionOrNull(String name) {
         OverloadSet set = root.rootState.functions.get(name);
         return set != null ? set.first() : null;
+    }
+
+    /**
+     * 从全局共享注册表查找函数（不自动注册到本地运行时）
+     *
+     * @param owner 函数所有者
+     * @param name  函数名
+     * @return 适配后的本地 NativeFunction，未找到返回 null
+     */
+    @Nullable
+    public Function getSharedFunction(String owner, String name) {
+        Object[] entry = find(owner, name);
+        if (entry == null) return null;
+        return adapt(entry);
     }
 
     /**

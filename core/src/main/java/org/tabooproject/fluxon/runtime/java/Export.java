@@ -17,4 +17,7 @@ public @interface Export {
 
     // 是否为同步函数
     boolean sync() default false;
+
+    // 是否共享到其他 Fluxon 实例（跨 ClassLoader）
+    boolean shared() default false;
 }
