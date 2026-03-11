@@ -67,6 +67,9 @@ public class FunctionClassEmitter extends ClassEmitter {
         // 添加 parameters 和 annotations 静态字段
         emitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "parameters", MAP.getDescriptor(), null);
         emitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "annotations", LIST.getDescriptor(), null);
+        if (!funcDef.getParameterTypes().isEmpty()) {
+            emitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, "signature", FunctionSignature.TYPE.getDescriptor(), null);
+        }
         // 生成构造函数
         emitDefaultConstructor();
         // 实现 Function 接口方法
@@ -116,10 +119,14 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     private void emitGetSignatureMethod() {
-        // 返回 null，UserFunction 在运行时动态设置签名
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getSignature", "()" + FunctionSignature.TYPE.getDescriptor(), null, null);
         mv.visitCode();
-        mv.visitInsn(ACONST_NULL);
+        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
+        if (parameterTypes.isEmpty()) {
+            mv.visitInsn(ACONST_NULL);
+        } else {
+            mv.visitFieldInsn(GETSTATIC, className, "signature", FunctionSignature.TYPE.getDescriptor());
+        }
         mv.visitInsn(ARETURN);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
@@ -229,16 +236,16 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(argIndex);
             if (type == Type.I || type == Type.Z) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getInt", "(" + I + ")" + I, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(" + I + I + ")V", false);
             } else if (type == Type.J) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getLong", "(" + I + ")" + J, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalLong", "(" + I + J + ")V", false);
             } else if (type == Type.D) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getDouble", "(" + I + ")" + D, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalDouble", "(" + I + D + ")V", false);
             } else if (type == Type.F) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getFloat", "(" + I + ")" + F, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(" + I + F + ")V", false);
             } else {
                 // 无类型声明时使用 getArgBoxed，根据 argTypes 自动选择 refs 或 primitives

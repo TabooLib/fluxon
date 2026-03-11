@@ -135,4 +135,69 @@ public class FastArgsTest {
             assertEquals(result.getInterpretResult(), result.getCompileResult(), "Interpret and compile should produce same result for: " + script);
         }
     }
+
+    /**
+     * 测试 Type.F 参数的 getFloat 是否正确获取值
+     */
+    @Test
+    void testFloatParameterGetFloat() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerFunction("floatTest", returns(Type.D).params(Type.F), ctx -> {
+            float f = ctx.getFloat(0);
+            ctx.setReturnDouble(f);
+        });
+        // double 字面量 → Type.F
+        FluxonTestUtil.TestResult r1 = FluxonTestUtil.runSilent("floatTest(1.5)");
+        assertEquals(1.5, ((Number) r1.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat(1.5)");
+        assertEquals(1.5, ((Number) r1.getCompileResult()).doubleValue(), 0.01, "compile: getFloat(1.5)");
+        // 零值
+        FluxonTestUtil.TestResult r2 = FluxonTestUtil.runSilent("floatTest(0.0)");
+        assertEquals(0.0, ((Number) r2.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat(0.0)");
+        assertEquals(0.0, ((Number) r2.getCompileResult()).doubleValue(), 0.01, "compile: getFloat(0.0)");
+        // int 字面量 → Type.F
+        FluxonTestUtil.TestResult r3 = FluxonTestUtil.runSilent("floatTest(42)");
+        assertEquals(42.0, ((Number) r3.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat(42)");
+        assertEquals(42.0, ((Number) r3.getCompileResult()).doubleValue(), 0.01, "compile: getFloat(42)");
+        // 负值
+        FluxonTestUtil.TestResult r4 = FluxonTestUtil.runSilent("floatTest(-3.14)");
+        assertEquals(-3.14, ((Number) r4.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat(-3.14)");
+        assertEquals(-3.14, ((Number) r4.getCompileResult()).doubleValue(), 0.01, "compile: getFloat(-3.14)");
+        // 表达式传参
+        FluxonTestUtil.TestResult r5 = FluxonTestUtil.runSilent("floatTest(1.0 + 2.5)");
+        assertEquals(3.5, ((Number) r5.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat(1.0+2.5)");
+        assertEquals(3.5, ((Number) r5.getCompileResult()).doubleValue(), 0.01, "compile: getFloat(1.0+2.5)");
+        // 变量传参
+        FluxonTestUtil.TestResult r6 = FluxonTestUtil.runSilent("x = 7.7; floatTest(&x)");
+        assertEquals(7.7, ((Number) r6.getInterpretResult()).doubleValue(), 0.1, "interpret: getFloat(var)");
+        assertEquals(7.7, ((Number) r6.getCompileResult()).doubleValue(), 0.1, "compile: getFloat(var)");
+        // 用户函数转发参数
+        FluxonTestUtil.TestResult r7 = FluxonTestUtil.runSilent("def test(number) { floatTest(&number) }; test(1.0)");
+        assertEquals(1.0, ((Number) r7.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat via def");
+        assertEquals(1.0, ((Number) r7.getCompileResult()).doubleValue(), 0.01, "compile: getFloat via def");
+        FluxonTestUtil.TestResult r8 = FluxonTestUtil.runSilent("def test(number) { floatTest(&number) }; test(3.14)");
+        assertEquals(3.14, ((Number) r8.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat via def 3.14");
+        assertEquals(3.14, ((Number) r8.getCompileResult()).doubleValue(), 0.01, "compile: getFloat via def 3.14");
+        FluxonTestUtil.TestResult r9 = FluxonTestUtil.runSilent("def test(number) { floatTest(&number) }; test(42)");
+        assertEquals(42.0, ((Number) r9.getInterpretResult()).doubleValue(), 0.01, "interpret: getFloat via def int");
+        assertEquals(42.0, ((Number) r9.getCompileResult()).doubleValue(), 0.01, "compile: getFloat via def int");
+    }
+
+    /**
+     * 测试 def 带类型注解 float 的参数
+     */
+    @Test
+    void testFloatTypedParameter() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerFunction("floatTest2", returns(Type.D).params(Type.F), ctx -> {
+            float f = ctx.getFloat(0);
+            ctx.setReturnDouble(f);
+        });
+        // def test(number: float) 类型注解
+        FluxonTestUtil.TestResult r1 = FluxonTestUtil.runSilent("def test(number: float) { floatTest2(&number) }; test(1.5)");
+        assertEquals(1.5, ((Number) r1.getInterpretResult()).doubleValue(), 0.01, "interpret: typed float 1.5");
+        assertEquals(1.5, ((Number) r1.getCompileResult()).doubleValue(), 0.01, "compile: typed float 1.5");
+        FluxonTestUtil.TestResult r2 = FluxonTestUtil.runSilent("def test(number: float) { floatTest2(&number) }; test(42)");
+        assertEquals(42.0, ((Number) r2.getInterpretResult()).doubleValue(), 0.01, "interpret: typed float from int");
+        assertEquals(42.0, ((Number) r2.getCompileResult()).doubleValue(), 0.01, "compile: typed float from int");
+    }
 }

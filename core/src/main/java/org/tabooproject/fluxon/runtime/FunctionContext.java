@@ -191,6 +191,39 @@ public final class FunctionContext<Target> implements AutoCloseable {
         }
     }
 
+    public float getAsFloat(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) return ((Number) refs[index]).floatValue();
+        switch (t) {
+            case TYPE_LONG:
+                return (float) primitives[index];
+            case TYPE_DOUBLE:
+                return (float) Double.longBitsToDouble(primitives[index]);
+            case TYPE_FLOAT:
+                return Float.intBitsToFloat((int) primitives[index]);
+            default:
+                return (int) primitives[index]; // I, Z
+        }
+    }
+
+    public boolean getAsBoolean(int index) {
+        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
+        if (t == TYPE_REF) {
+            Object ref = refs[index];
+            if (ref instanceof Boolean) return (Boolean) ref;
+            if (ref instanceof Number) return ((Number) ref).doubleValue() != 0;
+            return ref != null;
+        }
+        switch (t) {
+            case TYPE_DOUBLE:
+                return Double.longBitsToDouble(primitives[index]) != 0;
+            case TYPE_FLOAT:
+                return Float.intBitsToFloat((int) primitives[index]) != 0;
+            default:
+                return primitives[index] != 0; // I, J, Z
+        }
+    }
+
     public Object getArgBoxed(int index) {
         if (index >= argumentCount) return null;
         byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;

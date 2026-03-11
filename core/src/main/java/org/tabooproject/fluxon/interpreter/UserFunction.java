@@ -15,7 +15,9 @@ import org.tabooproject.fluxon.runtime.Symbolic;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户自定义的函数
@@ -35,6 +37,26 @@ public class UserFunction implements Function, Symbolic {
         this.symbolInfo = new SymbolFunction(null, definition.getName(), definition.getParameters().size());
         this.definition = definition;
         this.interpreter = interpreter;
+        this.signature = buildSignature(definition);
+    }
+
+    /**
+     * 根据 FunctionDefinition 的参数类型注解构建签名
+     * 无类型注解的参数视为 OBJECT
+     */
+    @Nullable
+    private static FunctionSignature buildSignature(@NotNull FunctionDefinition definition) {
+        Map<Integer, Class<?>> parameterTypes = definition.getParameterTypes();
+        if (parameterTypes.isEmpty()) return null;
+        LinkedHashMap<String, Integer> parameters = definition.getParameters();
+        Type[] types = new Type[parameters.size()];
+        int i = 0;
+        for (Integer slot : parameters.values()) {
+            Class<?> clazz = parameterTypes.get(i);
+            types[i] = clazz != null ? Type.fromClass(clazz) : Type.OBJECT;
+            i++;
+        }
+        return FunctionSignature.returns(Type.OBJECT).params(types);
     }
 
     @NotNull
