@@ -220,6 +220,10 @@ public class Lexer implements CompilationPhase<List<Token>> {
             else if (c >= '0' && c <= '9') {
                 tokens.add(consumeNumber());
             }
+            // raw 字符串: r"..." 或 r'...'
+            else if (c == 'r' && (next == '"' || next == '\'')) {
+                tokens.add(consumeRawString());
+            }
             // 标识符检查，扩展为支持中文字符
             else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '#' || Character.isIdeographic(c) || isChineseChar(c)) {
                 tokens.add(consumeIdentifier());
@@ -366,6 +370,13 @@ public class Lexer implements CompilationPhase<List<Token>> {
         ScanMode mode = (quote == '"') ? ScanMode.STRING_DOUBLE : ScanMode.STRING_SINGLE;
         // 消费引号
         advance();
+        // 检查三引号（多行字符串）
+        if (quote == '"' && curr == '"' && next == '"') {
+            advance(); // 消费第二个 "
+            advance(); // 消费第三个 "
+            tokens.add(consumeMultilineString(startLine, startColumn));
+            return;
+        }
         // 扫描字符串内容（支持嵌套插值）
         consumeStringContent(tokens, mode, quote, startLine, startColumn);
     }
@@ -475,6 +486,53 @@ public class Lexer implements CompilationPhase<List<Token>> {
         return true;
     }
 
+    // 消费 raw 字符串（不处理转义）
+    private Token consumeRawString() {
+        int startLine = line;
+        int startColumn = column;
+        advance(); // 消费 'r'
+        char quote = curr;
+        advance(); // 消费引号
+        StringBuilder sb = new StringBuilder(Math.min(32, sourceLength - position));
+        while (position < sourceLength && curr != quote) {
+            if (curr == '\n') {
+                line++;
+                column = 1;
+            }
+            sb.append(curr);
+            advance();
+        }
+        if (position < sourceLength) {
+            advance(); // 消费结束引号
+        }
+        return new Token(TokenType.STRING, sb.toString(), startLine, startColumn);
+    }
+
+    // 消费多行字符串 """..."""
+    private Token consumeMultilineString(int startLine, int startColumn) {
+        StringBuilder sb = new StringBuilder();
+        while (position < sourceLength) {
+            // 检查三引号结束
+            if (curr == '"' && next == '"' && position + 2 < sourceLength && sourceChars[position + 2] == '"') {
+                advance(); // 消费第一个 "
+                advance(); // 消费第二个 "
+                advance(); // 消费第三个 "
+                return new Token(TokenType.STRING, sb.toString(), startLine, startColumn, line, column);
+            }
+            if (curr == '\n') {
+                line++;
+                column = 1;
+                sb.append('\n');
+                advance();
+            } else {
+                sb.append(curr);
+                advance();
+            }
+        }
+        // 未闭合的三引号，返回已收集的内容
+        return new Token(TokenType.STRING, sb.toString(), startLine, startColumn, line, column);
+    }
+
     // endregion
 
     // 消费数字
@@ -484,6 +542,20 @@ public class Lexer implements CompilationPhase<List<Token>> {
         int startColumn = column;
         int start = position;
         boolean isDouble = false;
+
+        // 检查进制前缀
+        if (curr == '0' && position + 1 < sourceLength) {
+            char prefix = next;
+            if (prefix == 'x' || prefix == 'X') {
+                return consumeRadixNumber(startLine, startColumn, 16);
+            }
+            if (prefix == 'b' || prefix == 'B') {
+                return consumeRadixNumber(startLine, startColumn, 2);
+            }
+            if (prefix == 'o' || prefix == 'O') {
+                return consumeRadixNumber(startLine, startColumn, 8);
+            }
+        }
 
         // 消费整数部分 - 使用字符范围检查代替 Character.isDigit()，支持下划线分隔符
         while (position < sourceLength && (curr >= '0' && curr <= '9')) {
@@ -592,6 +664,43 @@ public class Lexer implements CompilationPhase<List<Token>> {
             }
         }
         // endregion
+    }
+
+    // 消费指定进制的数字（0x, 0b, 0o）
+    private Token consumeRadixNumber(int startLine, int startColumn, int radix) {
+        advance(); // 消费 '0'
+        advance(); // 消费前缀字符 (x/b/o)
+        int digitStart = position;
+        while (position < sourceLength && isRadixDigit(curr, radix)) {
+            do {
+                advance();
+            } while (position < sourceLength && curr == '_');
+        }
+        if (position == digitStart) {
+            // 无有效数字
+            return new Token(TokenType.INTEGER, 0, startLine, startColumn);
+        }
+        String digits = removeUnderscores(new String(sourceChars, digitStart, position - digitStart));
+        // 检查 L/l 后缀
+        if (position < sourceLength && (curr == 'L' || curr == 'l')) {
+            advance();
+            return new Token(TokenType.LONG, Long.parseLong(digits, radix), startLine, startColumn);
+        }
+        // 尝试 int，溢出则升级为 long
+        try {
+            return new Token(TokenType.INTEGER, Integer.parseInt(digits, radix), startLine, startColumn);
+        } catch (NumberFormatException e) {
+            return new Token(TokenType.LONG, Long.parseLong(digits, radix), startLine, startColumn);
+        }
+    }
+
+    // 判断字符是否为指定进制的有效数字
+    private boolean isRadixDigit(char c, int radix) {
+        if (c == '_') return true;
+        if (radix == 16) return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+        if (radix == 2) return c == '0' || c == '1';
+        if (radix == 8) return c >= '0' && c <= '7';
+        return false;
     }
 
     // 辅助方法 - 读取下一个字符
