@@ -210,6 +210,6 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
         } catch (BreakException ignored) {
             return true;
         }
-        return false;
+        return interpreter.hasReturn;
     }
 }

@@ -27,6 +27,7 @@ public class BlockEvaluator extends StatementEvaluator<Block> {
         Type last = Type.VOID;
         for (ParseResult statement : result.getStatements()) {
             last = interpreter.evaluate(statement);
+            if (interpreter.hasReturn) return Type.VOID;
         }
         return last;
     }

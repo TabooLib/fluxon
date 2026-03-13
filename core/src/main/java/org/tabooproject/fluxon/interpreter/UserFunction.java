@@ -108,11 +108,13 @@ public class UserFunction implements Function, Symbolic {
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
             exec.consumeCostStep();
         }
-        try {
-            Type t = exec.executeWithEnvironment(definition.getBody(), functionEnv);
+        Type t = exec.executeWithEnvironment(definition.getBody(), functionEnv);
+        if (exec.hasReturn) {
+            context.setReturnRef(exec.returnValue);
+            exec.hasReturn = false;
+            exec.returnValue = null;
+        } else {
             context.setReturnRef(exec.getResultBoxed(t));
-        } catch (ReturnValue returnValue) {
-            context.setReturnRef(returnValue.getValue());
         }
     }
 

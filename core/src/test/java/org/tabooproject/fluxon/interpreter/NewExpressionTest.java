@@ -38,11 +38,7 @@ public class NewExpressionTest {
         interpretCtx.setAllowInvalidReference(true);  // 允许延迟解析函数调用
         ParsedScript script = Fluxon.parse(interpretCtx, interpretEnv);
         Object interpretResult;
-        try {
-            interpretResult = script.eval(interpretEnv);
-        } catch (ReturnValue rv) {
-            interpretResult = rv.getValue();
-        }
+        interpretResult = script.eval(interpretEnv);
         // 编译执行
         Environment compileEnv = FluxonRuntime.getInstance().newEnvironment();
         CompilationContext compileCtx = new CompilationContext(source);
@@ -71,11 +67,7 @@ public class NewExpressionTest {
         ctx.setAllowReflectionAccess(true);  // 启用 member access (.)
         ctx.setAllowInvalidReference(true);  // 允许延迟解析函数调用
         ParsedScript script = Fluxon.parse(ctx, env);
-        try {
-            return script.eval(env);
-        } catch (ReturnValue rv) {
-            return rv.getValue();
-        }
+        return script.eval(env);
     }
 
     private static class TestResult {

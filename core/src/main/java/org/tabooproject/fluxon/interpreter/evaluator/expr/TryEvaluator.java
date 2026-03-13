@@ -31,27 +31,37 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         try {
             valueType = interpreter.evaluate(result.getBody());
         } catch (Throwable ex) {
-            if (result.getCatchName() != null) {
-                int position = result.getPosition();
-                if (position >= 0) {
-                    interpreter.getEnvironment().setLocalRef(position, ex);
-                } else {
-                    interpreter.getEnvironment().setRootVariable(result.getCatchName(), ex);
-                }
-            }
-            if (result.getCatchBody() != null) {
-                valueType = interpreter.evaluate(result.getCatchBody());
+            // return 信号不应被 catch 拦截，直接跳过 catch 块
+            if (interpreter.hasReturn) {
+                // hasReturn 已设，不执行 catch，进入 finally
             } else {
-                interpreter.resultRef = null;
+                if (result.getCatchName() != null) {
+                    int position = result.getPosition();
+                    if (position >= 0) {
+                        interpreter.getEnvironment().setLocalRef(position, ex);
+                    } else {
+                        interpreter.getEnvironment().setRootVariable(result.getCatchName(), ex);
+                    }
+                }
+                if (result.getCatchBody() != null) {
+                    valueType = interpreter.evaluate(result.getCatchBody());
+                } else {
+                    interpreter.resultRef = null;
+                }
             }
         }
         if (result.getFinallyBody() != null) {
             // finally body 不影响 try/catch 的结果，保存/恢复 single fields
             long savedPrim = interpreter.resultPrimitive;
             Object savedRef = interpreter.resultRef;
+            boolean savedHasReturn = interpreter.hasReturn;
+            Object savedReturnValue = interpreter.returnValue;
+            interpreter.hasReturn = false;
             interpreter.evaluate(result.getFinallyBody());
             interpreter.resultPrimitive = savedPrim;
             interpreter.resultRef = savedRef;
+            interpreter.hasReturn = savedHasReturn;
+            interpreter.returnValue = savedReturnValue;
         }
         return valueType;
     }

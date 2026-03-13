@@ -3,7 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.stmt;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
+
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
@@ -31,7 +31,9 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             Type t = interpreter.evaluate(result.getValue());
             value = interpreter.getResultBoxed(t);
         }
-        throw new ReturnValue(value);
+        interpreter.hasReturn = true;
+        interpreter.returnValue = value;
+        return Type.VOID;
     }
 
     @Override

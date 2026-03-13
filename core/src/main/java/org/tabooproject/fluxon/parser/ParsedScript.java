@@ -3,7 +3,8 @@ package org.tabooproject.fluxon.parser;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.ParameterInfo;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
+
+
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
@@ -121,11 +122,14 @@ public class ParsedScript {
         if (!rootTypes.isEmpty()) {
             interpreter.setRootVariableTypes(rootTypes);
         }
-        try {
-            return interpreter.execute(results);
-        } catch (ReturnValue ex) {
-            return ex.getValue();
+        Object result = interpreter.execute(results);
+        if (interpreter.hasReturn) {
+            Object rv = interpreter.returnValue;
+            interpreter.hasReturn = false;
+            interpreter.returnValue = null;
+            return rv;
         }
+        return result;
     }
 
     /**
@@ -137,10 +141,13 @@ public class ParsedScript {
         if (rootLocalVariableCount > 0) {
             env.initializeRootLocalVariables(rootLocalVariableCount);
         }
-        try {
-            return interpreter.execute(results);
-        } catch (ReturnValue ex) {
-            return ex.getValue();
+        Object result = interpreter.execute(results);
+        if (interpreter.hasReturn) {
+            Object rv = interpreter.returnValue;
+            interpreter.hasReturn = false;
+            interpreter.returnValue = null;
+            return rv;
         }
+        return result;
     }
 }

@@ -2,7 +2,7 @@ package org.tabooproject.fluxon.web;
 
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.interpreter.ReturnValue;
+
 import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
@@ -40,8 +40,6 @@ public class InterpreterService {
             ParsedScript parsed = Fluxon.parse(source, env);
             Object result = parsed.eval(interpreter);
             streaming.println("RESULT: " + result);
-        } catch (ReturnValue e) {
-            streaming.println("RESULT: " + e.getValue());
         } catch (Exception e) {
             streaming.println("ERROR: " + e);
         } finally {

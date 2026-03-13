@@ -29,6 +29,10 @@ public class Interpreter {
     public long resultPrimitive;
     public Object resultRef;
 
+    // return 信号（替代 ReturnValue 异常，避免堆分配和异常分发开销）
+    public boolean hasReturn;
+    public Object returnValue;
+
     // 缓存 costLimitEnabled，避免每次通过 environment.root.rootState 间接读取
     boolean costLimitEnabled;
 
