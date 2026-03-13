@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.ErrorPropagationEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.*;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.literal.*;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -49,7 +50,8 @@ public enum ExpressionType {
     CONTEXT_CALL(new ContextCallEvaluator()),
     LAMBDA(new LambdaEvaluator()),
     DOMAIN(new DomainEvaluator()),
-    ANONYMOUS_CLASS(new AnonymousClassEvaluator());
+    ANONYMOUS_CLASS(new AnonymousClassEvaluator()),
+    ERROR_PROPAGATION(new ErrorPropagationEvaluator());
 
     public final Evaluator<ParseResult> evaluator;
 

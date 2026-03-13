@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.parser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.operator.CallPostfixOperator;
+import org.tabooproject.fluxon.parser.operator.ErrorPropagationPostfixOperator;
 import org.tabooproject.fluxon.parser.operator.IndexAccessPostfixOperator;
 
 import java.util.Comparator;
@@ -48,6 +49,8 @@ public class PostfixOperatorRegistry {
         registry.register(new IndexAccessPostfixOperator());
         // 后缀函数调用 ()
         registry.register(new CallPostfixOperator());
+        // 错误传播 ?
+        registry.register(new ErrorPropagationPostfixOperator());
     }
 
     public void register(@NotNull PostfixOperator operator) {
