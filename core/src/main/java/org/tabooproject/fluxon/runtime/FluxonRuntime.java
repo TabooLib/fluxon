@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionConst
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionField;
 import org.tabooproject.fluxon.runtime.function.extension.reflect.ExtensionMethod;
 import org.tabooproject.fluxon.runtime.java.ExportRegistry;
+import org.tabooproject.fluxon.runtime.reflection.SecurityPolicy;
 import org.tabooproject.fluxon.runtime.library.LibraryLoader;
 import org.tabooproject.fluxon.runtime.library.LibraryLoader.LibraryLoadResult;
 import org.tabooproject.fluxon.runtime.sharing.SharedFunctionAdapter;
@@ -60,6 +61,9 @@ public class FluxonRuntime {
 
     // 主线程执行器
     private Executor primaryThreadExecutor = Executors.newSingleThreadExecutor();
+
+    // 安全策略
+    private SecurityPolicy securityPolicy = SecurityPolicy.ALLOW_ALL;
 
     // 共享身份标识
     private String sharingIdentity;
@@ -404,6 +408,21 @@ public class FluxonRuntime {
      */
     public void setPrimaryThreadExecutor(Executor primaryThreadExecutor) {
         this.primaryThreadExecutor = primaryThreadExecutor;
+    }
+
+    /**
+     * 获取安全策略
+     */
+    public SecurityPolicy getSecurityPolicy() {
+        return securityPolicy;
+    }
+
+    /**
+     * 设置安全策略
+     * 传入 null 时回退到 ALLOW_ALL
+     */
+    public void setSecurityPolicy(SecurityPolicy policy) {
+        this.securityPolicy = policy != null ? policy : SecurityPolicy.ALLOW_ALL;
     }
 
     /**

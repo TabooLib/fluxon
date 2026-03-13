@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.runtime.reflection;
 
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.MemberAccessError;
 import org.tabooproject.fluxon.runtime.error.MemberNotFoundError;
@@ -45,6 +46,13 @@ public class ReflectionHelper {
             throw new NullPointerException("Cannot access field '" + fieldName + "' on null object");
         }
         Class<?> clazz = target.getClass();
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(clazz)) {
+            throw new SecurityException("Access to class " + clazz.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(clazz, fieldName)) {
+            throw new SecurityException("Access to " + clazz.getName() + "." + fieldName + " is not allowed");
+        }
         // 1. 快速路径：检查缓存
         MethodHandle cached = FieldCache.get(clazz, fieldName);
         if (cached != null) {
@@ -62,6 +70,13 @@ public class ReflectionHelper {
             throw new NullPointerException("Cannot set field '" + fieldName + "' on null object");
         }
         Class<?> clazz = target.getClass();
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(clazz)) {
+            throw new SecurityException("Access to class " + clazz.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(clazz, fieldName)) {
+            throw new SecurityException("Access to " + clazz.getName() + "." + fieldName + " is not allowed");
+        }
         // 1. 快速路径：检查缓存
         MethodHandle cached = FieldCache.getSetter(clazz, fieldName);
         if (cached != null) {
@@ -105,9 +120,17 @@ public class ReflectionHelper {
         if (target == null) {
             throw new NullPointerException("Cannot invoke method '" + methodName + "' on null object");
         }
+        // 安全策略检查
+        Class<?> targetClass = target instanceof Class<?> ? (Class<?>) target : target.getClass();
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(targetClass)) {
+            throw new SecurityException("Access to class " + targetClass.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(targetClass, methodName)) {
+            throw new SecurityException("Access to " + targetClass.getName() + "." + methodName + " is not allowed");
+        }
         // 特殊处理：target 是 Class 对象时，尝试调用该类的静态方法
         if (target instanceof Class<?>) {
-            Class<?> targetClass = (Class<?>) target;
             Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
             // 先尝试查找目标类的静态方法
             Method staticMethod = MethodResolver.findBestStaticMatch(targetClass, methodName, argTypes);
@@ -140,6 +163,13 @@ public class ReflectionHelper {
         if (clazz == null) {
             throw new NullPointerException("Cannot invoke static method '" + methodName + "' on null class");
         }
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(clazz)) {
+            throw new SecurityException("Access to class " + clazz.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(clazz, methodName)) {
+            throw new SecurityException("Access to " + clazz.getName() + "." + methodName + " is not allowed");
+        }
         Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
         Method staticMethod = MethodResolver.findBestStaticMatch(clazz, methodName, argTypes);
         if (staticMethod == null) {
@@ -158,6 +188,13 @@ public class ReflectionHelper {
     public static Object getStaticField(Class<?> clazz, String fieldName) throws Throwable {
         if (clazz == null) {
             throw new NullPointerException("Cannot access static field '" + fieldName + "' on null class");
+        }
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(clazz)) {
+            throw new SecurityException("Access to class " + clazz.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(clazz, fieldName)) {
+            throw new SecurityException("Access to " + clazz.getName() + "." + fieldName + " is not allowed");
         }
         Field field = FieldResolver.findField(clazz, fieldName);
         if (field == null || !Modifier.isStatic(field.getModifiers())) {
@@ -206,6 +243,13 @@ public class ReflectionHelper {
      * @return 新创建的实例
      */
     public static Object invokeConstructor(Class<?> clazz, Object... args) throws Throwable {
+        SecurityPolicy policy = FluxonRuntime.getInstance().getSecurityPolicy();
+        if (!policy.isClassAllowed(clazz)) {
+            throw new SecurityException("Access to class " + clazz.getName() + " is not allowed");
+        }
+        if (!policy.isMemberAllowed(clazz, "<init>")) {
+            throw new SecurityException("Access to " + clazz.getName() + ".<init> is not allowed");
+        }
         int argCount = args.length;
         // 1. 快速路径：缓存查找
         Class<?>[] argTypes = TypeCompatibility.getArgTypes(args);
