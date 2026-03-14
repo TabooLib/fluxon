@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.TryExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
@@ -38,7 +39,13 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
                 if (result.getCatchName() != null) {
                     int position = result.getPosition();
                     if (position >= 0) {
-                        interpreter.getEnvironment().setLocalRef(position, ex);
+                        // Env-free 路径：写入 FunctionContext
+                        FunctionContext<?> ctx = interpreter.activeFunctionContext;
+                        if (ctx != null) {
+                            ctx.setLocal(position, ex);
+                        } else {
+                            interpreter.getEnvironment().setLocalRef(position, ex);
+                        }
                     } else {
                         interpreter.getEnvironment().setRootVariable(result.getCatchName(), ex);
                     }
@@ -131,15 +138,22 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         // 如果有 catch 变量名，则将异常赋值给该变量
         if (result.getCatchName() != null) {
             int position = result.getPosition();
-            Instructions.loadEnvironment(mv, ctx);
-            if (position >= 0) {
-                mv.visitLdcInsn(position);
+            if (position >= 0 && ctx.isEnvFreeMode()) {
+                // Env-free 模式：直接存入 JVM 局部变量
+                int jvmSlot = ctx.getJvmSlot(position);
                 mv.visitVarInsn(ALOAD, exVar);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")" + VOID, false);
+                mv.visitVarInsn(ASTORE, jvmSlot);
             } else {
-                mv.visitLdcInsn(result.getCatchName());
-                mv.visitVarInsn(ALOAD, exVar);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + STRING + OBJECT + ")" + VOID, false);
+                Instructions.loadEnvironment(mv, ctx);
+                if (position >= 0) {
+                    mv.visitLdcInsn(position);
+                    mv.visitVarInsn(ALOAD, exVar);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")" + VOID, false);
+                } else {
+                    mv.visitLdcInsn(result.getCatchName());
+                    mv.visitVarInsn(ALOAD, exVar);
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + STRING + OBJECT + ")" + VOID, false);
+                }
             }
         }
         // 执行 catch body

@@ -169,7 +169,8 @@ public class TypeAnalyzerTest {
         assertEquals(30, result.getCompileResult());
         FluxonTestUtil.assertMatch(result);
 
-        // 验证函数类字节码使用 setLocalInt
+        // 验证函数类字节码使用 setLocalInt 或 env-free 模式的 setReturnInt
+        // env-free 模式下参数直接存入 JVM 局部变量（ISTORE），不经过 Environment.setLocalInt
         CompilationContext context = new CompilationContext(source);
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         CompileResult compileResult = Fluxon.compile(env, context, "FuncTypeTest");
@@ -179,10 +180,17 @@ public class TypeAnalyzerTest {
         byte[] funcClass = innerClasses.get(0);
         String funcBytecodeStr = new String(funcClass, java.nio.charset.StandardCharsets.ISO_8859_1);
         boolean hasSetLocalInt = funcBytecodeStr.contains("setLocalInt");
+        boolean hasSetReturnInt = funcBytecodeStr.contains("setReturnInt");
         boolean hasSetLocalRef = funcBytecodeStr.contains("setLocalRef");
+        boolean hasSetReturnRef = funcBytecodeStr.contains("setReturnRef");
         System.out.println("Function class has setLocalInt: " + hasSetLocalInt);
+        System.out.println("Function class has setReturnInt: " + hasSetReturnInt);
         System.out.println("Function class has setLocalRef: " + hasSetLocalRef);
-        assertTrue(hasSetLocalInt, "Function bytecode should use setLocalInt for int variables");
-        assertFalse(hasSetLocalRef, "Function bytecode should NOT use setLocalRef for int variables");
+        System.out.println("Function class has setReturnRef: " + hasSetReturnRef);
+        // env-free 模式使用 JVM 局部变量，不会有 setLocalInt；传统模式使用 Environment.setLocalInt
+        // 但两种模式都应该使用 setReturnInt（不是 setReturnRef）来返回 int 结果
+        assertTrue(hasSetLocalInt || hasSetReturnInt,
+                "Function bytecode should use typed int operations (setLocalInt or setReturnInt)");
+        assertFalse(hasSetReturnRef, "Function bytecode should NOT use setReturnRef for int return value");
     }
 }

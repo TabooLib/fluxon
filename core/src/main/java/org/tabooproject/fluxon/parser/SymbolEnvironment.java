@@ -40,6 +40,29 @@ public class SymbolEnvironment {
     private boolean isContinuable = false;
     // 是否在上下文调用环境
     private boolean isContextCall = false;
+    // 有局部变量被子 Lambda 捕获的函数名集合
+    private final Set<String> functionsWithCapturedVars = new HashSet<>();
+
+    /**
+     * 标记指定函数的局部变量被子 Lambda 捕获
+     *
+     * @param functionName 函数名
+     */
+    public void markFunctionHasCapturedVars(String functionName) {
+        if (functionName != null) {
+            functionsWithCapturedVars.add(functionName);
+        }
+    }
+
+    /**
+     * 检查指定函数是否有局部变量被子 Lambda 捕获
+     *
+     * @param functionName 函数名
+     * @return 是否有捕获
+     */
+    public boolean hasFunctionCapturedVars(String functionName) {
+        return functionsWithCapturedVars.contains(functionName);
+    }
 
     /**
      * 定义用户函数

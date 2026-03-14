@@ -27,6 +27,9 @@ public class UserFunction implements Function, Symbolic {
 
     private final SymbolFunction symbolInfo;
     private FunctionSignature signature;
+    private final boolean envFree;
+    private final int paramCount;
+    private final int localVarCount;
 
     @NotNull
     private final FunctionDefinition definition;
@@ -38,6 +41,10 @@ public class UserFunction implements Function, Symbolic {
         this.definition = definition;
         this.interpreter = interpreter;
         this.signature = buildSignature(definition);
+        this.envFree = !(definition instanceof LambdaFunctionDefinition)
+                && !definition.hasVariablesCapturedByChildren();
+        this.paramCount = definition.getParameters().size();
+        this.localVarCount = definition.getLocalVariables().size();
     }
 
     /**
@@ -96,11 +103,15 @@ public class UserFunction implements Function, Symbolic {
         // 优先使用调用链传递的 interpreter（async 场景下为 child），回退到定义时的 interpreter
         Interpreter exec = context.getInterpreter();
         if (exec == null) exec = this.interpreter;
+        if (envFree) {
+            callEnvFree(context, exec);
+            return;
+        }
         Environment functionEnv = Intrinsics.bindFunctionParameters(
                 exec.getEnvironment(),
                 definition.getParameters(),
                 context,
-                definition.getLocalVariables().size()
+                localVarCount
         );
         if (definition instanceof LambdaFunctionDefinition) {
             functionEnv.setCaptureOffset(((LambdaFunctionDefinition) definition).getCaptureOffset());
@@ -113,8 +124,46 @@ public class UserFunction implements Function, Symbolic {
             context.setReturnRef(exec.returnValue);
             exec.hasReturn = false;
             exec.returnValue = null;
+        } else if (t.isPrimitive()) {
+            long bits = exec.resultPrimitive;
+            if (t == Type.I) context.setReturnInt((int) bits);
+            else if (t == Type.Z) context.setReturnBool(bits != 0);
+            else if (t == Type.J) context.setReturnLong(bits);
+            else if (t == Type.D) context.setReturnDouble(Double.longBitsToDouble(bits));
+            else if (t == Type.F) context.setReturnFloat(Float.intBitsToFloat((int) bits));
         } else {
-            context.setReturnRef(exec.getResultBoxed(t));
+            context.setReturnRef(exec.resultRef);
+        }
+    }
+
+    /**
+     * Env-free 调用路径：参数已在 FunctionContext 中，局部变量也使用 FunctionContext 数组存储
+     * 跳过 Environment 创建，减少 per-call 开销
+     */
+    private void callEnvFree(FunctionContext<?> context, Interpreter exec) {
+        // 确保 FunctionContext 数组容量足够存储所有局部变量
+        if (localVarCount > paramCount) {
+            context.ensureLocalCapacity(localVarCount);
+        }
+        // 将原始类型参数统一装箱到 refs 数组，使 getLocal 可以跳过 argTypes 检查
+        context.normalizeArgsToRef(paramCount);
+        if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
+            exec.consumeCostStep();
+        }
+        Type t = exec.executeWithFunctionContext(definition.getBody(), context);
+        if (exec.hasReturn) {
+            context.setReturnRef(exec.returnValue);
+            exec.hasReturn = false;
+            exec.returnValue = null;
+        } else if (t.isPrimitive()) {
+            long bits = exec.resultPrimitive;
+            if (t == Type.I) context.setReturnInt((int) bits);
+            else if (t == Type.Z) context.setReturnBool(bits != 0);
+            else if (t == Type.J) context.setReturnLong(bits);
+            else if (t == Type.D) context.setReturnDouble(Double.longBitsToDouble(bits));
+            else if (t == Type.F) context.setReturnFloat(Float.intBitsToFloat((int) bits));
+        } else {
+            context.setReturnRef(exec.resultRef);
         }
     }
 

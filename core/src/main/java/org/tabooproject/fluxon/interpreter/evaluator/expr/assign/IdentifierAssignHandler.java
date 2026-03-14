@@ -11,10 +11,11 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.*;
 import static org.tabooproject.fluxon.interpreter.evaluator.expr.AssignmentEvaluator.*;
 import static org.tabooproject.fluxon.runtime.Type.*;
 
@@ -27,8 +28,19 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
 
     @Override
     public void assign(Interpreter interpreter, AssignExpression expr, Identifier target, Type vt, TokenType op) {
-        Environment env = interpreter.getEnvironment();
         int position = expr.getPosition();
+        // Env-free 路径：读写 FunctionContext 数组（全部使用 boxed Object）
+        FunctionContext<?> ctx = interpreter.activeFunctionContext;
+        if (position >= 0 && ctx != null) {
+            Object value = interpreter.getResultBoxed(vt);
+            if (op != TokenType.ASSIGN) {
+                Object current = ctx.getLocal(position);
+                value = applyCompoundOperation(current, value, op);
+            }
+            ctx.setLocal(position, value);
+            return;
+        }
+        Environment env = interpreter.getEnvironment();
         if (position >= 0) {
             Type varType = env.getVariableType(position);
             if (op != TokenType.ASSIGN) {
@@ -66,6 +78,35 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         String name = target.getValue();
         if (position >= 0) {
             Type varType = ctx.getVariableType(position);
+            // Env-free 模式：读写 JVM 局部变量
+            if (ctx.isEnvFreeMode()) {
+                int jvmSlot = ctx.getJvmSlot(position);
+                if (op == TokenType.ASSIGN) {
+                    Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                    if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                    if (varType.isPrimitive()) {
+                        emitConvert(vt, varType, mv);
+                        emitJvmStore(varType, jvmSlot, mv);
+                    } else {
+                        box(vt, mv);
+                        mv.visitVarInsn(ASTORE, jvmSlot);
+                    }
+                } else {
+                    // 复合赋值：从 JVM 局部变量加载，运算，存回
+                    if (varType.isPrimitive()) {
+                        emitJvmLoad(varType, jvmSlot, mv);
+                        box(varType, mv);
+                        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+                        unbox(varType, mv);
+                        emitJvmStore(varType, jvmSlot, mv);
+                    } else {
+                        mv.visitVarInsn(ALOAD, jvmSlot);
+                        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+                        mv.visitVarInsn(ASTORE, jvmSlot);
+                    }
+                }
+                return;
+            }
             if (op == TokenType.ASSIGN) {
                 Instructions.loadEnvironment(mv, ctx);
                 mv.visitLdcInsn(position);
@@ -115,5 +156,21 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             }
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
         }
+    }
+
+    private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {
+        if (type == Type.I || type == Type.Z) mv.visitVarInsn(ILOAD, slot);
+        else if (type == Type.J) mv.visitVarInsn(LLOAD, slot);
+        else if (type == Type.D) mv.visitVarInsn(DLOAD, slot);
+        else if (type == Type.F) mv.visitVarInsn(FLOAD, slot);
+        else mv.visitVarInsn(ALOAD, slot);
+    }
+
+    private static void emitJvmStore(Type type, int slot, MethodVisitor mv) {
+        if (type == Type.I || type == Type.Z) mv.visitVarInsn(ISTORE, slot);
+        else if (type == Type.J) mv.visitVarInsn(LSTORE, slot);
+        else if (type == Type.D) mv.visitVarInsn(DSTORE, slot);
+        else if (type == Type.F) mv.visitVarInsn(FSTORE, slot);
+        else mv.visitVarInsn(ASTORE, slot);
     }
 }

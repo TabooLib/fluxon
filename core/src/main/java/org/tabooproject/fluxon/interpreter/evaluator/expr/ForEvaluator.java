@@ -13,6 +13,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -41,8 +42,18 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Iterator<?> iterator = Intrinsics.createIterator(collection);
         // 获取变量名列表
         Map<String, Integer> variables = result.getVariables();
-        Environment env = interpreter.getEnvironment();
         boolean bodyIsStatement = result.getBody().getType() == ParseResult.ResultType.STATEMENT;
+        // Env-free 路径：循环变量写入 FunctionContext
+        FunctionContext<?> ctx = interpreter.activeFunctionContext;
+        if (ctx != null && variables.size() == 1) {
+            int pos = variables.values().iterator().next();
+            while (iterator.hasNext()) {
+                ctx.setLocal(pos, iterator.next());
+                if (executeLoopBody(interpreter, result.getBody(), bodyIsStatement)) break;
+            }
+            return Type.VOID;
+        }
+        Environment env = interpreter.getEnvironment();
         // 提前创建类型提供器，避免循环内每次迭代分配 lambda
         IntFunction<Type> typeProvider = env::getVariableType;
         // 迭代集合元素
@@ -131,17 +142,28 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             Map.Entry<String, Integer> entry = variables.entrySet().iterator().next();
             int varPos = entry.getValue();
             Type varType = ctx.getVariableType(varPos);
-            Instructions.loadEnvironment(mv, ctx);
-            mv.visitInsn(SWAP);
-            mv.visitLdcInsn(varPos);
-            mv.visitInsn(SWAP);
-            if (varType.isPrimitive()) {
-                // 拆箱并存入原始槽位
-                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                emitSetLocalPrimitive(varType, mv);
+            if (ctx.isEnvFreeMode()) {
+                // Env-free 模式：直接存入 JVM 局部变量
+                int jvmSlot = ctx.getJvmSlot(varPos);
+                if (varType.isPrimitive()) {
+                    mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                    emitUnboxAndStoreJvm(varType, jvmSlot, mv);
+                } else {
+                    mv.visitVarInsn(ASTORE, jvmSlot);
+                }
             } else {
-                // 存入引用槽位
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitInsn(SWAP);
+                mv.visitLdcInsn(varPos);
+                mv.visitInsn(SWAP);
+                if (varType.isPrimitive()) {
+                    // 拆箱并存入原始槽位
+                    mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                    emitSetLocalPrimitive(varType, mv);
+                } else {
+                    // 存入引用槽位
+                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
+                }
             }
         } else {
             // 多变量：使用 destructure
@@ -202,6 +224,33 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 return;
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), methodName, desc, false);
+    }
+
+    /**
+     * Env-free 模式：拆箱 Number 并存入 JVM 局部变量
+     * 栈输入: [Number]
+     * 栈输出: []
+     */
+    private void emitUnboxAndStoreJvm(Type type, int jvmSlot, MethodVisitor mv) {
+        switch (type.getDescriptor()) {
+            case "I":
+            case "Z":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+                break;
+            case "J":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
+                mv.visitVarInsn(LSTORE, jvmSlot);
+                break;
+            case "D":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
+                mv.visitVarInsn(DSTORE, jvmSlot);
+                break;
+            case "F":
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
+                mv.visitVarInsn(FSTORE, jvmSlot);
+                break;
+        }
     }
 
     @Override

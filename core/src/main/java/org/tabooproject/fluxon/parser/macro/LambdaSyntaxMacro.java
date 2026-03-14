@@ -48,6 +48,10 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
         parser.pushCapture(parentCaptures);
         // 将捕获的父变量名添加到 lambda 作用域，使 lambda 自身参数的索引偏移到捕获变量之后
         int captureOffset = parentCaptures.size();
+        // 标记父函数的变量被子 Lambda 捕获，使其不能使用 env-free 模式
+        if (captureOffset > 0 && previousFunction != null) {
+            parser.getSymbolEnvironment().markFunctionHasCapturedVars(previousFunction);
+        }
         for (String capturedName : parentCaptures.keySet()) {
             parser.defineVariable(capturedName);
         }
