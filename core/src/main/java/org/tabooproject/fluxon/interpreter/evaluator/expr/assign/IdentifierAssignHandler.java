@@ -75,87 +75,109 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
     public void generateBytecode(AssignExpression expr, Identifier target, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv) {
         int position = expr.getPosition();
         TokenType op = expr.getOperator().getType();
-        String name = target.getValue();
         if (position >= 0) {
-            Type varType = ctx.getVariableType(position);
-            // Env-free 模式：读写 JVM 局部变量
             if (ctx.isEnvFreeMode()) {
-                int jvmSlot = ctx.getJvmSlot(position);
-                if (op == TokenType.ASSIGN) {
-                    Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
-                    if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                    if (varType.isPrimitive()) {
-                        emitConvert(vt, varType, mv);
-                        emitJvmStore(varType, jvmSlot, mv);
-                    } else {
-                        box(vt, mv);
-                        mv.visitVarInsn(ASTORE, jvmSlot);
-                    }
-                } else {
-                    // 复合赋值：从 JVM 局部变量加载，运算，存回
-                    if (varType.isPrimitive()) {
-                        emitJvmLoad(varType, jvmSlot, mv);
-                        box(varType, mv);
-                        generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                        unbox(varType, mv);
-                        emitJvmStore(varType, jvmSlot, mv);
-                    } else {
-                        mv.visitVarInsn(ALOAD, jvmSlot);
-                        generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                        mv.visitVarInsn(ASTORE, jvmSlot);
-                    }
-                }
-                return;
-            }
-            if (op == TokenType.ASSIGN) {
-                Instructions.loadEnvironment(mv, ctx);
-                mv.visitLdcInsn(position);
-                Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
-                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                if (varType.isPrimitive()) {
-                    emitConvert(vt, varType, mv);
-                    ReferenceEvaluator.emitSetLocal(varType, mv);
-                } else {
-                    box(vt, mv);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
-                }
+                generateEnvFreeLocal(expr, valueEval, ctx, mv, position, op);
             } else {
-                if (varType.isPrimitive()) {
-                    Instructions.loadEnvironment(mv, ctx);
-                    mv.visitLdcInsn(position);
-                    Instructions.loadEnvironment(mv, ctx);
-                    mv.visitLdcInsn(position);
-                    ReferenceEvaluator.emitGetLocal(varType, mv);
-                    box(varType, mv);
-                    generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                    unbox(varType, mv);
-                    ReferenceEvaluator.emitSetLocal(varType, mv);
-                } else {
-                    Instructions.loadEnvironment(mv, ctx);
-                    mv.visitInsn(org.objectweb.asm.Opcodes.DUP);
-                    mv.visitLdcInsn(position);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
-                    generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                    mv.visitLdcInsn(position);
-                    mv.visitInsn(org.objectweb.asm.Opcodes.SWAP);
-                    mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
-                }
+                generateEnvLocal(expr, valueEval, ctx, mv, position, op);
             }
         } else {
-            Instructions.loadEnvironment(mv, ctx);
-            if (op == TokenType.ASSIGN) {
-                mv.visitLdcInsn(name);
-                generateBoxedValue(valueEval, expr.getValue(), ctx, mv);
-            } else {
-                mv.visitInsn(org.objectweb.asm.Opcodes.DUP);
-                mv.visitLdcInsn(name);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
-                generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                mv.visitLdcInsn(name);
-                mv.visitInsn(org.objectweb.asm.Opcodes.SWAP);
-            }
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
+            generateRootVariable(expr, target, valueEval, ctx, mv, op);
         }
+    }
+
+    /**
+     * Env-free 模式：读写 JVM 局部变量
+     */
+    private void generateEnvFreeLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, int position, TokenType op) {
+        Type varType = ctx.getVariableType(position);
+        int jvmSlot = ctx.getJvmSlot(position);
+        if (op == TokenType.ASSIGN) {
+            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+            if (varType.isPrimitive()) {
+                emitConvert(vt, varType, mv);
+                emitJvmStore(varType, jvmSlot, mv);
+            } else {
+                box(vt, mv);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
+            return;
+        }
+        // 复合赋值：从 JVM 局部变量加载 → 运算 → 存回
+        if (varType.isPrimitive()) {
+            emitJvmLoad(varType, jvmSlot, mv);
+            box(varType, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            unbox(varType, mv);
+            emitJvmStore(varType, jvmSlot, mv);
+        } else {
+            mv.visitVarInsn(ALOAD, jvmSlot);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            mv.visitVarInsn(ASTORE, jvmSlot);
+        }
+    }
+
+    /**
+     * 传统模式：读写 Environment 局部变量槽位
+     */
+    private void generateEnvLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, int position, TokenType op) {
+        Type varType = ctx.getVariableType(position);
+        if (op == TokenType.ASSIGN) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(position);
+            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+            if (varType.isPrimitive()) {
+                emitConvert(vt, varType, mv);
+                ReferenceEvaluator.emitSetLocal(varType, mv);
+            } else {
+                box(vt, mv);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
+            }
+            return;
+        }
+        // 复合赋值：从 Environment 加载 → 运算 → 存回
+        if (varType.isPrimitive()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(position);
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(position);
+            ReferenceEvaluator.emitGetLocal(varType, mv);
+            box(varType, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            unbox(varType, mv);
+            ReferenceEvaluator.emitSetLocal(varType, mv);
+        } else {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(position);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            mv.visitLdcInsn(position);
+            mv.visitInsn(SWAP);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
+        }
+    }
+
+    /**
+     * 根变量赋值：通过 Environment.getRootVariable/setRootVariable
+     */
+    private void generateRootVariable(AssignExpression expr, Identifier target, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, TokenType op) {
+        String name = target.getValue();
+        Instructions.loadEnvironment(mv, ctx);
+        if (op == TokenType.ASSIGN) {
+            mv.visitLdcInsn(name);
+            generateBoxedValue(valueEval, expr.getValue(), ctx, mv);
+        } else {
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(name);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            mv.visitLdcInsn(name);
+            mv.visitInsn(SWAP);
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
     }
 
     private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {
