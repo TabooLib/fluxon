@@ -2,10 +2,9 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr.funccall;
 
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
-import org.tabooproject.fluxon.runtime.Function;
-import org.tabooproject.fluxon.runtime.FunctionContext;
-import org.tabooproject.fluxon.runtime.FunctionContextPool;
-import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -138,6 +137,32 @@ public final class FunctionCallHandlers {
             returnDesc = Type.OBJECT.getDescriptor();
         }
         mv.visitMethodInsn(INVOKESTATIC, Intrinsics.TYPE.getPath(), method, "(" + ctxDesc + ")" + returnDesc, false);
+    }
+
+    /**
+     * 生成 prepareCallDirect 调用的字节码
+     * 栈顶需已加载函数引用（Function 类型），此方法负责其余部分：
+     * loadPool, loadEnv, [function already on stack], argCount → prepareCallDirect → astore
+     *
+     * @param functionLoader 将函数引用压栈的回调，在 pool 和 env 之后执行
+     * @return PrepareCallResult 包含 ctxSlot
+     */
+    public static FunctionCallHandler.PrepareCallResult emitPrepareCallDirect(
+            CodeContext ctx, MethodVisitor mv, int argCount, Runnable functionLoader) {
+        Instructions.loadPool(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
+        functionLoader.run();
+        mv.visitLdcInsn(argCount);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Intrinsics.TYPE.getPath(),
+                "prepareCallDirect",
+                "(" + FunctionContextPool.TYPE + Environment.TYPE + Function.TYPE + "I)" + FunctionContext.TYPE,
+                false
+        );
+        int ctxSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, ctxSlot);
+        return new FunctionCallHandler.PrepareCallResult(ctxSlot);
     }
 
     public static void emitSetArg(Type t, Type expected, MethodVisitor mv) {

@@ -78,7 +78,7 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
             }
             return true;
         }
-        // 无位置信息，无法确定
+        // 无位置信息（包括用户定义函数），无法确定
         return false;
     }
 }

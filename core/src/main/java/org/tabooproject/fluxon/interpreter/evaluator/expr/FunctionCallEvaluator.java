@@ -93,7 +93,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int savedLocalVar = ctx.getLocalVarIndex();
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type[] argTypes = inferArgTypes(args, analyzer);
-        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer);
+        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
         boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
         // 延迟解析时不使用 expectedTypes，让运行时处理类型转换
         Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
@@ -134,7 +134,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return DynamicResolutionHandler.INSTANCE;
     }
 
-    private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes, TypeAnalyzer analyzer) {
+    private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes, TypeAnalyzer analyzer, CodeContext ctx) {
         // 扩展函数已在编译时解析
         if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
             return ResolvedExtensionHandler.INSTANCE;
@@ -149,6 +149,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1 && hasUnknownType(argTypes)) {
             return DeferredOverloadHandler.INSTANCE;
+        }
+        // 用户定义函数：编译期直接引用静态字段，跳过运行时名称查找
+        if (ctx.getUserFunctionOwner(expr.getFunctionName()) != null) {
+            return DirectFunctionHandler.INSTANCE;
         }
         return DynamicResolutionHandler.INSTANCE;
     }

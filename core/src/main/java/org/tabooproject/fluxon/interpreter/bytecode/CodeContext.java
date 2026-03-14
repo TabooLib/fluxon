@@ -12,9 +12,7 @@ import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.OverloadSet;
 import org.tabooproject.fluxon.runtime.Type;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class CodeContext {
 
@@ -66,6 +64,9 @@ public class CodeContext {
     // 延迟重载解析的 OverloadSet 常量池
     private final List<OverloadSet> deferredOverloadSets = new ArrayList<>();
 
+    // 用户定义函数注册表：函数名 → 所属类的 JVM 内部名
+    private final Map<String, String> userFunctionOwners = new HashMap<>();
+
     // 类型分析器（用于编译期优化局部变量存储）
     private TypeAnalyzer typeAnalyzer;
 
@@ -79,6 +80,7 @@ public class CodeContext {
         this.className = parent.className;
         this.superClassName = parent.superClassName;
         this.definitions.addAll(parent.definitions);
+        this.userFunctionOwners.putAll(parent.userFunctionOwners);
     }
 
     public void addDefinition(Definition definition) {
@@ -358,6 +360,26 @@ public class CodeContext {
      */
     public List<OverloadSet> getDeferredOverloadSets() {
         return deferredOverloadSets;
+    }
+
+    /**
+     * 注册用户定义函数（编译期直接引用优化）
+     *
+     * @param name       函数名
+     * @param ownerClass 定义该函数静态字段的类的 JVM 内部名
+     */
+    public void registerUserFunction(String name, String ownerClass) {
+        userFunctionOwners.put(name, ownerClass);
+    }
+
+    /**
+     * 获取用户定义函数的所属类
+     *
+     * @param name 函数名
+     * @return 所属类的 JVM 内部名，不存在则返回 null
+     */
+    public String getUserFunctionOwner(String name) {
+        return userFunctionOwners.get(name);
     }
 
     /**

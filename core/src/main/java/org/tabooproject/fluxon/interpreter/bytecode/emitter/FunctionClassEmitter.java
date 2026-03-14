@@ -7,6 +7,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.definition.Annotation;
+import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -61,6 +62,15 @@ public class FunctionClassEmitter extends ClassEmitter {
     public EmitResult emit() {
         List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
+        // 传播用户函数注册表，使函数体内的调用可以直接引用静态字段
+        for (Definition def : generator.getDefinitions()) {
+            if (def instanceof FunctionDefinition) {
+                FunctionDefinition fd = (FunctionDefinition) def;
+                if (fd.isRegisterToRoot()) {
+                    funcCtx.registerUserFunction(fd.getName(), parentClassName);
+                }
+            }
+        }
         // 类声明
         beginClass(ACC_PUBLIC, fileName);
         emitSourceMetadataFields(source, fileName);

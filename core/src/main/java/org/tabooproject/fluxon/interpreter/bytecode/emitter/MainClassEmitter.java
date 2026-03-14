@@ -131,6 +131,8 @@ public class MainClassEmitter extends ClassEmitter {
                 FunctionDefinition funcDef = (FunctionDefinition) definition;
                 if (funcDef.isRegisterToRoot()) {
                     emitUserFunctionRegister(funcDef, mv, ctx);
+                    // 注册到 CodeContext，使调用点可以直接引用静态字段
+                    ctx.registerUserFunction(funcDef.getName(), className);
                 }
             }
         }
