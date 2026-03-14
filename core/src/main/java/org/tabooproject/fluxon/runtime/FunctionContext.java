@@ -476,6 +476,11 @@ public final class FunctionContext<Target> implements AutoCloseable {
             refs = new Object[count];
             argTypes = new byte[count];
             capacity = count;
+        } else if (capacity > count) {
+            // 清除 count 之后的旧引用防止 GC 泄漏
+            for (int i = count; i < capacity; i++) {
+                refs[i] = null;
+            }
         }
     }
 

@@ -43,17 +43,21 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         Object[] cached = expr.cachedResolution;
         if (cached != null) {
             Function fn = (Function) cached[0];
-            // 扩展函数需要校验 target class 是否匹配
             Class<?> guardClass = (Class<?>) cached[2];
-            if (guardClass != null) {
-                Object target = env.getTarget();
-                if (target == null || target.getClass() != guardClass) {
-                    cached = null;
-                }
+            Object target = env.getTarget();
+            Class<?> targetClass = target != null ? target.getClass() : null;
+            if (targetClass != guardClass) {
+                cached = null;
             }
             if (cached != null) {
-                FunctionContext<?> ctx = interpreter.getPool().borrow(fn, env.getTarget(), argCount, env);
-                evaluateArguments(interpreter, ctx, args, argCount, (Type[]) cached[1]);
+                FunctionContextPool pool = interpreter.getPool();
+                FunctionContext<?> ctx = pool.borrow(fn, env.getTarget(), argCount, env);
+                try {
+                    evaluateArguments(interpreter, ctx, args, argCount, (Type[]) cached[1]);
+                } catch (Throwable ex) {
+                    pool.releaseTop();
+                    throw ex;
+                }
                 return FunctionCallHandlers.executeSync(interpreter, ctx, fn);
             }
         }
@@ -62,17 +66,20 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         FunctionContext<?> ctx = handler.prepareCall(interpreter, expr, argCount);
         boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
         Type[] expectedTypes = getExpectedTypes(ctx.getFunction(), isDeferred);
-        evaluateArguments(interpreter, ctx, args, argCount, expectedTypes);
+        try {
+            evaluateArguments(interpreter, ctx, args, argCount, expectedTypes);
+        } catch (Throwable ex) {
+            ctx.getPool().releaseTop();
+            throw ex;
+        }
         // 缓存非延迟、非异步的函数解析结果（单引用写入保证原子性）
         if (!isDeferred) {
             Function resolved = ctx.getFunction();
             if (!resolved.isAsync() && !resolved.isPrimarySync()) {
-                Class<?> extGuard = null;
-                if (expr.getExtensionPosition() != null) {
-                    Object target = env.getTarget();
-                    extGuard = target != null ? target.getClass() : null;
-                }
-                expr.cachedResolution = new Object[]{resolved, expectedTypes, extGuard};
+                // 始终记录 target class 作为缓存 guard，防止 target 类型变化时使用错误缓存
+                Object target = env.getTarget();
+                Class<?> guard = target != null ? target.getClass() : null;
+                expr.cachedResolution = new Object[]{resolved, expectedTypes, guard};
             }
         }
         return handler.finishCall(interpreter, expr, ctx);
