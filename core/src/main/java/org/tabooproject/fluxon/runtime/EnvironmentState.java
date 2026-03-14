@@ -9,7 +9,6 @@ import org.tabooproject.fluxon.runtime.collection.CopyOnWriteMap;
 
 import java.io.PrintStream;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -23,12 +22,12 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class EnvironmentState {
 
-    // 系统函数 + 用户定义函数（CopyOnWrite 隔离）
+    // 系统函数（CopyOnWrite 引用，永不 detach）
     @NotNull
-    final Map<String, OverloadSet> functions;
-    // 用户动态定义的函数名称（区分系统函数，用于增量解析）
+    final Map<String, OverloadSet> systemFunctions;
+    // 用户动态定义的函数（独立 overlay，避免触发系统函数 map 的全量复制）
     @Nullable
-    Set<String> userFunctionNames;
+    Map<String, OverloadSet> userFunctions;
 
     // 根变量表（CopyOnWrite 隔离）
     @NotNull
@@ -56,7 +55,7 @@ public final class EnvironmentState {
     long costPerStep = 1L;
 
     EnvironmentState(@NotNull Map<String, OverloadSet> functions, @NotNull Map<String, Object> rootVariables) {
-        this.functions = CopyOnWriteMap.wrap(functions);
+        this.systemFunctions = CopyOnWriteMap.wrap(functions);
         this.rootVariables = CopyOnWriteMap.wrap(rootVariables);
         this.out = System.out;
         this.err = System.err;

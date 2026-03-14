@@ -25,6 +25,13 @@ tasks.register<JavaExec>("benchmark") {
     jvmArgs("-XX:+UseSerialGC", "-Xmn7g")
 }
 
+tasks.register<JavaExec>("benchmarkEnv") {
+    group = "fluxon"
+    description = "Run Environment benchmark"
+    mainClass.set("org.tabooproject.fluxon.benchmark.EnvironmentReuseBenchmark")
+    classpath = sourceSets["test"].runtimeClasspath
+}
+
 tasks.jar {
     archiveBaseName = "fluxon-core"
 }

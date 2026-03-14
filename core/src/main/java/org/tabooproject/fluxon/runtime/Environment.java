@@ -39,9 +39,11 @@ public class Environment {
     // 局部变量 - 引用类型
     @Nullable
     protected Object[] localRefs;
-    // 局部变量对照表
+    // 局部变量对照表（按需分配，仅调试/反射场景使用）
     @Nullable
     protected String[] localVariableNames;
+    // 局部变量数量（用于按需分配 localVariableNames）
+    protected int localVariableCount;
     // 局部变量类型（解释模式下使用，作用域隔离）
     @Nullable
     protected Type[] variableTypes;
@@ -65,6 +67,7 @@ public class Environment {
         this.root = this;
         this.parent = null;
         this.rootState = new EnvironmentState(functions, values);
+        this.localVariableCount = localVariableCount;
         this.localPrimitives = localVariableCount > 0 ? new long[localVariableCount] : null;
         this.localRefs = localVariableCount > 0 ? new Object[localVariableCount] : null;
         this.localVariableNames = localVariableCount > 0 ? new String[localVariableCount] : null;
@@ -81,7 +84,7 @@ public class Environment {
         this.rootState = null;
         this.localPrimitives = localVariables > 0 ? new long[localVariables] : null;
         this.localRefs = localVariables > 0 ? new Object[localVariables] : null;
-        this.localVariableNames = localVariables > 0 ? new String[localVariables] : null;
+        this.localVariableCount = localVariables;
         this.target = parentEnv.target;
     }
 
@@ -115,18 +118,17 @@ public class Environment {
      */
     public void defineRootFunction(String name, Function value) {
         EnvironmentState m = root.rootState;
-        OverloadSet existing = m.functions.get(name);
+        if (m.userFunctions == null) {
+            m.userFunctions = new HashMap<>();
+        }
+        OverloadSet existing = m.userFunctions.get(name);
         if (existing != null) {
             existing.addFirst(value);
         } else {
             OverloadSet set = new OverloadSet(name);
             set.add(value);
-            m.functions.put(name, set);
+            m.userFunctions.put(name, set);
         }
-        if (m.userFunctionNames == null) {
-            m.userFunctionNames = new HashSet<>();
-        }
-        m.userFunctionNames.add(name);
     }
 
     /**
@@ -153,7 +155,19 @@ public class Environment {
     @Export
     @NotNull
     public Function getFunction(String name) {
-        OverloadSet set = root.rootState.functions.get(name);
+        EnvironmentState m = root.rootState;
+        // 先查用户函数 overlay
+        if (m.userFunctions != null) {
+            OverloadSet set = m.userFunctions.get(name);
+            if (set != null) {
+                Function function = set.first();
+                if (function != null) {
+                    return function;
+                }
+            }
+        }
+        // 再查系统函数
+        OverloadSet set = m.systemFunctions.get(name);
         if (set != null) {
             Function function = set.first();
             if (function != null) {
@@ -172,7 +186,14 @@ public class Environment {
     @Export
     @Nullable
     public Function getFunctionOrNull(String name) {
-        OverloadSet set = root.rootState.functions.get(name);
+        EnvironmentState m = root.rootState;
+        if (m.userFunctions != null) {
+            OverloadSet set = m.userFunctions.get(name);
+            if (set != null) {
+                return set.first();
+            }
+        }
+        OverloadSet set = m.systemFunctions.get(name);
         return set != null ? set.first() : null;
     }
 
@@ -228,7 +249,14 @@ public class Environment {
      */
     @Export
     public Map<String, OverloadSet> getRootFunctions() {
-        return root.rootState.functions;
+        EnvironmentState m = root.rootState;
+        if (m.userFunctions == null || m.userFunctions.isEmpty()) {
+            return m.systemFunctions;
+        }
+        // 合并视图：用户函数覆盖同名系统函数
+        Map<String, OverloadSet> merged = new HashMap<>(m.systemFunctions);
+        merged.putAll(m.userFunctions);
+        return merged;
     }
 
     /**
@@ -239,17 +267,10 @@ public class Environment {
      */
     public Map<String, OverloadSet> getUserFunctions() {
         EnvironmentState m = root.rootState;
-        if (m.userFunctionNames == null || m.userFunctionNames.isEmpty()) {
+        if (m.userFunctions == null || m.userFunctions.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<String, OverloadSet> result = new HashMap<>();
-        for (String name : m.userFunctionNames) {
-            OverloadSet set = m.functions.get(name);
-            if (set != null) {
-                result.put(name, set);
-            }
-        }
-        return result;
+        return m.userFunctions;
     }
 
     /**
@@ -293,6 +314,7 @@ public class Environment {
      */
     public void initializeRootLocalVariables(int count) {
         if (this == root && count > 0 && localRefs == null) {
+            this.localVariableCount = count;
             this.localPrimitives = new long[count];
             this.localRefs = new Object[count];
             this.localVariableNames = new String[count];
@@ -516,9 +538,12 @@ public class Environment {
     }
 
     /**
-     * 获取当前环境中的所有局部变量名
+     * 获取当前环境中的所有局部变量名（按需分配）
      */
     public String[] getLocalVariableNames() {
+        if (localVariableNames == null && localVariableCount > 0) {
+            localVariableNames = new String[localVariableCount];
+        }
         return localVariableNames;
     }
 
