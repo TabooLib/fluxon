@@ -16,15 +16,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class TypeConversionTest extends MemberAccessTestBase {
 
-    // ========== char 类型相关辅助类 ==========
-
     public static class CharOnlyTarget {
         public String acceptChar(char value) {
             return "char:" + (int) value;
         }
     }
-
-    // ========== 基本类型参数 ==========
 
     @Test
     public void testIntParameter() {
@@ -47,8 +43,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
         assertEquals("long:9999999999", interpret("&obj.processLong(9999999999)"));
     }
 
-    // ========== 数值类型自动转换 ==========
-
     @Test
     public void testIntToDoubleConversion() {
         // int 参数传给 double 形参
@@ -61,8 +55,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
         assertEquals("long:100", interpret("&obj.processLong(100)"));
     }
 
-    // ========== 包装类型 ==========
-
     @Test
     public void testBoxedInteger() {
         assertEquals("Integer:42", interpret("&obj.intValue(42)"));
@@ -72,8 +64,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
     public void testBoxedDouble() {
         assertEquals("Double:3.14", interpret("&obj.doubleValue(3.14)"));
     }
-
-    // ========== null 参数 ==========
 
     @Test
     public void testNullStringParameter() {
@@ -100,14 +90,10 @@ public class TypeConversionTest extends MemberAccessTestBase {
         assertEquals("object:Integer", interpret("&obj.processObject(42)"));
     }
 
-    // ========== 混合参数类型 ==========
-
     @Test
     public void testMixedArgs() {
         assertEquals("hello:42:true:3.14", interpret("&obj.mixedArgs('hello', 42, true, 3.14)"));
     }
-
-    // ========== 集合类型参数 ==========
 
     @Test
     public void testCollectionParameter() {
@@ -118,8 +104,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
     public void testEmptyCollectionParameter() {
         assertEquals("collection:0", interpret("&obj.processCollection([])"));
     }
-
-    // ========== 重载方法的类型匹配 ==========
 
     @Test
     public void testOverloadIntVsString() {
@@ -134,8 +118,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
         assertEquals("overload:2:a:1", interpret("&obj.overload('a', 1)"));
         assertEquals("overload:2:1:b", interpret("&obj.overload(1, 'b')"));
     }
-
-    // ========== 编译模式类型转换 ==========
 
     @Test
     public void testCompiledIntToDouble() throws Exception {
@@ -157,8 +139,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
         assertEquals("overload:1:99", compile("&obj.overload(99)", "TestCompiledOverloadInt"));
         assertEquals("overload:1:test", compile("&obj.overload('test')", "TestCompiledOverloadStr"));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testTypeConversionConsistency() throws Exception {
@@ -186,8 +166,6 @@ public class TypeConversionTest extends MemberAccessTestBase {
             assertEquals(interpretResult, compileResult, "Mismatch for: " + sources[i]);
         }
     }
-
-    // ========== char 类型不兼容测试 ==========
 
     @Test
     public void testByteToCharIsNotAssignable() throws Exception {

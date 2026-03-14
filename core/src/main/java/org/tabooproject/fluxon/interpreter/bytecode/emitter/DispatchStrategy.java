@@ -84,8 +84,6 @@ public class DispatchStrategy {
         return !allMethods.isEmpty();
     }
 
-    // ========== 内部分发方法 ==========
-
     /**
      * 生成方法名相等性检查并跳转的字节码
      */
@@ -180,8 +178,6 @@ public class DispatchStrategy {
             mv.visitJumpInsn(GOTO, defaultLabel);
         }
     }
-
-    // ========== 工具方法 ==========
 
     /**
      * 构建方法映射表（方法名称 → 同名的多个方法）

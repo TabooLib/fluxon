@@ -202,8 +202,6 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
         }
     }
 
-    // ==================== Compilable 接口实现 ====================
-
     @Override
     public CompiledScript compile(String script) throws ScriptException {
         try {
@@ -256,8 +254,6 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
     public int getCompileCacheSize() {
         return compileCache.size();
     }
-
-    // ==================== Invocable 接口实现 ====================
 
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
@@ -370,8 +366,6 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
         threadLocalEnvironment.remove();
     }
 
-    // ==================== 执行成本限制 ====================
-
     /**
      * 应用执行成本限制到解释器
      */
@@ -397,8 +391,6 @@ public class FluxonScriptEngine implements ScriptEngine, Compilable, Invocable {
             }
         }
     }
-
-    // ==================== 错误处理 ====================
 
     /**
      * 将 FluxonRuntimeError 转换为 ScriptException，保留行列号信息

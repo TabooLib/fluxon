@@ -334,8 +334,6 @@ public class FluxonTestUtil {
         return new TestResult(null, null, compileResult, compileEnv, 0, compileTime, executeTime);
     }
 
-    // ========== 异常测试支持 ==========
-
     /**
      * 测试预期抛出异常的场景
      *
@@ -365,8 +363,6 @@ public class FluxonTestUtil {
             assertTrue(e.getMessage() != null && e.getMessage().contains(expectedMessageContains), "Expected message containing '" + expectedMessageContains + "' but got: " + e.getMessage());
         }
     }
-
-    // ========== 带环境配置的测试 ==========
 
     /**
      * 静默测试：支持环境预配置
@@ -447,8 +443,6 @@ public class FluxonTestUtil {
         long interpretTime = System.currentTimeMillis() - startInterpret;
         return new TestResult(interpretResult, interpretEnv, null, null, interpretTime, 0, 0);
     }
-
-    // ========== 静态断言方法 ==========
 
     /**
      * 断言解释结果和编译结果匹配

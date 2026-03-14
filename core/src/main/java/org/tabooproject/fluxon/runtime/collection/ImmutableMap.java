@@ -52,8 +52,6 @@ public final class ImmutableMap extends AbstractMap<Object, Object> implements S
         this.values = values;
     }
 
-    // ==================== 工厂方法 ====================
-
     public static ImmutableMap empty() {
         return EMPTY;
     }
@@ -87,8 +85,6 @@ public final class ImmutableMap extends AbstractMap<Object, Object> implements S
             default: return new ImmutableMap(keys, values);
         }
     }
-
-    // ==================== Map 接口实现 ====================
 
     @Override
     public Object get(Object key) {
@@ -165,8 +161,6 @@ public final class ImmutableMap extends AbstractMap<Object, Object> implements S
     public Set<Entry<Object, Object>> entrySet() {
         return new EntrySet();
     }
-
-    // ==================== 内部类 ====================
 
     private Object getKeyAt(int index) {
         if (size < 0) {

@@ -109,20 +109,14 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 public class JSR223Benchmark {
 
-    // ==================== 测试脚本 ====================
-
     private static final String SIMPLE_EXPR = "1 + 2 * 3";
     private static final String VAR_EXPR = "&x + &y * 2";
     private static final String FUNC_DEF = "def add(a, b) = &a + &b";
     private static final String FUNC_CALL = "add(1, 2)";
 
-    // ==================== JSR-223 对象 ====================
-
     private ScriptEngine jsr223Engine;
     private CompiledScript jsr223Compiled;
     private CompiledScript jsr223CompiledWithVars;
-
-    // ==================== Fluxon API 对象 ====================
 
     private Environment fluxonEnv;
     private Interpreter fluxonInterpreter;
@@ -134,7 +128,6 @@ public class JSR223Benchmark {
 
     @Setup(Level.Trial)
     public void setup() throws Exception {
-        // ========== JSR-223 初始化 ==========
         jsr223Engine = new FluxonScriptEngine(new FluxonScriptEngineFactory());
         jsr223Engine.put("x", 10);
         jsr223Engine.put("y", 20);
@@ -146,7 +139,6 @@ public class JSR223Benchmark {
         // 定义函数
         jsr223Engine.eval(FUNC_DEF);
 
-        // ========== Fluxon API 初始化 ==========
         fluxonEnv = FluxonRuntime.getInstance().newEnvironment();
         fluxonEnv.defineRootVariable("x", 10);
         fluxonEnv.defineRootVariable("y", 20);
@@ -165,8 +157,6 @@ public class JSR223Benchmark {
         fluxonAddFunction = fluxonEnv.getFunction("add");
     }
 
-    // ==================== 简单表达式：解释执行 ====================
-
     @Benchmark
     public void jsr223_interpret_simple(Blackhole bh) throws ScriptException {
         bh.consume(jsr223Engine.eval(SIMPLE_EXPR));
@@ -176,8 +166,6 @@ public class JSR223Benchmark {
     public void fluxon_interpret_simple(Blackhole bh) {
         bh.consume(Fluxon.eval(SIMPLE_EXPR));
     }
-
-    // ==================== 简单表达式：编译执行 ====================
 
     @Benchmark
     public void jsr223_compiled_simple(Blackhole bh) throws ScriptException {
@@ -189,8 +177,6 @@ public class JSR223Benchmark {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         bh.consume(fluxonCompiled.eval(env));
     }
-
-    // ==================== 带变量表达式：解释执行 ====================
 
     @Benchmark
     public void jsr223_interpret_withVars(Blackhole bh) throws ScriptException {
@@ -206,8 +192,6 @@ public class JSR223Benchmark {
         env.defineRootVariable("y", 20);
         bh.consume(Fluxon.eval(SIMPLE_EXPR, env));
     }
-
-    // ==================== 带变量表达式：编译执行 ====================
 
     @Benchmark
     public void jsr223_compiled_withVars(Blackhole bh) throws ScriptException {
@@ -229,15 +213,11 @@ public class JSR223Benchmark {
         bh.consume(fluxonCompiledWithVars.eval(env));
     }
 
-    // ==================== 环境复用场景（Fluxon API 优势场景） ====================
-
     @Benchmark
     public void fluxon_compiled_reuseEnv(Blackhole bh) {
         // 复用已有环境 - 展示 Fluxon API 的最佳性能
         bh.consume(fluxonCompiledWithVars.eval(fluxonEnv));
     }
-
-    // ==================== 函数调用 ====================
 
     @Benchmark
     public void jsr223_invokeFunction(Blackhole bh) throws ScriptException, NoSuchMethodException {
@@ -252,8 +232,6 @@ public class JSR223Benchmark {
             bh.consume(ctx.getReturnRef());
         }
     }
-
-    // ==================== 变量注入开销隔离测试 ====================
 
     @Benchmark
     public void jsr223_varInjection_overhead(Blackhole bh) throws ScriptException {
@@ -272,8 +250,6 @@ public class JSR223Benchmark {
         env.defineRootVariable("y", 20);
         bh.consume(Fluxon.eval(VAR_EXPR, env));
     }
-
-    // ==================== 主方法：可直接运行 ====================
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(args);

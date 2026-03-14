@@ -12,8 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class VarargsTest extends MemberAccessTestBase {
 
-    // ========== 字符串可变参数 ==========
-
     @Test
     public void testVarargsNoArgs() {
         assertEquals("varargs:0", interpret("&obj.varargs()"));
@@ -38,8 +36,6 @@ public class VarargsTest extends MemberAccessTestBase {
     public void testVarargsManyArgs() {
         assertEquals("varargs:5", interpret("&obj.varargs('a', 'b', 'c', 'd', 'e')"));
     }
-
-    // ========== 数值可变参数 ==========
 
     @Test
     public void testVarargsSumNoArgs() {
@@ -66,8 +62,6 @@ public class VarargsTest extends MemberAccessTestBase {
         assertEquals(150, interpret("&obj.varargsSum(10, 20, 30, 40, 50)"));
     }
 
-    // ========== 传入数组参数 ==========
-
     @Test
     public void testVarargsWithArrayArgument() throws Exception {
         Object result = interpretAndCompile("&obj.varargs(&obj.getArray())");
@@ -79,8 +73,6 @@ public class VarargsTest extends MemberAccessTestBase {
         Object result = interpretAndCompile("&obj.varargsSum(&obj.getPrimitiveArray())");
         assertEquals(15, result);
     }
-
-    // ========== 编译模式可变参数 ==========
 
     @Test
     public void testCompiledVarargsNoArgs() throws Exception {
@@ -96,8 +88,6 @@ public class VarargsTest extends MemberAccessTestBase {
     public void testCompiledVarargsSumMultiple() throws Exception {
         assertEquals(100, compile("&obj.varargsSum(10, 20, 30, 40)"));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testVarargsConsistencyNoArgs() throws Exception {
@@ -117,8 +107,6 @@ public class VarargsTest extends MemberAccessTestBase {
         assertEquals(interpret(source), compile(source));
     }
 
-    // ========== 可变参数与链式调用 ==========
-
     @Test
     public void testVarargsChained() {
         assertEquals("varargs:2", interpret("&obj.getSelf().varargs('a', 'b')"));
@@ -128,8 +116,6 @@ public class VarargsTest extends MemberAccessTestBase {
     public void testVarargsSumChained() {
         assertEquals(60, interpret("&obj.getSelf().varargsSum(10, 20, 30)"));
     }
-
-    // ========== 可变参数在循环中 ==========
 
     @Test
     public void testVarargsInLoop() {
@@ -143,8 +129,6 @@ public class VarargsTest extends MemberAccessTestBase {
             "&sum";
         assertEquals(18, interpret(source)); // 6 * 3
     }
-
-    // ========== 可变参数作为表达式 ==========
 
     @Test
     public void testVarargsSumInArithmetic() {

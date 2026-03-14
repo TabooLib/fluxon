@@ -51,8 +51,6 @@ public final class ImmutableList<E> extends AbstractList<E> implements RandomAcc
         this.elements = elements;
     }
 
-    // ==================== 工厂方法 ====================
-
     public static <E> ImmutableList<E> empty() {
         return (ImmutableList<E>) EMPTY;
     }
@@ -86,8 +84,6 @@ public final class ImmutableList<E> extends AbstractList<E> implements RandomAcc
             default: return new ImmutableList<>(elements);
         }
     }
-
-    // ==================== List 接口实现 ====================
 
     @Override
     public E get(int index) {

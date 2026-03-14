@@ -21,8 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("deprecation")
 public class ErrorHandlingTest extends MemberAccessTestBase {
 
-    // ========== 特性开关测试 ==========
-
     @Test
     public void testFeatureFlagDisabled() {
         CompilationContext ctx = new CompilationContext("obj.field");
@@ -49,8 +47,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
             fail("Should be able to parse with reflection enabled: " + e.getMessage());
         }
     }
-
-    // ========== null 对象访问 ==========
 
     @Test
     public void testNullObjectFieldAccess() {
@@ -105,8 +101,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         }
     }
 
-    // ========== 不存在的成员 ==========
-
     @Test
     public void testNonExistentField() {
         try {
@@ -143,8 +137,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         }
     }
 
-    // ========== 私有成员访问 ==========
-
     @Test
     public void testPrivateFieldAccess() {
         try {
@@ -170,8 +162,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
                     || e.getMessage().contains("Member"));
         }
     }
-
-    // ========== 参数不匹配 ==========
 
     @Test
     public void testWrongArgumentType() {
@@ -211,8 +201,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
                     || e.getMessage().contains("Member"));
         }
     }
-
-    // ========== 方法抛出异常 ==========
 
     @Test
     public void testMethodThrowsRuntimeException() {
@@ -258,8 +246,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
         }
     }
 
-    // ========== 链式调用中的 null ==========
-
     @Test
     public void testNullInChain() {
         try {
@@ -285,8 +271,6 @@ public class ErrorHandlingTest extends MemberAccessTestBase {
                     || e.getCause() instanceof NullPointerException);
         }
     }
-
-    // ========== 编译模式异常一致性 ==========
 
     @Test
     public void testExceptionConsistencyNullObject() {

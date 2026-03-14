@@ -373,8 +373,6 @@ public abstract class ClassEmitter {
      */
     public abstract EmitResult emit();
 
-    // ========== Getter ==========
-
     public String getClassName() {
         return className;
     }

@@ -38,8 +38,6 @@ public class TypeTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // === Is Operator Tests ===
-
     @Test
     public void testIsOperatorWithStringLowercase() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("\"hello\" is string");
@@ -187,8 +185,6 @@ public class TypeTest {
         );
         FluxonTestUtil.assertBothEqual(true, result);
     }
-
-    // === When Expression with IS Tests ===
 
     @Test
     public void testWhenIsString() {

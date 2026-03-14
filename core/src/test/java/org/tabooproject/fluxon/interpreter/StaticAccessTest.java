@@ -12,8 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class StaticAccessTest {
 
-    // ==================== Part 1: forName().staticMethod() 测试 ====================
-
     @Test
     public void testForNameStaticMethod() {
         // 调用 Integer.parseInt 静态方法
@@ -40,8 +38,6 @@ public class StaticAccessTest {
         );
         FluxonTestUtil.assertBothEqual(255, result);
     }
-
-    // ==================== Part 2: static 关键字语法测试 ====================
 
     @Test
     public void testStaticMethodCall() {
@@ -118,8 +114,6 @@ public class StaticAccessTest {
         FluxonTestUtil.assertBothEqual("1 + 2 = 3", result);
     }
 
-    // ==================== 错误处理测试 ====================
-
     @Test
     public void testStaticMethodNotFound() {
         // 调用不存在的静态方法应该抛出异常
@@ -135,8 +129,6 @@ public class StaticAccessTest {
             FluxonTestUtil.interpret("static com.nonexistent.FakeClass.method()");
         });
     }
-
-    // ==================== Part 3: 括号语法消除歧义测试 ====================
 
     @Test
     public void testParenthesizedClassNameField() {

@@ -15,7 +15,6 @@ import java.util.Map;
  */
 public class TestObject {
     
-    // ========== 公共字段 ==========
     public String publicField = "public-value";
     public int intField = 42;
     public boolean booleanField = true;
@@ -32,14 +31,11 @@ public class TestObject {
     public static String staticField = "static-value";
     public final String finalField = "final-value";
     
-    // ========== 私有字段 ==========
     private String privateField = "private-value";
     protected String protectedField = "protected-value";
     
-    // ========== 嵌套对象 ==========
     public TestObject nested = null;
     
-    // ========== 无参方法 ==========
     public String getName() {
         return "test-object";
     }
@@ -48,7 +44,6 @@ public class TestObject {
         return 100;
     }
     
-    // ========== 有参方法 ==========
     public String concat(String a, String b) {
         return a + b;
     }
@@ -57,7 +52,6 @@ public class TestObject {
         return a + b;
     }
     
-    // ========== 重载方法 ==========
     public String process(String value) {
         return "string:" + value;
     }
@@ -70,7 +64,6 @@ public class TestObject {
         return "concat:" + a + b;
     }
     
-    // ========== 链式调用支持 ==========
     public TestObject getSelf() {
         return this;
     }
@@ -80,8 +73,6 @@ public class TestObject {
         obj.publicField = "nested-value";
         return obj;
     }
-    
-    // ========== 带@Export注解的方法（用于ClassBridge测试）==========
     
     /**
      * 带Export注解的方法，用于测试ClassBridge优先级
@@ -101,8 +92,6 @@ public class TestObject {
     public int bridgedAdd(int a, int b) {
         return a + b + 1000; // 加1000以区分是否走了bridge
     }
-    
-    // ========== 边界测试方法 ==========
     
     // 返回基本类型
     public boolean isEnabled() {

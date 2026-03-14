@@ -21,8 +21,6 @@ public class EncodeTest {
         FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT.add("fs:crypto");
     }
 
-    // ========== Base64 编码/解码测试 ==========
-
     @Test
     public void testBase64EncodeDecode() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -89,8 +87,6 @@ public class EncodeTest {
         assertEquals("", result.getCompileResult());
     }
 
-    // ========== MD5 哈希测试 ==========
-
     @Test
     public void testMd5Hash() {
         FluxonTestUtil.TestResult result;
@@ -112,8 +108,6 @@ public class EncodeTest {
         assertNotNull(result.getCompileResult());
         assertEquals(result.getInterpretResult(), result.getCompileResult());
     }
-
-    // ========== SHA 哈希测试 ==========
 
     @Test
     public void testSha1Hash() {
@@ -157,8 +151,6 @@ public class EncodeTest {
         assertEquals(true, result.getInterpretResult());
         assertEquals(true, result.getCompileResult());
     }
-
-    // ========== 十六进制编码/解码测试 ==========
 
     @Test
     public void testHexEncodeDecode() {
@@ -223,8 +215,6 @@ public class EncodeTest {
         assertEquals("", result.getCompileResult());
     }
 
-    // ========== Unicode 编码/解码测试 ==========
-
     @Test
     public void testUnicodeEncodeDecode() {
         FluxonTestUtil.TestResult result;
@@ -285,8 +275,6 @@ public class EncodeTest {
         assertEquals("", result.getCompileResult());
     }
 
-    // ========== 链式编码测试 ==========
-
     @Test
     public void testChainedEncoding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -326,8 +314,6 @@ public class EncodeTest {
         assertEquals("[YQ==, Yg==, Yw==]", result.getCompileResult().toString());
     }
 
-    // ========== 条件表达式中的编码测试 ==========
-
     @Test
     public void testEncodingInConditional() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -347,8 +333,6 @@ public class EncodeTest {
         assertEquals(true, result.getInterpretResult());
         assertEquals(true, result.getCompileResult());
     }
-
-    // ========== 上下文调用测试 ==========
 
     @Test
     public void testEncodingWithContextCall() {
@@ -372,8 +356,6 @@ public class EncodeTest {
         assertEquals("8B1A9953C4611296A827ABF8C47804D7", result.getInterpretResult());
         assertEquals("8B1A9953C4611296A827ABF8C47804D7", result.getCompileResult());
     }
-
-    // ========== 边界情况和性能测试 ==========
 
     @Test
     public void testLongString() {

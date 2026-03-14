@@ -128,8 +128,6 @@ public class InterpolationFunctionCallTest {
         assertTrue(result.isMatch(), "解释器和编译器结果应一致");
     }
 
-    // ==================== 边界测试 ====================
-
     @Test
     @DisplayName("插值在字符串开头")
     void testInterpolationAtStart() {

@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ContextCallTest {
 
-    // ========== 基础上下文调用测试 ==========
-
     // 1755611940830L = 2025-08-19 21:59:00
     @Test
     public void testBasicContextCall() {
@@ -75,8 +73,6 @@ public class ContextCallTest {
         assertEquals(false, result.getCompileResult());
     }
 
-    // ========== 操作符优先级测试 ==========
-
     @Test
     public void testOperatorPrecedence() {
         FluxonTestUtil.TestResult result;
@@ -128,8 +124,6 @@ public class ContextCallTest {
         assertEquals("HE", result.getCompileResult());
     }
 
-    // ========== 一元运算符测试 ==========
-
     @Test
     public void testUnaryWithReference() {
         FluxonTestUtil.TestResult result;
@@ -143,8 +137,6 @@ public class ContextCallTest {
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
     }
-
-    // ========== 混合运算符测试 ==========
 
     @Test
     public void testMixedOperators() {
@@ -177,8 +169,6 @@ public class ContextCallTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 表达式中的引用测试 ==========
-
     @Test
     public void testReferenceInExpressions() {
         FluxonTestUtil.TestResult result;
@@ -201,8 +191,6 @@ public class ContextCallTest {
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
     }
-
-    // ========== 上下文调用链测试 ==========
 
     @Test
     public void testContextCallChaining() {
@@ -227,8 +215,6 @@ public class ContextCallTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== Elvis 操作符测试 ==========
-
     @Test
     public void testElvisWithReference() {
         FluxonTestUtil.TestResult result;
@@ -252,8 +238,6 @@ public class ContextCallTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 赋值与引用测试 ==========
-
     @Test
     public void testAssignmentWithReference() {
         FluxonTestUtil.TestResult result;
@@ -272,8 +256,6 @@ public class ContextCallTest {
         assertEquals(25, result.getInterpretResult());
         assertEquals(25, result.getCompileResult());
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testEdgeCases() {
@@ -303,16 +285,12 @@ public class ContextCallTest {
         assertEquals(false, result.getCompileResult());
     }
 
-    // ========== 全局函数调用测试 ==========
-
     @Test
     public void testGlobalFunctionCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("[1]::get(g::random(1))");
         assertEquals(1, result.getInterpretResult());
         assertEquals(1, result.getCompileResult());
     }
-
-    // ========== 错误处理测试 ==========
 
     @Test
     public void testRandomWithIntReturnsInt() {
@@ -332,8 +310,6 @@ public class ContextCallTest {
             assertTrue(e.getMessage().contains("0, expect String but got Integer (0)"));
         }
     }
-
-    // ========== 复杂场景测试 ==========
 
     @Test
     public void testComplexChaining() {

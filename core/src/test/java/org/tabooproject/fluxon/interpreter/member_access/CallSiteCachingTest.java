@@ -13,8 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class CallSiteCachingTest extends MemberAccessTestBase {
 
-    // ========== 同一方法多次调用 ==========
-
     @Test
     public void testRepeatedMethodCall() throws Exception {
         // 同一方法多次调用应该复用 CallSite
@@ -38,8 +36,6 @@ public class CallSiteCachingTest extends MemberAccessTestBase {
         Object result = compile(source);
         assertEquals(126, result); // 42 * 3
     }
-
-    // ========== 循环中的 CallSite 缓存 ==========
 
     @Test
     public void testMethodCallInLoop() throws Exception {
@@ -86,8 +82,6 @@ public class CallSiteCachingTest extends MemberAccessTestBase {
         assertEquals(126, result); // 42 * 3
     }
 
-    // ========== 多个不同的 CallSite ==========
-
     @Test
     public void testMultipleDistinctCallSites() throws Exception {
         // 多个不同的方法调用，每个有自己的 CallSite
@@ -113,8 +107,6 @@ public class CallSiteCachingTest extends MemberAccessTestBase {
         assertEquals(33, result);
     }
 
-    // ========== 解释器与编译器一致性 ==========
-
     @Test
     public void testCachingConsistencySimple() throws Exception {
         String source = "&obj.getName() + &obj.getName()";
@@ -139,8 +131,6 @@ public class CallSiteCachingTest extends MemberAccessTestBase {
         assertEquals(25, interpretResult); // 5 * 5
     }
 
-    // ========== 递归场景 ==========
-
     @Test
     public void testNestedLoopCaching() throws Exception {
         String source = 
@@ -158,8 +148,6 @@ public class CallSiteCachingTest extends MemberAccessTestBase {
         Object result = compile(source);
         assertEquals(252, result); // 42 * 3 * 2
     }
-
-    // ========== 条件分支中的 CallSite ==========
 
     @Test
     public void testCallSiteInBranches() throws Exception {

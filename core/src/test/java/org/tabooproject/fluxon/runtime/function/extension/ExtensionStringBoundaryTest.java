@@ -17,8 +17,6 @@ import static org.tabooproject.fluxon.FluxonTestUtil.*;
  */
 public class ExtensionStringBoundaryTest {
 
-    // ========== length 边界测试 ==========
-
     @Test
     void testLengthEmpty() {
         assertBothEqual(0, runSilent("''::length()"));
@@ -43,8 +41,6 @@ public class ExtensionStringBoundaryTest {
         TestResult result = runSilent("'😀'::length()");
         assertEquals(2, result.getInterpretResult()); // Java String 中 emoji 占 2 个 char
     }
-
-    // ========== trim/ltrim/rtrim 边界测试 ==========
 
     @Test
     void testTrimEmpty() {
@@ -83,8 +79,6 @@ public class ExtensionStringBoundaryTest {
     void testTrimNewlines() {
         assertBothEqual("hello", runSilent("'\n\nhello\n\n'::trim()"));
     }
-
-    // ========== split 边界测试 ==========
 
     @Test
     void testSplitEmpty() {
@@ -132,8 +126,6 @@ public class ExtensionStringBoundaryTest {
         assertEquals(3, list.size());
     }
 
-    // ========== replace/replaceAll 边界测试 ==========
-
     @Test
     void testReplaceEmpty() {
         // Java replace("", "x") 会在每个字符间插入 x
@@ -172,8 +164,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual("a_b_c_", runSilent("'a1b2c3'::replaceAll('\\\\d', '_')"));
     }
 
-    // ========== substring 边界测试 ==========
-
     @Test
     void testSubstringFromZero() {
         assertBothEqual("hello", runSilent("'hello'::substring(0)"));
@@ -210,8 +200,6 @@ public class ExtensionStringBoundaryTest {
     void testSubstringSingleChar() {
         assertBothEqual("e", runSilent("'hello'::substring(1, 2)"));
     }
-
-    // ========== indexOf/lastIndexOf 边界测试 ==========
 
     @Test
     void testIndexOfNotFound() {
@@ -270,8 +258,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual(0, runSilent("''::indexOf('')"));
     }
 
-    // ========== lowercase/uppercase 边界测试 ==========
-
     @Test
     void testLowercaseEmpty() {
         assertBothEqual("", runSilent("''::lowercase()"));
@@ -303,8 +289,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual("abc123", runSilent("'ABC123'::lowercase()"));
         assertBothEqual("ABC123", runSilent("'abc123'::uppercase()"));
     }
-
-    // ========== startsWith/endsWith 边界测试 ==========
 
     @Test
     void testStartsWithEmpty() {
@@ -348,8 +332,6 @@ public class ExtensionStringBoundaryTest {
     void testStartsWithOffsetPastEnd() {
         assertBothEqual(false, runSilent("'hello'::startsWith('o', 10)"));
     }
-
-    // ========== padLeft/padRight 边界测试 ==========
 
     @Test
     void testPadLeftNoChange() {
@@ -396,8 +378,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual("hello", runSilent("'hello'::padRight(0)"));
     }
 
-    // ========== matches/contains 边界测试 ==========
-
     @Test
     void testMatchesEmpty() {
         assertBothEqual(true, runSilent("''::matches('')"));
@@ -443,8 +423,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual(false, runSilent("'hi'::contains('hello')"));
     }
 
-    // ========== repeat 边界测试 ==========
-
     @Test
     void testRepeatZero() {
         assertBothEqual("", runSilent("'hello'::repeat(0)"));
@@ -469,8 +447,6 @@ public class ExtensionStringBoundaryTest {
     void testRepeatSingleChar() {
         assertBothEqual("aaaaa", runSilent("'a'::repeat(5)"));
     }
-
-    // ========== charAt/charCodeAt 边界测试 ==========
 
     @Test
     void testCharAtFirst() {
@@ -508,8 +484,6 @@ public class ExtensionStringBoundaryTest {
         runExpectingError("'hello'::charCodeAt(5)", "String index out of range");
     }
 
-    // ========== toCharArray 边界测试 ==========
-
     @Test
     void testToCharArrayEmpty() {
         TestResult result = runSilent("''::toCharArray()");
@@ -537,8 +511,6 @@ public class ExtensionStringBoundaryTest {
         assertEquals("b", list.get(1));
         assertEquals("c", list.get(2));
     }
-
-    // ========== isEmpty/isBlank 边界测试 ==========
 
     @Test
     void testIsEmptyEmpty() {
@@ -574,8 +546,6 @@ public class ExtensionStringBoundaryTest {
         assertBothEqual(false, runSilent("' a '::isBlank()"));
     }
 
-    // ========== reverse 边界测试 ==========
-
     @Test
     void testReverseEmpty() {
         assertBothEqual("", runSilent("''::reverse()"));
@@ -601,8 +571,6 @@ public class ExtensionStringBoundaryTest {
     void testReverseWithSpaces() {
         assertBothEqual("dlrow olleh", runSilent("'hello world'::reverse()"));
     }
-
-    // ========== capitalize 边界测试 ==========
 
     @Test
     void testCapitalizeEmpty() {
@@ -635,8 +603,6 @@ public class ExtensionStringBoundaryTest {
     void testCapitalizeNumber() {
         assertBothEqual("123abc", runSilent("'123ABC'::capitalize()"));
     }
-
-    // ========== findAll 边界测试 ==========
 
     @Test
     void testFindAllEmpty() {
@@ -696,8 +662,6 @@ public class ExtensionStringBoundaryTest {
         assertEquals(0, list.size());
     }
 
-    // ========== 链式调用测试 ==========
-
     @Test
     void testChainedCalls() {
         assertBothEqual("HELLO", runSilent("'  hello  '::trim()::uppercase()"));
@@ -709,8 +673,6 @@ public class ExtensionStringBoundaryTest {
     void testChainedWithSubstring() {
         assertBothEqual("ELL", runSilent("'hello'::substring(1, 4)::uppercase()"));
     }
-
-    // ========== Unicode 特殊字符测试 ==========
 
     @Test
     void testUnicodeBasic() {

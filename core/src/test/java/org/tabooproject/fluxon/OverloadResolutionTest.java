@@ -406,8 +406,6 @@ public class OverloadResolutionTest {
         assertNotNull(result.getCompileResult());
     }
 
-    // ==================== A. 扩展函数链式调用 ====================
-
     @Test
     void testExtensionChainWithLiterals() {
         MockVector vec = new MockVector(1.0, 2.0, 3.0);
@@ -485,8 +483,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(10.0,18.0,28.0)", result.getCompileResult().toString());
     }
 
-    // ==================== B. 嵌套扩展函数调用 ====================
-
     @Test
     void testNestedExtensionCallVectorResult() {
         MockVector vec1 = new MockVector(2.0, 3.0, 4.0);
@@ -546,8 +542,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(4.0,8.0,12.0)", result.getInterpretResult().toString());
         assertEquals("Vector(4.0,8.0,12.0)", result.getCompileResult().toString());
     }
-
-    // ==================== C. :: 链中系统函数与扩展函数同名 ====================
 
     @Test
     void testSystemRandomInChainWithLiterals() {
@@ -624,8 +618,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(4.0,8.0,12.0)", result.getInterpretResult().toString());
         assertEquals("Vector(4.0,8.0,12.0)", result.getCompileResult().toString());
     }
-
-    // ==================== D. 类型转换与拓宽 ====================
 
     @Test
     void testIntWideningToDoubleInExtension() {
@@ -723,8 +715,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(3.0,6.0,9.0)", result.getCompileResult().toString());
     }
 
-    // ==================== E. 安全调用 ====================
-
     @Test
     void testSafeCallWithNonNull() {
         MockVector vec = new MockVector(1.0, 2.0, 3.0);
@@ -759,8 +749,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(6.0,12.0,18.0)", result.getInterpretResult().toString());
         assertEquals("Vector(6.0,12.0,18.0)", result.getCompileResult().toString());
     }
-
-    // ==================== F. 复杂表达式作为参数 ====================
 
     @Test
     void testArithmeticExprAsArg() {
@@ -812,8 +800,6 @@ public class OverloadResolutionTest {
         assertEquals("Vector(2.0,4.0,6.0)", result.getCompileResult().toString());
     }
 
-    // ==================== G. 混合类型系统函数重载 ====================
-
     @Test
     void testComputeWithDynamicDouble() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -853,8 +839,6 @@ public class OverloadResolutionTest {
         assertEquals("sd:test,3.14", result.getInterpretResult());
         assertEquals("sd:test,3.14", result.getCompileResult());
     }
-
-    // ==================== H. 边界与回归 ====================
 
     @Test
     void testOverloadNoArgs() {

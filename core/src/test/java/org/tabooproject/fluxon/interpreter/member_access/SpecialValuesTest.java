@@ -13,8 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class SpecialValuesTest extends MemberAccessTestBase {
 
-    // ========== 空字符串 ==========
-
     @Test
     public void testEmptyStringArgument() {
         assertEquals("one:", interpret("&obj.oneArg('')"));
@@ -33,8 +31,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         obj.publicField = "";
         assertEquals("", interpret("&obj.publicField", obj));
     }
-
-    // ========== 特殊字符 ==========
 
     @Test
     public void testSpecialCharactersInString() {
@@ -62,8 +58,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals("it's", interpret("&obj.echoSpecial('it\\'s')"));
     }
 
-    // ========== 数值边界 ==========
-
     @Test
     public void testZeroValue() {
         assertEquals(0, interpret("&obj.add(0, 0)"));
@@ -90,8 +84,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals(-2147483647, interpret("&obj.add(-2147483646, -1)"));
     }
 
-    // ========== 布尔值 ==========
-
     @Test
     public void testBooleanTrue() {
         assertEquals("boolean:true", interpret("&obj.processBoolean(true)"));
@@ -116,8 +108,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals(false, interpret("&obj.booleanField", obj));
     }
 
-    // ========== 浮点数边界 ==========
-
     @Test
     public void testDoubleZero() {
         assertEquals("double:0.0", interpret("&obj.processDouble(0.0)"));
@@ -137,8 +127,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
     public void testVeryLargeDouble() {
         assertEquals("double:1.0E10", interpret("&obj.processDouble(10000000000.0)"));
     }
-
-    // ========== 多个相同调用 ==========
 
     @Test
     public void testRepeatedMethodCall() {
@@ -160,8 +148,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals(126, interpret(source)); // 42 * 3
     }
 
-    // ========== 表达式中的成员访问 ==========
-
     @Test
     public void testMemberAccessInCondition() {
         assertEquals("yes", interpret("if &obj.booleanField { 'yes' } else { 'no' }"));
@@ -182,8 +168,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals(40, interpret("&obj.intField - 2"));
     }
 
-    // ========== 返回值作为后续操作的输入 ==========
-
     @Test
     public void testMethodResultAsMethodArg() {
         assertEquals("test-objecttest-object", interpret("&obj.concat(&obj.getName(), &obj.getName())"));
@@ -199,8 +183,6 @@ public class SpecialValuesTest extends MemberAccessTestBase {
         assertEquals("public-valuepublic-value", 
             interpret("&obj.concat(&obj.getSelf().publicField, &obj.publicField)"));
     }
-
-    // ========== 编译模式边界测试 ==========
 
     @Test
     public void testCompiledEmptyString() throws Exception {

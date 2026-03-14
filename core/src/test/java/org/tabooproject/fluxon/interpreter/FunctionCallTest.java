@@ -15,8 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class FunctionCallTest {
 
-    // ========== 基础函数调用测试 ==========
-
     @Test
     public void testZeroParamFunctionWithOperator() {
         // 测试 0 参数函数后面跟操作符
@@ -60,8 +58,6 @@ public class FunctionCallTest {
         assertEquals(7, result.getCompileResult());
     }
 
-    // ========== 表达式参数测试 ==========
-
     @Test
     public void testMultipleArgsWithExpressions() {
         // 测试多个参数，其中包含表达式
@@ -74,8 +70,6 @@ public class FunctionCallTest {
         assertEquals(50, result.getInterpretResult());
         assertEquals(50, result.getCompileResult());
     }
-
-    // ========== 链式调用测试 ==========
 
     @Test
     public void testChainedCalls() {
@@ -99,8 +93,6 @@ public class FunctionCallTest {
         assertEquals(26, result.getInterpretResult());
         assertEquals(26, result.getCompileResult());
     }
-
-    // ========== 函数返回值测试 ==========
 
     @Test
     public void testFunctionWithReturnValue() {
@@ -128,8 +120,6 @@ public class FunctionCallTest {
         assertEquals(5, result.getCompileResult());
     }
 
-    // ========== 参数绑定测试 ==========
-
     @Test
     public void testParameterBinding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -150,8 +140,6 @@ public class FunctionCallTest {
         assertEquals("[100, 10]", result.getCompileResult().toString());
     }
 
-    // ========== 变量作用域测试 ==========
-
     @Test
     public void testFunctionAccessOuterVariable() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -170,8 +158,6 @@ public class FunctionCallTest {
         assertEquals(11, result.getInterpretResult());
         assertEquals(11, result.getCompileResult());
     }
-
-    // ========== 复杂场景测试 ==========
 
     @Test
     public void testFunctionInExpression() {
@@ -212,8 +198,6 @@ public class FunctionCallTest {
         assertEquals("HELLO", result.getCompileResult());
     }
 
-    // ========== 函数返回集合测试 ==========
-
     @Test
     public void testFunctionReturnsList() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -233,8 +217,6 @@ public class FunctionCallTest {
         assertEquals(1, result.getCompileResult());
     }
 
-    // ========== 递归函数测试 ==========
-
     @Test
     public void testSimpleRecursion() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -252,8 +234,6 @@ public class FunctionCallTest {
         assertEquals(120, result.getInterpretResult());
         assertEquals(120, result.getCompileResult());
     }
-
-    // ========== 前向引用测试 ==========
 
     @Test
     public void testForwardReference() {
@@ -304,8 +284,6 @@ public class FunctionCallTest {
         assertEquals("[6, 9]", result.getInterpretResult().toString());
         assertEquals("[6, 9]", result.getCompileResult().toString());
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testFunctionWithZeroArguments() {

@@ -27,7 +27,6 @@ public class TestGrandChild extends TestChild {
         return getParentName();
     }
 
-    // ========== 返回自身用于链式调用 ==========
     @Override
     public TestGrandChild getSelf() {
         return this;

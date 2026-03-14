@@ -70,10 +70,8 @@ public class MemberAccessJexlBenchmark {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);
 
-    // ========== 测试对象 ==========
     private TestObject testObject;
 
-    // ========== JEXL ==========
     private JexlEngine jexlEngine;
     private JexlContext jexlContext;
 
@@ -84,7 +82,6 @@ public class MemberAccessJexlBenchmark {
     private JexlScript jexlChainedAccess;
     private JexlScript jexlComplexChain;
 
-    // ========== Fluxon 解释模式 ==========
     private ParsedScript fluxonParsedFieldAccess;
     private ParsedScript fluxonParsedMethodNoArgs;
     private ParsedScript fluxonParsedMethodWithArgs;
@@ -92,7 +89,6 @@ public class MemberAccessJexlBenchmark {
     private ParsedScript fluxonParsedComplexChain;
     private Environment fluxonInterpretEnv;
 
-    // ========== Fluxon 编译模式 ==========
     private RuntimeScriptBase fluxonCompiledFieldAccess;
     private RuntimeScriptBase fluxonCompiledMethodNoArgs;
     private RuntimeScriptBase fluxonCompiledMethodWithArgs;
@@ -100,7 +96,6 @@ public class MemberAccessJexlBenchmark {
     private RuntimeScriptBase fluxonCompiledComplexChain;
     private Environment fluxonCompileEnv;
 
-    // ========== 表达式 ==========
     // Fluxon 语法
     private static final String FLUXON_FIELD_ACCESS = "&obj.publicField";
     private static final String FLUXON_METHOD_NO_ARGS = "&obj.getName()";
@@ -124,7 +119,6 @@ public class MemberAccessJexlBenchmark {
         testObject.nested.nested = new TestObject();
         testObject.nested.nested.publicField = "level2-value";
 
-        // ========== JEXL 初始化 ==========
         jexlEngine = new JexlBuilder()
                 .cache(512)
                 .strict(true)
@@ -140,7 +134,6 @@ public class MemberAccessJexlBenchmark {
         jexlChainedAccess = jexlEngine.createScript(JEXL_CHAINED_ACCESS);
         jexlComplexChain = jexlEngine.createScript(JEXL_COMPLEX_CHAIN);
 
-        // ========== Fluxon 解释模式初始化 ==========
         fluxonInterpretEnv = FluxonRuntime.getInstance().newEnvironment();
         fluxonInterpretEnv.defineRootVariable("obj", testObject);
 
@@ -150,7 +143,6 @@ public class MemberAccessJexlBenchmark {
         fluxonParsedChainedAccess = parseFluxon(FLUXON_CHAINED_ACCESS);
         fluxonParsedComplexChain = parseFluxon(FLUXON_COMPLEX_CHAIN);
 
-        // ========== Fluxon 编译模式初始化 ==========
         fluxonCompileEnv = FluxonRuntime.getInstance().newEnvironment();
         fluxonCompileEnv.defineRootVariable("obj", testObject);
 
@@ -178,8 +170,6 @@ public class MemberAccessJexlBenchmark {
         return (RuntimeScriptBase) scriptClass.newInstance();
     }
 
-    // ==================== 字段访问 ====================
-
     @Benchmark
     public void fieldAccess_JavaDirect(Blackhole bh) {
         bh.consume(testObject.publicField);
@@ -199,8 +189,6 @@ public class MemberAccessJexlBenchmark {
     public void fieldAccess_JexlScript(Blackhole bh) {
         bh.consume(jexlFieldAccess.execute(jexlContext));
     }
-
-    // ==================== 无参方法调用 ====================
 
     @Benchmark
     public void methodNoArgs_JavaDirect(Blackhole bh) {
@@ -222,8 +210,6 @@ public class MemberAccessJexlBenchmark {
         bh.consume(jexlMethodNoArgs.execute(jexlContext));
     }
 
-    // ==================== 有参方法调用 ====================
-
     @Benchmark
     public void methodWithArgs_JavaDirect(Blackhole bh) {
         bh.consume(testObject.add(10, 20));
@@ -244,8 +230,6 @@ public class MemberAccessJexlBenchmark {
         bh.consume(jexlMethodWithArgs.execute(jexlContext));
     }
 
-    // ==================== 链式调用 ====================
-
     @Benchmark
     public void chainedAccess_JavaDirect(Blackhole bh) {
         bh.consume(testObject.getSelf().getSelf().getName());
@@ -265,8 +249,6 @@ public class MemberAccessJexlBenchmark {
     public void chainedAccess_JexlScript(Blackhole bh) {
         bh.consume(jexlChainedAccess.execute(jexlContext));
     }
-
-    // ==================== 复杂链式调用 ====================
 
     @Benchmark
     public void complexChain_JavaDirect(Blackhole bh) {

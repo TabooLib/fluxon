@@ -99,8 +99,6 @@ public final class CopyOnWriteMap<K, V> extends AbstractMap<K, V> implements Ser
         }
     }
 
-    // ==================== 读操作（直接委托） ====================
-
     @Override
     public int size() {
         return data.size();
@@ -156,8 +154,6 @@ public final class CopyOnWriteMap<K, V> extends AbstractMap<K, V> implements Ser
         return data.entrySet();
     }
 
-    // ==================== 写操作（触发复制） ====================
-
     @Override
     public V put(K key, V value) {
         ensureWritable();
@@ -187,8 +183,6 @@ public final class CopyOnWriteMap<K, V> extends AbstractMap<K, V> implements Ser
         ensureWritable();
         data.clear();
     }
-
-    // ==================== Java 8+ 默认方法覆盖 ====================
 
     @Override
     public V getOrDefault(Object key, V defaultValue) {
@@ -234,8 +228,6 @@ public final class CopyOnWriteMap<K, V> extends AbstractMap<K, V> implements Ser
         ensureWritable();
         return data.replace(key, value);
     }
-
-    // ==================== 工厂方法 ====================
 
     /**
      * 从现有 Map 创建 COW 包装器

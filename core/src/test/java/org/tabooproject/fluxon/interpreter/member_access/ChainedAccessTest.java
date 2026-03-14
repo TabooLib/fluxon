@@ -17,8 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ChainedAccessTest extends MemberAccessTestBase {
 
-    // ========== 基本链式调用 ==========
-
     @Test
     public void testMethodThenField() throws Exception {
         assertEquals("public-value", interpretAndCompile("&obj.getSelf().publicField"));
@@ -43,8 +41,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         obj.nested.publicField = "nested-public";
         assertEquals("nested-public", interpretAndCompile("&obj.nested.publicField", obj));
     }
-
-    // ========== 多层链式调用 ==========
 
     @Test
     public void testThreeLevelChain() throws Exception {
@@ -71,8 +67,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals("level3-value", interpretAndCompile("&obj.getLevel1().nested.nested.publicField"));
     }
 
-    // ========== 方法链改变状态 ==========
-
     @Test
     public void testMutateChain() throws Exception {
         assertEquals("new-value", interpretAndCompile("&obj.mutate('new-value').publicField"));
@@ -82,8 +76,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
     public void testMultipleMutateChain() throws Exception {
         assertEquals("final", interpretAndCompile("&obj.mutate('first').mutate('second').mutate('final').publicField"));
     }
-
-    // ========== . 和 :: 操作符组合 ==========
 
     @Test
     public void testDotThenContextCall() throws Exception {
@@ -123,8 +115,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals(2, interpretAndCompile("&obj.getName()::split('-')::size()"));
     }
 
-    // ========== 链式调用与表达式 ==========
-
     @Test
     public void testChainResultInArithmetic() throws Exception {
         assertEquals(84, interpretAndCompile("&obj.getSelf().intField + &obj.getSelf().intField"));
@@ -140,8 +130,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals("public-valuepublic-value", 
             interpretAndCompile("&obj.concat(&obj.getSelf().publicField, &obj.getSelf().publicField)"));
     }
-
-    // ========== 链式调用在循环中 ==========
 
     @Test
     public void testChainInLoop() throws Exception {
@@ -169,8 +157,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals(15, interpretAndCompile(source)); // 3 * 5
     }
 
-    // ========== 混合场景 ==========
-
     @Test
     public void testComplexChainWithMethodArgs() throws Exception {
         // 链式调用结果作为另一个链式方法的参数
@@ -186,8 +172,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertEquals(2, ((List<?>) result).size());
     }
 
-    // ========== 返回 null 的链式调用 ==========
-
     @Test
     public void testChainReturningNull() throws Exception {
         assertNull(interpretAndCompile("&obj.getSelf().getNullValue()"));
@@ -198,14 +182,10 @@ public class ChainedAccessTest extends MemberAccessTestBase {
         assertNull(interpretAndCompile("&obj.nested")); // nested 默认为 null
     }
 
-    // ========== 返回新对象的链式调用 ==========
-
     @Test
     public void testCreateNestedChain() throws Exception {
         assertEquals("nested-value", interpretAndCompile("&obj.createNested().publicField"));
     }
-
-    // ========== 链式调用中的类型变化 ==========
 
     @Test
     public void testChainStringToList() throws Exception {
@@ -217,8 +197,6 @@ public class ChainedAccessTest extends MemberAccessTestBase {
     public void testChainListToInt() throws Exception {
         assertEquals(2, interpretAndCompile("&obj.getName()::split('-')::size()"));
     }
-
-    // ========== 范围操作符兼容性 ==========
 
     @Test
     public void testDotNotConfusedWithRange() throws Exception {

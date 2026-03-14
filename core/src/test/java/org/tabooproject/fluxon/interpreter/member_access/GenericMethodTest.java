@@ -17,8 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class GenericMethodTest extends MemberAccessTestBase {
 
-    // ========== 泛型类字段访问 ==========
-
     @Test
     public void testGenericFieldString() {
         TestGeneric<String> gen = new TestGeneric<>();
@@ -49,8 +47,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertNull(interpret("&obj.value", gen));
     }
 
-    // ========== 泛型类方法调用 ==========
-
     @Test
     public void testGetValueString() {
         TestGeneric<String> gen = new TestGeneric<>();
@@ -78,8 +74,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         gen.value = "hello";
         assertEquals("HELLO", interpret("&obj.transformValue()", gen));
     }
-
-    // ========== 泛型方法 ==========
 
     @Test
     public void testGenericMethodIdentity() {
@@ -121,8 +115,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals(42, map.get("count"));
     }
 
-    // ========== 泛型返回类型 ==========
-
     @Test
     public void testGenericReturnList() {
         TestGeneric<String> gen = new TestGeneric<>();
@@ -149,8 +141,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals("c", list.get(2));
     }
 
-    // ========== 泛型边界 ==========
-
     @Test
     public void testBoundedGenericNumber() {
         TestGeneric<String> gen = new TestGeneric<>();
@@ -175,8 +165,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals(100, interpret("&obj.max(50, 100)", gen));
     }
 
-    // ========== 嵌套泛型 ==========
-
     @Test
     public void testNestedGeneric() {
         TestGeneric<List<String>> gen = new TestGeneric<>();
@@ -193,8 +181,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         gen.value = Arrays.asList("a", "b", "c");
         assertEquals(3, interpret("&obj.getValue()::size()", gen));
     }
-
-    // ========== 链式调用 ==========
 
     @Test
     public void testGenericChainedField() {
@@ -217,8 +203,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals("TRANSFORM", interpret("&obj.getSelf().transformValue()", gen));
     }
 
-    // ========== 循环中使用泛型 ==========
-
     @Test
     public void testGenericInLoop() {
         TestGeneric<Integer> gen = new TestGeneric<>();
@@ -233,8 +217,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
             "&sum";
         assertEquals(50, interpret(source, gen));
     }
-
-    // ========== 编译模式泛型测试 ==========
 
     @Test
     public void testCompiledGenericField() throws Exception {
@@ -271,8 +253,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals("COMPILE", compile("&obj.transformValue()", gen));
     }
 
-    // ========== 一致性测试 ==========
-
     @Test
     public void testGenericConsistency() throws Exception {
         TestGeneric<String> gen = new TestGeneric<>();
@@ -304,8 +284,6 @@ public class GenericMethodTest extends MemberAccessTestBase {
         assertEquals(interpretResult, compileResult);
         assertEquals(42, interpretResult);
     }
-
-    // ========== 与扩展函数组合 ==========
 
     @Test
     public void testGenericWithExtension() {

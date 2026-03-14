@@ -26,8 +26,6 @@ public class ConstantFolderTest {
 
     private final ConstantFolder folder = new ConstantFolder();
 
-    // ==================== 整数运算 ====================
-
     @Test
     public void testIntAddition() {
         BinaryExpression expr = binary(intLit(1), TokenType.PLUS, intLit(2));
@@ -63,8 +61,6 @@ public class ConstantFolderTest {
         assertIntLiteral(1, result);
     }
 
-    // ==================== 嵌套表达式 ====================
-
     @Test
     public void testNestedExpression() {
         // (1 + 2) * 3 = 9
@@ -84,8 +80,6 @@ public class ConstantFolderTest {
         assertIntLiteral(15, result);
     }
 
-    // ==================== 幂运算 ====================
-
     @Test
     public void testPower() {
         BinaryExpression expr = binary(intLit(2), TokenType.POWER, intLit(3));
@@ -99,8 +93,6 @@ public class ConstantFolderTest {
         ParseResult result = folder.fold(expr);
         assertDoubleLiteral(Math.sqrt(2.0), result);
     }
-
-    // ==================== 一元运算 ====================
 
     @Test
     public void testUnaryNegation() {
@@ -134,8 +126,6 @@ public class ConstantFolderTest {
         assertBooleanLiteral(true, result);
     }
 
-    // ==================== 字符串拼接 ====================
-
     @Test
     public void testStringConcat() {
         BinaryExpression expr = binary(strLit("Hello"), TokenType.PLUS, strLit(" World"));
@@ -151,8 +141,6 @@ public class ConstantFolderTest {
         ParseResult result = folder.fold(expr);
         assertStringLiteral("abc", result);
     }
-
-    // ==================== 类型提升 ====================
 
     @Test
     public void testIntPlusDouble() {
@@ -174,8 +162,6 @@ public class ConstantFolderTest {
         ParseResult result = folder.fold(expr);
         assertDoubleLiteral(4.0, result);
     }
-
-    // ==================== 比较运算 ====================
 
     @Test
     public void testGreater() {
@@ -205,8 +191,6 @@ public class ConstantFolderTest {
         assertBooleanLiteral(true, result);
     }
 
-    // ==================== 除零处理 ====================
-
     @Test
     public void testIntDivByZeroNotFolded() {
         BinaryExpression expr = binary(intLit(1), TokenType.DIVIDE, intLit(0));
@@ -229,8 +213,6 @@ public class ConstantFolderTest {
         ParseResult result = folder.fold(expr);
         assertDoubleLiteral(Double.POSITIVE_INFINITY, result);
     }
-
-    // ==================== 集成测试 ====================
 
     @Test
     public void testIntegrationSimple() {
@@ -308,8 +290,6 @@ public class ConstantFolderTest {
         assertMatch(result);
         assertNotNull(result.getInterpretResult());
     }
-
-    // ==================== 辅助方法 ====================
 
     private static IntLiteral intLit(int value) {
         return new IntLiteral(value);

@@ -15,8 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class SafeAccessTest {
 
-    // ========== 安全成员访问 (?.) 测试 ==========
-
     @Test
     public void testSafeMemberAccessOnNull() {
         // 当 target 为 null 时，?. 应该返回 null 而不是抛出 NPE
@@ -86,8 +84,6 @@ public class SafeAccessTest {
         assertNull(result.getCompileResult());
     }
 
-    // ========== 安全上下文调用 (?::) 测试 ==========
-
     @Test
     public void testSafeContextCallOnNull() {
         // 当 target 为 null 时，?:: 应该返回 null 而不是执行上下文
@@ -132,8 +128,6 @@ public class SafeAccessTest {
         assertEquals("HI", result.getCompileResult());
     }
 
-    // ========== 混合安全访问测试 ==========
-
     @Test
     public void testMixedSafeOperators() {
         // 混合使用 ?. 和 ?::
@@ -147,8 +141,6 @@ public class SafeAccessTest {
         assertEquals("HELLO", result.getInterpretResult());
         assertEquals("HELLO", result.getCompileResult());
     }
-
-    // ========== Elvis 操作符组合测试 ==========
 
     @Test
     public void testSafeAccessWithElvis() {
@@ -174,8 +166,6 @@ public class SafeAccessTest {
         assertEquals("HELLO", result.getCompileResult());
     }
 
-    // ========== 条件表达式测试 ==========
-
     @Test
     public void testSafeAccessInCondition() {
         FluxonTestUtil.TestResult result;
@@ -190,8 +180,6 @@ public class SafeAccessTest {
         assertEquals("not null", result.getCompileResult());
     }
 
-    // ========== 普通成员访问对比测试 ==========
-
     @Test
     public void testNormalMemberAccessOnNullThrows() {
         // 普通成员访问 (.) 在 target 为 null 时应该抛出异常
@@ -199,8 +187,6 @@ public class SafeAccessTest {
             FluxonTestUtil.runSilent("obj = null; &obj.toString()");
         });
     }
-
-    // ========== 列表和集合测试 ==========
 
     @Test
     public void testSafeAccessOnList() {
@@ -228,8 +214,6 @@ public class SafeAccessTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 复杂表达式测试 ==========
-
     @Test
     public void testComplexSafeAccessExpression() {
         FluxonTestUtil.TestResult result;
@@ -245,8 +229,6 @@ public class SafeAccessTest {
         assertEquals("HELLO", result.getInterpretResult());
         assertEquals("HELLO", result.getCompileResult());
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testSafeAccessOnOptionalReference() {
@@ -270,8 +252,6 @@ public class SafeAccessTest {
         assertEquals(5, result.getInterpretResult());
         assertEquals(5, result.getCompileResult());
     }
-
-    // ========== 安全索引访问 (?[) 测试 ==========
 
     @Test
     public void testSafeIndexAccessOnNullMap() {

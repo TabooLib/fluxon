@@ -30,8 +30,6 @@ public final class PolymorphicInlineCache {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.publicLookup();
 
-    // ==================== PIC 深度管理 ====================
-
     /**
      * 检查是否可以添加新条目（不增加深度）
      * @return true 如果当前深度 < MAX_PIC_DEPTH
@@ -68,8 +66,6 @@ public final class PolymorphicInlineCache {
     public static int size() {
         return PIC_DEPTH_MAP.size();
     }
-
-    // ==================== 方法调用 PIC Guard ====================
 
     /**
      * 创建 PIC 方法调用条目
@@ -126,8 +122,6 @@ public final class PolymorphicInlineCache {
         }
         return true;
     }
-
-    // ==================== 构造函数 PIC Guard ====================
 
     /**
      * 创建 PIC 构造函数调用条目

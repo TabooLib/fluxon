@@ -21,8 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ConsistencyTest extends MemberAccessTestBase {
 
-    // ========== 字段访问一致性 ==========
-
     @Test
     public void testFieldAccessConsistency() throws Exception {
         String[] sources = {
@@ -60,8 +58,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertTrue(compileResult instanceof List);
         assertEquals(((List<?>) interpretResult).size(), ((List<?>) compileResult).size());
     }
-
-    // ========== 方法调用一致性 ==========
 
     @Test
     public void testNoArgsMethodConsistency() throws Exception {
@@ -138,8 +134,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertNull(compileResult);
     }
 
-    // ========== 链式调用一致性 ==========
-
     @Test
     public void testChainedCallConsistency() throws Exception {
         String[] sources = {
@@ -171,8 +165,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
             assertEquals(interpretResult, compileResult, "Mismatch for: " + source);
         }
     }
-
-    // ========== 循环中的一致性 ==========
 
     @Test
     public void testLoopFieldAccessConsistency() throws Exception {
@@ -225,8 +217,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertEquals(6, interpretResult); // 0+0 + 1+1 + 2+2 = 0 + 2 + 4 = 6
     }
 
-    // ========== 多实例一致性 ==========
-
     @Test
     public void testMultipleInstancesConsistency() throws Exception {
         String source =
@@ -276,8 +266,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertEquals(3, interpretResult);
     }
 
-    // ========== ClassBridge 一致性 ==========
-
     @Test
     public void testClassBridgeConsistency() throws Exception {
         // 注册 ClassBridge
@@ -316,8 +304,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertEquals(1020, interpretResult); // 1010 + 10
     }
 
-    // ========== 复杂表达式一致性 ==========
-
     @Test
     public void testComplexExpressionConsistency() throws Exception {
         String source =
@@ -349,8 +335,6 @@ public class ConsistencyTest extends MemberAccessTestBase {
         assertEquals(interpretResult, compileResult);
         assertEquals(230, interpretResult); // 30 + 100*2 = 230
     }
-
-    // ========== 边界值一致性 ==========
 
     @Test
     public void testLargeNumberConsistency() throws Exception {

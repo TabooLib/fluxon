@@ -24,8 +24,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("deprecation")
 public class InheritanceTest extends MemberAccessTestBase {
 
-    // ========== 字段遮蔽测试辅助类 ==========
-
     public static class ShadowParent {
         public String value = "parent";
     }
@@ -33,8 +31,6 @@ public class InheritanceTest extends MemberAccessTestBase {
     public static class ShadowChild extends ShadowParent {
         public String value = "child";
     }
-
-    // ========== 父类字段访问 ==========
 
     @Test
     public void testParentPublicField() {
@@ -57,8 +53,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("grandchild-field", interpret("&obj.grandChildField", new TestGrandChild()));
     }
 
-    // ========== 继承链字段访问 ==========
-
     @Test
     public void testGrandChildAccessParentField() {
         assertEquals("parent-field", interpret("&obj.parentField", new TestGrandChild()));
@@ -69,8 +63,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("child-field", interpret("&obj.childField", new TestGrandChild()));
     }
 
-    // ========== 父类方法访问 ==========
-
     @Test
     public void testParentMethod() {
         assertEquals("parent-method", interpret("&obj.parentMethod()", new TestChild()));
@@ -80,8 +72,6 @@ public class InheritanceTest extends MemberAccessTestBase {
     public void testParentMethodWithArgs() {
         assertEquals("parent:hello", interpret("&obj.parentMethodWithArg('hello')", new TestChild()));
     }
-
-    // ========== 方法重写 ==========
 
     @Test
     public void testOverriddenMethod() {
@@ -101,8 +91,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("grandchild-override", interpret("&obj.overridableMethod()", new TestGrandChild()));
     }
 
-    // ========== 子类独有方法 ==========
-
     @Test
     public void testChildOnlyMethod() {
         assertEquals("child-only", interpret("&obj.childOnlyMethod()", new TestChild()));
@@ -112,8 +100,6 @@ public class InheritanceTest extends MemberAccessTestBase {
     public void testGrandChildOnlyMethod() {
         assertEquals("grandchild-only", interpret("&obj.grandChildOnlyMethod()", new TestGrandChild()));
     }
-
-    // ========== 方法重载与继承 ==========
 
     @Test
     public void testInheritedOverloadNoArgs() {
@@ -131,8 +117,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("child-overload:2:a:b", interpret("&obj.overloadedMethod('a', 'b')", new TestChild()));
     }
 
-    // ========== 链式调用与继承 ==========
-
     @Test
     public void testChainedInheritedMethod() {
         assertEquals("parent-field", interpret("&obj.getSelf().parentField", new TestChild()));
@@ -148,15 +132,11 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("child-only", interpret("&obj.getSelf().childOnlyMethod()", new TestChild()));
     }
 
-    // ========== super 调用相关 ==========
-
     @Test
     public void testCallSuperMethod() {
         // 通过子类方法间接调用父类实现
         assertEquals("super:parent-overridable", interpret("&obj.callSuperMethod()", new TestChild()));
     }
-
-    // ========== 多态场景 ==========
 
     @Test
     public void testPolymorphicFieldAccess() {
@@ -177,8 +157,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         TestParent parent = new TestGrandChild();
         assertEquals("grandchild-override", interpret("&obj.overridableMethod()", parent));
     }
-
-    // ========== 编译模式继承测试 ==========
 
     @Test
     public void testCompiledParentField() throws Exception {
@@ -205,8 +183,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         TestParent parent = new TestGrandChild();
         assertEquals("grandchild-override", compile("&obj.overridableMethod()", parent));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testInheritanceConsistency() throws Exception {
@@ -246,8 +222,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         }
     }
 
-    // ========== 循环中的继承方法调用 ==========
-
     @Test
     public void testInheritedMethodInLoop() {
         String source =
@@ -261,8 +235,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("child-overridechild-overridechild-override", interpret(source, new TestChild()));
     }
 
-    // ========== 作为参数传递 ==========
-
     @Test
     public void testInheritedFieldAsArg() {
         assertEquals("parent-fieldparent-field", 
@@ -274,8 +246,6 @@ public class InheritanceTest extends MemberAccessTestBase {
         assertEquals("parent-fieldchild-field",
             interpret("&obj.concat(&obj.parentField, &obj.childField)", new TestChild()));
     }
-
-    // ========== 编译模式字段遮蔽测试 ==========
 
     @Test
     public void testCompiledFieldShadowingUsesExactClass() throws Exception {

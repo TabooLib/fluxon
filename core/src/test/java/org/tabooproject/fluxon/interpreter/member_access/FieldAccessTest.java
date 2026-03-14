@@ -18,15 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class FieldAccessTest extends MemberAccessTestBase {
 
-    // ========== 静态 getter 测试辅助类 ==========
-
     public static class StaticGetterTarget {
         public static String getValue() {
             return "static-getter";
         }
     }
-
-    // ========== 基本类型字段 ==========
 
     @Test
     public void testPublicStringField() throws Exception {
@@ -53,14 +49,10 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals(9999999999L, interpretAndCompile("&obj.longField"));
     }
 
-    // ========== 包装类型字段 ==========
-
     @Test
     public void testBoxedIntegerField() throws Exception {
         assertEquals(100, interpretAndCompile("&obj.boxedIntField"));
     }
-
-    // ========== null 字段 ==========
 
     @Test
     public void testNullableFieldWithNull() throws Exception {
@@ -73,8 +65,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         obj.nullableField = "has-value";
         assertEquals("has-value", interpretAndCompile("&obj.nullableField", obj));
     }
-
-    // ========== 集合类型字段 ==========
 
     @Test
     @SuppressWarnings("unchecked")
@@ -109,14 +99,10 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals("z", arr[2]);
     }
 
-    // ========== final 字段 ==========
-
     @Test
     public void testFinalField() throws Exception {
         assertEquals("final-value", interpretAndCompile("&obj.finalField"));
     }
-
-    // ========== 嵌套对象字段 ==========
 
     @Test
     public void testNestedFieldNull() throws Exception {
@@ -131,8 +117,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         Object result = interpretAndCompile("&obj.nested", obj);
         assertTrue(result instanceof TestObject);
     }
-
-    // ========== 字段访问后续操作 ==========
 
     @Test
     public void testFieldAccessWithExtensionFunction() throws Exception {
@@ -158,8 +142,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals(3, arr.length);
     }
 
-    // ========== 字段值修改后访问 ==========
-
     @Test
     public void testFieldAfterMutation() throws Exception {
         TestObject obj = new TestObject();
@@ -178,10 +160,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals("third", interpret("&obj.publicField", obj));
     }
 
-    // ========== 边界情况 ==========
-
-    // ========== 静态 getter 作为字段访问 ==========
-
     @Test
     public void testStaticGetterFieldAccess() throws Exception {
         String source = "&obj.value";
@@ -189,8 +167,6 @@ public class FieldAccessTest extends MemberAccessTestBase {
         assertEquals("static-getter", interpret(source, env -> env.defineRootVariable("obj", target)));
         assertEquals("static-getter", compile(source, env -> env.defineRootVariable("obj", target)));
     }
-
-    // ========== 边界情况 ==========
 
     @Test
     public void testFieldWithSameNameAsMethod() throws Exception {

@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class DestructuringAssignmentTest {
 
-    // ========== 基础解构赋值测试 ==========
-
     @Test
     public void testListDestructuring() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -44,8 +42,6 @@ public class DestructuringAssignmentTest {
         assertEquals(3, result.getCompileResult());
     }
 
-    // ========== 与 for 循环解构一致性测试 ==========
-
     @Test
     public void testConsistencyWithForLoop() {
         // 使用 for 循环解构
@@ -65,8 +61,6 @@ public class DestructuringAssignmentTest {
         assertEquals(forResult.getInterpretResult(), assignResult.getInterpretResult());
         assertEquals(forResult.getCompileResult(), assignResult.getCompileResult());
     }
-
-    // ========== 复杂场景测试 ==========
 
     @Test
     public void testDestructuringWithExpressionValue() {
@@ -109,8 +103,6 @@ public class DestructuringAssignmentTest {
         assertEquals(5, result.getCompileResult());
     }
 
-    // ========== 变量作用域测试 ==========
-
     @Test
     public void testVariableScopeAfterDestructuring() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -131,8 +123,6 @@ public class DestructuringAssignmentTest {
         assertEquals(21, result.getCompileResult());
     }
 
-    // ========== 字符串解构测试 ==========
-
     @Test
     public void testStringDestructuring() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -142,8 +132,6 @@ public class DestructuringAssignmentTest {
         assertEquals("hello world", result.getCompileResult());
     }
 
-    // ========== 解构返回值测试 ==========
-
     @Test
     public void testDestructuringExpressionReturnsValue() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -152,8 +140,6 @@ public class DestructuringAssignmentTest {
         assertNotNull(result.getInterpretResult());
         assertNotNull(result.getCompileResult());
     }
-
-    // ========== 结构 Map 测试 ===========
 
     @Test
     public void testDestructuringMap() {

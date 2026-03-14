@@ -85,8 +85,6 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         return analyzer.inferType(result.getValue());
     }
 
-    // ========== 静态工具方法 ==========
-
     public static final String SET_LOCAL_REF = "(" + I + OBJECT + ")" + VOID;
     public static final String GET_LOCAL_REF = "(" + I + ")" + OBJECT;
     public static final String SET_ROOT_VARIABLE = "(" + STRING + OBJECT + ")" + VOID;

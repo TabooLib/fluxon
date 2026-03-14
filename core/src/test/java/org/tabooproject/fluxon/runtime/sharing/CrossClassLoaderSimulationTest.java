@@ -48,8 +48,6 @@ class CrossClassLoaderSimulationTest {
         registeredFunctionNames.add(name);
     }
 
-    // =================== 同名函数不同 owner 隔离 ===================
-
     @Test
     void testSameNameDifferentOwnerIsolation() throws Throwable {
         MethodHandle mhDouble = MethodHandles.lookup().findStatic(
@@ -76,8 +74,6 @@ class CrossClassLoaderSimulationTest {
         assertNull(SharedFunctionRegistry.find("pluginA", "calc"));
         assertNotNull(SharedFunctionRegistry.find("pluginB", "calc"));
     }
-
-    // =================== 生命周期完整性 ===================
 
     @Test
     void testUnexportThenImportFails() throws Exception {
@@ -109,8 +105,6 @@ class CrossClassLoaderSimulationTest {
         runtime.exportFunction("reexport_fn", mh);
         assertNotNull(SharedFunctionRegistry.find("pluginA", "reexport_fn"));
     }
-
-    // =================== 高并发注册和查找 ===================
 
     @Test
     void testConcurrentRegisterAndFind() throws Exception {
@@ -152,8 +146,6 @@ class CrossClassLoaderSimulationTest {
         }
         assertEquals(threadCount * opsPerThread, total);
     }
-
-    // =================== 复杂返回类型 ===================
 
     @Test
     void testMapReturnType() throws Exception {
@@ -198,8 +190,6 @@ class CrossClassLoaderSimulationTest {
         Object result = Fluxon.eval("get_null()");
         assertNull(result);
     }
-
-    // =================== 多参数类型混合 ===================
 
     @Test
     void testMixedParameterTypes() throws Exception {
@@ -249,8 +239,6 @@ class CrossClassLoaderSimulationTest {
         }
     }
 
-    // =================== 异常传播 ===================
-
     @Test
     void testExceptionPropagation() throws Exception {
         MethodHandle mh = MethodHandles.lookup().findStatic(
@@ -290,8 +278,6 @@ class CrossClassLoaderSimulationTest {
         }
     }
 
-    // =================== exportRegisteredFunction 快照绑定 ===================
-
     @Test
     void testExportRegisteredFunctionBindsSnapshot() throws Throwable {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
@@ -314,8 +300,6 @@ class CrossClassLoaderSimulationTest {
         assertEquals(999, result);
     }
 
-    // =================== requireSharingIdentity ===================
-
     @Test
     void testExportWithoutIdentityThrows() throws Exception {
         MethodHandle mh = MethodHandles.lookup().findStatic(
@@ -336,8 +320,6 @@ class CrossClassLoaderSimulationTest {
         registeredFunctionNames.add("orphan_fn");
         assertThrows(IllegalStateException.class, () -> runtime.exportRegisteredFunction("orphan_fn"));
     }
-
-    // =================== findAll 跨 owner + 扩展函数混合 ===================
 
     @Test
     void testFindAllMixedOwnersAndTypes() throws Exception {
@@ -378,8 +360,6 @@ class CrossClassLoaderSimulationTest {
         assertEquals(1, owners.stream().filter(o -> o.equals("pluginB")).count());
     }
 
-    // =================== 扩展函数通过 Fluxon.eval 调用 ===================
-
     @Test
     void testImportExtensionAndCallViaContext() throws Throwable {
         MethodHandle mh = MethodHandles.lookup().findStatic(
@@ -411,8 +391,6 @@ class CrossClassLoaderSimulationTest {
         runtime.unregisterExtensionFunction(String.class, "reverse_ext", adapted);
     }
 
-    // =================== importAllSharedFunctions ===================
-
     @Test
     void testImportAllSharedFunctions() throws Exception {
         MethodHandle mhAdd = MethodHandles.lookup().findStatic(
@@ -438,8 +416,6 @@ class CrossClassLoaderSimulationTest {
         int count = runtime.importAllSharedFunctions("nonexistent_plugin");
         assertEquals(0, count);
     }
-
-    // =================== 版本安全 ===================
 
     @Test
     void testUnsupportedVersionReturnsStubbedFunction() {
@@ -479,8 +455,6 @@ class CrossClassLoaderSimulationTest {
         assertFalse(SharedFunctionEntry.isVersionSupported(v2Entry));
     }
 
-    // =================== 覆盖注册 ===================
-
     @Test
     void testOverwriteExistingRegistration() throws Throwable {
         MethodHandle mhAdd = MethodHandles.lookup().findStatic(
@@ -498,8 +472,6 @@ class CrossClassLoaderSimulationTest {
         Object result = SharedFunctionEntry.handle(entry).invoke(3.0, 4.0);
         assertEquals(12.0, (double) result, 0.001);
     }
-
-    // =================== 辅助方法 ===================
 
     public static int add(int a, int b) {
         return a + b;

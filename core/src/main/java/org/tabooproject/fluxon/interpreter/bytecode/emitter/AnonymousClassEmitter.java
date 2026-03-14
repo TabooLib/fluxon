@@ -108,8 +108,6 @@ public class AnonymousClassEmitter extends ClassEmitter {
         return new EmitResult(endClass(), lambdaDefinitions);
     }
 
-    // ========== 构造函数生成 ==========
-
     private void emitConstructor() {
         int argCount = getConstructorArgCount();
         Constructor<?> superCtor = findSuperConstructor(argCount);
@@ -151,8 +149,6 @@ public class AnonymousClassEmitter extends ClassEmitter {
         }
     }
 
-    // ========== 方法生成 ==========
-
     private void emitMethod(MethodDefinition methodDef, List<LambdaFunctionDefinition> lambdaDefinitions) {
         Method target = ReflectionHelper.findOverridableMethod(superClass, interfaceClasses, methodDef.getName(), methodDef.getParameterNames().size());
         if (target == null) {
@@ -185,8 +181,6 @@ public class AnonymousClassEmitter extends ClassEmitter {
         mv.visitEnd();
         lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
     }
-
-    // ========== 反射查找 ==========
 
     private Constructor<?> findSuperConstructor(int argCount) {
         if (argCount == 0) {
@@ -221,8 +215,6 @@ public class AnonymousClassEmitter extends ClassEmitter {
         }
         return score;
     }
-
-    // ========== 工具方法 ==========
 
     private static Class<?> loadClass(String name, ClassLoader cl) {
         try {

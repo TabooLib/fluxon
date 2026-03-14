@@ -201,8 +201,6 @@ public class InjectionRegistry {
         }
     }
 
-    // ==================== Agent 同步 ====================
-
     /**
      * 延迟初始化 Agent 端注册表的连接。
      * 
@@ -274,8 +272,6 @@ public class InjectionRegistry {
         } catch (Exception ignored) {
         }
     }
-
-    // ==================== Retransform ====================
 
     /**
      * 触发类的重新转换，使注入生效。

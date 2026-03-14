@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ExtensionIterableTest {
 
-    // ========== Transformation ==========
-
     @Test
     public void testMap() {
         assertBoth("[2, 4, 6]", "[1, 2, 3]::map(|| &it * 2)");
@@ -36,14 +34,10 @@ public class ExtensionIterableTest {
         assertBoth("{1=2, 2=4}", "[1, 2]::associateWith(|| &it * 2)");
     }
 
-    // ========== Filtering ==========
-
     @Test
     public void testFilter() {
         assertBoth("[2, 4]", "[1, 2, 3, 4]::filter(|| &it % 2 == 0)");
     }
-
-    // ========== Checking ==========
 
     @Test
     public void testAny() {
@@ -63,8 +57,6 @@ public class ExtensionIterableTest {
         assertBoth("false", "[1, 2, 3]::none(|| &it > 2)");
     }
 
-    // ========== Retrieving ==========
-
     @Test
     public void testFind() {
         assertBoth("3", "[1, 2, 3, 4]::find(|| &it > 2)");
@@ -82,8 +74,6 @@ public class ExtensionIterableTest {
     public void testLast() {
         assertBoth("3", "[1, 2, 3]::last()");
     }
-
-    // ========== Aggregation ==========
 
     @Test
     public void testCountOf() {
@@ -119,8 +109,6 @@ public class ExtensionIterableTest {
         assertBoth("1", "[1, 2, 3]::maxBy(|| -&it)");
     }
 
-    // ========== Grouping ==========
-
     @Test
     public void testGroupBy() {
         // Map 键顺序不保证，改用验证包含关系
@@ -141,8 +129,6 @@ public class ExtensionIterableTest {
     public void testChunked() {
         assertBoth("[[1, 2], [3, 4], [5]]", "[1, 2, 3, 4, 5]::chunked(2)");
     }
-
-    // ========== Ordering ==========
 
     @Test
     public void testSorted() {
@@ -175,8 +161,6 @@ public class ExtensionIterableTest {
         assertNotNull(result.getInterpretResult());
         assertNotNull(result.getCompileResult());
     }
-
-    // ========== Operations ==========
 
     @Test
     public void testTake() {
@@ -231,14 +215,10 @@ public class ExtensionIterableTest {
         assertBoth("[1, 2]", "[1, 2, 3, 4]::distinctBy(|| &it % 2)");
     }
 
-    // ========== Each (side effect) ==========
-
     @Test
     public void testEach() {
         assertBoth("6", "sum = 0; [1, 2, 3]::each(|| sum += &it); &sum");
     }
-
-    // ========== Complex scenarios ==========
 
     @Test
     public void testChainedOperations() {
@@ -250,8 +230,6 @@ public class ExtensionIterableTest {
     public void testNestedCollections() {
         assertBoth("10.0", "[[1, 2], [3, 4]]::flatMap(|| &it)::sumOf(|| &it)");
     }
-
-    // ========== Helper ==========
 
     private void assertBoth(String expected, String code) {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(code);

@@ -38,8 +38,6 @@ public class LocalVariableBenchmark {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);
 
-    // ========== 测试表达式 ==========
-    
     // 单次读取
     private static final String EXPR_LOCAL_READ = "_x = 100; &_x";
     private static final String EXPR_ROOT_READ = "x = 100; &x";
@@ -64,7 +62,6 @@ public class LocalVariableBenchmark {
     private static final String EXPR_LOCAL_LOOP = "_sum = 0; for i in [1,2,3,4,5,6,7,8,9,10] { _sum = &_sum + &i }; &_sum";
     private static final String EXPR_ROOT_LOOP = "sum = 0; for i in [1,2,3,4,5,6,7,8,9,10] { sum = &sum + &i }; &sum";
 
-    // ========== 解释模式预解析结果 ==========
     private ParsedScript parsedLocalRead;
     private ParsedScript parsedRootRead;
     private ParsedScript parsedLocalWrite;
@@ -78,7 +75,6 @@ public class LocalVariableBenchmark {
     private ParsedScript parsedLocalLoop;
     private ParsedScript parsedRootLoop;
 
-    // ========== 编译模式预编译脚本 ==========
     private RuntimeScriptBase compiledLocalRead;
     private RuntimeScriptBase compiledRootRead;
     private RuntimeScriptBase compiledLocalWrite;
@@ -138,8 +134,6 @@ public class LocalVariableBenchmark {
         return (RuntimeScriptBase) scriptClass.newInstance();
     }
 
-    // ========== 单次读取基准测试 ==========
-
     @Benchmark
     public void singleRead_Local_Interpret(Blackhole bh) {
         bh.consume(parsedLocalRead.eval());
@@ -159,8 +153,6 @@ public class LocalVariableBenchmark {
     public void singleRead_Root_Compile(Blackhole bh) {
         bh.consume(compiledRootRead.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
-
-    // ========== 多次写入基准测试 ==========
 
     @Benchmark
     public void multiWrite_Local_Interpret(Blackhole bh) {
@@ -182,8 +174,6 @@ public class LocalVariableBenchmark {
         bh.consume(compiledRootWrite.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
 
-    // ========== 多次读取基准测试 ==========
-
     @Benchmark
     public void multiRead_Local_Interpret(Blackhole bh) {
         bh.consume(parsedLocalMultiRead.eval());
@@ -203,8 +193,6 @@ public class LocalVariableBenchmark {
     public void multiRead_Root_Compile(Blackhole bh) {
         bh.consume(compiledRootMultiRead.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
-
-    // ========== 复合操作基准测试 ==========
 
     @Benchmark
     public void compound_Local_Interpret(Blackhole bh) {
@@ -226,8 +214,6 @@ public class LocalVariableBenchmark {
         bh.consume(compiledRootCompound.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
 
-    // ========== 多变量基准测试 ==========
-
     @Benchmark
     public void multiVar_Local_Interpret(Blackhole bh) {
         bh.consume(parsedLocalMultiVar.eval());
@@ -247,8 +233,6 @@ public class LocalVariableBenchmark {
     public void multiVar_Root_Compile(Blackhole bh) {
         bh.consume(compiledRootMultiVar.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
-
-    // ========== 循环场景基准测试 ==========
 
     @Benchmark
     public void loop_Local_Interpret(Blackhole bh) {

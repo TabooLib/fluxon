@@ -20,8 +20,6 @@ class FluxonScriptEngineTest {
         engine = new FluxonScriptEngine(new FluxonScriptEngineFactory());
     }
 
-    // ==================== 基础功能测试 ====================
-
     @Test
     void testBasicArithmetic() throws ScriptException {
         Object result = engine.eval("1 + 2 * 3");
@@ -66,8 +64,6 @@ class FluxonScriptEngineTest {
         Object result = engine.eval("&a * &b", bindings);
         assertEquals(1200, result);
     }
-
-    // ==================== Compilable 接口测试 ====================
 
     @Test
     void testCompileAndEval() throws ScriptException {
@@ -114,8 +110,6 @@ class FluxonScriptEngineTest {
         assertEquals(3, c2.eval());
     }
 
-    // ==================== Invocable 接口测试 ====================
-
     @Test
     void testInvokeFunction() throws ScriptException, NoSuchMethodException {
         engine.eval("def greet(name) = 'Hello, ' + &name");
@@ -150,8 +144,6 @@ class FluxonScriptEngineTest {
         assertTrue(ex.getMessage().contains("No script has been executed yet"));
     }
 
-    // ==================== I/O 重定向测试 ====================
-
     @Test
     void testOutputRedirection() throws ScriptException {
         StringWriter writer = new StringWriter();
@@ -163,8 +155,6 @@ class FluxonScriptEngineTest {
         assertTrue(writer.toString().contains("Hello from Fluxon"));
     }
 
-    // ==================== 执行成本限制测试 ====================
-
     @Test
     void testCostLimit() {
         engine.put(FluxonScriptEngine.COST_LIMIT, 5L);
@@ -174,8 +164,6 @@ class FluxonScriptEngineTest {
             engine.eval("x = 0; while &x < 100 { x = &x + 1 }");
         });
     }
-
-    // ==================== 工厂测试 ====================
 
     @Test
     void testEngineFactory() {
@@ -198,8 +186,6 @@ class FluxonScriptEngineTest {
         assertTrue(eng instanceof FluxonScriptEngine);
     }
 
-    // ==================== 错误处理测试 ====================
-
     @Test
     void testScriptExceptionWithLineInfo() {
         // 引用未定义的变量应该抛出异常
@@ -209,8 +195,6 @@ class FluxonScriptEngineTest {
         // 验证异常消息不为空
         assertNotNull(ex.getMessage());
     }
-
-    // ==================== getInterface 测试 ====================
 
     /**
      * 用于测试 getInterface 的接口

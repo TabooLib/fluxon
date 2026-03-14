@@ -306,8 +306,6 @@ public class NestedContextCallBugTest {
                 "Compiled result should be 50, got: " + result.getCompileResult());
     }
 
-    // ========== 环境注入变量测试（编译器无法推断类型，强制走 deferred 路径） ==========
-
     // Scenario U: 注入变量作为 target，编译器无法推断类型
     @Test
     public void testScenarioU_injectedVarTarget() {
@@ -404,8 +402,6 @@ public class NestedContextCallBugTest {
         assertEquals(result.getInterpretResult(), result.getCompileResult(),
                 "AA: Interpret and compile should match. interpret=" + result.getInterpretResult() + " compile=" + result.getCompileResult());
     }
-
-    // ========== NativeFunction 扩展函数测试（模拟用户 feishu 模块） ==========
 
     // Scenario BB: 自定义 NativeFunction 扩展 + 嵌套上下文调用（核心复现场景）
     // 模拟 feishu::searchRecords("a", "b", "c", "d", feishu::createFilter("x", "y", "z"))
@@ -521,8 +517,6 @@ public class NestedContextCallBugTest {
         }
     }
 
-    // ========== @Export 方式注册的模块函数嵌套测试 ==========
-
     // Scenario EE: time 模块 - 嵌套上下文调用，最后参数是 time::now()
     // 注意：getNow → now（StringUtils.transformMethodName 去掉 get 前缀）
     @Test
@@ -567,8 +561,6 @@ public class NestedContextCallBugTest {
         assertEquals(result.getInterpretResult(), result.getCompileResult(),
                 "HH: Interpret and compile should match. interpret=" + result.getInterpretResult() + " compile=" + result.getCompileResult());
     }
-
-    // ========== @Export 自定义模块测试（模拟 feishu 模块模式） ==========
 
     /**
      * 模拟 feishu 模块的测试类
@@ -759,8 +751,6 @@ public class NestedContextCallBugTest {
                 "QQ: Interpret and compile should match. interpret=" + result.getInterpretResult() + " compile=" + result.getCompileResult());
     }
 
-    // ========== FeishuModule：精确复现用户飞书模块嵌套调用 Bug ==========
-
     /**
      * 模拟飞书模块，精确匹配用户上报的 feishu::searchRecords(..., feishu::createFilter(...)) 模式
      */
@@ -859,7 +849,6 @@ public class NestedContextCallBugTest {
                 "VV BUG CHECK: interpret=" + result.getInterpretResult() + " compile=" + result.getCompileResult());
     }
 
-    // ========== FeishuObjectModule：精确复现用户实际代码模式 ==========
     // 与上面 FeishuModule 的区别：
     // 1. returnsObject() 而非 Type.fromClass(...)，返回 Type.OBJECT
     // 2. 无命名空间（namespace = null），无需 import
@@ -995,8 +984,6 @@ public class NestedContextCallBugTest {
         assertEquals(result.getInterpretResult(), result.getCompileResult(),
                 "BBB BUG CHECK: interpret=" + result.getInterpretResult() + " compile=" + result.getCompileResult());
     }
-
-    // ========== 异步场景测试（async def 内的嵌套调用） ==========
 
     // Scenario CCC: async def 中嵌套调用，赋值后读取结果
     // 精确模拟用户代码模式：async def run { npcs = feishu::searchRecords(..., feishu::createFilter(...)); &npcs }

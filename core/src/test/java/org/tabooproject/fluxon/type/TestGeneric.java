@@ -25,7 +25,6 @@ public class TestGeneric<T> {
         this.value = value;
     }
 
-    // ========== 泛型字段访问 ==========
     public T getValue() {
         return value;
     }
@@ -49,8 +48,6 @@ public class TestGeneric<T> {
         return String.valueOf(value);
     }
 
-    // ========== 实例泛型方法 ==========
-    
     /**
      * 返回传入的值（实例版本的identity）
      */
@@ -93,7 +90,6 @@ public class TestGeneric<T> {
         return num.doubleValue();
     }
 
-    // ========== 函数式接口方法 ==========
     public <R> R transform(Function<T, R> func) {
         return func.apply(value);
     }
@@ -106,7 +102,6 @@ public class TestGeneric<T> {
         return supplier.get();
     }
 
-    // ========== 静态泛型方法 ==========
     @SuppressWarnings("unchecked")
     public static <E> List<E> createList(E... elements) {
         List<E> list = new ArrayList<>();
@@ -122,7 +117,6 @@ public class TestGeneric<T> {
         return map;
     }
 
-    // ========== 有界泛型 ==========
     public static <N extends Number> double sumNumbers(List<N> numbers) {
         double sum = 0;
         for (N n : numbers) {
@@ -139,8 +133,6 @@ public class TestGeneric<T> {
         return total;
     }
 
-    // ========== 返回泛型集合 ==========
-    
     /**
      * 返回字符串列表（用于测试）
      */
@@ -204,7 +196,6 @@ public class TestGeneric<T> {
         return map;
     }
 
-    // ========== 泛型参数 ==========
     public String processGenericList(List<String> list) {
         return "list-size:" + list.size();
     }
@@ -213,7 +204,6 @@ public class TestGeneric<T> {
         return "map-size:" + map.size();
     }
 
-    // ========== 通配符 ==========
     public int countWildcard(List<?> list) {
         return list.size();
     }

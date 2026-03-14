@@ -11,8 +11,6 @@ import static org.tabooproject.fluxon.FluxonTestUtil.assertBothEqual;
  */
 public class ConcurrencyTest {
 
-    // ========== async 函数并发 ==========
-
     @RepeatedTest(50)
     void testAsyncFunctionConcurrentCalls() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -34,8 +32,6 @@ public class ConcurrencyTest {
         // 3 + 7 + 11 + 15 + 19 = 55
         assertBothEqual(55, result);
     }
-
-    // ========== scope + runAsync 并发 ==========
 
     @RepeatedTest(50)
     void testScopeRunAsyncRace() {
@@ -65,8 +61,6 @@ public class ConcurrencyTest {
         // 1 + 4 + 9 + 16 + 25 = 55
         assertBothEqual(55, result);
     }
-
-    // ========== 直接 runAsync（不在 scope 内）==========
 
     @RepeatedTest(50)
     void testDirectRunAsyncRace() {

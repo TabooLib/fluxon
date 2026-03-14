@@ -18,8 +18,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class MethodCallTest extends MemberAccessTestBase {
 
-    // ========== 无参方法 ==========
-
     @Test
     public void testNoArgsMethodReturningString() throws Exception {
         assertEquals("test-object", interpretAndCompile("&obj.getName()"));
@@ -55,8 +53,6 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals(2.718f, interpretAndCompile("&obj.getFloat()"));
     }
 
-    // ========== 返回 null ==========
-
     @Test
     public void testMethodReturningNull() throws Exception {
         assertNull(interpretAndCompile("&obj.getNullValue()"));
@@ -66,8 +62,6 @@ public class MethodCallTest extends MemberAccessTestBase {
     public void testMethodReturningNullObject() throws Exception {
         assertNull(interpretAndCompile("&obj.getNull()"));
     }
-
-    // ========== 返回 void ==========
 
     @Test
     public void testVoidMethod() throws Exception {
@@ -79,8 +73,6 @@ public class MethodCallTest extends MemberAccessTestBase {
     public void testVoidMethodWithArg() throws Exception {
         assertNull(interpretAndCompile("&obj.voidMethodWithArg('test')"));
     }
-
-    // ========== 返回集合类型 ==========
 
     @Test
     @SuppressWarnings("unchecked")
@@ -135,8 +127,6 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals(0, ((Map<?, ?>) result).size());
     }
 
-    // ========== 有参方法 ==========
-
     @Test
     public void testMethodWithStringArgs() throws Exception {
         assertEquals("helloworld", interpretAndCompile("&obj.concat('hello', 'world')"));
@@ -173,8 +163,6 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals("null-check:not-null", interpretAndCompile("&obj.processNull('value')"));
     }
 
-    // ========== 参数数量边界 ==========
-
     @Test
     public void testZeroArgs() throws Exception {
         assertEquals("no-args", interpretAndCompile("&obj.noArgs()"));
@@ -206,14 +194,10 @@ public class MethodCallTest extends MemberAccessTestBase {
             interpretAndCompile("&obj.tenArgs('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j')"));
     }
 
-    // ========== 混合参数类型 ==========
-
     @Test
     public void testMixedArgs() throws Exception {
         assertEquals("hello:42:true:3.14", interpretAndCompile("&obj.mixedArgs('hello', 42, true, 3.14)"));
     }
-
-    // ========== 重载方法 ==========
 
     @Test
     public void testOverloadNoArgs() throws Exception {
@@ -265,8 +249,6 @@ public class MethodCallTest extends MemberAccessTestBase {
         assertEquals("concat:ab", interpretAndCompile("&obj.process('a', 'b')"));
     }
 
-    // ========== 静态方法 ==========
-
     @Test
     public void testStaticMethodCallOnInstance() throws Exception {
         assertEquals("static-result", interpretAndCompile("&obj.staticMethod()"));
@@ -276,8 +258,6 @@ public class MethodCallTest extends MemberAccessTestBase {
     public void testStaticMethodCallWithArgsOnInstance() throws Exception {
         assertEquals(3, interpretAndCompile("&obj.staticAdd(1, 2)"));
     }
-
-    // ========== 方法调用作为表达式 ==========
 
     @Test
     public void testMethodCallInArithmetic() throws Exception {
@@ -307,8 +287,6 @@ public class MethodCallTest extends MemberAccessTestBase {
             "&sum";
         assertEquals(6, interpretAndCompile(source)); // 2 * 3
     }
-
-    // ========== 方法调用后续操作 ==========
 
     @Test
     public void testMethodResultWithExtensionFunction() throws Exception {

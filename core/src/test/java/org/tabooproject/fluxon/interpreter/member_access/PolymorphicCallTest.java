@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class PolymorphicCallTest extends MemberAccessTestBase {
 
-    // ========== 同类不同实例 ==========
-
     @Test
     public void testSameClassDifferentInstances() {
         TestObject obj1 = new TestObject();
@@ -45,8 +43,6 @@ public class PolymorphicCallTest extends MemberAccessTestBase {
         });
         assertEquals("test-object-test-object", result);
     }
-
-    // ========== 循环中的多态调用 ==========
 
     @Test
     public void testPolymorphicCallInLoop() {
@@ -114,8 +110,6 @@ public class PolymorphicCallTest extends MemberAccessTestBase {
         assertEquals(60, result); // 10 + 20 + 30
     }
 
-    // ========== 编译模式多态调用 ==========
-
     @Test
     public void testCompiledPolymorphicInstances() throws Exception {
         TestObject obj1 = new TestObject();
@@ -154,8 +148,6 @@ public class PolymorphicCallTest extends MemberAccessTestBase {
         assertEquals(5, result);
     }
 
-    // ========== 一致性测试 ==========
-
     @Test
     public void testPolymorphicConsistency() throws Exception {
         TestObject obj1 = new TestObject();
@@ -179,8 +171,6 @@ public class PolymorphicCallTest extends MemberAccessTestBase {
         assertEquals(300, interpretResult);
     }
 
-    // ========== 不同字段值的实例 ==========
-
     @Test
     public void testInstancesWithDifferentFieldValues() {
         TestObject obj1 = new TestObject();
@@ -202,8 +192,6 @@ public class PolymorphicCallTest extends MemberAccessTestBase {
         });
         assertEquals("second-false", result2);
     }
-
-    // ========== 嵌套对象的多态访问 ==========
 
     @Test
     public void testPolymorphicNestedAccess() {

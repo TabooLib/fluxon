@@ -13,8 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class OperatorPrecedenceTest extends MemberAccessTestBase {
 
-    // ========== . 和 :: 操作符优先级 ==========
-
     @Test
     public void testDotHigherThanContextCall() {
         // . (115) 优先级高于 :: (110)
@@ -29,8 +27,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertTrue(result instanceof java.util.List);
         assertEquals(2, ((java.util.List<?>) result).size());
     }
-
-    // ========== . 和算术运算符 ==========
 
     @Test
     public void testDotWithAddition() {
@@ -56,8 +52,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
     public void testDotWithModulo() {
         assertEquals(0, interpret("&obj.intField % &obj.intField"));
     }
-
-    // ========== . 和比较运算符 ==========
 
     @Test
     public void testDotWithEquals() {
@@ -89,8 +83,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals(true, interpret("&obj.intField >= 42"));
     }
 
-    // ========== . 和逻辑运算符 ==========
-
     @Test
     public void testDotWithLogicalAnd() {
         assertEquals(true, interpret("&obj.booleanField && true"));
@@ -107,8 +99,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals(false, interpret("!&obj.booleanField"));
     }
 
-    // ========== . 和范围操作符 ==========
-
     @Test
     public void testDotNotConfusedWithRange() throws Exception {
         // 确保 . 和 .. 不混淆
@@ -124,8 +114,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertTrue(result instanceof java.util.List);
         assertEquals(5, ((java.util.List<?>) result).size());
     }
-
-    // ========== . 在条件表达式中 ==========
 
     @Test
     public void testDotInIfCondition() {
@@ -145,8 +133,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals(3, interpret(source));
     }
 
-    // ========== . 在函数调用中 ==========
-
     @Test
     public void testDotResultAsArgument() {
         // 字段值作为方法参数
@@ -165,8 +151,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals("test-objecttest-object", interpret("&obj.concat(&obj.getName(), &obj.getName())"));
     }
 
-    // ========== 复合表达式 ==========
-
     @Test
     public void testComplexExpression() {
         // 复杂表达式：算术 + 字段访问 + 方法调用
@@ -183,8 +167,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals(84, interpret("&obj.getSelf().intField + &obj.intField"));
     }
 
-    // ========== 括号优先级 ==========
-
     @Test
     public void testParenthesesWithDot() {
         // 括号应该正常工作
@@ -196,8 +178,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
         assertEquals("test-object", interpret("(&obj.getSelf()).getName()"));
     }
 
-    // ========== 字符串连接 ==========
-
     @Test
     public void testDotWithStringConcat() {
         assertEquals("value:42", interpret("'value:' + &obj.intField"));
@@ -207,8 +187,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
     public void testMultipleFieldsInStringConcat() {
         assertEquals("public-value-42", interpret("&obj.publicField + '-' + &obj.intField"));
     }
-
-    // ========== 编译模式优先级测试 ==========
 
     @Test
     public void testCompiledDotWithArithmetic() throws Exception {
@@ -229,8 +207,6 @@ public class OperatorPrecedenceTest extends MemberAccessTestBase {
     public void testCompiledComplexExpression() throws Exception {
         assertEquals(142, compile("&obj.intField + &obj.getNumber()"));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testPrecedenceConsistency() throws Exception {

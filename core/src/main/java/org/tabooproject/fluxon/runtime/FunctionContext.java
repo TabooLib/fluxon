@@ -66,8 +66,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.stackIndex = stackIndex;
     }
 
-    // ====================== 参数读取 - 原始类型 ======================
-
     public int getInt(int index) {
         return (int) primitives[index];
     }
@@ -92,8 +90,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
         return primitives[index];
     }
 
-    // ====================== 参数读取 - 引用类型 ======================
-
     public Object getRef(int index) {
         return refs[index];
     }
@@ -101,8 +97,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
     public String getString(int index) {
         return (String) refs[index];
     }
-
-    // ====================== 参数写入 ======================
 
     public void setInt(int index, int v) {
         primitives[index] = v;
@@ -134,8 +128,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
         argTypes[index] = TYPE_REF;
     }
 
-    // ====================== 参数类型查询 ======================
-
     public boolean isArgPrimitive(int index) {
         return index < argTypes.length && argTypes[index] != TYPE_REF;
     }
@@ -143,8 +135,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
     public byte getArgType(int index) {
         return index < argTypes.length ? argTypes[index] : TYPE_REF;
     }
-
-    // ====================== 便捷读取 ======================
 
     public double getAsDouble(int index) {
         byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
@@ -244,8 +234,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
         }
     }
 
-    // ====================== 返回值写入 ======================
-
     public void setReturnInt(int v) {
         returnPrimitive = v;
         returnType = Type.I;
@@ -276,8 +264,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
         returnType = Type.OBJECT;
     }
 
-    // ====================== 返回值读取 ======================
-
     public long getReturnPrimitive() {
         return returnPrimitive;
     }
@@ -289,8 +275,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
     public Type getReturnType() {
         return returnType;
     }
-
-    // ====================== 通用 ======================
 
     public int getArgumentCount() {
         return argumentCount;
@@ -443,8 +427,6 @@ public final class FunctionContext<Target> implements AutoCloseable {
             default: return Type.OBJECT;
         }
     }
-
-    // ====================== 内部方法 ======================
 
     @SuppressWarnings("unchecked")
     void reset(

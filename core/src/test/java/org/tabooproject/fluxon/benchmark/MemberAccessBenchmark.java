@@ -95,10 +95,8 @@ public class MemberAccessBenchmark {
 
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);
 
-    // ========== 测试对象 ==========
     private TestObject testObject;
 
-    // ========== 解释模式预解析结果 ==========
     private ParsedScript parsedFieldAccess;
     private ParsedScript parsedMethodNoArgs;
     private ParsedScript parsedMethodWithArgs;
@@ -106,7 +104,6 @@ public class MemberAccessBenchmark {
     private ParsedScript parsedChainedAccess;
     private ParsedScript parsedComplexChain;
 
-    // ========== 编译模式预编译脚本 ==========
     private RuntimeScriptBase compiledFieldAccess;
     private RuntimeScriptBase compiledMethodNoArgs;
     private RuntimeScriptBase compiledMethodWithArgs;
@@ -114,11 +111,9 @@ public class MemberAccessBenchmark {
     private RuntimeScriptBase compiledChainedAccess;
     private RuntimeScriptBase compiledComplexChain;
 
-    // ========== 环境 ==========
     private Environment interpretEnv;
     private Environment compileEnv;
 
-    // ========== 测试表达式 ==========
     private static final String EXPR_FIELD_ACCESS = "&obj.publicField";
     private static final String EXPR_METHOD_NO_ARGS = "&obj.getName()";
     private static final String EXPR_METHOD_WITH_ARGS = "&obj.add(10, 20)";
@@ -178,8 +173,6 @@ public class MemberAccessBenchmark {
         return (RuntimeScriptBase) scriptClass.newInstance();
     }
 
-    // ========== 字段访问基准测试 ==========
-
     @Benchmark
     public void fieldAccess_Interpret(Blackhole bh) {
         bh.consume(parsedFieldAccess.eval(interpretEnv));
@@ -189,8 +182,6 @@ public class MemberAccessBenchmark {
     public void fieldAccess_Compile(Blackhole bh) {
         bh.consume(compiledFieldAccess.eval(compileEnv));
     }
-
-    // ========== 无参方法调用基准测试 ==========
 
     @Benchmark
     public void methodNoArgs_Interpret(Blackhole bh) {
@@ -202,8 +193,6 @@ public class MemberAccessBenchmark {
         bh.consume(compiledMethodNoArgs.eval(compileEnv));
     }
 
-    // ========== 带参数方法调用基准测试 ==========
-
     @Benchmark
     public void methodWithArgs_Interpret(Blackhole bh) {
         bh.consume(parsedMethodWithArgs.eval(interpretEnv));
@@ -213,8 +202,6 @@ public class MemberAccessBenchmark {
     public void methodWithArgs_Compile(Blackhole bh) {
         bh.consume(compiledMethodWithArgs.eval(compileEnv));
     }
-
-    // ========== 重载方法调用基准测试 ==========
 
     @Benchmark
     public void methodOverload_Interpret(Blackhole bh) {
@@ -226,8 +213,6 @@ public class MemberAccessBenchmark {
         bh.consume(compiledMethodOverload.eval(compileEnv));
     }
 
-    // ========== 链式调用基准测试 ==========
-
     @Benchmark
     public void chainedAccess_Interpret(Blackhole bh) {
         bh.consume(parsedChainedAccess.eval(interpretEnv));
@@ -238,8 +223,6 @@ public class MemberAccessBenchmark {
         bh.consume(compiledChainedAccess.eval(compileEnv));
     }
 
-    // ========== 复杂链式调用基准测试 ==========
-
     @Benchmark
     public void complexChain_Interpret(Blackhole bh) {
         bh.consume(parsedComplexChain.eval(interpretEnv));
@@ -249,8 +232,6 @@ public class MemberAccessBenchmark {
     public void complexChain_Compile(Blackhole bh) {
         bh.consume(compiledComplexChain.eval(compileEnv));
     }
-
-    // ========== 直接 Java 调用（作为基准对照）==========
 
     @Benchmark
     public void fieldAccess_JavaDirect(Blackhole bh) {

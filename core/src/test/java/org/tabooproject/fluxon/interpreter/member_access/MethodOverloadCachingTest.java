@@ -45,8 +45,6 @@ public class MethodOverloadCachingTest {
         PolymorphicInlineCache.clear();
     }
 
-    // ==================== 测试辅助类 ====================
-
     /**
      * 测试类：提供重载方法
      */
@@ -92,8 +90,6 @@ public class MethodOverloadCachingTest {
             return "SS:" + a + "," + b;
         }
     }
-
-    // ==================== 基本 PIC 功能测试 ====================
 
     /**
      * 测试：循环中同一 call site 用不同参数类型调用重载方法
@@ -211,8 +207,6 @@ public class MethodOverloadCachingTest {
         assertEquals(interpretResult, compileResultValue);
     }
 
-    // ==================== 构造函数测试 ====================
-
     /**
      * 测试：构造函数重载缓存
      */
@@ -250,8 +244,6 @@ public class MethodOverloadCachingTest {
         assertEquals("world", results.get(1));
         assertEquals("test", results.get(2));
     }
-
-    // ==================== PIC 深度限制测试 ====================
 
     /**
      * 测试：超过 PIC 深度限制后仍能正确工作
@@ -312,8 +304,6 @@ public class MethodOverloadCachingTest {
         assertEquals("Long:200", results.get(8));
         assertEquals("Boolean:false", results.get(9));
     }
-
-    // ==================== 线程安全测试 ====================
 
     /**
      * 测试：多线程并发调用同一 call site
@@ -405,8 +395,6 @@ public class MethodOverloadCachingTest {
             fail(sb.toString());
         }
     }
-
-    // ==================== 类型签名检查测试 ====================
 
     /**
      * 测试：checkFullTypeSignature 方法
@@ -514,8 +502,6 @@ public class MethodOverloadCachingTest {
         ));
     }
 
-    // ==================== 多参数重载测试 ====================
-
     /**
      * 测试：多参数方法的重载解析
      */
@@ -559,8 +545,6 @@ public class MethodOverloadCachingTest {
         assertEquals("IS:100,world", results.get(1));
         assertEquals("SS:foo,bar", results.get(2));
     }
-
-    // ==================== PIC 缓存管理测试 ====================
 
     /**
      * 测试：PIC 缓存清除

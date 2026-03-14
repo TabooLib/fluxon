@@ -88,8 +88,6 @@ public class FunctionClassEmitter extends ClassEmitter {
         return new EmitResult(endClass(), lambdaDefinitions);
     }
 
-    // ========== Function 接口方法生成 ==========
-
     private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx) {
         emitGetNameMethod();
         emitGetNamespaceMethod();

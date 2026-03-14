@@ -13,8 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class FunctionMathTest {
 
-    // ========== min 函数测试 ==========
-
     @Test
     void testMinInt() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("min(5, 3)");
@@ -40,8 +38,6 @@ public class FunctionMathTest {
         assertTrue(result.getInterpretResult() instanceof Double);
     }
 
-    // ========== max 函数测试 ==========
-
     @Test
     void testMaxInt() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("max(5, 3)");
@@ -65,8 +61,6 @@ public class FunctionMathTest {
         assertEquals(5.5, result.getCompileResult());
         assertTrue(result.getInterpretResult() instanceof Double);
     }
-
-    // ========== abs 函数测试 ==========
 
     @Test
     void testAbsInt() {
@@ -92,8 +86,6 @@ public class FunctionMathTest {
         assertTrue(result.getInterpretResult() instanceof Double);
     }
 
-    // ========== clamp 函数测试 ==========
-
     @Test
     void testClampInt() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("clamp(15, 0, 10)");
@@ -114,8 +106,6 @@ public class FunctionMathTest {
         assertEquals(10.0, result.getCompileResult());
     }
 
-    // ========== pow 函数测试 ==========
-
     @Test
     void testPowInt() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("pow(2, 3)");
@@ -131,8 +121,6 @@ public class FunctionMathTest {
         assertEquals(8.0, result.getCompileResult());
         assertTrue(result.getInterpretResult() instanceof Double);
     }
-
-    // ========== random 函数测试 ==========
 
     @Test
     void testRandomNoArgs() {
@@ -184,8 +172,6 @@ public class FunctionMathTest {
         System.out.println(result.getCompileResult());
     }
 
-    // ========== 三角函数测试 ==========
-
     @Test
     void testSinCos() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("sin(0.0)");
@@ -199,8 +185,6 @@ public class FunctionMathTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("tan(0.0)");
         assertEquals(0.0, (Double) result.getInterpretResult(), 0.0001);
     }
-
-    // ========== 指数与对数测试 ==========
 
     @Test
     void testExp() {
@@ -220,8 +204,6 @@ public class FunctionMathTest {
         assertEquals(2.0, result.getInterpretResult());
         assertEquals(2.0, result.getCompileResult());
     }
-
-    // ========== 其他函数测试 ==========
 
     @Test
     void testRound() {
@@ -277,8 +259,6 @@ public class FunctionMathTest {
         assertEquals(2.0, result.getInterpretResult());
         assertEquals(2.0, result.getCompileResult());
     }
-
-    // ========== 常数测试 ==========
 
     @Test
     void testConstants() {

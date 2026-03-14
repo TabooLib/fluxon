@@ -63,8 +63,6 @@ public class BridgeClassEmitter extends ClassEmitter {
         return methodNames;
     }
 
-    // ========== 方法生成 ==========
-
     /**
      * 生成 invoke 方法
      */

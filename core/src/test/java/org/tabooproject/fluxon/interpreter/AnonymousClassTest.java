@@ -64,8 +64,6 @@ public class AnonymousClassTest {
         assertEquals(1, result.getCompileResult());
     }
 
-    // ========== 构造参数测试 ==========
-
     @Test
     public void testCtorWithInt() {
         // ArrayList(int) - 单个 int 参数
@@ -150,8 +148,6 @@ public class AnonymousClassTest {
         assertEquals("TestUser", result.getCompileResult());
     }
 
-    // ========== 外部访问测试 ==========
-
     @Test
     public void testAccessOuterVariable() {
         String script =
@@ -194,8 +190,6 @@ public class AnonymousClassTest {
         assertEquals("Hello World", result.getCompileResult());
     }
 
-    // ========== 多接口测试 ==========
-
     @Test
     public void testMultipleInterfaces() {
         // 同时实现 Runnable 和 Callable
@@ -230,8 +224,6 @@ public class AnonymousClassTest {
         assertEquals(123, result.getCompileResult());
     }
 
-    // ========== 多方法覆写测试 ==========
-
     @Test
     public void testMultipleMethods() {
         String script =
@@ -250,8 +242,6 @@ public class AnonymousClassTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.compile(script, "TestMultiMethods");
         assertEquals("started|stopped|data:test", result.getCompileResult());
     }
-
-    // ========== 复杂逻辑测试 ==========
 
     @Test
     public void testMethodWithLocalVar() {
@@ -366,8 +356,6 @@ public class AnonymousClassTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.compile(script, "TestParamCompare");
         assertTrue((int) result.getCompileResult() < 0);
     }
-
-    // ========== 嵌套与边界测试 ==========
 
     @Test
     public void testMultipleAnonymousClasses() {

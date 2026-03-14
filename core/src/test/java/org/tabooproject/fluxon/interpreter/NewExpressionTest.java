@@ -24,8 +24,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("deprecation")
 public class NewExpressionTest {
 
-    // ========== 辅助方法 ==========
-
     /**
      * 使用启用了 Java 构造特性的上下文执行脚本
      */
@@ -99,8 +97,6 @@ public class NewExpressionTest {
         }
     }
 
-    // ========== 基本构造语法测试 ==========
-
     @Test
     public void testBasicConstruction() {
         // 测试基本的 ArrayList 构造
@@ -143,8 +139,6 @@ public class NewExpressionTest {
         result.assertBothEqual("Initial");
     }
 
-    // ========== 与 Member Access (.) 集成测试 ==========
-
     @Test
     public void testMemberAccessOnNewObject() {
         // 测试 new 表达式后直接使用成员访问
@@ -161,8 +155,6 @@ public class NewExpressionTest {
                 "new java.util.ArrayList().class.simpleName");
         result.assertBothEqual("ArrayList");
     }
-
-    // ========== 与 Context Call (::) 集成测试 ==========
 
     @Test
     public void testContextCallOnNewObject() {
@@ -190,8 +182,6 @@ public class NewExpressionTest {
         result.assertBothEqual("item");
     }
 
-    // ========== Feature Flag 测试 ==========
-
     @Test
     public void testFeatureFlagDisabled() {
         // 测试未启用 Java 构造特性时的行为
@@ -205,8 +195,6 @@ public class NewExpressionTest {
             Fluxon.parse(ctx, env);
         }, "Should throw exception when Java construction is not enabled");
     }
-
-    // ========== 构造函数重载解析测试 ==========
 
     @Test
     public void testConstructorOverloadResolutionEmpty() {
@@ -234,8 +222,6 @@ public class NewExpressionTest {
         result.assertBothEqual("");  // 空字符串，但容量为100
     }
 
-    // ========== Varargs 构造函数测试 ==========
-
     @Test
     public void testVarargsConstructor() {
         // 测试 varargs 构造函数 (Arrays.asList 返回的 List)
@@ -246,8 +232,6 @@ public class NewExpressionTest {
                         "&copy::size()");
         result.assertBothEqual(3);
     }
-
-    // ========== 构造函数重载与 null ==========
 
     @Test
     public void testConstructorOverloadWithNullConsistency() {
@@ -260,8 +244,6 @@ public class NewExpressionTest {
                         "&results");
         result.assertBothToStringEqual("[string, string]");
     }
-
-    // ========== 错误场景测试 ==========
 
     @Test
     public void testClassNotFound() {
@@ -279,8 +261,6 @@ public class NewExpressionTest {
             interpretWithJavaConstruction("new java.util.ArrayList('a', 'b')");
         }, "Should throw exception when no matching constructor found");
     }
-
-    // ========== 复杂场景测试 ==========
 
     @Test
     public void testNewInExpression() {
@@ -334,8 +314,6 @@ public class NewExpressionTest {
                         "&outer::size()");
         result.assertBothEqual(0);
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testNewWithNullArgument() {

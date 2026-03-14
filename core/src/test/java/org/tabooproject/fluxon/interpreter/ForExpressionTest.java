@@ -15,9 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class ForExpressionTest {
 
-
-    // ========== 基础 For 循环测试 ==========
-
     @Test
     public void testBasicListIteration() {
         FluxonTestUtil.TestResult result;
@@ -70,8 +67,6 @@ public class ForExpressionTest {
         assertEquals("hello", result.getCompileResult());
     }
 
-    // ========== For 循环中的变量引用测试 ==========
-
     @Test
     public void testForLoopVariableReference() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -87,8 +82,6 @@ public class ForExpressionTest {
         assertEquals("[1, 2, 3]", result.getInterpretResult().toString());
         assertEquals("[1, 2, 3]", result.getCompileResult().toString());
     }
-
-    // ========== 嵌套 For 循环测试 ==========
 
     @Test
     public void testNestedForLoop() {
@@ -119,8 +112,6 @@ public class ForExpressionTest {
         assertEquals(8, result.getInterpretResult());
         assertEquals(8, result.getCompileResult());
     }
-
-    // ========== 解构测试 ==========
 
     @Test
     public void testMapDestructuring() {
@@ -161,8 +152,6 @@ public class ForExpressionTest {
         assertEquals(21, result.getCompileResult());
     }
 
-    // ========== 循环控制测试 ==========
-
     @Test
     public void testForLoopWithConditional() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -198,8 +187,6 @@ public class ForExpressionTest {
         assertEquals("[2, 4, 6]", result.getInterpretResult().toString());
         assertEquals("[2, 4, 6]", result.getCompileResult().toString());
     }
-
-    // ========== 复杂场景测试 ==========
 
     @Test
     public void testForLoopWithContextCall() {
@@ -240,8 +227,6 @@ public class ForExpressionTest {
         assertEquals(6, result.getCompileResult());
     }
 
-    // ========== 外部变量访问测试 ==========
-
     @Test
     public void testForLoopAccessOuterVariable() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -266,8 +251,6 @@ public class ForExpressionTest {
         assertEquals(15, result.getInterpretResult());
         assertEquals(15, result.getCompileResult());
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testForLoopSingleElement() {
@@ -317,8 +300,6 @@ public class ForExpressionTest {
         assertEquals(15, result.getCompileResult());
     }
 
-    // ========== 集合操作测试 ==========
-
     @Test
     public void testForLoopListBuilding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
@@ -354,8 +335,6 @@ public class ForExpressionTest {
         assertEquals("123", result.getInterpretResult());
         assertEquals("123", result.getCompileResult());
     }
-
-    // ========== 复杂嵌套测试 ==========
 
     @Test
     public void testComplexNestedStructure() {

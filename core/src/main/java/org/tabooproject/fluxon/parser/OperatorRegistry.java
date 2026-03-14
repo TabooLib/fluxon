@@ -85,7 +85,6 @@ public class OperatorRegistry {
      * 注册所有内置运算符
      */
     private static void registerBuiltinOperators(OperatorRegistry registry) {
-        // === 中缀运算符（按绑定力从低到高） ===
 
         // Assignment (10) - 右结合
         registry.registerInfix(new AssignmentInfixOperator());
@@ -115,8 +114,6 @@ public class OperatorRegistry {
         registry.registerInfix(new ContextCallInfixOperator());
         // MemberAccess (115) - 左结合（特性开关检查在 parse 中进行）
         registry.registerInfix(new MemberAccessInfixOperator());
-
-        // === 前缀运算符 ===
 
         // Reference (100) - &, &?
         registry.registerPrefix(new ReferencePrefixOperator());

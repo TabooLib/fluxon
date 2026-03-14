@@ -261,8 +261,6 @@ public class ReflectionHelper {
         return invokeConstructorSlow(clazz, args, argTypes);
     }
 
-    // ==================== 慢路径实现 ====================
-
     /**
      * 字段访问慢路径
      */

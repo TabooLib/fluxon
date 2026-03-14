@@ -24,8 +24,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         registry.registerClass(TestObject.class);
     }
 
-    // ========== ClassBridge 存在性验证 ==========
-
     @Test
     public void testClassBridgeGenerated() {
         ClassBridge bridge = ExportRegistry.getClassBridge(TestObject.class);
@@ -39,8 +37,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         assertTrue(bridge.supportsMethod("bridgedMethod"), "Should support bridgedMethod");
         assertTrue(bridge.supportsMethod("bridgedMethodWithArg"), "Should support bridgedMethodWithArg");
     }
-
-    // ========== @Export 方法通过 . 调用 ==========
 
     @Test
     public void testBridgedMethodNoArgs() {
@@ -58,8 +54,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         assertEquals(1030, interpret("&obj.bridgedAdd(10, 20)"));
     }
 
-    // ========== 非 @Export 方法回退到反射 ==========
-
     @Test
     public void testNonExportedMethodFallsBackToReflection() {
         // getName() 没有 @Export 注解，应该走反射
@@ -71,8 +65,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         // 字段访问应该走反射
         assertEquals("public-value", interpret("&obj.publicField"));
     }
-
-    // ========== 编译模式下的 ClassBridge ==========
 
     @Test
     public void testCompiledBridgedMethod() throws Exception {
@@ -89,8 +81,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         assertEquals("test-object", compile("&obj.getName()"));
     }
 
-    // ========== 混合使用 ==========
-
     @Test
     public void testMixedBridgeAndReflection() {
         // 在同一表达式中同时使用 bridge 方法和反射方法
@@ -105,8 +95,6 @@ public class ClassBridgePriorityTest extends MemberAccessTestBase {
         // 链式调用中包含 bridge 方法
         assertEquals("bridged:hello", interpret("&obj.getSelf().bridgedMethodWithArg('hello')"));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testBridgeConsistency() throws Exception {

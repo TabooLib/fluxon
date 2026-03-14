@@ -15,8 +15,6 @@ import static org.tabooproject.fluxon.FluxonTestUtil.*;
  */
 public class FunctionMathBoundaryTest {
 
-    // ========== min/max 边界测试 ==========
-
     @Test
     void testMinWithZero() {
         assertBothEqual(0, runSilent("min(0, 5)"));
@@ -85,8 +83,6 @@ public class FunctionMathBoundaryTest {
         assertEquals(-100.0, negInfResult.getInterpretResult());
     }
 
-    // ========== abs 边界测试 ==========
-
     @Test
     void testAbsZero() {
         assertBothEqual(0, runSilent("abs(0)"));
@@ -118,8 +114,6 @@ public class FunctionMathBoundaryTest {
         assertTrue(Double.isInfinite((Double) infResult.getInterpretResult()));
         assertTrue((Double) infResult.getInterpretResult() > 0);
     }
-
-    // ========== clamp 边界测试 ==========
 
     @Test
     void testClampInRange() {
@@ -159,8 +153,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(5, runSilent("clamp(10, 5, 5)"));
         assertBothEqual(5, runSilent("clamp(5, 5, 5)"));
     }
-
-    // ========== pow 边界测试 ==========
 
     @Test
     void testPowZeroExponent() {
@@ -209,8 +201,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(1000000, runSilent("pow(10, 6)"));
     }
 
-    // ========== sqrt 边界测试 ==========
-
     @Test
     void testSqrtZero() {
         assertBothEqual(0.0, runSilent("sqrt(0.0)"));
@@ -239,8 +229,6 @@ public class FunctionMathBoundaryTest {
         runExpectingError("sqrt(-1.0)", "Cannot take square root of negative number");
     }
 
-    // ========== cbrt 边界测试 ==========
-
     @Test
     void testCbrtZero() {
         assertBothEqual(0.0, runSilent("cbrt(0.0)"));
@@ -258,8 +246,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(-2.0, runSilent("cbrt(-8.0)"));
         assertBothEqual(-3.0, runSilent("cbrt(-27.0)"));
     }
-
-    // ========== log/log10 边界测试 ==========
 
     @Test
     void testLogOne() {
@@ -300,8 +286,6 @@ public class FunctionMathBoundaryTest {
         runExpectingError("log10(-1.0)", "log10 input must be positive");
     }
 
-    // ========== exp 边界测试 ==========
-
     @Test
     void testExpZero() {
         assertBothEqual(1.0, runSilent("exp(0.0)"));
@@ -324,8 +308,6 @@ public class FunctionMathBoundaryTest {
         TestResult result = runSilent("exp(10.0)");
         assertEquals(Math.exp(10), (Double) result.getInterpretResult(), 0.0001);
     }
-
-    // ========== 三角函数边界测试 ==========
 
     @Test
     void testSinBoundary() {
@@ -407,8 +389,6 @@ public class FunctionMathBoundaryTest {
         assertEquals(Math.PI / 2, (Double) result.getInterpretResult(), 0.0001);
     }
 
-    // ========== round/floor/ceil 边界测试 ==========
-
     @Test
     void testRoundBoundary() {
         assertBothEqual(4L, runSilent("round(3.5)"));
@@ -446,8 +426,6 @@ public class FunctionMathBoundaryTest {
         assertEquals(0.0, (Double) result.getCompileResult(), 0.0);
     }
 
-    // ========== sign 边界测试 ==========
-
     @Test
     void testSignPositive() {
         assertBothEqual(1, runSilent("sign(42)"));
@@ -481,8 +459,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(-1, runSilent("sign(-9223372036854775807L)"));
     }
 
-    // ========== lerp 边界测试 ==========
-
     @Test
     void testLerpBoundary() {
         assertBothEqual(0.0, runSilent("lerp(0.0, 10.0, 0.0)"));
@@ -505,8 +481,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(-10.0, runSilent("lerp(0.0, 10.0, -1.0)"));
     }
 
-    // ========== hypot 边界测试 ==========
-
     @Test
     void testHypotBasic() {
         assertBothEqual(5.0, runSilent("hypot(3.0, 4.0)"));
@@ -527,8 +501,6 @@ public class FunctionMathBoundaryTest {
         assertBothEqual(5.0, runSilent("hypot(3.0, -4.0)"));
         assertBothEqual(5.0, runSilent("hypot(-3.0, -4.0)"));
     }
-
-    // ========== rad/deg 边界测试 ==========
 
     @Test
     void testRadDegBoundary() {
@@ -560,8 +532,6 @@ public class FunctionMathBoundaryTest {
         result = runSilent("rad(deg(&PI / 4.0))");
         assertEquals(Math.PI / 4, (Double) result.getInterpretResult(), 0.0001);
     }
-
-    // ========== random 边界测试 ==========
 
     @Test
     void testRandomNoArgsRange() {
@@ -623,8 +593,6 @@ public class FunctionMathBoundaryTest {
         runExpectingError("random(10.0, 5.0)", "random 10.0 must be less than 5.0");
     }
 
-    // ========== 常数测试 ==========
-
     @Test
     void testPIConstant() {
         TestResult result = runSilent("&PI");
@@ -636,8 +604,6 @@ public class FunctionMathBoundaryTest {
         TestResult result = runSilent("&E");
         assertEquals(Math.E, (Double) result.getInterpretResult(), 0.0000001);
     }
-
-    // ========== 类型返回验证 ==========
 
     @Test
     void testMinReturnsCorrectType() {

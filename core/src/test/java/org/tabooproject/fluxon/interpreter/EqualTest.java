@@ -15,8 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class EqualTest {
 
-    // ========== 基础类型相等性测试 ==========
-
     @Test
     public void testIntegerEquality() {
         FluxonTestUtil.TestResult result;
@@ -94,8 +92,6 @@ public class EqualTest {
         assertEquals(false, result.getCompileResult());
     }
 
-    // ========== 数值类型转换相等性测试 ==========
-
     @Test
     public void testIntegerAndDoubleEquality() {
         FluxonTestUtil.TestResult result;
@@ -150,8 +146,6 @@ public class EqualTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 集合相等性测试 ==========
-
     @Test
     public void testListEquality() {
         FluxonTestUtil.TestResult result;
@@ -199,8 +193,6 @@ public class EqualTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 不相等测试 ==========
-
     @Test
     public void testNotEqual() {
         FluxonTestUtil.TestResult result;
@@ -217,8 +209,6 @@ public class EqualTest {
         assertEquals(true, result.getInterpretResult());
         assertEquals(true, result.getCompileResult());
     }
-
-    // ========== 引用相等性测试 ==========
 
     @Test
     public void testReferenceEquality() {
@@ -246,8 +236,6 @@ public class EqualTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 复杂表达式相等性测试 ==========
-
     @Test
     public void testExpressionEquality() {
         FluxonTestUtil.TestResult result;
@@ -274,8 +262,6 @@ public class EqualTest {
         assertEquals(true, result.getCompileResult());
     }
 
-    // ========== 条件表达式中的相等性测试 ==========
-
     @Test
     public void testEqualityInCondition() {
         FluxonTestUtil.TestResult result;
@@ -301,8 +287,6 @@ public class EqualTest {
         assertEquals(12, result.getCompileResult());
     }
 
-    // ========== 类型混合相等性测试 ==========
-
     @Test
     public void testMixedTypeInequality() {
         FluxonTestUtil.TestResult result;
@@ -316,8 +300,6 @@ public class EqualTest {
         assertEquals(false, result.getInterpretResult());
         assertEquals(false, result.getCompileResult());
     }
-
-    // ========== 逻辑表达式中的相等性测试 ==========
 
     @Test
     public void testEqualityInLogicalExpression() {
@@ -335,8 +317,6 @@ public class EqualTest {
         assertEquals(false, result.getInterpretResult());
         assertEquals(false, result.getCompileResult());
     }
-
-    // ========== 引用相等性测试 (=== / !==) ==========
 
     @Test
     public void testIdenticalSameReference() {

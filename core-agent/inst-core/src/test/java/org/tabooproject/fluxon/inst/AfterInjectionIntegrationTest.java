@@ -36,8 +36,6 @@ class AfterInjectionIntegrationTest {
         CallbackDispatcher.clearAll();
     }
 
-    // ==================== 测试目标类 ====================
-
     public static class TestTarget {
 
         public int instanceValue = 0;
@@ -72,8 +70,6 @@ class AfterInjectionIntegrationTest {
             return a / b;
         }
     }
-
-    // ==================== 测试用例 ====================
 
     @Test
     void testAfterCapturesReturnValue() {

@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class PropertySetterTest extends MemberAccessTestBase {
 
-    // ========== 测试辅助类 ==========
-
     public static class MutableObject {
         public String name = "initial";
         public int count = 0;
@@ -41,8 +39,6 @@ public class PropertySetterTest extends MemberAccessTestBase {
             return value;
         }
     }
-
-    // ========== 简单赋值测试 ==========
 
     @Test
     public void testSimpleFieldAssignment() throws Exception {
@@ -85,8 +81,6 @@ public class PropertySetterTest extends MemberAccessTestBase {
         compile("&obj.value = 'new'", obj);
         assertEquals("setter:new", obj.getValue());
     }
-
-    // ========== 复合赋值测试 ==========
 
     @Test
     public void testCompoundAddAssignment() throws Exception {
@@ -136,8 +130,6 @@ public class PropertySetterTest extends MemberAccessTestBase {
         assertEquals(2, obj.count);
     }
 
-    // ========== 安全访问赋值测试 ==========
-
     @Test
     public void testSafeAssignmentOnNull() throws Exception {
         MutableObject obj = new MutableObject();
@@ -170,8 +162,6 @@ public class PropertySetterTest extends MemberAccessTestBase {
         assertEquals(999, obj.inner.count);
     }
 
-    // ========== 链式访问赋值测试 ==========
-
     @Test
     public void testChainedAssignment() throws Exception {
         MutableObject obj = new MutableObject();
@@ -196,8 +186,6 @@ public class PropertySetterTest extends MemberAccessTestBase {
         interpret("&obj.inner.inner.name = 'deep'", obj);
         assertEquals("setter:deep", obj.inner.inner.name);
     }
-
-    // ========== 边界情况测试 ==========
 
     @Test
     public void testAssignmentWithExpression() throws Exception {

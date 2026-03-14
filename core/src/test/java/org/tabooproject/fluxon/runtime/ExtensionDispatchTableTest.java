@@ -21,8 +21,6 @@ public class ExtensionDispatchTableTest {
         runtime = FluxonRuntime.getInstance();
     }
 
-    // ========== 精确匹配测试 ==========
-
     @Test
     void testExactMatchForString() {
         Environment env = runtime.newEnvironment();
@@ -41,8 +39,6 @@ public class ExtensionDispatchTableTest {
         assertNotNull(func, "ArrayList.size 扩展函数应该存在");
     }
 
-    // ========== 可赋值匹配测试 ==========
-
     @Test
     void testAssignableMatchForSubclass() {
         Environment env = runtime.newEnvironment();
@@ -52,8 +48,6 @@ public class ExtensionDispatchTableTest {
         Function func = env.getExtensionFunctionOrNull(LinkedHashMap.class, getExtensionIndex("keySet"), 0);
         assertNotNull(func, "LinkedHashMap 应该匹配到 Map.keySet 扩展函数");
     }
-
-    // ========== 缓存稳定性测试 ==========
 
     @Test
     void testCacheStabilityForSameClass() {
@@ -80,8 +74,6 @@ public class ExtensionDispatchTableTest {
 
         assertSame(func1, func2, "可赋值匹配的缓存应该稳定");
     }
-
-    // ========== 派发表结构测试 ==========
 
     @Test
     void testDispatchTablesCreated() {
@@ -134,8 +126,6 @@ public class ExtensionDispatchTableTest {
         }
     }
 
-    // ========== 性能测试 ==========
-
     @Test
     void testDispatchPerformance() {
         Environment env = runtime.newEnvironment();
@@ -184,8 +174,6 @@ public class ExtensionDispatchTableTest {
         assertTrue(avgTimeNanos < 1000, "缓存后的可赋值匹配查找应该非常快（< 1000ns）");
     }
 
-    // ========== 辅助方法 ==========
-
     /**
      * 获取扩展函数的索引
      * 如果找不到返回 -1
@@ -200,8 +188,6 @@ public class ExtensionDispatchTableTest {
         }
         return -1;
     }
-
-    // ========== 最具体类型匹配测试 ==========
 
     @Test
     void testMostSpecificMatchInHierarchy() {

@@ -17,8 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class InterfaceAccessTest extends MemberAccessTestBase {
 
-    // ========== 接口方法调用 ==========
-
     @Test
     public void testInterfaceMethodNoArgs() {
         assertEquals("interface-method", interpret("&obj.interfaceMethod()", new TestInterfaceImpl()));
@@ -34,8 +32,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
         assertEquals(42, interpret("&obj.getInterfaceValue()", new TestInterfaceImpl()));
     }
 
-    // ========== 通过接口类型引用 ==========
-
     @Test
     public void testInterfaceReference() {
         TestInterface iface = new TestInterfaceImpl();
@@ -47,8 +43,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
         TestInterface iface = new TestInterfaceImpl();
         assertEquals("interface:test", interpret("&obj.interfaceMethodWithArg('test')", iface));
     }
-
-    // ========== 多接口实现 ==========
 
     @Test
     public void testFirstInterfaceMethod() {
@@ -71,8 +65,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
         assertEquals("second-interface", interpret("&obj.secondInterfaceMethod()", iface));
     }
 
-    // ========== 默认方法 ==========
-
     @Test
     public void testDefaultMethod() {
         assertEquals("default-method", interpret("&obj.defaultMethod()", new TestInterfaceImpl()));
@@ -89,8 +81,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
         assertEquals("overridden-default", interpret("&obj.overriddenDefault()", new TestInterfaceImpl()));
     }
 
-    // ========== 实现类独有方法 ==========
-
     @Test
     public void testImplOnlyMethod() {
         assertEquals("impl-only", interpret("&obj.implOnlyMethod()", new TestInterfaceImpl()));
@@ -101,14 +91,10 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
         assertEquals("impl-field", interpret("&obj.implField", new TestInterfaceImpl()));
     }
 
-    // ========== 接口常量 ==========
-
     @Test
     public void testInterfaceConstant() {
         assertEquals("INTERFACE_CONSTANT", interpret("&obj.INTERFACE_CONSTANT", new TestInterfaceImpl()));
     }
-
-    // ========== 链式调用 ==========
 
     @Test
     public void testChainedInterfaceMethod() {
@@ -124,8 +110,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
     public void testChainedDefaultMethod() {
         assertEquals("default-method", interpret("&obj.getSelf().defaultMethod()", new TestInterfaceImpl()));
     }
-
-    // ========== 接口方法作为表达式 ==========
 
     @Test
     public void testInterfaceMethodInArithmetic() {
@@ -144,8 +128,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
             interpret("&obj.concat(&obj.interfaceMethod(), &obj.interfaceMethod())", new TestInterfaceImpl()));
     }
 
-    // ========== 循环中调用接口方法 ==========
-
     @Test
     public void testInterfaceMethodInLoop() {
         String source =
@@ -158,8 +140,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
             "&sum";
         assertEquals(210, interpret(source, new TestInterfaceImpl())); // 42 * 5
     }
-
-    // ========== 编译模式接口测试 ==========
 
     @Test
     public void testCompiledInterfaceMethod() throws Exception {
@@ -186,8 +166,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
     public void testCompiledOverriddenDefault() throws Exception {
         assertEquals("overridden-default", compile("&obj.overriddenDefault()", new TestInterfaceImpl()));
     }
-
-    // ========== 一致性测试 ==========
 
     @Test
     public void testInterfaceConsistency() throws Exception {
@@ -226,8 +204,6 @@ public class InterfaceAccessTest extends MemberAccessTestBase {
             assertEquals(interpretResult, compileResult, "Mismatch for: " + source);
         }
     }
-
-    // ========== 扩展函数组合 ==========
 
     @Test
     public void testInterfaceMethodWithExtension() {

@@ -12,8 +12,6 @@ import static org.tabooproject.fluxon.FluxonTestUtil.*;
  */
 public class ConstantTest {
 
-    // ==================== 常量命名检测 ====================
-
     @Test
     public void testIsConstantName_ValidNames() {
         assertTrue(SymbolEnvironment.isConstantName("PI"));
@@ -36,8 +34,6 @@ public class ConstantTest {
         assertFalse(SymbolEnvironment.isConstantName(null));           // null
         assertFalse(SymbolEnvironment.isConstantName("服务器"));        // 中文
     }
-
-    // ==================== 基本常量定义与引用 ====================
 
     @Test
     public void testIntegerConstant() {
@@ -75,8 +71,6 @@ public class ConstantTest {
         assertBothEqual(null, result);
     }
 
-    // ==================== 常量内联 ====================
-
     @Test
     public void testConstantInliningInExpression() {
         TestResult result = runSilent("FACTOR = 10; result = &FACTOR * 2; &result");
@@ -101,8 +95,6 @@ public class ConstantTest {
         assertBothEqual("log:info", result);
     }
 
-    // ==================== 重赋值检测 ====================
-
     @Test
     public void testReassignConstantError() {
         runExpectingError("X = 10; X = 20", "Cannot reassign constant: X");
@@ -117,8 +109,6 @@ public class ConstantTest {
     public void testReassignConstantToVariableError() {
         runExpectingError("X = 10; y = 5; X = &y", "Cannot reassign constant: X");
     }
-
-    // ==================== 非常量情况（不应被视为常量） ====================
 
     @Test
     public void testMixedCaseNotConstant() {
@@ -147,8 +137,6 @@ public class ConstantTest {
         TestResult result = runSilent("SUM = 1 + 2; SUM = 10; &SUM");
         assertBothEqual(10, result);
     }
-
-    // ==================== 边界情况 ====================
 
     @Test
     public void testSingleCharConstant() {
