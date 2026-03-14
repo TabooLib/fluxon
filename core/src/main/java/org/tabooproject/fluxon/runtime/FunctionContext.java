@@ -481,7 +481,18 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param count 所需最小容量
      */
     public void ensureLocalCapacity(int count) {
-        ensureCapacity(count);
+        if (capacity < count) {
+            long[] newPrimitives = new long[count];
+            Object[] newRefs = new Object[count];
+            byte[] newArgTypes = new byte[count];
+            System.arraycopy(primitives, 0, newPrimitives, 0, capacity);
+            System.arraycopy(refs, 0, newRefs, 0, capacity);
+            System.arraycopy(argTypes, 0, newArgTypes, 0, capacity);
+            primitives = newPrimitives;
+            refs = newRefs;
+            argTypes = newArgTypes;
+            capacity = count;
+        }
     }
 
     /**
