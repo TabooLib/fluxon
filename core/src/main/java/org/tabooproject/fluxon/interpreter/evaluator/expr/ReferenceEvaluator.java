@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
@@ -25,6 +26,12 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     @Override
     public Type evaluate(Interpreter interpreter, ReferenceExpression result) {
         int position = result.getPosition();
+        // Env-free 路径：从 FunctionContext 数组读取
+        FunctionContext<?> ctx = interpreter.activeFunctionContext;
+        if (position >= 0 && ctx != null) {
+            interpreter.resultRef = ctx.getLocal(position);
+            return Type.OBJECT;
+        }
         Environment env = interpreter.getEnvironment();
         if (position >= 0) {
             // 使用当前环境的类型（作用域隔离）
@@ -59,8 +66,25 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     @Override
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
         int position = result.getPosition();
-        Instructions.loadEnvironment(mv, ctx);
         if (position >= 0) {
+            // Env-free 模式：从 JVM 局部变量读取
+            if (ctx.isEnvFreeMode()) {
+                int jvmSlot = ctx.getJvmSlot(position);
+                Type varType = ctx.getVariableType(position);
+                if (varType == Type.I || varType == Type.Z) {
+                    mv.visitVarInsn(Opcodes.ILOAD, jvmSlot);
+                } else if (varType == Type.J) {
+                    mv.visitVarInsn(Opcodes.LLOAD, jvmSlot);
+                } else if (varType == Type.D) {
+                    mv.visitVarInsn(Opcodes.DLOAD, jvmSlot);
+                } else if (varType == Type.F) {
+                    mv.visitVarInsn(Opcodes.FLOAD, jvmSlot);
+                } else {
+                    mv.visitVarInsn(Opcodes.ALOAD, jvmSlot);
+                }
+                return varType;
+            }
+            Instructions.loadEnvironment(mv, ctx);
             Type varType = ctx.getVariableType(position);
             mv.visitLdcInsn(position);
             if (varType.isPrimitive()) {
@@ -77,6 +101,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             }
         }
         // root 变量：先获取 Object，再根据类型拆箱
+        Instructions.loadEnvironment(mv, ctx);
         String name = result.getIdentifier().getValue();
         mv.visitLdcInsn(name);
         mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);

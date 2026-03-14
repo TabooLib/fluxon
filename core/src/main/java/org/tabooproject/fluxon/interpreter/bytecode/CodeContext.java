@@ -35,6 +35,11 @@ public class CodeContext {
     // FunctionContextPool 局部变量槽位索引（用于避免重复 ThreadLocal.get()）
     private int poolLocalSlot = -1;
 
+    // Environment-free 模式：局部变量存储在 JVM local vars 而非 Environment
+    private boolean envFreeMode = false;
+    // 脚本变量位置 → JVM 局部变量槽位的映射
+    private int[] varPosToJvmSlot;
+
     // 方法期望的返回类型（用于匿名类方法等场景）
     private Class<?> expectedReturnType = null;
 
@@ -139,17 +144,18 @@ public class CodeContext {
 
     public int allocateLocalVar(Type type) {
         String descriptor = type.getDescriptor();
-        // 根据类型增加索引
+        // 根据类型增加索引，double/long 占 2 个 slot
         switch (descriptor) {
             case "J":
-            case "D":
+            case "D": {
+                int slot = localVarIndex + 1;
                 localVarIndex += 2;
-                break;
+                return slot;
+            }
             default:
                 localVarIndex += 1;
-                break;
+                return localVarIndex;
         }
-        return localVarIndex;
     }
 
     public int getLocalVarIndex() {
@@ -380,6 +386,34 @@ public class CodeContext {
      */
     public String getUserFunctionOwner(String name) {
         return userFunctionOwners.get(name);
+    }
+
+    /**
+     * 启用 env-free 模式，局部变量存储在 JVM 局部变量而非 Environment
+     *
+     * @param localVarCount 脚本中的局部变量数量
+     */
+    public void enableEnvFreeMode(int localVarCount) {
+        this.envFreeMode = true;
+        this.varPosToJvmSlot = new int[localVarCount];
+    }
+
+    public boolean isEnvFreeMode() {
+        return envFreeMode;
+    }
+
+    /**
+     * 记录脚本变量位置到 JVM 槽位的映射
+     */
+    public void mapVarToJvmSlot(int varPosition, int jvmSlot) {
+        varPosToJvmSlot[varPosition] = jvmSlot;
+    }
+
+    /**
+     * 获取脚本变量对应的 JVM 局部变量槽位
+     */
+    public int getJvmSlot(int varPosition) {
+        return varPosToJvmSlot[varPosition];
     }
 
     /**

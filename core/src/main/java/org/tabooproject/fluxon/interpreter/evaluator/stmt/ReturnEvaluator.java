@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -46,12 +47,21 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             }
             Type valueType = valueEval.generateBytecode(result.getValue(), ctx, mv);
             if (expectedReturnType == null) {
-                // Fluxon 函数体：通过 context.setReturnRef 写入返回值
+                // Fluxon 函数体：通过 context 写入返回值
                 if (valueType == Type.VOID) {
                     mv.visitInsn(RETURN);
+                } else if (valueType.isPrimitive()) {
+                    mv.visitVarInsn(ALOAD, 1);
+                    if (valueType == Type.D || valueType == Type.J) {
+                        mv.visitInsn(DUP_X2);
+                        mv.visitInsn(POP);
+                    } else {
+                        mv.visitInsn(SWAP);
+                    }
+                    FunctionClassEmitter.emitSetReturnPrimitive(valueType, mv);
+                    mv.visitInsn(RETURN);
                 } else {
-                    boxing(valueType, mv);
-                    mv.visitVarInsn(ALOAD, 1);  // load FunctionContext (slot 1)
+                    mv.visitVarInsn(ALOAD, 1);
                     mv.visitInsn(SWAP);
                     mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
                     mv.visitInsn(RETURN);

@@ -269,6 +269,10 @@ public final class FunctionContext<Target> implements AutoCloseable {
     }
 
     public Object getReturnRef() {
+        // 当返回值是原始类型时按需装箱，保证所有直接调用 getReturnRef() 的调用方正确
+        if (returnType != null && returnType.isPrimitive()) {
+            return Type.box(returnPrimitive, returnType);
+        }
         return returnRef;
     }
 
@@ -468,6 +472,70 @@ public final class FunctionContext<Target> implements AutoCloseable {
      */
     public void detachFromPool() {
         pool.detach(this);
+    }
+
+    /**
+     * 确保容量足够存储指定数量的局部变量（env-free 解释器路径使用）
+     * 不修改 argumentCount，仅保证内部数组不越界
+     *
+     * @param count 所需最小容量
+     */
+    public void ensureLocalCapacity(int count) {
+        if (capacity < count) {
+            long[] newPrimitives = new long[count];
+            Object[] newRefs = new Object[count];
+            byte[] newArgTypes = new byte[count];
+            System.arraycopy(primitives, 0, newPrimitives, 0, capacity);
+            System.arraycopy(refs, 0, newRefs, 0, capacity);
+            System.arraycopy(argTypes, 0, newArgTypes, 0, capacity);
+            primitives = newPrimitives;
+            refs = newRefs;
+            argTypes = newArgTypes;
+            capacity = count;
+        }
+    }
+
+    /**
+     * 将原始类型参数统一装箱到 refs 数组（env-free 解释器路径使用）
+     * 调用后所有参数位置的 argTypes 均为 TYPE_REF，getLocal 可直接读 refs
+     *
+     * @param paramCount 参数数量
+     */
+    public void normalizeArgsToRef(int paramCount) {
+        for (int i = 0; i < paramCount && i < argTypes.length; i++) {
+            byte t = argTypes[i];
+            if (t != TYPE_REF) {
+                switch (t) {
+                    case TYPE_INT: refs[i] = (int) primitives[i]; break;
+                    case TYPE_LONG: refs[i] = primitives[i]; break;
+                    case TYPE_FLOAT: refs[i] = Float.intBitsToFloat((int) primitives[i]); break;
+                    case TYPE_DOUBLE: refs[i] = Double.longBitsToDouble(primitives[i]); break;
+                    case TYPE_BOOL: refs[i] = primitives[i] != 0; break;
+                }
+                argTypes[i] = TYPE_REF;
+            }
+        }
+    }
+
+    /**
+     * 获取指定位置的值（env-free 解释器路径使用）
+     * 调用 normalizeArgsToRef 后所有位置均为 TYPE_REF，直接读 refs
+     *
+     * @param index 位置索引
+     * @return 值
+     */
+    public Object getLocal(int index) {
+        return refs[index];
+    }
+
+    /**
+     * 设置指定位置的值（env-free 解释器路径使用）
+     *
+     * @param index 位置索引
+     * @param value 值
+     */
+    public void setLocal(int index, Object value) {
+        refs[index] = value;
     }
 
     private void ensureCapacity(int count) {

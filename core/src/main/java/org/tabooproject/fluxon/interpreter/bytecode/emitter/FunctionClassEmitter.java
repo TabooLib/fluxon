@@ -196,7 +196,13 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitVarInsn(ASTORE, poolSlot);
         funcCtx.setPoolLocalSlot(poolSlot);
         // 绑定参数到环境
-        emitParameterBinding(mv, funcCtx);
+        boolean envFree = canUseEnvFreeMode();
+        if (envFree) {
+            funcCtx.enableEnvFreeMode(funcDef.getLocalVariables().size());
+            emitParameterBindingEnvFree(mv, funcCtx);
+        } else {
+            emitParameterBinding(mv, funcCtx);
+        }
         // 生成函数体字节码
         emitFunctionBody(mv, funcCtx);
         mv.visitMaxs(0, funcCtx.getLocalVarIndex() + 1);
@@ -264,6 +270,69 @@ public class FunctionClassEmitter extends ClassEmitter {
         }
     }
 
+    /**
+     * 判断此函数是否可以使用 env-free 模式
+     * 资格条件：非 Lambda，且局部变量未被子 Lambda 捕获
+     */
+    private boolean canUseEnvFreeMode() {
+        if (funcDef instanceof LambdaFunctionDefinition) return false;
+        return !funcDef.hasVariablesCapturedByChildren();
+    }
+
+    /**
+     * Env-free 模式的参数绑定：将参数直接存入 JVM 局部变量，跳过 Environment 创建
+     * 仍保留父 Environment 引用用于函数查找和根变量访问
+     */
+    private void emitParameterBindingEnvFree(MethodVisitor mv, CodeContext funcCtx) {
+        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
+        // 获取父 Environment 引用并存入局部变量（用于函数查找和根变量访问）
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment",
+                "()" + Environment.TYPE.getDescriptor(), false);
+        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, envSlot);
+        // 将父 Environment 设置到 this.environment 字段（供 Instructions.loadEnvironment 使用）
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(ALOAD, envSlot);
+        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        funcCtx.setEnvironmentLocalSlot(envSlot);
+        // 从 FunctionContext 读取参数，直接存入 JVM 局部变量
+        int argIndex = 0;
+        for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
+            int varPosition = entry.getValue();
+            Class<?> declaredType = parameterTypes.get(argIndex);
+            Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            int jvmSlot = funcCtx.allocateLocalVar(type);
+            funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitLdcInsn(argIndex);
+            if (type == Type.I || type == Type.Z) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+            } else if (type == Type.J) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
+                mv.visitVarInsn(LSTORE, jvmSlot);
+            } else if (type == Type.D) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
+                mv.visitVarInsn(DSTORE, jvmSlot);
+            } else if (type == Type.F) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
+                mv.visitVarInsn(FSTORE, jvmSlot);
+            } else {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
+            argIndex++;
+        }
+        // 为非参数的局部变量分配 JVM 槽位
+        for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
+            Type varType = funcCtx.getVariableType(pos);
+            if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
+            int jvmSlot = funcCtx.allocateLocalVar(varType);
+            funcCtx.mapVarToJvmSlot(pos, jvmSlot);
+        }
+    }
+
     private void emitFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
         // 设置 try-catch 块捕获运行时错误
         Label start = new Label();
@@ -280,14 +349,24 @@ public class FunctionClassEmitter extends ClassEmitter {
             Instructions.emitLineNumber(funcDef.getBody(), mv);
             returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
         }
-        // 若有返回值则写入 context.setReturnRef
+        // 若有返回值则写入 context
         if (returnType != VOID) {
             if (returnType.isPrimitive()) {
-                Instructions.emitBoxing(mv, returnType);
+                // 使用类型化的 setReturnXxx 避免装箱
+                mv.visitVarInsn(ALOAD, 1);
+                if (returnType == Type.D || returnType == Type.J) {
+                    // wide 类型: value(2 slots), ctx -> ctx, value
+                    mv.visitInsn(DUP_X2);
+                    mv.visitInsn(POP);
+                } else {
+                    mv.visitInsn(SWAP);
+                }
+                emitSetReturnPrimitive(returnType, mv);
+            } else {
+                mv.visitVarInsn(ALOAD, 1);
+                mv.visitInsn(SWAP);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);
             }
-            mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
-            mv.visitInsn(SWAP);         // swap: context, result -> result, context
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);
         }
         // 正常返回路径
         mv.visitLabel(end);
@@ -342,6 +421,28 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
         }
         mv.visitFieldInsn(PUTSTATIC, className, "annotations", LIST.getDescriptor());
+    }
+
+    /**
+     * 生成类型化的 setReturnXxx 调用，避免原始类型装箱
+     */
+    public static void emitSetReturnPrimitive(Type type, MethodVisitor mv) {
+        String method;
+        String desc;
+        if (type == Type.I) {
+            method = "setReturnInt"; desc = "(I)V";
+        } else if (type == Type.Z) {
+            method = "setReturnBool"; desc = "(Z)V";
+        } else if (type == Type.J) {
+            method = "setReturnLong"; desc = "(J)V";
+        } else if (type == Type.D) {
+            method = "setReturnDouble"; desc = "(D)V";
+        } else if (type == Type.F) {
+            method = "setReturnFloat"; desc = "(F)V";
+        } else {
+            return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), method, desc, false);
     }
 
     public String getParentClassName() {

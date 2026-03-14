@@ -181,7 +181,12 @@ public class FunctionDefinitionMacro implements StatementMacro {
         }
         // 退出函数标记
         parser.getSymbolEnvironment().setCurrentFunction(null);
-        return new FunctionDefinition(functionName, parameters, parameterTypes, body, isAsync, isPrimarySync, annotations, localVariables, true);
+        // 检查是否有子 Lambda 捕获了此函数的局部变量
+        FunctionDefinition funcDef = new FunctionDefinition(functionName, parameters, parameterTypes, body, isAsync, isPrimarySync, annotations, localVariables, true);
+        if (parser.getSymbolEnvironment().hasFunctionCapturedVars(functionName)) {
+            funcDef.setVariablesCapturedByChildren(true);
+        }
+        return funcDef;
     }
 
     /**

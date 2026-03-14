@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionContextPool;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
@@ -46,6 +47,8 @@ public class Interpreter {
     private final Map<LambdaExpression, UserFunction> lambdaCache = new IdentityHashMap<>();
     // root 变量类型
     private Map<String, Type> rootVariableTypes = null;
+    // env-free 模式下的活跃 FunctionContext（null 表示使用传统 Environment 路径）
+    public FunctionContext<?> activeFunctionContext = null;
 
     public Interpreter(@NotNull Environment environment) {
         this.environment = environment;
@@ -110,6 +113,20 @@ public class Interpreter {
             return evaluate(result);
         } finally {
             this.environment = previous;
+        }
+    }
+
+    /**
+     * 使用 FunctionContext 作为变量存储执行单个节点（env-free 模式）
+     * 局部变量通过 FunctionContext 的数组读写，跳过 Environment 分配
+     */
+    public Type executeWithFunctionContext(ParseResult result, FunctionContext<?> ctx) {
+        FunctionContext<?> previous = this.activeFunctionContext;
+        this.activeFunctionContext = ctx;
+        try {
+            return evaluate(result);
+        } finally {
+            this.activeFunctionContext = previous;
         }
     }
 

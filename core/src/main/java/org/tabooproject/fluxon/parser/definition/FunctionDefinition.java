@@ -24,6 +24,7 @@ public class FunctionDefinition implements Definition {
     private final List<Annotation> annotations;
     private final Set<String> localVariables;
     private final boolean registerToRoot;
+    private boolean variablesCapturedByChildren = false;
 
     public FunctionDefinition(
             String name,
@@ -106,6 +107,18 @@ public class FunctionDefinition implements Definition {
 
     public boolean isRegisterToRoot() {
         return registerToRoot;
+    }
+
+    /**
+     * 是否有局部变量被子 Lambda 捕获
+     * 用于 env-free 优化的资格判断
+     */
+    public boolean hasVariablesCapturedByChildren() {
+        return variablesCapturedByChildren;
+    }
+
+    public void setVariablesCapturedByChildren(boolean v) {
+        this.variablesCapturedByChildren = v;
     }
 
     @Override
