@@ -6,6 +6,11 @@ import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
@@ -242,4 +247,193 @@ public class CachedResolutionGuardTest {
             FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = oldFlag;
         }
     }
+
+    // region 并发压力测试
+
+    /**
+     * 多线程并发读写同一 AST 节点的 cachedResolution
+     * 所有线程共享同一个 ParsedScript（同一 FunctionCallExpression），
+     * 用相同 target 类型并发执行，验证缓存命中路径在竞争下不会产生错误结果
+     */
+    @Test
+    void testConcurrentMonomorphicExecution() throws Exception {
+        boolean oldFlag = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
+        FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = true;
+        try {
+            String source = "&obj::probe()";
+            Environment parseEnv = FluxonRuntime.getInstance().newEnvironment();
+            ParsedScript script = Fluxon.parse(source, parseEnv);
+
+            int threadCount = 8;
+            int iterationsPerThread = 500;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch startGate = new CountDownLatch(1);
+            AtomicInteger errorCount = new AtomicInteger();
+            List<Future<?>> futures = new ArrayList<>();
+
+            for (int t = 0; t < threadCount; t++) {
+                final int threadId = t;
+                futures.add(executor.submit(() -> {
+                    try {
+                        startGate.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        String id = "t" + threadId + "_i" + i;
+                        Environment env = FluxonRuntime.getInstance().newEnvironment();
+                        env.defineRootVariable("obj", new Vessel(id));
+                        Object result = script.eval(env);
+                        if (!("vessel:" + id).equals(result)) {
+                            errorCount.incrementAndGet();
+                        }
+                    }
+                }));
+            }
+
+            startGate.countDown();
+            for (Future<?> f : futures) {
+                f.get(30, TimeUnit.SECONDS);
+            }
+            executor.shutdown();
+            assertEquals(0, errorCount.get(),
+                    "monomorphic 并发执行产生了 " + errorCount.get() + " 个错误结果");
+        } finally {
+            FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = oldFlag;
+        }
+    }
+
+    /**
+     * 多线程并发用不同 target 类型执行同一 AST 节点
+     * 模拟生产环境中 Vessel 和 Decoy 交替出现，验证 guard 失效+慢速路径在竞争下正确工作
+     */
+    @Test
+    void testConcurrentPolymorphicExecution() throws Exception {
+        boolean oldFlag = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
+        FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = true;
+        try {
+            String source = "&obj::probe()";
+            Environment parseEnv = FluxonRuntime.getInstance().newEnvironment();
+            ParsedScript script = Fluxon.parse(source, parseEnv);
+
+            int threadCount = 8;
+            int iterationsPerThread = 500;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch startGate = new CountDownLatch(1);
+            AtomicInteger errorCount = new AtomicInteger();
+            List<Future<?>> futures = new ArrayList<>();
+
+            for (int t = 0; t < threadCount; t++) {
+                final int threadId = t;
+                final boolean useVessel = (t % 2 == 0);
+                futures.add(executor.submit(() -> {
+                    try {
+                        startGate.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        String id = "t" + threadId + "_i" + i;
+                        Environment env = FluxonRuntime.getInstance().newEnvironment();
+                        String expected;
+                        if (useVessel) {
+                            env.defineRootVariable("obj", new Vessel(id));
+                            expected = "vessel:" + id;
+                        } else {
+                            env.defineRootVariable("obj", new Decoy(id));
+                            expected = "decoy:" + id;
+                        }
+                        Object result = script.eval(env);
+                        if (!expected.equals(result)) {
+                            errorCount.incrementAndGet();
+                        }
+                    }
+                }));
+            }
+
+            startGate.countDown();
+            for (Future<?> f : futures) {
+                f.get(30, TimeUnit.SECONDS);
+            }
+            executor.shutdown();
+            assertEquals(0, errorCount.get(),
+                    "polymorphic 并发执行产生了 " + errorCount.get() + " 个错误结果");
+        } finally {
+            FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = oldFlag;
+        }
+    }
+
+    /**
+     * 多线程在同一 AST 上交替 null/非 null target
+     * 验证 guard=null ↔ guard=Class 切换在竞争下的安全性
+     */
+    @Test
+    void testConcurrentNullTargetAlternation() throws Exception {
+        boolean oldFlag = FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE;
+        FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = true;
+        try {
+            FluxonRuntime runtime = FluxonRuntime.getInstance();
+            Function sysProbe = new NativeFunction<>(null, "probe",
+                    returns(Type.OBJECT).noParams(),
+                    ctx -> ctx.setReturnRef("system"),
+                    false, false);
+            runtime.registerFunction(sysProbe);
+            try {
+                String source = "&obj::probe()";
+                Environment parseEnv = runtime.newEnvironment();
+                ParsedScript script = Fluxon.parse(source, parseEnv);
+
+                int threadCount = 8;
+                int iterationsPerThread = 500;
+                ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+                CountDownLatch startGate = new CountDownLatch(1);
+                AtomicInteger errorCount = new AtomicInteger();
+                List<Future<?>> futures = new ArrayList<>();
+
+                for (int t = 0; t < threadCount; t++) {
+                    final int threadId = t;
+                    final boolean useNull = (t % 2 == 0);
+                    futures.add(executor.submit(() -> {
+                        try {
+                            startGate.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                        for (int i = 0; i < iterationsPerThread; i++) {
+                            Environment env = runtime.newEnvironment();
+                            String expected;
+                            if (useNull) {
+                                expected = "system";
+                            } else {
+                                String id = "t" + threadId + "_i" + i;
+                                env.defineRootVariable("obj", new Vessel(id));
+                                expected = "vessel:" + id;
+                            }
+                            Object result = script.eval(env);
+                            if (!expected.equals(result)) {
+                                errorCount.incrementAndGet();
+                            }
+                        }
+                    }));
+                }
+
+                startGate.countDown();
+                for (Future<?> f : futures) {
+                    f.get(30, TimeUnit.SECONDS);
+                }
+                executor.shutdown();
+                assertEquals(0, errorCount.get(),
+                        "null/非 null target 并发交替产生了 " + errorCount.get() + " 个错误结果");
+            } finally {
+                runtime.unregisterFunction(sysProbe);
+            }
+        } finally {
+            FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = oldFlag;
+        }
+    }
+
+    // endregion
 }

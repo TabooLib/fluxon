@@ -17,6 +17,23 @@ import java.util.Arrays;
  */
 public class FunctionCallExpression extends Expression {
 
+    /**
+     * 运行时函数解析缓存（不可变记录）
+     * volatile 写入保证 happens-before：其他线程读到引用时，字段值一定已完整写入
+     */
+    public static final class CachedResolution {
+
+        public final Function function;
+        public final Type[] expectedTypes;
+        public final Class<?> guardClass;
+
+        public CachedResolution(Function function, Type[] expectedTypes, Class<?> guardClass) {
+            this.function = function;
+            this.expectedTypes = expectedTypes;
+            this.guardClass = guardClass;
+        }
+    }
+
     private final String functionName;
     private final ParseResult[] arguments;
     @Nullable
@@ -35,8 +52,8 @@ public class FunctionCallExpression extends Expression {
     private Class<?> resolvedTargetClass;
     // 预解析扩展函数在 OverloadSet 中的索引
     private int resolvedOverloadIndex = -1;
-    // 运行时函数解析缓存（单引用写入保证原子性，避免多线程 tearing）
-    public Object[] cachedResolution;
+    // 运行时函数解析缓存（volatile 保证跨线程可见性）
+    public volatile CachedResolution cachedResolution;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
         super(ExpressionType.FUNCTION_CALL);

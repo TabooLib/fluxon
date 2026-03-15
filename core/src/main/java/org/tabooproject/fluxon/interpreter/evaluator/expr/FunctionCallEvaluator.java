@@ -39,21 +39,17 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int argCount = args.length;
         Environment env = interpreter.getEnvironment();
         // 快速路径：使用缓存的解析结果，跳过 selectHandler + resolveFunction
-        // cachedResolution = [Function, Type[], Class<?>?]
-        Object[] cached = expr.cachedResolution;
+        // volatile 读取保证跨线程可见性，CachedResolution 不可变保证读到的字段值完整
+        FunctionCallExpression.CachedResolution cached = expr.cachedResolution;
         if (cached != null) {
-            Function fn = (Function) cached[0];
-            Class<?> guardClass = (Class<?>) cached[2];
             Object target = env.getTarget();
             Class<?> targetClass = target != null ? target.getClass() : null;
-            if (targetClass != guardClass) {
-                cached = null;
-            }
-            if (cached != null) {
+            if (targetClass == cached.guardClass) {
+                Function fn = cached.function;
                 FunctionContextPool pool = interpreter.getPool();
-                FunctionContext<?> ctx = pool.borrow(fn, env.getTarget(), argCount, env);
+                FunctionContext<?> ctx = pool.borrow(fn, target, argCount, env);
                 try {
-                    evaluateArguments(interpreter, ctx, args, argCount, (Type[]) cached[1]);
+                    evaluateArguments(interpreter, ctx, args, argCount, cached.expectedTypes);
                 } catch (Throwable ex) {
                     pool.releaseTop();
                     throw ex;
@@ -72,14 +68,14 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             ctx.getPool().releaseTop();
             throw ex;
         }
-        // 缓存非延迟、非异步的函数解析结果（单引用写入保证原子性）
+        // 缓存非延迟、非异步的函数解析结果
+        // volatile 写入保证 CachedResolution 的字段在引用发布前对其他线程完整可见
         if (!isDeferred) {
             Function resolved = ctx.getFunction();
             if (!resolved.isAsync() && !resolved.isPrimarySync()) {
-                // 始终记录 target class 作为缓存 guard，防止 target 类型变化时使用错误缓存
                 Object target = env.getTarget();
                 Class<?> guard = target != null ? target.getClass() : null;
-                expr.cachedResolution = new Object[]{resolved, expectedTypes, guard};
+                expr.cachedResolution = new FunctionCallExpression.CachedResolution(resolved, expectedTypes, guard);
             }
         }
         return handler.finishCall(interpreter, expr, ctx);
