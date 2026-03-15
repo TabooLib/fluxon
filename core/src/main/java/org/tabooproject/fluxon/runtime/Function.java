@@ -73,6 +73,15 @@ public interface Function {
     List<Annotation> getAnnotations();
 
     /**
+     * 获取直接绑定信息
+     * 若非空，编译器可直接生成 INVOKESTATIC 调用目标方法，跳过函数调用框架
+     */
+    @Nullable
+    default DirectBinding getDirectBinding() {
+        return null;
+    }
+
+    /**
      * 执行函数
      *
      * @param context 函数上下文

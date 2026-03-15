@@ -1,59 +1,61 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.List;
 import java.util.Objects;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-
 public class ExtensionList {
 
-    @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtension(List.class)
-                // 获取指定索引的元素
-                .function("get", returns(Type.OBJECT).params(Type.I), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getInt(0);
-                    context.setReturnRef(list.get(index));
-                })
-                // 设置指定索引的元素
-                .function("set", returns(Type.OBJECT).params(Type.I, Type.OBJECT), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getInt(0);
-                    context.setReturnRef(list.set(index, context.getRef(1)));
-                })
-                // 在指定位置添加元素
-                .function("insert", returns(Type.OBJECT).params(Type.I, Type.OBJECT), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getInt(0);
-                    list.add(index, context.getRef(1));
-                    context.setReturnRef(list);
-                })
-                // 移除指定索引的元素
-                .function("removeAt", returns(Type.OBJECT).params(Type.I), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int index = context.getInt(0);
-                    context.setReturnRef(list.remove(index));
-                })
-                // 获取元素的索引
-                .function("indexOf", returns(Type.I).params(Type.OBJECT), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnInt(list.indexOf(context.getArgBoxed(0)));
-                })
-                // 获取元素的最后索引
-                .function("lastIndexOf", returns(Type.I).params(Type.OBJECT), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnInt(list.lastIndexOf(context.getArgBoxed(0)));
-                })
-                // 获取子列表
-                .function("subList", returns(Type.OBJECT).params(Type.I, Type.I), (context) -> {
-                    List<Object> list = Objects.requireNonNull(context.getTarget());
-                    int fromIndex = context.getInt(0);
-                    int toIndex = context.getInt(1);
-                    context.setReturnRef(list.subList(fromIndex, toIndex));
-                });
+        FluxonFunctionScanner.register(runtime, ExtensionList.class);
+    }
+
+    // 获取指定索引的元素
+    @FluxonFunction(value = "get", target = List.class)
+    public static Object get(List<?> list, int index) {
+        return Objects.requireNonNull(list).get(index);
+    }
+
+    // 设置指定索引的元素
+    @FluxonFunction(value = "set", target = List.class)
+    @SuppressWarnings("unchecked")
+    public static Object set(List<?> list, int index, Object element) {
+        return ((List<Object>) Objects.requireNonNull(list)).set(index, element);
+    }
+
+    // 在指定位置添加元素
+    @FluxonFunction(value = "insert", target = List.class)
+    @SuppressWarnings("unchecked")
+    public static Object insert(List<?> list, int index, Object element) {
+        List<Object> l = (List<Object>) Objects.requireNonNull(list);
+        l.add(index, element);
+        return l;
+    }
+
+    // 移除指定索引的元素
+    @FluxonFunction(value = "removeAt", target = List.class)
+    public static Object removeAt(List<?> list, int index) {
+        return Objects.requireNonNull(list).remove(index);
+    }
+
+    // 获取元素的索引
+    @FluxonFunction(value = "indexOf", target = List.class)
+    public static int indexOf(List<?> list, Object element) {
+        return Objects.requireNonNull(list).indexOf(element);
+    }
+
+    // 获取元素的最后索引
+    @FluxonFunction(value = "lastIndexOf", target = List.class)
+    public static int lastIndexOf(List<?> list, Object element) {
+        return Objects.requireNonNull(list).lastIndexOf(element);
+    }
+
+    // 获取子列表
+    @FluxonFunction(value = "subList", target = List.class)
+    public static Object subList(List<?> list, int fromIndex, int toIndex) {
+        return Objects.requireNonNull(list).subList(fromIndex, toIndex);
     }
 }

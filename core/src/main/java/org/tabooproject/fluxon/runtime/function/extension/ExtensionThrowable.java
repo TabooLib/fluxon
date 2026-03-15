@@ -1,17 +1,32 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
-
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class ExtensionThrowable {
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtension(Throwable.class)
-                .function("message", returns(Type.STRING).noParams(), context -> context.setReturnRef(context.getTarget().getMessage()))
-                .function("localizedMessage", returns(Type.STRING).noParams(), context -> context.setReturnRef(context.getTarget().getLocalizedMessage()))
-                .function("cause", returns(Type.OBJECT).noParams(), context -> context.setReturnRef(context.getTarget().getCause()))
-                .function("printStackTrace", returns(Type.VOID).noParams(), context -> context.getTarget().printStackTrace());
+        FluxonFunctionScanner.register(runtime, ExtensionThrowable.class);
+    }
+
+    @FluxonFunction(value = "message", target = Throwable.class)
+    public static Object message(Throwable t) {
+        return t.getMessage();
+    }
+
+    @FluxonFunction(value = "localizedMessage", target = Throwable.class)
+    public static Object localizedMessage(Throwable t) {
+        return t.getLocalizedMessage();
+    }
+
+    @FluxonFunction(value = "cause", target = Throwable.class)
+    public static Object cause(Throwable t) {
+        return t.getCause();
+    }
+
+    @FluxonFunction(value = "printStackTrace", target = Throwable.class)
+    public static void printStackTraceExt(Throwable t) {
+        t.printStackTrace();
     }
 }

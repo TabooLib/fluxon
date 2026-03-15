@@ -1,7 +1,8 @@
 package org.tabooproject.fluxon.runtime.function.extension.reflect;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -9,78 +10,88 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-
 @SuppressWarnings("deprecation")
 public class ExtensionConstructor {
 
-    @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtension(Constructor.class, "fs:reflect")
-                .function("newInstance", returns(Type.OBJECT).params(Type.LIST), context -> {
-                    try {
-                        Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                        List<Object> argument = (List<Object>) context.getRef(0);
-                        if (argument != null) {
-                            context.setReturnRef(constructor.newInstance(argument.toArray()));
-                        } else {
-                            context.setReturnRef(constructor.newInstance());
-                        }
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
-                    }
-                })
-                .function("parameterTypes", returns(Type.LIST).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(Arrays.asList(constructor.getParameterTypes()));
-                })
-                .function("modifiers", returns(Type.I).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnInt(constructor.getModifiers());
-                })
-                .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    constructor.setAccessible(context.getBool(0));
-                })
-                .function("isAccessible", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(constructor.isAccessible());
-                })
-                .function("isPublic", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isPublic(constructor.getModifiers()));
-                })
-                .function("isPrivate", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isPrivate(constructor.getModifiers()));
-                })
-                .function("isProtected", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isProtected(constructor.getModifiers()));
-                })
-                .function("declaringClass", returns(Type.CLASS).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.getDeclaringClass());
-                })
-                .function("parameterCount", returns(Type.I).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnInt(constructor.getParameterCount());
-                })
-                .function("exceptionTypes", returns(Type.LIST).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(Arrays.asList(constructor.getExceptionTypes()));
-                })
-                .function("isSynthetic", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(constructor.isSynthetic());
-                })
-                .function("isVarArgs", returns(Type.Z).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(constructor.isVarArgs());
-                })
-                .function("name", returns(Type.STRING).noParams(), context -> {
-                    Constructor<?> constructor = (Constructor<?>) Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(constructor.getName());
-                });
+        FluxonFunctionScanner.register(runtime, ExtensionConstructor.class);
+    }
+
+    @FluxonFunction(value = "parameterTypes", target = Constructor.class, namespace = "fs:reflect")
+    public static Object parameterTypes(Constructor<?> constructor) {
+        return Arrays.asList(Objects.requireNonNull(constructor).getParameterTypes());
+    }
+
+    @FluxonFunction(value = "modifiers", target = Constructor.class, namespace = "fs:reflect")
+    public static int modifiers(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).getModifiers();
+    }
+
+    @FluxonFunction(value = "setAccessible", target = Constructor.class, namespace = "fs:reflect")
+    public static void setAccessible(Constructor<?> constructor, boolean accessible) {
+        Objects.requireNonNull(constructor).setAccessible(accessible);
+    }
+
+    @FluxonFunction(value = "isAccessible", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isAccessible(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).isAccessible();
+    }
+
+    @FluxonFunction(value = "isPublic", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isPublic(Constructor<?> constructor) {
+        return Modifier.isPublic(Objects.requireNonNull(constructor).getModifiers());
+    }
+
+    @FluxonFunction(value = "isPrivate", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isPrivate(Constructor<?> constructor) {
+        return Modifier.isPrivate(Objects.requireNonNull(constructor).getModifiers());
+    }
+
+    @FluxonFunction(value = "isProtected", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isProtected(Constructor<?> constructor) {
+        return Modifier.isProtected(Objects.requireNonNull(constructor).getModifiers());
+    }
+
+    @FluxonFunction(value = "declaringClass", target = Constructor.class, namespace = "fs:reflect")
+    public static Class<?> declaringClass(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).getDeclaringClass();
+    }
+
+    @FluxonFunction(value = "parameterCount", target = Constructor.class, namespace = "fs:reflect")
+    public static int parameterCount(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).getParameterCount();
+    }
+
+    @FluxonFunction(value = "exceptionTypes", target = Constructor.class, namespace = "fs:reflect")
+    public static Object exceptionTypes(Constructor<?> constructor) {
+        return Arrays.asList(Objects.requireNonNull(constructor).getExceptionTypes());
+    }
+
+    @FluxonFunction(value = "isSynthetic", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isSynthetic(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).isSynthetic();
+    }
+
+    @FluxonFunction(value = "isVarArgs", target = Constructor.class, namespace = "fs:reflect")
+    public static boolean isVarArgs(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).isVarArgs();
+    }
+
+    @FluxonFunction(value = "name", target = Constructor.class, namespace = "fs:reflect")
+    public static String name(Constructor<?> constructor) {
+        return Objects.requireNonNull(constructor).getName();
+    }
+
+    @FluxonFunction(value = "newInstance", target = Constructor.class, namespace = "fs:reflect")
+    public static Object newInstance(Constructor<?> constructor, List<?> argument) {
+        try {
+            Objects.requireNonNull(constructor);
+            if (argument != null) {
+                return constructor.newInstance(argument.toArray());
+            }
+            return constructor.newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create instance: " + e.getMessage(), e);
+        }
     }
 }

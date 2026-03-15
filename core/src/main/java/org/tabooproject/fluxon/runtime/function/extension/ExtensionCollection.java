@@ -1,110 +1,131 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-
 public class ExtensionCollection {
 
-    @SuppressWarnings("unchecked")
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtension(Collection.class)
-                // 获取列表大小
-                .function("size", returns(Type.I).noParams(), (context) -> context.setReturnInt(Objects.requireNonNull(context.getTarget()).size()))
-                // 检查列表是否为空
-                .function("isEmpty", returns(Type.Z).noParams(), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(list.isEmpty());
-                })
-                // 检查是否包含某个元素
-                .function("contains", returns(Type.Z).params(Type.OBJECT), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(list.contains(context.getArgBoxed(0)));
-                })
-                // 转换为数组
-                .function("toArray", returns(Type.OBJECT).noParams(), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.toArray());
-                })
-                // 添加元素
-                .function("add", returns(Type.Z).params(Type.OBJECT), (context) -> context.setReturnBool(Objects.requireNonNull(context.getTarget()).add(context.getArgBoxed(0))))
-                // 移除元素
-                .function("remove", returns(Type.Z).params(Type.OBJECT), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(list.remove(context.getArgBoxed(0)));
-                })
-                // 添加所有元素
-                .function("addAll", returns(Type.Z).params(Type.OBJECT), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    Collection<Object> collection = (Collection<Object>) context.getRef(0);
-                    if (collection == null) {
-                        context.setReturnBool(false);
-                        return;
-                    }
-                    context.setReturnBool(list.addAll(collection));
-                })
-                // 移除所有元素
-                .function("removeAll", returns(Type.Z).params(Type.OBJECT), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    Collection<Object> collection = (Collection<Object>) context.getRef(0);
-                    if (collection == null) {
-                        context.setReturnBool(false);
-                        return;
-                    }
-                    context.setReturnBool(list.removeAll(collection));
-                })
-                // 清空列表
-                .function("clear", returns(Type.VOID).noParams(), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    list.clear();
-                })
-                // 转换为字符串
-                .function("join", returns(Type.STRING).noParams(), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(", ")));
-                })
-                .function("join", returns(Type.STRING).params(Type.STRING), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    String delimiter = context.getString(0);
-                    if (delimiter == null) delimiter = ", ";
-                    context.setReturnRef(list.stream().map(Object::toString).collect(Collectors.joining(delimiter)));
-                })
-                // 随机获取元素
-                .function("random", returns(Type.OBJECT).noParams(), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    if (list.isEmpty()) {
-                        return;
-                    }
-                    List<Object> tempList = new ArrayList<>(list);
-                    int index = (int) (Math.random() * tempList.size());
-                    context.setReturnRef(tempList.get(index));
-                })
-                .function("random", returns(Type.OBJECT).params(Type.I), (context) -> {
-                    Collection<Object> list = Objects.requireNonNull(context.getTarget());
-                    if (list.isEmpty()) {
-                        return;
-                    }
-                    int count = context.getInt(0);
-                    if (count <= 0) {
-                        return;
-                    }
-                    if (count >= list.size()) {
-                        List<Object> shuffled = new ArrayList<>(list);
-                        Collections.shuffle(shuffled);
-                        context.setReturnRef(shuffled);
-                        return;
-                    }
-                    List<Object> result = new ArrayList<>(count);
-                    List<Object> copy = new ArrayList<>(list);
-                    Collections.shuffle(copy);
-                    for (int i = 0; i < count; i++) {
-                        result.add(copy.get(i));
-                    }
-                    context.setReturnRef(result);
-                });
+        FluxonFunctionScanner.register(runtime, ExtensionCollection.class);
+    }
+
+    // 获取列表大小
+    @FluxonFunction(value = "size", target = Collection.class)
+    public static int size(Collection<?> collection) {
+        return Objects.requireNonNull(collection).size();
+    }
+
+    // 检查列表是否为空
+    @FluxonFunction(value = "isEmpty", target = Collection.class)
+    public static boolean isEmpty(Collection<?> collection) {
+        return Objects.requireNonNull(collection).isEmpty();
+    }
+
+    // 检查是否包含某个元素
+    @FluxonFunction(value = "contains", target = Collection.class)
+    public static boolean contains(Collection<?> collection, Object element) {
+        return Objects.requireNonNull(collection).contains(element);
+    }
+
+    // 转换为数组
+    @FluxonFunction(value = "toArray", target = Collection.class)
+    public static Object toArray(Collection<?> collection) {
+        return Objects.requireNonNull(collection).toArray();
+    }
+
+    // 添加元素
+    @FluxonFunction(value = "add", target = Collection.class)
+    @SuppressWarnings("unchecked")
+    public static boolean add(Collection<?> collection, Object element) {
+        return ((Collection<Object>) Objects.requireNonNull(collection)).add(element);
+    }
+
+    // 移除元素
+    @FluxonFunction(value = "remove", target = Collection.class)
+    public static boolean remove(Collection<?> collection, Object element) {
+        return Objects.requireNonNull(collection).remove(element);
+    }
+
+    // 添加所有元素
+    @FluxonFunction(value = "addAll", target = Collection.class)
+    @SuppressWarnings("unchecked")
+    public static boolean addAll(Collection<?> collection, Object elements) {
+        Collection<Object> col = (Collection<Object>) Objects.requireNonNull(collection);
+        Collection<Object> other = (Collection<Object>) elements;
+        if (other == null) {
+            return false;
+        }
+        return col.addAll(other);
+    }
+
+    // 移除所有元素
+    @FluxonFunction(value = "removeAll", target = Collection.class)
+    @SuppressWarnings("unchecked")
+    public static boolean removeAll(Collection<?> collection, Object elements) {
+        Collection<Object> col = (Collection<Object>) Objects.requireNonNull(collection);
+        Collection<Object> other = (Collection<Object>) elements;
+        if (other == null) {
+            return false;
+        }
+        return col.removeAll(other);
+    }
+
+    // 清空列表
+    @FluxonFunction(value = "clear", target = Collection.class)
+    public static void clear(Collection<?> collection) {
+        Objects.requireNonNull(collection).clear();
+    }
+
+    // 转换为字符串（无分隔符）
+    @FluxonFunction(value = "join", target = Collection.class)
+    public static Object join0(Collection<?> collection) {
+        return Objects.requireNonNull(collection).stream().map(Object::toString).collect(Collectors.joining(", "));
+    }
+
+    // 转换为字符串（自定义分隔符）
+    @FluxonFunction(value = "join", target = Collection.class)
+    public static Object join1(Collection<?> collection, String delimiter) {
+        if (delimiter == null) delimiter = ", ";
+        return Objects.requireNonNull(collection).stream().map(Object::toString).collect(Collectors.joining(delimiter));
+    }
+
+    // 随机获取元素
+    @FluxonFunction(value = "random", target = Collection.class)
+    public static Object random0(Collection<?> collection) {
+        Collection<?> col = Objects.requireNonNull(collection);
+        if (col.isEmpty()) {
+            return null;
+        }
+        List<?> tempList = new ArrayList<>(col);
+        int index = (int) (Math.random() * tempList.size());
+        return tempList.get(index);
+    }
+
+    // 随机获取多个元素
+    @FluxonFunction(value = "random", target = Collection.class)
+    public static Object random1(Collection<?> collection, int count) {
+        Collection<?> col = Objects.requireNonNull(collection);
+        if (col.isEmpty()) {
+            return null;
+        }
+        if (count <= 0) {
+            return null;
+        }
+        if (count >= col.size()) {
+            List<Object> shuffled = new ArrayList<>((Collection<?>) col);
+            Collections.shuffle(shuffled);
+            return shuffled;
+        }
+        List<Object> copy = new ArrayList<>((Collection<?>) col);
+        Collections.shuffle(copy);
+        List<Object> result = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            result.add(copy.get(i));
+        }
+        return result;
     }
 }

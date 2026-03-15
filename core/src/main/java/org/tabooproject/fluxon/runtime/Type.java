@@ -51,6 +51,10 @@ public class Type {
     private final String descriptor;
 
     static {
+        TYPE_MAP.put(void.class, VOID);
+        TYPE_MAP.put(Object.class, OBJECT);
+        TYPE_MAP.put(Number.class, NUMBER);
+        TYPE_MAP.put(String.class, STRING);
         TYPE_MAP.put(int.class, I);
         TYPE_MAP.put(Integer.class, I);
         TYPE_MAP.put(long.class, J);
@@ -61,7 +65,16 @@ public class Type {
         TYPE_MAP.put(Double.class, D);
         TYPE_MAP.put(boolean.class, Z);
         TYPE_MAP.put(Boolean.class, Z);
-        TYPE_MAP.put(void.class, VOID);
+        TYPE_MAP.put(Class.class, CLASS);
+        TYPE_MAP.put(ClassLoader.class, CLASS_LOADER);
+        TYPE_MAP.put(Package.class, PACKAGE);
+        TYPE_MAP.put(Constructor.class, CONSTRUCTOR);
+        TYPE_MAP.put(Method.class, METHOD);
+        TYPE_MAP.put(Field.class, FIELD);
+        TYPE_MAP.put(File.class, FILE);
+        TYPE_MAP.put(Path.class, PATH);
+        TYPE_MAP.put(List.class, LIST);
+        TYPE_MAP.put(Map.class, MAP);
     }
 
     public Type(Class<?> source) {
@@ -170,6 +183,19 @@ public class Type {
      */
     public static Type fromClass(Class<?> clazz) {
         return TYPE_MAP.computeIfAbsent(clazz, Type::new);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Type)) return false;
+        Type type = (Type) o;
+        return dimension == type.dimension && source == type.source;
+    }
+
+    @Override
+    public int hashCode() {
+        return source.hashCode() * 31 + dimension;
     }
 
     @Override

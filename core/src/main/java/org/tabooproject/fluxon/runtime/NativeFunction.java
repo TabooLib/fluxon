@@ -20,6 +20,7 @@ public class NativeFunction<Target> implements Function, Symbolic {
     private final NativeCallable<Target> callable;
     private final boolean isAsync;
     private final boolean isPrimarySync;
+    private final DirectBinding directBinding;
 
     public NativeFunction(
             String namespace,
@@ -28,20 +29,36 @@ public class NativeFunction<Target> implements Function, Symbolic {
             NativeCallable<Target> callable,
             boolean isAsync,
             boolean isPrimarySync) {
+        this(namespace, name, signature, callable, isAsync, isPrimarySync, null);
+    }
+
+    public NativeFunction(
+            String namespace,
+            String name,
+            FunctionSignature signature,
+            NativeCallable<Target> callable,
+            boolean isAsync,
+            boolean isPrimarySync,
+            DirectBinding directBinding) {
         this.namespace = namespace;
         this.name = name;
         this.signature = signature;
         this.callable = callable;
         this.isAsync = isAsync;
         this.isPrimarySync = isPrimarySync;
+        this.directBinding = directBinding;
     }
 
     public NativeFunction(String name, FunctionSignature signature, NativeCallable<Target> callable) {
-        this(null, name, signature, callable, false, false);
+        this(null, name, signature, callable, false, false, null);
+    }
+
+    public NativeFunction(String name, FunctionSignature signature, NativeCallable<Target> callable, DirectBinding directBinding) {
+        this(null, name, signature, callable, false, false, directBinding);
     }
 
     public NativeFunction(String namespace, String name, FunctionSignature signature, NativeCallable<Target> callable) {
-        this(namespace, name, signature, callable, false, false);
+        this(namespace, name, signature, callable, false, false, null);
     }
 
     @Nullable
@@ -90,6 +107,11 @@ public class NativeFunction<Target> implements Function, Symbolic {
 
     public NativeCallable<Target> getCallable() {
         return callable;
+    }
+
+    @Override
+    public DirectBinding getDirectBinding() {
+        return directBinding;
     }
 
     @Override

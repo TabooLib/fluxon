@@ -1,98 +1,111 @@
 package org.tabooproject.fluxon.runtime.function.extension.reflect;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.UnsafeAccess;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Objects;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-
 @SuppressWarnings("deprecation")
 public class ExtensionField {
 
     public static void init(FluxonRuntime runtime) {
-        runtime.registerExtension(Field.class, "fs:reflect")
-                .function("get", returns(Type.OBJECT).params(Type.OBJECT), context -> {
-                    try {
-                        Field field = Objects.requireNonNull(context.getTarget());
-                        context.setReturnRef(UnsafeAccess.get(context.getRef(0), field));
-                    } catch (Throwable e) {
-                        throw new RuntimeException("Failed to get field value: " + e.getMessage(), e);
-                    }
-                })
-                .function("set", returns(Type.VOID).params(Type.OBJECT, Type.OBJECT), context -> {
-                    try {
-                        Field field = Objects.requireNonNull(context.getTarget());
-                        Object instance = context.getRef(0);
-                        Object value = context.getRef(1);
-                        UnsafeAccess.put(instance, field, value);
-                    } catch (Throwable e) {
-                        throw new RuntimeException("Failed to set field value: " + e.getMessage(), e);
-                    }
-                })
-                .function("name", returns(Type.STRING).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(field.getName());
-                })
-                .function("type", returns(Type.CLASS).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(field.getType());
-                })
-                .function("modifiers", returns(Type.I).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnInt(field.getModifiers());
-                })
-                .function("setAccessible", returns(Type.VOID).params(Type.Z), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    boolean accessible = context.getBool(0);
-                    field.setAccessible(accessible);
-                })
-                .function("isAccessible", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(field.isAccessible());
-                })
-                .function("isPublic", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isPublic(field.getModifiers()));
-                })
-                .function("isPrivate", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isPrivate(field.getModifiers()));
-                })
-                .function("isProtected", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isProtected(field.getModifiers()));
-                })
-                .function("isStatic", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isStatic(field.getModifiers()));
-                })
-                .function("isFinal", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isFinal(field.getModifiers()));
-                })
-                .function("isVolatile", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isVolatile(field.getModifiers()));
-                })
-                .function("isTransient", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(Modifier.isTransient(field.getModifiers()));
-                })
-                .function("declaringClass", returns(Type.CLASS).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnRef(field.getDeclaringClass());
-                })
-                .function("isSynthetic", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(field.isSynthetic());
-                })
-                .function("isEnumConstant", returns(Type.Z).noParams(), context -> {
-                    Field field = Objects.requireNonNull(context.getTarget());
-                    context.setReturnBool(field.isEnumConstant());
-                });
+        FluxonFunctionScanner.register(runtime, ExtensionField.class);
+    }
+
+    @FluxonFunction(value = "get", target = Field.class, namespace = "fs:reflect")
+    public static Object get(Field field, Object instance) {
+        try {
+            return UnsafeAccess.get(instance, Objects.requireNonNull(field));
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to get field value: " + e.getMessage(), e);
+        }
+    }
+
+    @FluxonFunction(value = "set", target = Field.class, namespace = "fs:reflect")
+    public static void set(Field field, Object instance, Object value) {
+        try {
+            UnsafeAccess.put(instance, Objects.requireNonNull(field), value);
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to set field value: " + e.getMessage(), e);
+        }
+    }
+
+    @FluxonFunction(value = "name", target = Field.class, namespace = "fs:reflect")
+    public static String name(Field field) {
+        return Objects.requireNonNull(field).getName();
+    }
+
+    @FluxonFunction(value = "type", target = Field.class, namespace = "fs:reflect")
+    public static Class<?> type(Field field) {
+        return Objects.requireNonNull(field).getType();
+    }
+
+    @FluxonFunction(value = "modifiers", target = Field.class, namespace = "fs:reflect")
+    public static int modifiers(Field field) {
+        return Objects.requireNonNull(field).getModifiers();
+    }
+
+    @FluxonFunction(value = "setAccessible", target = Field.class, namespace = "fs:reflect")
+    public static void setAccessible(Field field, boolean accessible) {
+        Objects.requireNonNull(field).setAccessible(accessible);
+    }
+
+    @FluxonFunction(value = "isAccessible", target = Field.class, namespace = "fs:reflect")
+    public static boolean isAccessible(Field field) {
+        return Objects.requireNonNull(field).isAccessible();
+    }
+
+    @FluxonFunction(value = "isPublic", target = Field.class, namespace = "fs:reflect")
+    public static boolean isPublic(Field field) {
+        return Modifier.isPublic(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isPrivate", target = Field.class, namespace = "fs:reflect")
+    public static boolean isPrivate(Field field) {
+        return Modifier.isPrivate(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isProtected", target = Field.class, namespace = "fs:reflect")
+    public static boolean isProtected(Field field) {
+        return Modifier.isProtected(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isStatic", target = Field.class, namespace = "fs:reflect")
+    public static boolean isStatic(Field field) {
+        return Modifier.isStatic(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isFinal", target = Field.class, namespace = "fs:reflect")
+    public static boolean isFinal(Field field) {
+        return Modifier.isFinal(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isVolatile", target = Field.class, namespace = "fs:reflect")
+    public static boolean isVolatile(Field field) {
+        return Modifier.isVolatile(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "isTransient", target = Field.class, namespace = "fs:reflect")
+    public static boolean isTransient(Field field) {
+        return Modifier.isTransient(Objects.requireNonNull(field).getModifiers());
+    }
+
+    @FluxonFunction(value = "declaringClass", target = Field.class, namespace = "fs:reflect")
+    public static Class<?> declaringClass(Field field) {
+        return Objects.requireNonNull(field).getDeclaringClass();
+    }
+
+    @FluxonFunction(value = "isSynthetic", target = Field.class, namespace = "fs:reflect")
+    public static boolean isSynthetic(Field field) {
+        return Objects.requireNonNull(field).isSynthetic();
+    }
+
+    @FluxonFunction(value = "isEnumConstant", target = Field.class, namespace = "fs:reflect")
+    public static boolean isEnumConstant(Field field) {
+        return Objects.requireNonNull(field).isEnumConstant();
     }
 }

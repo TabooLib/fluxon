@@ -148,7 +148,11 @@ public final class FunctionCallHandlers {
      * @return PrepareCallResult 包含 ctxSlot
      */
     public static FunctionCallHandler.PrepareCallResult emitPrepareCallDirect(
-            CodeContext ctx, MethodVisitor mv, int argCount, Runnable functionLoader) {
+            CodeContext ctx,
+            MethodVisitor mv,
+            int argCount,
+            Runnable functionLoader
+    ) {
         Instructions.loadPool(mv, ctx);
         Instructions.loadEnvironment(mv, ctx);
         functionLoader.run();
@@ -169,7 +173,7 @@ public final class FunctionCallHandlers {
         String ctxPath = FunctionContext.TYPE.getPath();
         if (t.isPrimitive()) {
             Type target = (expected != null && expected.isPrimitive()) ? expected : t;
-            emitTypeConversion(t, target, mv);
+            emitPrimitiveConversion(t, target, mv);
             emitSetPrimitive(target, ctxPath, mv);
         } else if (expected != null && expected.isPrimitive()) {
             emitUnboxToPrimitive(expected, ctxPath, mv);
@@ -178,7 +182,11 @@ public final class FunctionCallHandlers {
         }
     }
 
-    private static void emitTypeConversion(Type from, Type to, MethodVisitor mv) {
+    /**
+     * 生成原始类型之间的转换指令（I2D、L2D 等）
+     * 栈顶值从 from 类型转换为 to 类型
+     */
+    public static void emitPrimitiveConversion(Type from, Type to, MethodVisitor mv) {
         int fi = typeIndex(from), ti = typeIndex(to);
         if (fi < 0 || ti < 0) return;
         int opcode = CONV_MATRIX[fi][ti];
@@ -219,6 +227,43 @@ public final class FunctionCallHandlers {
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", valueMethod, "()" + retDesc, false);
         mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, setMethod, setDesc, false);
+    }
+
+    /**
+     * 生成 Object → 原始类型的拆箱指令（栈操作，不涉及 FunctionContext）
+     * 栈顶 Object 转换为目标原始类型
+     */
+    public static void emitUnbox(Type target, MethodVisitor mv) {
+        if (target == Type.Z) {
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+            return;
+        }
+        mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+        if (target == Type.I) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+        } else if (target == Type.J) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+        } else if (target == Type.D) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+        } else if (target == Type.F) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+        }
+    }
+
+    /**
+     * 生成原始类型 → Object 的装箱指令（栈操作）
+     */
+    public static void emitBox(Type source, MethodVisitor mv) {
+        if (source == Type.I || source == Type.Z) {
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+        } else if (source == Type.J) {
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
+        } else if (source == Type.D) {
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+        } else if (source == Type.F) {
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
+        }
     }
 
     private static int typeIndex(Type t) {

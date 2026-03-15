@@ -1,70 +1,136 @@
 package org.tabooproject.fluxon.runtime.function;
 
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
-import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.stdlib.Coerce;
 
 import java.util.*;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-
+/**
+ * 类型转换与类型检查函数
+ *
+ * @author sky
+ */
 public class FunctionType {
 
     public static void init(FluxonRuntime runtime) {
-        // 类型转换函数
-        runtime.registerFunction("string", returns(Type.STRING).params(Type.OBJECT), context -> {
-            Object arg = context.getArgBoxed(0);
-            context.setReturnRef(arg != null ? arg.toString() : null);
-        });
-        runtime.registerFunction("int", returns(Type.I).params(Type.OBJECT), context -> context.setReturnInt(Coerce.asInteger(context.getArgBoxed(0)).orElse(0)));
-        runtime.registerFunction("intOrNull", returns(Type.INT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asInteger(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("long", returns(Type.J).params(Type.OBJECT), context -> context.setReturnLong(Coerce.asLong(context.getArgBoxed(0)).orElse(0L)));
-        runtime.registerFunction("longOrNull", returns(Type.LONG).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asLong(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("float", returns(Type.F).params(Type.OBJECT), context -> context.setReturnFloat(Coerce.asFloat(context.getArgBoxed(0)).orElse(0f)));
-        runtime.registerFunction("floatOrNull", returns(Type.FLOAT).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asFloat(context.getArgBoxed(0)).orElse(null)));
-        runtime.registerFunction("double", returns(Type.D).params(Type.OBJECT), context -> context.setReturnDouble(Coerce.asDouble(context.getArgBoxed(0)).orElse(0d)));
-        runtime.registerFunction("doubleOrNull", returns(Type.DOUBLE).params(Type.OBJECT), context -> context.setReturnRef(Coerce.asDouble(context.getArgBoxed(0)).orElse(null)));
+        FluxonFunctionScanner.register(runtime, FunctionType.class);
+    }
 
-        // 集合转换为数组
-        runtime.registerFunction("array", returns(Type.OBJECT).params(Type.OBJECT), context -> {
-            Object arg = context.getRef(0);
-            if (arg instanceof Collection) {
-                context.setReturnRef(((Collection<?>) arg).toArray());
-            }
-        });
-        // 将数组转换为集合
-        runtime.registerFunction("list", returns(Type.LIST).params(Type.OBJECT), context -> {
-            Object arg = context.getRef(0);
-            if (arg instanceof Object[]) {
-                context.setReturnRef(Arrays.asList((Object[]) arg));
-            }
-        });
-        // 将数组转换为可变集合
-        runtime.registerFunction("mutableList", returns(Type.LIST).params(Type.OBJECT), context -> {
-            Object arg = context.getRef(0);
-            if (arg instanceof Object[]) {
-                Object[] array = (Object[]) arg;
-                ArrayList<Object> list = new ArrayList<>(array.length);
-                Collections.addAll(list, array);
-                context.setReturnRef(list);
-            }
-        });
+    // 转换为字符串
+    @FluxonFunction("string")
+    public static String string(Object arg) {
+        return arg != null ? arg.toString() : null;
+    }
 
-        // 获取对象类型
-        runtime.registerFunction("typeOf", returns(Type.STRING).params(Type.OBJECT), context -> {
-            Object input = context.getArgBoxed(0);
-            if (input == null) {
-                context.setReturnRef("null");
-            } else {
-                context.setReturnRef(input.getClass().getSimpleName());
-            }
-        });
+    // 转换为 int（失败返回 0）
+    @FluxonFunction("int")
+    public static int toInt(Object arg) {
+        return Coerce.asInteger(arg).orElse(0);
+    }
 
-        // 快速类型检查
-        runtime.registerFunction("isString", returns(Type.Z).params(Type.OBJECT), context -> context.setReturnBool(context.getArgBoxed(0) instanceof String));
-        runtime.registerFunction("isNumber", returns(Type.Z).params(Type.OBJECT), context -> context.setReturnBool(context.getArgBoxed(0) instanceof Number));
-        runtime.registerFunction("isArray", returns(Type.Z).params(Type.OBJECT), context -> context.setReturnBool(context.getArgBoxed(0) instanceof Object[]));
-        runtime.registerFunction("isList", returns(Type.Z).params(Type.OBJECT), context -> context.setReturnBool(context.getArgBoxed(0) instanceof List));
-        runtime.registerFunction("isMap", returns(Type.Z).params(Type.OBJECT), context -> context.setReturnBool(context.getArgBoxed(0) instanceof Map));
+    // 转换为 int（失败返回 null）
+    @FluxonFunction("intOrNull")
+    public static Integer intOrNull(Object arg) {
+        return Coerce.asInteger(arg).orElse(null);
+    }
+
+    // 转换为 long（失败返回 0）
+    @FluxonFunction("long")
+    public static long toLong(Object arg) {
+        return Coerce.asLong(arg).orElse(0L);
+    }
+
+    // 转换为 long（失败返回 null）
+    @FluxonFunction("longOrNull")
+    public static Long longOrNull(Object arg) {
+        return Coerce.asLong(arg).orElse(null);
+    }
+
+    // 转换为 float（失败返回 0）
+    @FluxonFunction("float")
+    public static float toFloat(Object arg) {
+        return Coerce.asFloat(arg).orElse(0f);
+    }
+
+    // 转换为 float（失败返回 null）
+    @FluxonFunction("floatOrNull")
+    public static Float floatOrNull(Object arg) {
+        return Coerce.asFloat(arg).orElse(null);
+    }
+
+    // 转换为 double（失败返回 0）
+    @FluxonFunction("double")
+    public static double toDouble(Object arg) {
+        return Coerce.asDouble(arg).orElse(0d);
+    }
+
+    // 转换为 double（失败返回 null）
+    @FluxonFunction("doubleOrNull")
+    public static Double doubleOrNull(Object arg) {
+        return Coerce.asDouble(arg).orElse(null);
+    }
+
+    // 集合转换为数组
+    @FluxonFunction("array")
+    public static Object array(Object arg) {
+        if (arg instanceof Collection) {
+            return ((Collection<?>) arg).toArray();
+        }
+        return null;
+    }
+
+    // 数组转换为不可变集合
+    @FluxonFunction("list")
+    public static Object list(Object arg) {
+        if (arg instanceof Object[]) {
+            return Arrays.asList((Object[]) arg);
+        }
+        return null;
+    }
+
+    // 数组转换为可变集合
+    @FluxonFunction("mutableList")
+    public static Object mutableList(Object arg) {
+        if (arg instanceof Object[]) {
+            Object[] a = (Object[]) arg;
+            ArrayList<Object> list = new ArrayList<>(a.length);
+            Collections.addAll(list, a);
+            return list;
+        }
+        return null;
+    }
+
+    // 获取对象类型名称
+    @FluxonFunction("typeOf")
+    public static String typeOf(Object input) {
+        return input != null ? input.getClass().getSimpleName() : "null";
+    }
+
+    // 快速类型检查
+    @FluxonFunction("isString")
+    public static boolean isString(Object arg) {
+        return arg instanceof String;
+    }
+
+    @FluxonFunction("isNumber")
+    public static boolean isNumber(Object arg) {
+        return arg instanceof Number;
+    }
+
+    @FluxonFunction("isArray")
+    public static boolean isArray(Object arg) {
+        return arg instanceof Object[];
+    }
+
+    @FluxonFunction("isList")
+    public static boolean isList(Object arg) {
+        return arg instanceof List;
+    }
+
+    @FluxonFunction("isMap")
+    public static boolean isMap(Object arg) {
+        return arg instanceof Map;
     }
 }

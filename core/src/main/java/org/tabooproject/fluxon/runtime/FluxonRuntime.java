@@ -225,6 +225,15 @@ public class FluxonRuntime {
     }
 
     /**
+     * 注册系统函数（带直接绑定，编译器可内联为 INVOKESTATIC）
+     */
+    public synchronized void registerFunction(String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation, DirectBinding directBinding) {
+        checkRegistrationLock();
+        systemFunctions.computeIfAbsent(name, OverloadSet::new).add(new NativeFunction<>(name, signature, implementation, directBinding));
+        dirty = true;
+    }
+
+    /**
      * 注册系统函数（带命名空间）
      */
     public synchronized void registerFunction(String namespace, String name, FunctionSignature signature, NativeFunction.NativeCallable<?> implementation) {
