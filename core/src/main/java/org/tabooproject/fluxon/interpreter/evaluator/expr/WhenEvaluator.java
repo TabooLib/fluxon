@@ -75,6 +75,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             mv.visitInsn(ACONST_NULL);
         }
         // 存储 subject 到局部变量
+        int saved = ctx.getLocalVarIndex();
         int subjectVar = ctx.allocateLocalVar(OBJECT);
         mv.visitVarInsn(ASTORE, subjectVar);
         // 创建所有分支的标签
@@ -153,6 +154,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
             mv.visitJumpInsn(GOTO, endLabel);
         }
         mv.visitLabel(endLabel);
+        ctx.restoreLocalVarIndex(saved);
         return OBJECT;
     }
 

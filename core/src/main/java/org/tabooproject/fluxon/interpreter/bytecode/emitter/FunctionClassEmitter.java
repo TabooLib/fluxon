@@ -62,7 +62,8 @@ public class FunctionClassEmitter extends ClassEmitter {
     public EmitResult emit() {
         List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
-        // 传播用户函数注册表，使函数体内的调用可以直接引用静态字段
+        // 传播定义列表和用户函数注册表，使函数体内可查询兄弟函数属性（如 async）并直接引用静态字段
+        funcCtx.addDefinitions(generator.getDefinitions());
         for (Definition def : generator.getDefinitions()) {
             if (def instanceof FunctionDefinition) {
                 FunctionDefinition fd = (FunctionDefinition) def;
@@ -324,12 +325,30 @@ public class FunctionClassEmitter extends ClassEmitter {
             }
             argIndex++;
         }
-        // 为非参数的局部变量分配 JVM 槽位
+        // 为非参数的局部变量分配 JVM 槽位并生成默认值初始化
+        // 必须在方法入口处初始化所有局部变量，否则当首次赋值出现在分支内部时，
+        // 另一条分支路径上该槽位仍为 top，JVM 验证器会拒绝后续的 ALOAD/ILOAD
         for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
             Type varType = funcCtx.getVariableType(pos);
             if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
             int jvmSlot = funcCtx.allocateLocalVar(varType);
             funcCtx.mapVarToJvmSlot(pos, jvmSlot);
+            if (varType == Type.I || varType == Type.Z) {
+                mv.visitInsn(ICONST_0);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+            } else if (varType == Type.J) {
+                mv.visitInsn(LCONST_0);
+                mv.visitVarInsn(LSTORE, jvmSlot);
+            } else if (varType == Type.D) {
+                mv.visitInsn(DCONST_0);
+                mv.visitVarInsn(DSTORE, jvmSlot);
+            } else if (varType == Type.F) {
+                mv.visitInsn(FCONST_0);
+                mv.visitVarInsn(FSTORE, jvmSlot);
+            } else {
+                mv.visitInsn(ACONST_NULL);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
         }
     }
 

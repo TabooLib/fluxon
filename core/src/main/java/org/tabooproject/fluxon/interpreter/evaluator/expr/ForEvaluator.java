@@ -102,6 +102,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         }
 
         // 分配局部变量存储迭代器和变量Map
+        int saved = ctx.getLocalVarIndex();
         int iteratorVar = ctx.allocateLocalVar(Type.OBJECT);
         int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);
 
@@ -182,6 +183,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         // break 和 continue 语句会直接生成跳转指令
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
         finishLoopBody(bodyType, mv, ctx, whileStart, whileEnd);
+        ctx.restoreLocalVarIndex(saved);
         return Type.VOID;
     }
 

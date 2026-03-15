@@ -64,6 +64,7 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         }
 
         // 首先保存当前的 target - 调用 environment.getTarget()
+        int saved = ctx.getLocalVarIndex();
         Instructions.loadEnvironment(mv, ctx);
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
         int oldTargetIndex = ctx.allocateLocalVar(Type.OBJECT);
@@ -136,9 +137,11 @@ public class ContextCallEvaluator extends ExpressionEvaluator<ContextCallExpress
         // 安全调用的结束标签
         if (endLabel != null) {
             mv.visitLabel(endLabel);
+            ctx.restoreLocalVarIndex(saved);
             // 安全调用始终返回 OBJECT 类型（可能是 null）
             return Type.OBJECT;
         }
+        ctx.restoreLocalVarIndex(saved);
         return resultType;
     }
 

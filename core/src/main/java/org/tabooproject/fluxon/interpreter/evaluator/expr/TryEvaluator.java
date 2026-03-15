@@ -99,6 +99,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         }
         
         // 分配局部变量用于存储结果值
+        int saved = ctx.getLocalVarIndex();
         int valueVar = ctx.allocateLocalVar(Type.OBJECT);
         // 预分配异常变量槽位 - 必须在 visitTryCatchBlock 之前分配
         // 避免栈映射表与实际局部变量表不一致
@@ -183,6 +184,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         }
         // 返回 value
         mv.visitVarInsn(ALOAD, valueVar);
+        ctx.restoreLocalVarIndex(saved);
         return Type.OBJECT;
     }
 

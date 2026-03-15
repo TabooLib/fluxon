@@ -143,19 +143,19 @@ public class CodeContext {
     }
 
     public int allocateLocalVar(Type type) {
+        int slot = localVarIndex;
         String descriptor = type.getDescriptor();
         // 根据类型增加索引，double/long 占 2 个 slot
         switch (descriptor) {
             case "J":
-            case "D": {
-                int slot = localVarIndex + 1;
+            case "D":
                 localVarIndex += 2;
-                return slot;
-            }
+                break;
             default:
                 localVarIndex += 1;
-                return localVarIndex;
+                break;
         }
+        return slot;
     }
 
     public int getLocalVarIndex() {

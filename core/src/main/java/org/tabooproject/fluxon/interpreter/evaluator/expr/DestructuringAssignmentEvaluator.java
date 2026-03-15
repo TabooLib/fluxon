@@ -57,6 +57,7 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
         }
 
         // 分配局部变量存储变量Map
+        int saved = ctx.getLocalVarIndex();
         int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);
 
         // 评估右侧表达式
@@ -97,6 +98,7 @@ public class DestructuringAssignmentEvaluator extends ExpressionEvaluator<Destru
         );
 
         // 栈顶剩余原始值作为表达式返回值
+        ctx.restoreLocalVarIndex(saved);
         return Type.OBJECT;
     }
 

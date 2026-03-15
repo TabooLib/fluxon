@@ -59,6 +59,7 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
             unifiedType = unifyBranchTypes(trueType, falseType);
         }
 
+        int saved = ctx.getLocalVarIndex();
         int storeId = ctx.allocateLocalVar(unifiedType);
         Label falseLabel = new Label();
         Label endLabel = new Label();
@@ -76,6 +77,7 @@ public class TernaryEvaluator extends ExpressionEvaluator<TernaryExpression> {
 
         mv.visitLabel(endLabel);
         mv.visitVarInsn(unifiedType.isPrimitive() ? loadOpcode(unifiedType) : ALOAD, storeId);
+        ctx.restoreLocalVarIndex(saved);
         return unifiedType;
     }
 

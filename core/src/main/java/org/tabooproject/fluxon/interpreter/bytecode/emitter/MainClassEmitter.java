@@ -125,6 +125,8 @@ public class MainClassEmitter extends ClassEmitter {
         int poolSlot = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, poolSlot);
         ctx.setPoolLocalSlot(poolSlot);
+        // 将脚本定义列表注入 CodeContext，供编译期查询函数属性（如 async）
+        ctx.addDefinitions(definitions);
         // 注册用户定义的函数到 environment
         for (Definition definition : definitions) {
             if (definition instanceof FunctionDefinition) {

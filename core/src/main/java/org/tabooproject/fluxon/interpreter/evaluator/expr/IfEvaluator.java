@@ -56,6 +56,7 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
             unifiedType = unifyBranchTypes(thenType, elseType);
         }
 
+        int saved = ctx.getLocalVarIndex();
         int storeId = ctx.allocateLocalVar(unifiedType);
         Label elseLabel = new Label();
         Label endLabel = new Label();
@@ -78,6 +79,7 @@ public class IfEvaluator extends ExpressionEvaluator<IfExpression> {
 
         mv.visitLabel(endLabel);
         mv.visitVarInsn(unifiedType.isPrimitive() ? loadOpcode(unifiedType) : ALOAD, storeId);
+        ctx.restoreLocalVarIndex(saved);
         return unifiedType;
     }
 

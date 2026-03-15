@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr.funccall;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.*;
 
@@ -46,8 +48,24 @@ public class DirectFunctionHandler implements FunctionCallHandler {
     @Override
     public Type generateFinishCall(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv, PrepareCallResult prepareResult, Type returnType) {
         mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
-        // 用户定义函数默认视为同步调用
-        FunctionCallHandlers.emitFinishCall(returnType, true, mv);
-        return returnType;
+        boolean knownSync = isKnownSync(expr, ctx);
+        FunctionCallHandlers.emitFinishCall(returnType, knownSync, mv);
+        return knownSync ? returnType : Type.OBJECT;
+    }
+
+    /**
+     * 查找用户定义函数的定义，判断是否确定为同步调用
+     */
+    private static boolean isKnownSync(FunctionCallExpression expr, CodeContext ctx) {
+        String funcName = expr.getFunctionName();
+        for (Definition def : ctx.getDefinitions()) {
+            if (def instanceof FunctionDefinition) {
+                FunctionDefinition fd = (FunctionDefinition) def;
+                if (fd.getName().equals(funcName)) {
+                    return !fd.isAsync() && !fd.isPrimarySync();
+                }
+            }
+        }
+        return true;
     }
 }
