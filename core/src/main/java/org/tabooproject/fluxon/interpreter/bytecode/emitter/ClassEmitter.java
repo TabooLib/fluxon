@@ -211,6 +211,17 @@ public abstract class ClassEmitter {
     }
 
     /**
+     * 声明 RESOLVED_SYS_FUNCTIONS 静态字段（如果需要）
+     *
+     * @param ctx CodeContext 用于检查是否有预解析系统函数
+     */
+    protected void emitResolvedSystemFunctionsField(CodeContext ctx) {
+        if (!ctx.getResolvedSystemFunctions().isEmpty()) {
+            emitField(ACC_PUBLIC | ACC_STATIC, "RESOLVED_SYS_FUNCTIONS", "[" + Function.TYPE, null);
+        }
+    }
+
+    /**
      * 声明 DEFERRED_OVERLOAD_SETS 静态字段（如果需要）
      *
      * @param ctx CodeContext 用于检查是否有延迟重载集合
@@ -259,6 +270,36 @@ public abstract class ClassEmitter {
         }
         // 存入静态字段
         mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_EXT_FUNCTIONS", "[" + Function.TYPE);
+    }
+
+    /**
+     * 在 clinit 中初始化 RESOLVED_SYS_FUNCTIONS 数组
+     *
+     * @param mv         静态初始化方法 visitor
+     * @param ctx        CodeContext 包含预解析系统函数列表
+     * @param ownerClass 静态字段所属类
+     */
+    protected void emitResolvedSystemFunctionsInit(MethodVisitor mv, CodeContext ctx, String ownerClass) {
+        List<Integer> functions = ctx.getResolvedSystemFunctions();
+        if (functions.isEmpty()) {
+            return;
+        }
+        // 创建数组: new Function[size]
+        mv.visitLdcInsn(functions.size());
+        mv.visitTypeInsn(ANEWARRAY, Function.TYPE.getPath());
+        // 填充数组元素: FluxonRuntime.getInstance().getCachedSystemFunctions()[posIdx]
+        for (int i = 0; i < functions.size(); i++) {
+            int posIdx = functions.get(i);
+            mv.visitInsn(DUP);
+            mv.visitLdcInsn(i);
+            mv.visitMethodInsn(INVOKESTATIC, FluxonRuntime.TYPE.getPath(), "getInstance", "()" + FluxonRuntime.TYPE, false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, FluxonRuntime.TYPE.getPath(), "getCachedSystemFunctions", "()[" + Function.TYPE, false);
+            mv.visitLdcInsn(posIdx);
+            mv.visitInsn(AALOAD);
+            mv.visitInsn(AASTORE);
+        }
+        // 存入静态字段
+        mv.visitFieldInsn(PUTSTATIC, ownerClass, "RESOLVED_SYS_FUNCTIONS", "[" + Function.TYPE);
     }
 
     /**
@@ -318,6 +359,7 @@ public abstract class ClassEmitter {
      */
     protected void emitCompiledFunctionFields(CodeContext ctx) {
         emitResolvedExtensionFunctionsField(ctx);
+        emitResolvedSystemFunctionsField(ctx);
         emitDeferredOverloadSetsField(ctx);
         emitDeferredCacheField(ctx);
     }
@@ -327,6 +369,7 @@ public abstract class ClassEmitter {
      */
     protected void emitCompiledFunctionInits(MethodVisitor mv, CodeContext ctx, String ownerClass) {
         emitResolvedExtensionFunctionsInit(mv, ctx, ownerClass);
+        emitResolvedSystemFunctionsInit(mv, ctx, ownerClass);
         emitDeferredOverloadSetsInit(mv, ctx, ownerClass);
         emitDeferredCacheInit(mv, ctx, ownerClass);
     }

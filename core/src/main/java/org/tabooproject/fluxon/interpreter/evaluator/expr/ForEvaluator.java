@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -100,8 +101,109 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         if (bodyEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for body expression");
         }
+        // IntRange 快速路径：单变量 + 集合是 RangeExpression + 变量类型是 int
+        if (result.getVariables().size() == 1 && result.getCollection() instanceof RangeExpression) {
+            int varPos = result.getVariables().values().iterator().next();
+            Type varType = ctx.getVariableType(varPos);
+            if (varType == Type.I || varType == Type.Z) {
+                return generateIntRangeLoop(result, (RangeExpression) result.getCollection(), ctx, mv, bodyEval, varPos);
+            }
+        }
+        return generateIteratorLoop(result, ctx, mv, collectionEval, bodyEval);
+    }
 
-        // 分配局部变量存储迭代器和变量Map
+    /**
+     * IntRange 特化路径：直接生成原始 int 计数循环
+     * 消除 IntRange 对象分配、Iterator 接口调用、autobox/unbox 链
+     */
+    private Type generateIntRangeLoop(ForExpression result, RangeExpression range, CodeContext ctx, MethodVisitor mv, Evaluator<ParseResult> bodyEval, int varPos) {
+        int saved = ctx.getLocalVarIndex();
+        Evaluator<ParseResult> startEval = ctx.getEvaluator(range.getStart());
+        Evaluator<ParseResult> endEval = ctx.getEvaluator(range.getEnd());
+        if (startEval == null || endEval == null) {
+            throw new EvaluatorNotFoundError("No evaluator found for range expression");
+        }
+        // 生成 start 和 end 值
+        Type st = startEval.generateBytecode(range.getStart(), ctx, mv);
+        int startVar = ctx.allocateLocalVar(Type.I);
+        emitToInt(st, mv);
+        mv.visitVarInsn(ISTORE, startVar);
+        Type et = endEval.generateBytecode(range.getEnd(), ctx, mv);
+        int endVar = ctx.allocateLocalVar(Type.I);
+        emitToInt(et, mv);
+        // inclusive: 上界 +1 转换为 exclusive 比较
+        if (range.isInclusive()) {
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IADD);
+        }
+        mv.visitVarInsn(ISTORE, endVar);
+        // 循环变量初始化
+        int loopVar;
+        boolean useJvmSlot = ctx.isEnvFreeMode();
+        if (useJvmSlot) {
+            loopVar = ctx.getJvmSlot(varPos);
+        } else {
+            loopVar = ctx.allocateLocalVar(Type.I);
+        }
+        mv.visitVarInsn(ILOAD, startVar);
+        mv.visitVarInsn(ISTORE, loopVar);
+        Label loopStart = new Label();
+        Label loopEnd = new Label();
+        ctx.enterLoop(loopEnd, loopStart);
+        // 循环条件: loopVar < endVar
+        mv.visitLabel(loopStart);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPGE, loopEnd);
+        // 非 env-free 模式需要同步到 Environment
+        if (!useJvmSlot) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(varPos);
+            mv.visitVarInsn(ILOAD, loopVar);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(II)V", false);
+        }
+        // 循环体
+        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        // 递增并跳回
+        finishLoopBodyWithInc(bodyType, mv, ctx, loopVar, loopStart, loopEnd);
+        ctx.restoreLocalVarIndex(saved);
+        return Type.VOID;
+    }
+
+    /**
+     * 将栈顶值转换为 int
+     */
+    private static void emitToInt(Type t, MethodVisitor mv) {
+        if (t == Type.I || t == Type.Z) return;
+        if (t == Type.D) { mv.visitInsn(D2I); return; }
+        if (t == Type.J) { mv.visitInsn(L2I); return; }
+        if (t == Type.F) { mv.visitInsn(F2I); return; }
+        // Object → Number.intValue()
+        mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+    }
+
+    /**
+     * 完成循环体，递增循环变量，跳回循环头
+     */
+    private void finishLoopBodyWithInc(Type bodyType, MethodVisitor mv, CodeContext ctx, int loopVar, Label loopStart, Label loopEnd) {
+        if (bodyType != Type.VOID) {
+            if (bodyType == Type.D || bodyType == Type.J) {
+                mv.visitInsn(POP2);
+            } else {
+                mv.visitInsn(POP);
+            }
+        }
+        mv.visitIincInsn(loopVar, 1);
+        mv.visitJumpInsn(GOTO, loopStart);
+        mv.visitLabel(loopEnd);
+        ctx.exitLoop();
+    }
+
+    /**
+     * 通用 Iterator 循环路径
+     */
+    private Type generateIteratorLoop(ForExpression result, CodeContext ctx, MethodVisitor mv, Evaluator<ParseResult> collectionEval, Evaluator<ParseResult> bodyEval) {
         int saved = ctx.getLocalVarIndex();
         int iteratorVar = ctx.allocateLocalVar(Type.OBJECT);
         int variablesMapVar = ctx.allocateLocalVar(Type.OBJECT);

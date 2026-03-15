@@ -51,6 +51,8 @@ public class CodeContext {
 
     // 预解析的扩展函数常量池（编译期确定，运行时通过索引访问）
     private final List<ResolvedExtFuncInfo> resolvedExtensionFunctions = new ArrayList<>();
+    // 预解析的系统函数常量池（编译期确定，<clinit> 中初始化）
+    private final List<Integer> resolvedSystemFunctions = new ArrayList<>();
 
     /**
      * 预解析扩展函数信息
@@ -342,6 +344,31 @@ public class CodeContext {
      */
     public List<ResolvedExtFuncInfo> getResolvedExtensionFunctions() {
         return resolvedExtensionFunctions;
+    }
+
+    /**
+     * 添加预解析的系统函数到常量池
+     * @param positionIndex 系统函数在 cachedSystemFunctions 数组中的索引
+     * @return 函数在常量池中的索引
+     */
+    public int addResolvedSystemFunction(int positionIndex) {
+        // 检查是否已存在相同的位置索引
+        for (int i = 0; i < resolvedSystemFunctions.size(); i++) {
+            if (resolvedSystemFunctions.get(i) == positionIndex) {
+                return i;
+            }
+        }
+        int index = resolvedSystemFunctions.size();
+        resolvedSystemFunctions.add(positionIndex);
+        return index;
+    }
+
+    /**
+     * 获取预解析的系统函数常量池
+     * @return 系统函数位置索引列表
+     */
+    public List<Integer> getResolvedSystemFunctions() {
+        return resolvedSystemFunctions;
     }
 
     /**
