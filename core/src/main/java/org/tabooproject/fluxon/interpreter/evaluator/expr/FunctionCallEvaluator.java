@@ -157,6 +157,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         if (ctx.getUserFunctionOwner(expr.getFunctionName()) != null) {
             return DirectFunctionHandler.INSTANCE;
         }
+        // 单重载系统函数：提升到 <clinit> 解析，运行时直接引用
+        if (position != null && position.getOverloadSet().size() == 1 && expr.getPositionIndex() >= 0) {
+            return ResolvedSystemFunctionHandler.INSTANCE;
+        }
         return DynamicResolutionHandler.INSTANCE;
     }
 
