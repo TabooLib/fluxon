@@ -110,7 +110,6 @@ public final class DirectBinding {
      * 返回每个参数类型的首字符数组（如 'I'=int, 'L'=object, '['=array）
      */
     private char[] parseDescriptorParamChars() {
-        // descriptor 格式: (param1param2...)return
         char[] chars = new char[16];
         int count = 0;
         int i = 1; // 跳过 '('
@@ -120,26 +119,61 @@ public final class DirectBinding {
                 System.arraycopy(chars, 0, newChars, 0, chars.length);
                 chars = newChars;
             }
-            char c = descriptor.charAt(i);
-            chars[count++] = c;
-            if (c == 'L') {
-                // 引用类型：跳到 ';'
-                i = descriptor.indexOf(';', i) + 1;
-            } else if (c == '[') {
-                // 数组：跳过维度前缀，记录为 '['
-                while (i < descriptor.length() && descriptor.charAt(i) == '[') i++;
-                if (i < descriptor.length() && descriptor.charAt(i) == 'L') {
-                    i = descriptor.indexOf(';', i) + 1;
-                } else {
-                    i++; // primitive 数组
-                }
-            } else {
-                i++; // primitive
-            }
+            chars[count++] = descriptor.charAt(i);
+            i = skipDescriptorType(i);
         }
         char[] result = new char[count];
         System.arraycopy(chars, 0, result, 0, count);
         return result;
+    }
+
+    /**
+     * 解析 descriptor 中每个参数的 JVM internal name
+     * 引用类型返回具体类名（如 "java/lang/String"），primitive 和 java/lang/Object 返回 null。
+     * 编译器用此信息在栈上类型为 Object 但 descriptor 期望具体子类时生成 CHECKCAST。
+     *
+     * @param skipParams 跳过前 N 个参数（扩展函数跳过 target）
+     * @param paramCount 需要的参数数量（用户参数个数）
+     * @return internal name 数组，全部为 null 时返回 null
+     */
+    public String[] getDescriptorParamCastTargets(int skipParams, int paramCount) {
+        String[] targets = null;
+        int paramIdx = 0;
+        int descIdx = 0;
+        int i = 1; // 跳过 '('
+        while (i < descriptor.length() && descriptor.charAt(i) != ')') {
+            char c = descriptor.charAt(i);
+            if (c == 'L' && descIdx >= skipParams && paramIdx < paramCount) {
+                int semi = descriptor.indexOf(';', i);
+                String internalName = descriptor.substring(i + 1, semi);
+                // java/lang/Object 不需要 CHECKCAST
+                if (!internalName.equals("java/lang/Object")) {
+                    if (targets == null) targets = new String[paramCount];
+                    targets[paramIdx] = internalName;
+                }
+            }
+            i = skipDescriptorType(i);
+            if (descIdx >= skipParams) paramIdx++;
+            descIdx++;
+        }
+        return targets;
+    }
+
+    /**
+     * 跳过 descriptor 中位置 i 处的一个完整类型描述符，返回下一个类型的起始位置
+     */
+    private int skipDescriptorType(int i) {
+        char c = descriptor.charAt(i);
+        if (c == 'L') {
+            return descriptor.indexOf(';', i) + 1;
+        } else if (c == '[') {
+            while (i < descriptor.length() && descriptor.charAt(i) == '[') i++;
+            if (i < descriptor.length() && descriptor.charAt(i) == 'L') {
+                return descriptor.indexOf(';', i) + 1;
+            }
+            return i + 1;
+        }
+        return i + 1;
     }
 
     private static String buildDescriptor(FunctionSignature signature) {

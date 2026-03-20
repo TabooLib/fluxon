@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
@@ -87,6 +88,11 @@ public class CachedResolutionAstReuseTest {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
         runtime.getExportRegistry().registerClass(MockExchangeData.class);
         runtime.getExportRegistry().registerClass(MockLocation.class);
+    }
+
+    @AfterAll
+    static void teardown() {
+        FluxonFeatures.DEFAULT_ALLOW_INVALID_REFERENCE = false;
     }
 
     /**

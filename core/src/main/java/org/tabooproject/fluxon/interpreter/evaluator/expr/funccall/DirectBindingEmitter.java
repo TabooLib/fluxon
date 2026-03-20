@@ -70,10 +70,16 @@ public final class DirectBindingEmitter {
     private static Type emitInvoke(Function function, DirectBinding binding, ParseResult[] args, CodeContext ctx, MethodVisitor mv, int skipDescriptorParams) {
         FunctionSignature signature = function.getSignature();
         Type[] jvmParamTypes = binding.reconcileParamTypes(signature.getParameterTypes(), skipDescriptorParams);
+        // descriptor 中期望具体引用类型的参数位置（如 String），栈上为 Object 时需要 CHECKCAST
+        String[] castTargets = binding.getDescriptorParamCastTargets(skipDescriptorParams, args.length);
         for (int i = 0; i < args.length; i++) {
             Type actual = FunctionCallHandlers.emitArgExpression(args[i], ctx, mv);
             Type expected = i < jvmParamTypes.length ? jvmParamTypes[i] : Type.OBJECT;
             emitArgConversion(actual, expected, mv);
+            // 栈上是 Object 但 descriptor 期望具体引用子类 → CHECKCAST
+            if (castTargets != null && castTargets[i] != null && !actual.isPrimitive()) {
+                mv.visitTypeInsn(CHECKCAST, castTargets[i]);
+            }
         }
         mv.visitMethodInsn(INVOKESTATIC, binding.getOwner(), binding.getMethod(), binding.getDescriptor(), false);
         return binding.reconcileReturnType(signature.getReturnType());

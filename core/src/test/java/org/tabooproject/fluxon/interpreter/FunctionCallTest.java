@@ -415,4 +415,50 @@ public class FunctionCallTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("floatOrNull('2.5')");
         FluxonTestUtil.assertBothEqual(2.5f, result);
     }
+
+    @Test
+    public void testDirectBinding_stringParamExtension_split() {
+        // split(String, String) — descriptor 期望 String 但栈上是 Object
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "'a,b,c'::split(',')::size()");
+        FluxonTestUtil.assertBothEqual(3, result);
+    }
+
+    @Test
+    public void testDirectBinding_stringParamExtension_replace() {
+        // replace(String, String, String) — 两个 String 参数
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "'hello world'::replace('world', 'fluxon')");
+        FluxonTestUtil.assertBothEqual("hello fluxon", result);
+    }
+
+    @Test
+    public void testDirectBinding_stringParamExtension_startsWith() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "'hello'::startsWith('hel')");
+        FluxonTestUtil.assertBothEqual(true, result);
+    }
+
+    @Test
+    public void testDirectBinding_stringParamExtension_contains() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "'hello world'::contains('world')");
+        FluxonTestUtil.assertBothEqual(true, result);
+    }
+
+    @Test
+    public void testDirectBinding_stringParamExtension_indexOf() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "'hello'::indexOf('ll')");
+        FluxonTestUtil.assertBothEqual(2, result);
+    }
+
+    @Test
+    public void testDirectBinding_stringParamVariableArg() {
+        // 参数来自变量（编译期类型为 OBJECT）
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "sep = ','\n" +
+                "'a,b,c'::split(&sep)::size()");
+        FluxonTestUtil.assertBothEqual(3, result);
+    }
 }
