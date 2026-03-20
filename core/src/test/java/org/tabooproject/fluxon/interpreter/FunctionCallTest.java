@@ -349,4 +349,70 @@ public class FunctionCallTest {
         assertEquals("[0, 1, 2, 10, 11, 12, 20, 21, 22]", result.getInterpretResult().toString());
         assertEquals("[0, 1, 2, 10, 11, 12, 20, 21, 22]", result.getCompileResult().toString());
     }
+
+    // 返回包装类型（Integer）的 DirectBinding 函数，编译模式下不应产生 VerifyError
+    @Test
+    public void testBoxedReturnDirectBinding_intOrNull() {
+        // intOrNull 返回 Integer（可能为 null），Java 方法签名返回 Ljava/lang/Integer;
+        // TYPE_MAP 将 Integer.class 映射到 Type.I（primitive），
+        // DirectBinding 必须正确处理 JVM 栈上的 boxed 类型
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("intOrNull('123')");
+        FluxonTestUtil.assertBothEqual(123, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_intOrNullReturnsNull() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("intOrNull('abc')");
+        FluxonTestUtil.assertBothEqual(null, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_nullComparison() {
+        // intOrNull 返回值与 null 比较
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("intOrNull('123') != null");
+        FluxonTestUtil.assertBothEqual(true, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_nullComparisonFalse() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("intOrNull('abc') != null");
+        FluxonTestUtil.assertBothEqual(false, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_logicalExpression() {
+        // 模拟 isEndWithNumber 的逻辑
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "str = 'item_1'\n" +
+                "last = &str::split('_')::last()\n" +
+                "&last != null && intOrNull(&last) != null");
+        FluxonTestUtil.assertBothEqual(true, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_logicalExpressionFalse() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "str = 'item_abc'\n" +
+                "last = &str::split('_')::last()\n" +
+                "&last != null && intOrNull(&last) != null");
+        FluxonTestUtil.assertBothEqual(false, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_longOrNull() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("longOrNull('456')");
+        FluxonTestUtil.assertBothEqual(456L, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_doubleOrNull() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("doubleOrNull('3.14')");
+        FluxonTestUtil.assertBothEqual(3.14, result);
+    }
+
+    @Test
+    public void testBoxedReturnDirectBinding_floatOrNull() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("floatOrNull('2.5')");
+        FluxonTestUtil.assertBothEqual(2.5f, result);
+    }
 }

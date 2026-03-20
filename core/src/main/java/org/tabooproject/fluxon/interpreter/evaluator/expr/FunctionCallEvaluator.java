@@ -4,8 +4,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
-import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
-import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.funccall.*;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.funccall.FunctionCallHandler.PrepareCallResult;
@@ -15,12 +13,10 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.*;
-import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
-import org.tabooproject.fluxon.runtime.error.VoidError;
 
 import java.util.Map;
 
-import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Opcodes.ALOAD;
 
 /**
  * 函数调用表达式求值器
@@ -62,7 +58,8 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         FunctionCallHandler handler = selectHandler(interpreter, expr);
         FunctionContext<?> ctx = handler.prepareCall(interpreter, expr, argCount);
         boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
-        Type[] expectedTypes = getExpectedTypes(ctx.getFunction(), isDeferred);
+        FunctionSignature sig = ctx.getFunction().getSignature();
+        Type[] expectedTypes = (isDeferred || sig == null) ? null : sig.getParameterTypes();
         try {
             evaluateArguments(interpreter, ctx, args, argCount, expectedTypes);
         } catch (Throwable ex) {
@@ -90,40 +87,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         }
     }
 
-    @Override
-    public Type generateBytecode(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv) {
-        ParseResult[] args = expr.getArguments();
-        int argCount = args.length;
-        int savedLocalVar = ctx.getLocalVarIndex();
-        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
-        Type[] argTypes = inferArgTypes(args, analyzer);
-        // DirectBinding 快速路径：跳过整个 prepareCall/finishCall 框架
-        Type directResult = tryGenerateDirectCall(expr, args, argTypes, analyzer, ctx, mv);
-        if (directResult != null) {
-            ctx.restoreLocalVarIndex(savedLocalVar);
-            return directResult;
-        }
-        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
-        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
-        // 延迟解析时不使用 expectedTypes，让运行时处理类型转换
-        Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
-        PrepareCallResult prepareResult = handler.generatePrepareCall(expr, ctx, mv, argCount);
-        for (int i = 0; i < argCount; i++) {
-            mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
-            mv.visitLdcInsn(i);
-            Evaluator<ParseResult> argEval = ctx.getEvaluator(args[i]);
-            if (argEval == null) throw new EvaluatorNotFoundError("No evaluator found for argument expression");
-            Type t = argEval.generateBytecode(args[i], ctx, mv);
-            if (t == Type.VOID) throw new VoidError("Void type is not allowed for function arguments");
-            Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : null;
-            FunctionCallHandlers.emitSetArg(t, expected, mv);
-        }
-        Type returnType = inferReturnType(expr, analyzer, isDeferred);
-        Type actualReturn = handler.generateFinishCall(expr, ctx, mv, prepareResult, returnType);
-        ctx.restoreLocalVarIndex(savedLocalVar);
-        return actualReturn;
-    }
-
+    /**
+     * 解释模式 handler 选择：根据运行时 target 和重载信息选择调用策略
+     */
     private FunctionCallHandler selectHandler(Interpreter interpreter, FunctionCallExpression expr) {
         // 无状态判断：不写入共享 AST，避免多线程缓存竞争
         ExtensionFunctionPosition extPos = expr.getExtensionPosition();
@@ -144,6 +110,44 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return DynamicResolutionHandler.INSTANCE;
     }
 
+    @Override
+    public Type generateBytecode(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv) {
+        ParseResult[] args = expr.getArguments();
+        int argCount = args.length;
+        int savedLocalVar = ctx.getLocalVarIndex();
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        Type[] argTypes = inferArgTypes(args, analyzer);
+        // DirectBinding 快速路径：跳过整个 prepareCall/finishCall 框架
+        Type directResult = DirectBindingEmitter.tryEmit(expr, args, argTypes, ctx, mv);
+        if (directResult != null) {
+            ctx.restoreLocalVarIndex(savedLocalVar);
+            return directResult;
+        }
+        // 框架路径：selectHandler → prepareCall → 参数求值 → finishCall
+        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
+        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
+        Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
+        PrepareCallResult prepareResult = handler.generatePrepareCall(expr, ctx, mv, argCount);
+        for (int i = 0; i < argCount; i++) {
+            mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
+            mv.visitLdcInsn(i);
+            Type t = FunctionCallHandlers.emitArgExpression(args[i], ctx, mv);
+            Type expected = (expectedTypes != null && i < expectedTypes.length) ? expectedTypes[i] : null;
+            FunctionCallHandlers.emitSetArg(t, expected, mv);
+        }
+        Type returnType = Type.OBJECT;
+        if (!isDeferred && analyzer != null) {
+            Type inferred = inferResultType(expr, analyzer);
+            if (inferred != Type.VOID) returnType = inferred;
+        }
+        Type actualReturn = handler.generateFinishCall(expr, ctx, mv, prepareResult, returnType);
+        ctx.restoreLocalVarIndex(savedLocalVar);
+        return actualReturn;
+    }
+
+    /**
+     * 编译模式 handler 选择：根据编译期类型信息选择最优路径
+     */
     private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes, TypeAnalyzer analyzer, CodeContext ctx) {
         // 扩展函数已在编译时解析
         if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
@@ -200,9 +204,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return bestMatch != null && countMatchingOverloads(bestMatch, argCount) > 1;
     }
 
-    /**
-     * 统计参数数量匹配的重载个数
-     */
     private int countMatchingOverloads(OverloadSet overloadSet, int argCount) {
         int count = 0;
         for (Function f : overloadSet.getOverloads()) {
@@ -249,11 +250,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         return Type.OBJECT;
     }
 
-    private Type[] getExpectedTypes(Function function, boolean isDeferred) {
-        if (isDeferred || function.getSignature() == null) return null;
-        return function.getSignature().getParameterTypes();
-    }
-
     private Type[] inferArgTypes(ParseResult[] args, TypeAnalyzer analyzer) {
         if (analyzer == null) return null;
         Type[] types = new Type[args.length];
@@ -269,120 +265,5 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             if (t == Type.OBJECT) return true;
         }
         return false;
-    }
-
-    private Type inferReturnType(FunctionCallExpression expr, TypeAnalyzer analyzer, boolean isDeferred) {
-        if (isDeferred || analyzer == null) return Type.OBJECT;
-        Type inferred = inferResultType(expr, analyzer);
-        return (inferred == Type.VOID) ? Type.OBJECT : inferred;
-    }
-
-    /**
-     * 尝试生成 DirectBinding 内联调用
-     * 如果函数有 DirectBinding 且可在编译期确定，直接生成 INVOKESTATIC，跳过整个调用框架
-     *
-     * @return 返回类型，null 表示不适用 DirectBinding
-     */
-    private Type tryGenerateDirectCall(
-            FunctionCallExpression expr,
-            ParseResult[] args,
-            Type[] argTypes,
-            TypeAnalyzer analyzer,
-            CodeContext ctx,
-            MethodVisitor mv
-    ) {
-        // 用户定义函数不走 DirectBinding
-        if (ctx.getUserFunctionOwner(expr.getFunctionName()) != null) return null;
-        // 尝试扩展函数 DirectBinding
-        Function resolvedExt = expr.getResolvedExtensionFunction();
-        if (resolvedExt != null && expr.getResolvedTargetClass() != null) {
-            return tryGenerateDirectExtensionCall(resolvedExt, expr.getResolvedTargetClass(), args, argTypes, ctx, mv);
-        }
-        // 有 extensionPosition 但未解析到具体函数，不能 DirectBinding
-        if (expr.getExtensionPosition() != null) return null;
-        // 系统函数 DirectBinding
-        OverloadSet overloadSet = FluxonRuntime.getInstance().getSystemFunctions().get(expr.getFunctionName());
-        if (overloadSet == null) return null;
-        // 多重载 + 存在未知类型参数时不能在编译期确定重载，fallback 到运行时
-        if (overloadSet.size() > 1 && hasUnknownType(argTypes)) return null;
-        Function function = overloadSet.resolve(argTypes != null ? argTypes : new Type[args.length]);
-        if (function == null) return null;
-        DirectBinding binding = function.getDirectBinding();
-        if (binding == null) return null;
-        FunctionSignature signature = function.getSignature();
-        if (signature == null) return null;
-        // async/primarySync 不能内联
-        if (function.isAsync() || function.isPrimarySync()) return null;
-        Type[] paramTypes = signature.getParameterTypes();
-        // 生成参数求值 + 类型转换
-        for (int i = 0; i < args.length; i++) {
-            Evaluator<ParseResult> argEval = ctx.getEvaluator(args[i]);
-            if (argEval == null) throw new EvaluatorNotFoundError("No evaluator found for argument expression");
-            Type actual = argEval.generateBytecode(args[i], ctx, mv);
-            if (actual == Type.VOID) throw new VoidError("Void type is not allowed for function arguments");
-            Type expected = i < paramTypes.length ? paramTypes[i] : Type.OBJECT;
-            emitDirectArgConversion(actual, expected, mv);
-        }
-        // INVOKESTATIC
-        mv.visitMethodInsn(INVOKESTATIC, binding.getOwner(), binding.getMethod(), binding.getDescriptor(), false);
-        return signature.getReturnType();
-    }
-
-    /**
-     * 尝试为已解析的扩展函数生成 DirectBinding 调用
-     * 生成序列：loadEnvironment → getTarget → CHECKCAST → 参数求值 → INVOKESTATIC
-     */
-    private Type tryGenerateDirectExtensionCall(
-            Function function,
-            Class<?> targetClass,
-            ParseResult[] args,
-            Type[] argTypes,
-            CodeContext ctx,
-            MethodVisitor mv
-    ) {
-        DirectBinding binding = function.getDirectBinding();
-        if (binding == null) return null;
-        FunctionSignature signature = function.getSignature();
-        if (signature == null) return null;
-        if (function.isAsync() || function.isPrimarySync()) return null;
-        Type[] paramTypes = signature.getParameterTypes();
-        // 加载 target：environment.getTarget() + CHECKCAST
-        Instructions.loadEnvironment(mv, ctx);
-        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
-        mv.visitTypeInsn(CHECKCAST, targetClass.getName().replace('.', '/'));
-        // 生成参数求值 + 类型转换
-        for (int i = 0; i < args.length; i++) {
-            Evaluator<ParseResult> argEval = ctx.getEvaluator(args[i]);
-            if (argEval == null) throw new EvaluatorNotFoundError("No evaluator found for argument expression");
-            Type actual = argEval.generateBytecode(args[i], ctx, mv);
-            if (actual == Type.VOID) throw new VoidError("Void type is not allowed for function arguments");
-            Type expected = i < paramTypes.length ? paramTypes[i] : Type.OBJECT;
-            emitDirectArgConversion(actual, expected, mv);
-        }
-        // INVOKESTATIC
-        mv.visitMethodInsn(INVOKESTATIC, binding.getOwner(), binding.getMethod(), binding.getDescriptor(), false);
-        return signature.getReturnType();
-    }
-
-    /**
-     * 生成参数类型转换字节码（DirectBinding 专用）
-     * 将栈顶值从 actual 类型转换为 expected 类型
-     */
-    private void emitDirectArgConversion(Type actual, Type expected, MethodVisitor mv) {
-        if (actual == expected) return;
-        // 原始类型之间的转换
-        if (actual.isPrimitive() && expected.isPrimitive()) {
-            FunctionCallHandlers.emitPrimitiveConversion(actual, expected, mv);
-            return;
-        }
-        // Object → 原始类型：拆箱
-        if (!actual.isPrimitive() && expected.isPrimitive()) {
-            FunctionCallHandlers.emitUnbox(expected, mv);
-            return;
-        }
-        // 原始类型 → Object：装箱
-        if (actual.isPrimitive() && !expected.isPrimitive()) {
-            FunctionCallHandlers.emitBox(actual, mv);
-        }
     }
 }

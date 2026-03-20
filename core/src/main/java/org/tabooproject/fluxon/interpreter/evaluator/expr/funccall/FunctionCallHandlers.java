@@ -4,7 +4,11 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.*;
+import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
+import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -272,5 +276,16 @@ public final class FunctionCallHandlers {
         if (t == Type.F) return 2;
         if (t == Type.D) return 3;
         return -1;
+    }
+
+    /**
+     * 生成参数表达式字节码，返回栈上类型
+     */
+    public static Type emitArgExpression(ParseResult arg, CodeContext ctx, MethodVisitor mv) {
+        Evaluator<ParseResult> argEval = ctx.getEvaluator(arg);
+        if (argEval == null) throw new EvaluatorNotFoundError("No evaluator found for argument expression");
+        Type t = argEval.generateBytecode(arg, ctx, mv);
+        if (t == Type.VOID) throw new VoidError("Void type is not allowed for function arguments");
+        return t;
     }
 }
