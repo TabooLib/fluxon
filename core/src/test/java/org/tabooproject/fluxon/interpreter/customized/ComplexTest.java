@@ -15,12 +15,19 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
 
+/**
+ * effect.fs benchmark
+ * <p>
+ * Baseline (2026-03-21, SerialGC 8g heap, 10 warmup + 20 measure, last 10 avg):
+ * Interpret: ~430ms / 1000 evals (GC pause 会导致个别轮次 3-4s 尖刺)
+ * Compile:   ~104ms / 1000 evals
+ */
 public class ComplexTest {
 
     public static void main(String[] args) throws Exception {
         ComplexTest test = new ComplexTest();
         test.benchmarkInterpret();
-       // test.benchmarkCompile();
+        // test.benchmarkCompile();
     }
 
     private String loadEffectSource() throws Exception {

@@ -89,9 +89,9 @@ public class FunctionSystem {
     }
 
     @FluxonFunction
-    public static Class<?> forName(Object className) {
+    public static Class<?> forName(String className) {
         try {
-            return Class.forName(className.toString());
+            return Class.forName(className);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Class not found: " + className, e);
         }
