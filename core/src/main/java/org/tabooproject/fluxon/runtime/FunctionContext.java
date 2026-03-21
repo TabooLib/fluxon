@@ -29,7 +29,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
     private Function function;
     private Target target;
     private Environment environment;
-    private final FunctionContextPool pool;
+    private FunctionContextPool pool;
     private Interpreter interpreter;
     int stackIndex = -1;
 
@@ -472,6 +472,15 @@ public final class FunctionContext<Target> implements AutoCloseable {
      */
     public void detachFromPool() {
         pool.detach(this);
+    }
+
+    /**
+     * 将 pool 引用重新绑定到当前执行线程的 ThreadLocal pool
+     * async/primarySync 函数在 worker 线程开始执行前调用，
+     * 防止嵌套调用通过 ctx.getPool() 拿到调用方线程的 pool 造成跨线程竞态
+     */
+    public void reassignPool() {
+        pool = FunctionContextPool.local();
     }
 
     /**

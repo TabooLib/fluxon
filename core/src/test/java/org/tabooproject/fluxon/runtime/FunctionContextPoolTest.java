@@ -1,6 +1,8 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.ArrayList;
@@ -9,9 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.FluxonTestUtil.assertBothEqual;
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
@@ -100,5 +104,72 @@ public class FunctionContextPoolTest {
             primaryExecutor.shutdownNow();
             runtime.setPrimaryThreadExecutor(previousPrimary);
         }
+    }
+
+    /**
+     * 验证 async 函数的 reassignPool：
+     * detach 后 ctx.getPool() 应指向 worker 线程的 pool，而非调用方线程的 pool
+     */
+    @Test
+    public void asyncReassignPoolToWorkerThread() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        // 注册 async 函数，内部做嵌套调用验证 pool 归属
+        runtime.registerAsyncFunction("asyncPoolCheck", returns(Type.OBJECT).params(Type.OBJECT), ctx -> {
+            FunctionContextPool poolInsideAsync = ctx.getPool();
+            FunctionContextPool workerLocalPool = FunctionContextPool.local();
+            // reassignPool 后两者应相同
+            ctx.setReturnRef(poolInsideAsync == workerLocalPool);
+        });
+        Environment env = runtime.newEnvironment();
+        Function function = env.getFunction("asyncPoolCheck");
+        FunctionContextPool callerPool = FunctionContextPool.local();
+        FunctionContext<?> ctx = callerPool.borrow(function, null, new Object[]{"test"}, env);
+        Object result = Intrinsics.finishCall(ctx);
+        Boolean poolMatch = (Boolean) Intrinsics.awaitValue(result);
+        assertTrue(poolMatch, "After reassignPool, ctx.getPool() should return worker thread's local pool");
+    }
+
+    /**
+     * 并发压力测试：async 函数内嵌套调用不应出现参数交叉
+     * 模拟 Frontier 场景：多线程同时触发 async 函数，每个 async 函数内做嵌套调用
+     */
+    @RepeatedTest(20)
+    public void asyncNestedCallNoArgCrossContamination() throws Exception {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def identity(x) = &x\n" +
+                "async def compute(id) = {\n" +
+                "  r = identity(&id)\n" +
+                "  return &r\n" +
+                "}\n" +
+                "f1 = compute(100)\n" +
+                "f2 = compute(200)\n" +
+                "f3 = compute(300)\n" +
+                "f4 = compute(400)\n" +
+                "(await &f1) + (await &f2) + (await &f3) + (await &f4)"
+        );
+        assertBothEqual(1000, result);
+    }
+
+    /**
+     * 并发压力测试：async 函数内多层嵌套调用
+     */
+    @RepeatedTest(20)
+    public void asyncDeeplyNestedCallsNoCrossTalk() throws Exception {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def add(a, b) = &a + &b\n" +
+                "def mul(a, b) = &a * &b\n" +
+                "async def calc(x) = {\n" +
+                "  s = add(&x, &x)\n" +
+                "  p = mul(&s, &x)\n" +
+                "  return &p\n" +
+                "}\n" +
+                "f1 = calc(3)\n" +
+                "f2 = calc(5)\n" +
+                "f3 = calc(7)\n" +
+                "(await &f1) + (await &f2) + (await &f3)"
+        );
+        // calc(3) = 3+3=6, 6*3=18; calc(5) = 5+5=10, 10*5=50; calc(7) = 7+7=14, 14*7=98
+        // 18 + 50 + 98 = 166
+        assertBothEqual(166, result);
     }
 }

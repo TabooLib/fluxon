@@ -236,10 +236,12 @@ public final class Intrinsics {
     public static Object finishCall(FunctionContext<?> ctx, @Nullable Interpreter interpreter) {
         Function function = ctx.getFunction();
         if (function.isAsync()) {
-            Interpreter child = interpreter != null ? interpreter.createChild() : null;
-            ctx.setInterpreter(child);
             ctx.detachFromPool();
             return ThreadPoolManager.getInstance().submitAsync(() -> {
+                ctx.reassignPool();
+                if (interpreter != null) {
+                    ctx.setInterpreter(interpreter.createChild());
+                }
                 try {
                     function.call(ctx);
                     return getReturnValue(ctx);
@@ -249,11 +251,13 @@ public final class Intrinsics {
                 }
             });
         } else if (function.isPrimarySync()) {
-            Interpreter child = interpreter != null ? interpreter.createChild() : null;
-            ctx.setInterpreter(child);
             ctx.detachFromPool();
             CompletableFuture<Object> future = new CompletableFuture<>();
             FluxonRuntime.getInstance().getPrimaryThreadExecutor().execute(() -> {
+                ctx.reassignPool();
+                if (interpreter != null) {
+                    ctx.setInterpreter(interpreter.createChild());
+                }
                 try {
                     function.call(ctx);
                     future.complete(getReturnValue(ctx));
