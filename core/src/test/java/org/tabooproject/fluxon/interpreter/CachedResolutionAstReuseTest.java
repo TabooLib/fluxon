@@ -375,6 +375,618 @@ public class CachedResolutionAstReuseTest {
     }
 
     /**
+     * 场景 L：多线程不同 target 类型疯狂并发执行同一 AST
+     * 模拟生产环境：多个异步线程高频调用扩展函数，另一个线程也在调用
+     * 两种 @Export 类型都有 has 方法但完全不相关
+     */
+    @Test
+    void testAggressiveConcurrent_differentExportTargets() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        ParsedScript script = parseFrontierStyle("&target::has('key')");
+        int threadCount = 16;
+        int iterationsPerThread = 5000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger errorCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            boolean useTypeA = (t % 2 == 0);
+            int threadId = t;
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        Environment env = script.newEnvironment();
+                        if (useTypeA) {
+                            env.defineRootVariable("target", new ExportTypeA("key"));
+                        } else {
+                            env.defineRootVariable("target", new ExportTypeB("key"));
+                        }
+                        Object result = script.eval(env);
+                        if (!Boolean.TRUE.equals(result)) {
+                            errorCount.incrementAndGet();
+                            firstError.compareAndSet(null, new RuntimeException(
+                                    "thread=" + threadId + " i=" + i + " type=" + (useTypeA ? "A" : "B") +
+                                    " expected=true got=" + result));
+                            return;
+                        }
+                    }
+                } catch (Throwable ex) {
+                    errorCount.incrementAndGet();
+                    firstError.compareAndSet(null, ex);
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(60, TimeUnit.SECONDS), "线程未在超时内完成");
+        executor.shutdown();
+        Throwable err = firstError.get();
+        if (err != null) {
+            fail("并发执行失败 (" + errorCount.get() + " errors): " + err.getMessage(), err);
+        }
+    }
+
+    /**
+     * 场景 M：混合 target 类型 + 无 has 方法的类型
+     * 一半线程用有 has 的类型，另一半用没有 has 的类型
+     * 触发 has 找不到 → FunctionNotFoundError，不应该 ClassCastException
+     */
+    @Test
+    void testAggressiveConcurrent_mixedTargetsWithMissing() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        ParsedScript script = parseFrontierStyle("&target::has('key')");
+        int threadCount = 8;
+        int iterationsPerThread = 3000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        AtomicReference<Throwable> classCastError = new AtomicReference<>();
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            boolean useTypeA = (t % 2 == 0);
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        Environment env = script.newEnvironment();
+                        if (useTypeA) {
+                            env.defineRootVariable("target", new ExportTypeA("key"));
+                        } else {
+                            env.defineRootVariable("target", new MockLocation(1, 2, 3));
+                        }
+                        try {
+                            Object result = script.eval(env);
+                            if (useTypeA) {
+                                assertEquals(true, result);
+                            }
+                        } catch (ClassCastException e) {
+                            classCastError.compareAndSet(null, e);
+                            return;
+                        } catch (FluxonRuntimeError e) {
+                            // FunctionNotFoundError 是可接受的
+                        }
+                    }
+                } catch (Throwable ex) {
+                    classCastError.compareAndSet(null, ex);
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(60, TimeUnit.SECONDS));
+        executor.shutdown();
+        Throwable err = classCastError.get();
+        if (err instanceof ClassCastException) {
+            fail("复现了 ClassCastException! " + err.getMessage(), err);
+        } else if (err != null) {
+            fail("意外错误: " + err.getMessage(), err);
+        }
+    }
+
+    /**
+     * 场景 N2：超高并发 + 复合表达式 + 不同 target 类型
+     * 表达式包含 && 逻辑运算和多个 context call，贴近生产场景
+     * 大量线程疯狂循环执行，增大竞态窗口
+     */
+    @Test
+    void testAggressiveConcurrent_compoundExpressionDifferentTargets() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // 模拟 Frontier 的实际表达式：多个 context call + &&
+        ParsedScript script = parseFrontierStyle("!&target::has('blocked') && &target::has('ready') && &hp < 0.99");
+        int threadCount = 32;
+        int iterationsPerThread = 10000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger errorCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            boolean useTypeA = (t % 2 == 0);
+            int threadId = t;
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        Environment env = script.newEnvironment();
+                        if (useTypeA) {
+                            env.defineRootVariable("target", new ExportTypeA("ready"));
+                        } else {
+                            env.defineRootVariable("target", new ExportTypeB("ready"));
+                        }
+                        env.defineRootVariable("hp", 0.5);
+                        Object result = script.eval(env);
+                        if (!Boolean.TRUE.equals(result)) {
+                            errorCount.incrementAndGet();
+                            firstError.compareAndSet(null, new RuntimeException(
+                                    "thread=" + threadId + " i=" + i + " type=" + (useTypeA ? "A" : "B") +
+                                    " expected=true got=" + result));
+                            return;
+                        }
+                    }
+                } catch (Throwable ex) {
+                    errorCount.incrementAndGet();
+                    firstError.compareAndSet(null, ex);
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(120, TimeUnit.SECONDS), "线程未在超时内完成");
+        executor.shutdown();
+        Throwable err = firstError.get();
+        if (err != null) {
+            fail("场景 N2 失败 (" + errorCount.get() + " errors): " + err.getMessage(), err);
+        }
+    }
+
+    /**
+     * 场景 N：每个线程内快速连续执行多个不同脚本（模拟粒子 tick）
+     * 线程内多个 ParsedScript 各自 eval，同一线程内交替 target 类型
+     * 测试 FunctionContextPool 在高频 borrow/release 下的正确性
+     */
+    @Test
+    void testRapidFireMultipleScripts_sameThread() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // 多个不同的脚本
+        ParsedScript scriptA = parseFrontierStyle("&target::has('key')");
+        ParsedScript scriptB = parseFrontierStyle("&target::has('other')");
+        ParsedScript scriptC = parseFrontierStyle("&target::has('key') && !&target::has('nope')");
+        int threadCount = 8;
+        int iterationsPerThread = 5000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            int threadId = t;
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        // 同一线程内交替执行不同脚本和不同 target 类型
+                        boolean useA = (i % 3 != 0);
+                        Object target = useA ? new ExportTypeA("key", "other") : new ExportTypeB("key", "other");
+                        // 快速连续执行三个脚本
+                        {
+                            Environment env = scriptA.newEnvironment();
+                            env.defineRootVariable("target", target);
+                            Object r = scriptA.eval(env);
+                            if (!Boolean.TRUE.equals(r)) {
+                                firstError.compareAndSet(null, new RuntimeException(
+                                    "scriptA thread=" + threadId + " i=" + i + " type=" + (useA ? "A" : "B") + " got=" + r));
+                                return;
+                            }
+                        }
+                        {
+                            Environment env = scriptB.newEnvironment();
+                            env.defineRootVariable("target", target);
+                            Object r = scriptB.eval(env);
+                            if (!Boolean.TRUE.equals(r)) {
+                                firstError.compareAndSet(null, new RuntimeException(
+                                    "scriptB thread=" + threadId + " i=" + i + " type=" + (useA ? "A" : "B") + " got=" + r));
+                                return;
+                            }
+                        }
+                        {
+                            Environment env = scriptC.newEnvironment();
+                            env.defineRootVariable("target", target);
+                            Object r = scriptC.eval(env);
+                            if (!Boolean.TRUE.equals(r)) {
+                                firstError.compareAndSet(null, new RuntimeException(
+                                    "scriptC thread=" + threadId + " i=" + i + " type=" + (useA ? "A" : "B") + " got=" + r));
+                                return;
+                            }
+                        }
+                    }
+                } catch (Throwable ex) {
+                    firstError.compareAndSet(null, ex);
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(60, TimeUnit.SECONDS), "线程未在超时内完成");
+        executor.shutdown();
+        Throwable err = firstError.get();
+        if (err != null) {
+            fail("场景 N 失败: " + err.getMessage(), err);
+        }
+    }
+
+    /**
+     * @Export 类型 A：有 has 方法，跟 ExchangeData 类似
+     */
+    public static class ExportTypeA {
+        private final java.util.Set<String> keys = new java.util.HashSet<>();
+        public ExportTypeA(String... keys) { java.util.Collections.addAll(this.keys, keys); }
+        @Export public boolean has(String key) { return keys.contains(key); }
+    }
+
+    /**
+     * @Export 类型 B：也有 has 方法，跟 A 完全无关
+     */
+    public static class ExportTypeB {
+        private final java.util.Set<String> keys = new java.util.HashSet<>();
+        public ExportTypeB(String... keys) { java.util.Collections.addAll(this.keys, keys); }
+        @Export public boolean has(String key) { return keys.contains(key); }
+    }
+
+    /**
+     * 场景 O：复现 Frontier 生产环境 ClassCastException
+     *
+     * 粒子脚本（后台线程疯狂执行）：
+     *   async def run() { 大量循环 + sleep + 扩展函数调用 }
+     *   run()
+     *
+     * 主线程脚本（解释执行）：
+     *   &ex::has('key')
+     *
+     * 粒子脚本的 async def 通过 createChild() 共享 Environment，
+     * 异步线程执行 context call 时会修改 env.target，
+     * 与主线程的 context call 产生 data race
+     */
+    @Test
+    void testAsyncDefWithExtensionCall_crossScriptCCE() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // 粒子脚本：async def 内部疯狂调用 ExportTypeB 的扩展函数
+        // 每次 eval 创建独立 Environment，但 async def 通过 createChild 共享它
+        ParsedScript particleScript = parseFrontierStyle(
+                "async def run() {\n" +
+                "  _i = 0\n" +
+                "  while (_i < 50) {\n" +
+                "    &pb::has('particle')\n" +
+                "    &pb::has('effect')\n" +
+                "    &pb::has('spawn')\n" +
+                "    sleep(0)\n" +
+                "    _i = _i + 1\n" +
+                "  }\n" +
+                "}\n" +
+                "run()"
+        );
+        // 主线程脚本：解释执行扩展函数
+        ParsedScript hasScript = parseFrontierStyle("&ex::has('canhaqi')");
+        int particleThreads = 8;
+        int mainIterations = 5000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch particleDone = new CountDownLatch(particleThreads);
+        AtomicReference<Throwable> cceError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger cceCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        // 启动多个粒子线程，每个线程反复 eval 粒子脚本
+        ExecutorService executor = Executors.newFixedThreadPool(particleThreads + 1);
+        for (int t = 0; t < particleThreads; t++) {
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < 200; i++) {
+                        Environment env = particleScript.newEnvironment();
+                        env.defineRootVariable("pb", new ExportTypeB("particle", "effect", "spawn"));
+                        try {
+                            particleScript.eval(env);
+                        } catch (Throwable ex) {
+                            if (ex instanceof ClassCastException) {
+                                cceCount.incrementAndGet();
+                                cceError.compareAndSet(null, ex);
+                            }
+                        }
+                    }
+                } catch (Throwable ex) {
+                    cceError.compareAndSet(null, ex);
+                } finally {
+                    particleDone.countDown();
+                }
+            });
+        }
+        // 主线程：疯狂执行 has 脚本
+        executor.submit(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < mainIterations; i++) {
+                    Environment env = hasScript.newEnvironment();
+                    env.defineRootVariable("ex", new ExportTypeA("canhaqi"));
+                    try {
+                        Object result = hasScript.eval(env);
+                        if (!Boolean.TRUE.equals(result)) {
+                            cceError.compareAndSet(null, new RuntimeException(
+                                    "has 返回了 " + result + " 而不是 true (i=" + i + ")"));
+                        }
+                    } catch (ClassCastException e) {
+                        cceCount.incrementAndGet();
+                        cceError.compareAndSet(null, e);
+                        System.out.println("[场景 O] 复现 ClassCastException! i=" + i + " " + e.getMessage());
+                    } catch (Throwable e) {
+                        cceError.compareAndSet(null, e);
+                    }
+                }
+            } catch (Throwable ex) {
+                cceError.compareAndSet(null, ex);
+            }
+        });
+        startLatch.countDown();
+        particleDone.await(60, TimeUnit.SECONDS);
+        executor.shutdown();
+        executor.awaitTermination(60, TimeUnit.SECONDS);
+        Throwable err = cceError.get();
+        if (err instanceof ClassCastException) {
+            System.out.println("[场景 O] 共捕获 " + cceCount.get() + " 次 ClassCastException");
+            fail("复现了 ClassCastException: " + err.getMessage(), err);
+        } else if (err != null) {
+            fail("其他错误: " + err.getMessage(), err);
+        }
+    }
+
+    /**
+     * 场景 P：复现 FunctionCallEvaluator 缓存写入的 target 二次读取 race
+     *
+     * Bug 根因：FunctionCallEvaluator.evaluate 慢路径中：
+     * - 行 59: prepareCall 基于当时的 env.getTarget() 解析函数（得到 TypeA.has）
+     * - 行 74: 写缓存时再次读 env.getTarget() 作为 guardClass（可能已被改为 TypeB）
+     * → CachedResolution(function=TypeA.has, guardClass=TypeB)
+     * → 后续 TypeB target 命中缓存但调用 TypeA 的 bridge → ClassCastException
+     *
+     * 模拟方式：两线程共享 Environment，干扰线程疯狂切换 target 类型
+     */
+    @Test
+    void testAsyncDefSameScript_environmentTargetRace() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // 只含 context call 的表达式
+        ParsedScript hasScript = parseFrontierStyle("&target::has('key')");
+        int iterations = 100000;
+        AtomicReference<Throwable> cceError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger cceCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(true);
+        // 共享 Environment（模拟 createChild 共享）
+        Environment sharedEnv = FluxonRuntime.getInstance().newEnvironment();
+        sharedEnv.defineRootVariable("target", new ExportTypeA("key"));
+        // 干扰线程：模拟 async 函数体内的 context call 反复 setTarget
+        // 关键是在 prepareCall 和缓存写入之间改掉 target
+        ExportTypeB pollutant = new ExportTypeB("key");
+        ExportTypeA original = new ExportTypeA("key");
+        Thread spoiler = new Thread(() -> {
+            while (running.get()) {
+                sharedEnv.setTarget(pollutant);
+                Thread.yield();
+                sharedEnv.setTarget(original);
+                Thread.yield();
+            }
+        });
+        spoiler.setDaemon(true);
+        spoiler.start();
+        // 主线程：每次用新 ParsedScript 强制走慢路径写缓存，
+        // 最大化 prepareCall 和缓存写入之间的 race 窗口
+        for (int i = 0; i < iterations; i++) {
+            ParsedScript freshScript = parseFrontierStyle("&target::has('key')");
+            try {
+                freshScript.eval(sharedEnv);
+            } catch (ClassCastException e) {
+                cceCount.incrementAndGet();
+                cceError.compareAndSet(null, e);
+                System.out.println("[场景 P] 复现 CCE! i=" + i + " " + e.getMessage());
+                e.printStackTrace(System.out);
+                break;
+            } catch (Throwable e) {
+                // 其他错误可接受
+            }
+        }
+        running.set(false);
+        spoiler.join(5000);
+        Throwable err = cceError.get();
+        if (err instanceof ClassCastException) {
+            System.out.println("[场景 P] 共 " + cceCount.get() + " 次 ClassCastException");
+            fail("复现了 CachedResolution 写入 race → ClassCastException: " + err.getMessage(), err);
+        } else if (err != null) {
+            System.out.println("[场景 P] 非 CCE 错误: " + err.getClass().getName() + ": " + err.getMessage());
+        }
+    }
+
+    /**
+     * 场景 P2：多线程疯狂 eval 同一脚本（含 async def），不同 target 类型竞争 cachedResolution
+     *
+     * 同一 ParsedScript 的同一 FunctionCallExpression 节点被多线程并发执行，
+     * 每个线程传入不同类型的 target → cachedResolution 的 guardClass 不断被覆盖
+     */
+    @Test
+    void testAsyncDefSameScript_concurrentCachedResolution() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        ParsedScript script = parseFrontierStyle(
+                "async def run() {\n" +
+                "  _i = 0\n" +
+                "  while (_i < 100) {\n" +
+                "    &target::has('key')\n" +
+                "    sleep(0)\n" +
+                "    _i = _i + 1\n" +
+                "  }\n" +
+                "}\n" +
+                "run()"
+        );
+        int threadCount = 16;
+        int iterationsPerThread = 200;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger errorCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            boolean useTypeA = (t % 2 == 0);
+            int threadId = t;
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        Environment env = script.newEnvironment();
+                        if (useTypeA) {
+                            env.defineRootVariable("target", new ExportTypeA("key"));
+                        } else {
+                            env.defineRootVariable("target", new ExportTypeB("key"));
+                        }
+                        try {
+                            script.eval(env);
+                        } catch (ClassCastException e) {
+                            errorCount.incrementAndGet();
+                            firstError.compareAndSet(null, e);
+                            System.out.println("[场景 P2] CCE! thread=" + threadId + " i=" + i +
+                                    " type=" + (useTypeA ? "A" : "B") + " " + e.getMessage());
+                            return;
+                        } catch (Throwable e) {
+                            // async 内部异常被吞
+                        }
+                    }
+                } catch (Throwable ex) {
+                    firstError.compareAndSet(null, ex);
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(120, TimeUnit.SECONDS), "线程未在超时内完成");
+        Thread.sleep(3000);
+        executor.shutdown();
+        Throwable err = firstError.get();
+        if (err instanceof ClassCastException) {
+            System.out.println("[场景 P2] 共 " + errorCount.get() + " 次 ClassCastException");
+            fail("复现了 ClassCastException: " + err.getMessage(), err);
+        } else if (err != null) {
+            System.out.println("[场景 P2] 非 CCE 错误: " + err.getClass().getName() + ": " + err.getMessage());
+        }
+    }
+
+    /**
+     * 场景 Q：精确复现 Frontier 模式 —— 粒子脚本编译执行 + has 脚本解释执行
+     *
+     * Frontier 中粒子脚本量大走编译路径，has 条件表达式走解释路径。
+     * 编译路径不写 cachedResolution，但可能通过其他共享状态（
+     * FunctionContextPool detach/reassign、ExtensionDispatchTable 缓存）影响解释路径。
+     */
+    @Test
+    void testCompiledAsyncVsInterpretedHas() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // 粒子脚本 —— 用 Fluxon.compile 编译执行
+        String particleSource =
+                "async def run() {\n" +
+                "  _i = 0\n" +
+                "  while (_i < 50) {\n" +
+                "    &pb::has('particle')\n" +
+                "    &pb::has('effect')\n" +
+                "    sleep(0)\n" +
+                "    _i = _i + 1\n" +
+                "  }\n" +
+                "}\n" +
+                "run()";
+        // has 脚本 —— 解释执行
+        ParsedScript hasScript = parseFrontierStyle("&ex::has('canhaqi')");
+        int particleThreads = 8;
+        int mainIterations = 5000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicReference<Throwable> cceError = new AtomicReference<>();
+        java.util.concurrent.atomic.AtomicInteger cceCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(particleThreads + 1);
+        CountDownLatch allDone = new CountDownLatch(particleThreads + 1);
+        // 粒子线程：编译执行
+        for (int t = 0; t < particleThreads; t++) {
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int i = 0; i < 200; i++) {
+                        Environment env = FluxonRuntime.getInstance().newEnvironment();
+                        env.defineRootVariable("pb", new ExportTypeB("particle", "effect", "spawn"));
+                        try {
+                            Fluxon.eval(particleSource, env);
+                        } catch (Throwable ex) {
+                            if (ex instanceof ClassCastException) {
+                                cceCount.incrementAndGet();
+                                cceError.compareAndSet(null, ex);
+                            }
+                        }
+                    }
+                } catch (Throwable ex) {
+                    cceError.compareAndSet(null, ex);
+                } finally {
+                    allDone.countDown();
+                }
+            });
+        }
+        // 主线程：解释执行
+        executor.submit(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < mainIterations; i++) {
+                    Environment env = hasScript.newEnvironment();
+                    env.defineRootVariable("ex", new ExportTypeA("canhaqi"));
+                    try {
+                        Object result = hasScript.eval(env);
+                        if (!Boolean.TRUE.equals(result)) {
+                            cceError.compareAndSet(null, new RuntimeException(
+                                    "has 返回 " + result + " (i=" + i + ")"));
+                        }
+                    } catch (ClassCastException e) {
+                        cceCount.incrementAndGet();
+                        cceError.compareAndSet(null, e);
+                        System.out.println("[场景 Q] 复现 CCE! i=" + i + " " + e.getMessage());
+                    } catch (Throwable e) {
+                        cceError.compareAndSet(null, e);
+                    }
+                }
+            } catch (Throwable ex) {
+                cceError.compareAndSet(null, ex);
+            } finally {
+                allDone.countDown();
+            }
+        });
+        startLatch.countDown();
+        assertTrue(allDone.await(120, TimeUnit.SECONDS), "超时");
+        executor.shutdown();
+        // 等 async 任务收尾
+        Thread.sleep(3000);
+        Throwable err = cceError.get();
+        if (err instanceof ClassCastException) {
+            System.out.println("[场景 Q] 共 " + cceCount.get() + " 次 CCE");
+            fail("复现了 ClassCastException: " + err.getMessage(), err);
+        } else if (err != null) {
+            fail("其他错误: " + err.getMessage(), err);
+        }
+    }
+
+    /**
      * 场景 K：异常路径后 FunctionContext 引用稳定性
      * 当函数调用抛出异常后，后续调用如果复用了同一个 pool slot，
      * 持有旧 context 引用的异常对象会看到被覆盖的 function 字段

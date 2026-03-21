@@ -41,7 +41,9 @@ public class DeferredExtensionHandler implements FunctionCallHandler {
     @Override
     public Type finishCall(Interpreter interpreter, FunctionCallExpression expr, FunctionContext<?> ctx) {
         ExtensionFunctionPosition extPos = expr.getExtensionPosition();
-        Object target = interpreter.getEnvironment().getTarget();
+        // 使用 ctx 中已捕获的 target 而非再次读 env.getTarget()，
+        // 避免并发修改 env.target 导致 function/target 类型不匹配
+        Object target = ctx.getTarget();
         Type[] argTypes = ctx.collectArgTypes();
         ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
         Function resolved = dispatchTable.resolve(target.getClass(), argTypes);

@@ -71,7 +71,9 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         if (!isDeferred) {
             Function resolved = ctx.getFunction();
             if (!resolved.isAsync() && !resolved.isPrimarySync()) {
-                Object target = env.getTarget();
+                // 使用 ctx 中已捕获的 target 而非再次读 env.getTarget()，
+                // 避免并发修改 env.target 导致 function/guardClass 不匹配
+                Object target = ctx.getTarget();
                 Class<?> guard = target != null ? target.getClass() : null;
                 expr.cachedResolution = new FunctionCallExpression.CachedResolution(resolved, expectedTypes, guard);
             }
