@@ -47,10 +47,11 @@ public class DomainEvaluator extends Evaluator<DomainExpression> {
         try {
             DomainExecutor executor = expr.getExecutor();
             ParseResult bodyAst = expr.getBody();
-            Environment env = interpreter.getEnvironment();
-            // 为域体闭包创建 child interpreter，隔离 result slots（域执行器可能在其他线程执行 body）
+            // 为域体闭包创建 child interpreter，隔离 result slots 和 Environment
+            // 域执行器可能在其他线程执行 body，子 env 避免 target 竞态
             Interpreter child = interpreter.createChild();
-            interpreter.resultRef = executor.execute(env, () -> child.getResultBoxed(child.evaluate(bodyAst)));
+            Environment childEnv = child.getEnvironment();
+            interpreter.resultRef = executor.execute(childEnv, () -> child.getResultBoxed(child.evaluate(bodyAst)));
             return Type.OBJECT;
         } catch (RuntimeException ex) {
             throw ex;

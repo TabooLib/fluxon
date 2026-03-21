@@ -57,10 +57,13 @@ public class Interpreter {
     }
 
     /**
-     * 创建子解释器（独立结果字段，共享 environment）
+     * 创建子解释器（独立结果字段，独立 Environment）
+     * 子 Environment 通过 root 共享函数定义和根变量，
+     * 但 target 是值拷贝，避免并发线程间 save/restore target 竞态
      */
     public Interpreter createChild() {
-        Interpreter child = new Interpreter(this.environment);
+        Environment childEnv = new Environment(this.environment, 0);
+        Interpreter child = new Interpreter(childEnv);
         child.rootVariableTypes = this.rootVariableTypes;
         return child;
     }

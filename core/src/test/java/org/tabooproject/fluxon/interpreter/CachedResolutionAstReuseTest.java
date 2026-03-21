@@ -1032,4 +1032,156 @@ public class CachedResolutionAstReuseTest {
             }
         }
     }
+
+    // region Race A/B 复现：ContextCallEvaluator save/restore target 并发竞态
+
+    /**
+     * 场景 R：复现 ContextCallEvaluator 的 save/restore target 竞态
+     * <p>
+     * 多线程共享同一个 Environment，各自用不同 target 类型做 :: 操作。
+     * save/restore 模式在并发下会互相覆盖 env.target，导致：
+     * 1. 扩展函数 bridge 的 CHECKCAST 类型不匹配 → ClassCastException
+     * 2. 函数调用拿到错误类型的 target → 逻辑错误
+     * <p>
+     * 直接用 Java 代码构造多线程并发，不依赖 async def，
+     * 最大化竞争窗口。这是一个极端场景（多线程直接共享 env），
+     * 用于验证 save/restore target 模式本身的不安全性。
+     */
+    @Test
+    void testContextCallSaveRestoreRace_directSharedEnv() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        ParsedScript scriptA = parseFrontierStyle("&ta :: has('akey')");
+        ParsedScript scriptB = parseFrontierStyle("&tb :: has('bkey')");
+        int threadCount = 8;
+        int iterationsPerThread = 100000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch endLatch = new CountDownLatch(threadCount);
+        java.util.concurrent.atomic.AtomicInteger errorCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        Environment sharedEnv = runtime.newEnvironment();
+        sharedEnv.defineRootVariable("ta", new ExportTypeA("akey"));
+        sharedEnv.defineRootVariable("tb", new ExportTypeB("bkey"));
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        for (int t = 0; t < threadCount; t++) {
+            boolean useScriptA = (t % 2 == 0);
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    ParsedScript script = useScriptA ? scriptA : scriptB;
+                    for (int i = 0; i < iterationsPerThread; i++) {
+                        try {
+                            Object result = script.eval(sharedEnv);
+                            if (!Boolean.TRUE.equals(result)) {
+                                errorCount.incrementAndGet();
+                                firstError.compareAndSet(null, new RuntimeException(
+                                        "script=" + (useScriptA ? "A" : "B") + " i=" + i +
+                                        " expected true got " + result));
+                                return;
+                            }
+                        } catch (Throwable e) {
+                            errorCount.incrementAndGet();
+                            firstError.compareAndSet(null, e);
+                            return;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+        startLatch.countDown();
+        assertTrue(endLatch.await(60, TimeUnit.SECONDS), "线程未在超时内完成");
+        executor.shutdown();
+        Throwable err = firstError.get();
+        if (err != null) {
+            System.out.println("[场景 R-direct] 复现 save/restore target 竞态！错误次数: " + errorCount.get());
+            System.out.println("[场景 R-direct] 第一个错误: " + err.getClass().getSimpleName() + ": " + err.getMessage());
+            err.printStackTrace(System.out);
+        }
+        // 极端场景：直接共享 env，不通过 createChild()
+        // 此测试用于展示 save/restore 模式本身的不安全性
+    }
+
+    /**
+     * 场景 R2：复现 async def + createChild() 共享 env 导致的 target 竞态
+     * <p>
+     * 贴近真实 Frontier 场景：
+     * - 脚本定义 async def，函数体内做 :: 操作
+     * - 主线程在 async 执行期间也做 :: 操作
+     * - createChild() 修改前共享 env → 竞态
+     * - createChild() 修改后独立 env → 应该安全
+     */
+    @Test
+    void testContextCallSaveRestoreRace_asyncSharedEnv() throws Exception {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.getExportRegistry().registerClass(ExportTypeA.class);
+        runtime.getExportRegistry().registerClass(ExportTypeB.class);
+        // async 脚本：函数体内循环做 :: 操作
+        ParsedScript asyncScript = parseFrontierStyle(
+                "async def worker() {\n" +
+                "  _i = 0\n" +
+                "  while (_i < 500) {\n" +
+                "    &tb :: has('bkey')\n" +
+                "    _i = _i + 1\n" +
+                "  }\n" +
+                "  return 'OK'\n" +
+                "}\n" +
+                "worker()"
+        );
+        ParsedScript mainScript = parseFrontierStyle("&ta :: has('akey')");
+        int iterations = 50000;
+        java.util.concurrent.atomic.AtomicInteger wrongValueCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        for (int iter = 0; iter < iterations; iter++) {
+            Environment env = runtime.newEnvironment();
+            env.defineRootVariable("ta", new ExportTypeA("akey"));
+            env.defineRootVariable("tb", new ExportTypeB("bkey"));
+            Object futureObj;
+            try {
+                futureObj = asyncScript.eval(env);
+            } catch (ClassCastException e) {
+                firstError.compareAndSet(null, e);
+                wrongValueCount.incrementAndGet();
+                break;
+            }
+            try {
+                for (int j = 0; j < 100; j++) {
+                    Object mainResult = mainScript.eval(env);
+                    if (!Boolean.TRUE.equals(mainResult)) {
+                        wrongValueCount.incrementAndGet();
+                        firstError.compareAndSet(null, new RuntimeException(
+                                "iter=" + iter + " j=" + j + " main has('akey') expected true got " + mainResult));
+                        break;
+                    }
+                }
+            } catch (ClassCastException e) {
+                wrongValueCount.incrementAndGet();
+                firstError.compareAndSet(null, e);
+            }
+            if (futureObj instanceof java.util.concurrent.Future) {
+                try {
+                    ((java.util.concurrent.Future<?>) futureObj).get(5, TimeUnit.SECONDS);
+                } catch (ExecutionException e) {
+                    if (e.getCause() instanceof ClassCastException) {
+                        wrongValueCount.incrementAndGet();
+                        firstError.compareAndSet(null, e.getCause());
+                    }
+                }
+            }
+            if (wrongValueCount.get() > 0) break;
+        }
+        Throwable err = firstError.get();
+        if (err != null) {
+            System.out.println("[场景 R2] 复现 createChild 共享 env target 竞态！错误次数: " + wrongValueCount.get());
+            System.out.println("[场景 R2] 第一个错误: " + err.getClass().getSimpleName() + ": " + err.getMessage());
+            err.printStackTrace(System.out);
+            fail("createChild() 修改后不应再出现 target 竞态", err);
+        }
+    }
+
+    // endregion
 }
