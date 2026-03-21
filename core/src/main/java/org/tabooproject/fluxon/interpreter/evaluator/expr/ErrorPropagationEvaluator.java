@@ -62,12 +62,10 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
             boxing(operandType, mv);
             return Type.OBJECT;
         }
+        boolean isTopLevel = ctx.getExpectedReturnType() != null;
         if (operandType == Type.VOID) {
             // void 视为 null → return null
-            mv.visitVarInsn(ALOAD, 1); // FunctionContext
-            mv.visitInsn(ACONST_NULL);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
-            mv.visitInsn(RETURN);
+            emitReturnNull(isTopLevel, mv);
             return Type.OBJECT; // 不可达但需要返回类型
         }
         // 引用类型：检查 null
@@ -76,13 +74,26 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
         mv.visitJumpInsn(IFNONNULL, notNull);
         // null → return null
         mv.visitInsn(POP);
-        mv.visitVarInsn(ALOAD, 1); // FunctionContext
-        mv.visitInsn(ACONST_NULL);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
-        mv.visitInsn(RETURN);
+        emitReturnNull(isTopLevel, mv);
         // 非 null → 继续
         mv.visitLabel(notNull);
         return Type.OBJECT;
+    }
+
+    /**
+     * 生成 return null 的字节码
+     * 顶层脚本直接 ARETURN null，函数体内通过 FunctionContext.setReturnRef 设置返回值
+     */
+    private static void emitReturnNull(boolean isTopLevel, MethodVisitor mv) {
+        if (isTopLevel) {
+            mv.visitInsn(ACONST_NULL);
+            mv.visitInsn(ARETURN);
+        } else {
+            mv.visitVarInsn(ALOAD, 1); // FunctionContext
+            mv.visitInsn(ACONST_NULL);
+            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
+            mv.visitInsn(RETURN);
+        }
     }
 
     @Override
