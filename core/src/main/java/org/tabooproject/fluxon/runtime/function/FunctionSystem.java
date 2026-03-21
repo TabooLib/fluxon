@@ -4,79 +4,79 @@ import org.tabooproject.fluxon.runtime.*;
 
 import java.util.List;
 
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
-import static org.tabooproject.fluxon.runtime.Type.*;
-
 /**
  * 系统函数库
- * 纯函数通过 @FluxonFunction 注解注册，需要 Environment 的函数保持手动注册
+ * 所有函数通过 @FluxonFunction 注解注册
+ * 需要运行时上下文的函数在签名中声明 FunctionContext 参数，由 Scanner 自动注入
  *
  * @author sky
  */
 public class FunctionSystem {
 
-    @SuppressWarnings("DataFlowIssue")
     public static void init(FluxonRuntime runtime) {
-        // 扫描注册所有 @FluxonFunction 方法
         FluxonFunctionScanner.register(runtime, FunctionSystem.class);
-        // 需要 Environment 的函数（不适合 DirectBinding）
-        runtime.registerFunction("print", returns(VOID).params(OBJECT), context -> {
-            if (0 < context.getArgumentCount()) {
-                context.getEnvironment().getOut().println(context.getArgBoxed(0));
-            } else {
-                context.getEnvironment().getOut().println();
+    }
+
+    @FluxonFunction
+    public static void print(FunctionContext<?> ctx, Object value) {
+        if (ctx.getArgumentCount() > 0) {
+            ctx.getEnvironment().getOut().println(value);
+        } else {
+            ctx.getEnvironment().getOut().println();
+        }
+    }
+
+    @FluxonFunction("error")
+    public static void error(FunctionContext<?> ctx, Object value) {
+        if (ctx.getArgumentCount() > 0) {
+            ctx.getEnvironment().getErr().println(value);
+        } else {
+            ctx.getEnvironment().getErr().println();
+        }
+    }
+
+    // 通过函数引用或名称动态调用函数
+    @FluxonFunction
+    public static Object call(FunctionContext<?> ctx, Object func, Object args) {
+        Object[] parameters;
+        if (ctx.getArgumentCount() < 2) {
+            parameters = new Object[0];
+        } else {
+            parameters = ((List<?>) args).toArray();
+        }
+        FunctionContextPool pool = ctx.getPool();
+        if (func instanceof Function) {
+            try (FunctionContext<?> borrowed = pool.borrowCopy(ctx, parameters)) {
+                ((Function) func).call(borrowed);
+                return borrowed.getReturnRef();
             }
-        });
-        runtime.registerFunction("error", returns(VOID).params(OBJECT), context -> {
-            if (0 < context.getArgumentCount()) {
-                context.getEnvironment().getErr().println(context.getArgBoxed(0));
-            } else {
-                context.getEnvironment().getErr().println();
-            }
-        });
-        // call 需要 FunctionContextPool，保持手动注册
-        runtime.registerFunction("call", returns(OBJECT).params(OBJECT, OBJECT), context -> {
-            Object func = context.getRef(0);
-            Object[] parameters;
-            if (context.getArgumentCount() < 2) {
-                parameters = new Object[0];
-            } else {
-                parameters = ((List<?>) context.getRef(1)).toArray();
-            }
-            FunctionContextPool pool = context.getPool();
-            if (func instanceof Function) {
-                try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
-                    ((Function) func).call(borrowed);
-                    context.setReturnRef(borrowed.getReturnRef());
-                }
-            } else {
-                Function function = context.getEnvironment().getFunction(func.toString());
-                try (FunctionContext<?> borrowed = pool.borrowCopy(context, parameters)) {
-                    function.call(borrowed);
-                    context.setReturnRef(borrowed.getReturnRef());
-                }
-            }
-        });
-        // this 需要遍历 Environment 链
-        runtime.registerFunction("this", returns(OBJECT).noParams(), context -> {
-            Environment environment = context.getEnvironment();
-            Object target = environment.getTarget();
-            while (target == null && environment.getParent() != null) {
-                environment = environment.getParent();
-                target = environment.getTarget();
-            }
-            context.setReturnRef(target);
-        });
-        // throw 抛异常，需要区分 Error 和普通对象，保持手动注册
-        // 不适合 @FluxonFunction：抛出的异常类型不确定（Error vs RuntimeException）
-        runtime.registerFunction("throw", returns(VOID).params(OBJECT), context -> {
-            Object o = context.getArgBoxed(0);
-            if (o instanceof Error) {
-                throw (Error) o;
-            } else {
-                throw new RuntimeException(o.toString());
-            }
-        });
+        }
+        Function function = ctx.getEnvironment().getFunction(func.toString());
+        try (FunctionContext<?> borrowed = pool.borrowCopy(ctx, parameters)) {
+            function.call(borrowed);
+            return borrowed.getReturnRef();
+        }
+    }
+
+    // 沿 Environment 父链向上查找第一个非 null 的 target
+    @FluxonFunction("this")
+    public static Object thisTarget(FunctionContext<?> ctx) {
+        Environment environment = ctx.getEnvironment();
+        Object target = environment.getTarget();
+        while (target == null && environment.getParent() != null) {
+            environment = environment.getParent();
+            target = environment.getTarget();
+        }
+        return target;
+    }
+
+    // 抛出异常，Error 直接抛出，其他包装为 RuntimeException
+    @FluxonFunction("throw")
+    public static void throwError(FunctionContext<?> ctx, Object value) {
+        if (value instanceof Error) {
+            throw (Error) value;
+        }
+        throw new RuntimeException(value.toString());
     }
 
     @FluxonFunction

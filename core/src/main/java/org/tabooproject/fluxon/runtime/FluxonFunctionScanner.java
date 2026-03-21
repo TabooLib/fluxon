@@ -36,13 +36,19 @@ public class FluxonFunctionScanner {
 
     /**
      * 注册系统函数
+     * 若方法第一个参数为 FunctionContext，视为上下文注入参数，不计入 Fluxon 函数签名，
+     * 同时禁用 DirectBinding（走框架路径）
      */
     private static void registerSystemFunction(FluxonRuntime runtime, Class<?> clazz, Method method, FluxonFunction annotation) {
         String name = annotation.value().isEmpty() ? method.getName() : annotation.value();
         String namespace = annotation.namespace().isEmpty() ? null : annotation.namespace();
-        FunctionSignature signature = buildSignature(method, 0);
-        DirectBinding binding = DirectBinding.ofMethod(clazz, method);
-        NativeFunction.NativeCallable<?> callable = buildSystemCallable(method);
+        boolean needsContext = hasContextParam(method, 0);
+        int skipParams = needsContext ? 1 : 0;
+        FunctionSignature signature = buildSignature(method, skipParams);
+        DirectBinding binding = needsContext ? null : DirectBinding.ofMethod(clazz, method);
+        NativeFunction.NativeCallable<?> callable = needsContext
+                ? buildContextAwareCallable(method, false)
+                : buildSystemCallable(method);
         if (namespace != null) {
             runtime.registerFunction(new NativeFunction<>(namespace, name, signature, callable, false, false, binding));
         } else {
@@ -53,6 +59,7 @@ public class FluxonFunctionScanner {
     /**
      * 注册扩展函数
      * 方法第一个参数为 target 类型，FunctionSignature 从第二个参数开始构建
+     * 若第二个参数为 FunctionContext，视为上下文注入参数，额外跳过，禁用 DirectBinding
      * DirectBinding 包含 target 参数（编译器直接 load target + INVOKESTATIC）
      * NativeCallable 桥接时第一个参数从 context.getTarget() 取
      */
@@ -66,10 +73,13 @@ public class FluxonFunctionScanner {
         }
         String name = annotation.value().isEmpty() ? method.getName() : annotation.value();
         String namespace = annotation.namespace().isEmpty() ? null : annotation.namespace();
-        // 从第二个参数开始构建签名（排除 target）
-        FunctionSignature signature = buildSignature(method, 1);
-        DirectBinding binding = DirectBinding.ofMethod(clazz, method);
-        NativeFunction.NativeCallable<?> callable = buildExtensionCallable(method);
+        boolean needsContext = hasContextParam(method, 1);
+        int skipParams = needsContext ? 2 : 1;
+        FunctionSignature signature = buildSignature(method, skipParams);
+        DirectBinding binding = needsContext ? null : DirectBinding.ofMethod(clazz, method);
+        NativeFunction.NativeCallable<?> callable = needsContext
+                ? buildContextAwareCallable(method, true)
+                : buildExtensionCallable(method);
         @SuppressWarnings("rawtypes")
         NativeFunction nf = new NativeFunction<>(namespace, name, signature, (NativeFunction.NativeCallable) callable, false, false, binding);
         runtime.registerExtensionFunction((Class) target, nf);
@@ -78,7 +88,7 @@ public class FluxonFunctionScanner {
     /**
      * 从 Java 方法签名推导 FunctionSignature
      *
-     * @param skipParams 跳过前 N 个参数（扩展函数跳过 target 参数）
+     * @param skipParams 跳过前 N 个参数（扩展函数跳过 target 参数，上下文注入时额外跳过 FunctionContext）
      */
     private static FunctionSignature buildSignature(Method method, int skipParams) {
         Class<?>[] paramClasses = method.getParameterTypes();
@@ -89,6 +99,51 @@ public class FluxonFunctionScanner {
         }
         Type returnType = Type.fromClass(method.getReturnType());
         return FunctionSignature.returns(returnType).params(paramTypes);
+    }
+
+    /**
+     * 检测方法在 offset 位置的参数是否为 FunctionContext 类型
+     */
+    private static boolean hasContextParam(Method method, int offset) {
+        Class<?>[] params = method.getParameterTypes();
+        return params.length > offset && FunctionContext.class.isAssignableFrom(params[offset]);
+    }
+
+    /**
+     * 生成需要 FunctionContext 注入的 NativeCallable 桥接
+     * 通过 MethodHandle 调用，FunctionContext 作为第一个（系统函数）或第二个（扩展函数）参数
+     * 不使用 LambdaMetafactory，因为上下文参数不来自 getArgBoxed
+     *
+     * @param isExtension 是否为扩展函数（第一个参数为 target）
+     */
+    private static NativeFunction.NativeCallable<?> buildContextAwareCallable(Method method, boolean isExtension) {
+        try {
+            MethodHandle mh = MethodHandles.lookup().unreflect(method);
+            int totalParams = method.getParameterCount();
+            // 跳过 target（如果是扩展函数）和 FunctionContext
+            int skipParams = isExtension ? 2 : 1;
+            int userParams = totalParams - skipParams;
+            ReturnWriter writer = returnWriter(method.getReturnType());
+            return ctx -> {
+                Object[] args = new Object[totalParams];
+                int idx = 0;
+                if (isExtension) args[idx++] = ctx.getTarget();
+                args[idx++] = ctx;
+                for (int i = 0; i < userParams; i++) {
+                    args[idx++] = ctx.getArgBoxed(i);
+                }
+                try {
+                    Object result = mh.invokeWithArguments(args);
+                    writer.write(ctx, result);
+                } catch (RuntimeException | Error e) {
+                    throw e;
+                } catch (Throwable e) {
+                    throw new RuntimeException(e);
+                }
+            };
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("无法访问 @FluxonFunction 方法: " + method, e);
+        }
     }
 
     // region LambdaMetafactory 直接调用
