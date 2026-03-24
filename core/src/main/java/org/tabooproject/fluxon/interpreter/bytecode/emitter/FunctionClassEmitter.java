@@ -212,23 +212,31 @@ public class FunctionClassEmitter extends ClassEmitter {
         lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
     }
 
-    private void emitParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
-        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
-        // 创建新环境: new Environment(context.getEnvironment(), localVarCount)
+    /**
+     * 创建子 Environment 并存入局部变量和 this.environment 字段
+     * 隔离 target 字段，防止多线程共享根 Environment 时 ContextCall（::）的 target 互相覆盖
+     *
+     * @return 子 Environment 的 JVM 局部变量槽位
+     */
+    private int emitChildEnvironment(MethodVisitor mv, CodeContext funcCtx, int localVarCount) {
         mv.visitTypeInsn(NEW, Environment.TYPE.getPath());
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
-        mv.visitLdcInsn(funcDef.getLocalVariables().size());
+        mv.visitLdcInsn(localVarCount);
         mv.visitMethodInsn(INVOKESPECIAL, Environment.TYPE.getPath(), "<init>", "(" + Environment.TYPE + I + ")V", false);
-        // 存入局部变量并设置到 this.environment 字段
-        mv.visitInsn(DUP);
         int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, envSlot);
         mv.visitVarInsn(ALOAD, 0);
-        mv.visitInsn(SWAP);
+        mv.visitVarInsn(ALOAD, envSlot);
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
         funcCtx.setEnvironmentLocalSlot(envSlot);
+        return envSlot;
+    }
+
+    private void emitParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
+        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
+        int envSlot = emitChildEnvironment(mv, funcCtx, funcDef.getLocalVariables().size());
         // Lambda 闭包捕获偏移
         if (funcDef instanceof LambdaFunctionDefinition) {
             int captureOffset = ((LambdaFunctionDefinition) funcDef).getCaptureOffset();
@@ -281,22 +289,12 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     /**
-     * Env-free 模式的参数绑定：将参数直接存入 JVM 局部变量，跳过 Environment 创建
-     * 仍保留父 Environment 引用用于函数查找和根变量访问
+     * Env-free 模式的参数绑定：将参数直接存入 JVM 局部变量，跳过 Environment 变量存储
+     * 创建轻量级子 Environment（localVariables=0）仅用于隔离 target 字段
      */
     private void emitParameterBindingEnvFree(MethodVisitor mv, CodeContext funcCtx) {
         Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
-        // 获取父 Environment 引用并存入局部变量（用于函数查找和根变量访问）
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment",
-                "()" + Environment.TYPE.getDescriptor(), false);
-        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, envSlot);
-        // 将父 Environment 设置到 this.environment 字段（供 Instructions.loadEnvironment 使用）
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitVarInsn(ALOAD, envSlot);
-        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
-        funcCtx.setEnvironmentLocalSlot(envSlot);
+        emitChildEnvironment(mv, funcCtx, 0);
         // 从 FunctionContext 读取参数，直接存入 JVM 局部变量
         int argIndex = 0;
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
@@ -449,15 +447,20 @@ public class FunctionClassEmitter extends ClassEmitter {
         String method;
         String desc;
         if (type == Type.I) {
-            method = "setReturnInt"; desc = "(I)V";
+            method = "setReturnInt";
+            desc = "(I)V";
         } else if (type == Type.Z) {
-            method = "setReturnBool"; desc = "(Z)V";
+            method = "setReturnBool";
+            desc = "(Z)V";
         } else if (type == Type.J) {
-            method = "setReturnLong"; desc = "(J)V";
+            method = "setReturnLong";
+            desc = "(J)V";
         } else if (type == Type.D) {
-            method = "setReturnDouble"; desc = "(D)V";
+            method = "setReturnDouble";
+            desc = "(D)V";
         } else if (type == Type.F) {
-            method = "setReturnFloat"; desc = "(F)V";
+            method = "setReturnFloat";
+            desc = "(F)V";
         } else {
             return;
         }
