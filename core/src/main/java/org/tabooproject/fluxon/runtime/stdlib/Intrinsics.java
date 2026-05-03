@@ -250,7 +250,10 @@ public final class Intrinsics {
                     function.call(ctx);
                     return getReturnValue(ctx);
                 } catch (Throwable ex) {
-                    if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
+                    if (AnnotationAccess.hasAnnotation(function, "except")) {
+                        ex.printStackTrace();
+                        throw ex;
+                    }
                     return null;
                 }
             });
