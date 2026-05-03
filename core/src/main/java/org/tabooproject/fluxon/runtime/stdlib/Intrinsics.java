@@ -28,6 +28,10 @@ public final class Intrinsics {
 
     public static final Type TYPE = new Type(Intrinsics.class);
 
+    /**
+     * @deprecated await 等待脚本异步流程时不再主动超时，该字段仅保留二进制兼容。
+     */
+    @Deprecated
     public static long AWAIT_TIMEOUT_MINUTES = 1;
 
     private static final Object[] EMPTY_ARGS = new Object[0];
@@ -456,26 +460,23 @@ public final class Intrinsics {
      */
     public static Object awaitValue(Object value) {
         if (value instanceof CompletableFuture<?>) {
-            // 如果是 CompletableFuture，等待其完成并返回结果
-            try {
-                return ((CompletableFuture<?>) value).get(AWAIT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-            } catch (InterruptedException | ExecutionException e) {
-                throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
-            } catch (TimeoutException e) {
-                throw new RuntimeException(e);
-            }
+            return awaitFuture((CompletableFuture<?>) value);
         } else if (value instanceof Future<?>) {
-            // 如果是普通的 Future，等待其完成并返回结果
-            try {
-                return ((Future<?>) value).get(AWAIT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-            } catch (InterruptedException | ExecutionException e) {
-                throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
-            } catch (TimeoutException e) {
-                throw new RuntimeException(e);
-            }
+            return awaitFuture((Future<?>) value);
         }
         // 如果不是异步类型，直接返回值
         return value;
+    }
+
+    private static Object awaitFuture(Future<?> future) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IntrinsicException("Interrupted while awaiting future", e);
+        } catch (ExecutionException e) {
+            throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
+        }
     }
 
     /**
