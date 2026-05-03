@@ -250,6 +250,7 @@ public final class Intrinsics {
                     function.call(ctx);
                     return getReturnValue(ctx);
                 } catch (Throwable ex) {
+                    if (isCancellation(ex)) throw ex;
                     if (AnnotationAccess.hasAnnotation(function, "except")) {
                         ex.printStackTrace();
                         throw ex;
@@ -269,7 +270,7 @@ public final class Intrinsics {
                     function.call(ctx);
                     future.complete(getReturnValue(ctx));
                 } catch (Throwable ex) {
-                    if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
+                    if (AnnotationAccess.hasAnnotation(function, "except") && !isCancellation(ex)) ex.printStackTrace();
                     future.completeExceptionally(ex);
                 }
             });
@@ -284,7 +285,7 @@ public final class Intrinsics {
             return result;
         } catch (Throwable ex) {
             ctx.close();
-            if (AnnotationAccess.hasAnnotation(function, "except")) ex.printStackTrace();
+            if (AnnotationAccess.hasAnnotation(function, "except") && !isCancellation(ex)) ex.printStackTrace();
             throw ex;
         }
     }
@@ -478,8 +479,21 @@ public final class Intrinsics {
             Thread.currentThread().interrupt();
             throw new IntrinsicException("Interrupted while awaiting future", e);
         } catch (ExecutionException e) {
+            if (isCancellation(e.getCause())) {
+                throw (CancellationException) e.getCause();
+            }
             throw new IntrinsicException("Error while awaiting future: " + e.getMessage(), e);
         }
+    }
+
+    private static boolean isCancellation(Throwable ex) {
+        if (ex instanceof CancellationException) {
+            return true;
+        }
+        if (ex instanceof CompletionException || ex instanceof ExecutionException) {
+            return ex.getCause() != null && isCancellation(ex.getCause());
+        }
+        return false;
     }
 
     /**
