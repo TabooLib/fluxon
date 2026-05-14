@@ -60,6 +60,9 @@ public class PrattParser {
      * 循环解析中缀运算符
      */
     private static Trampoline<ParseResult> parseInfixLoop(Parser parser, ParseResult left, int minBindingPower, Trampoline.Continuation<ParseResult> continuation) {
+        if (parser.isStatementBoundary()) {
+            return continuation.apply(left);
+        }
         OperatorRegistry registry = parser.getContext().getOperatorRegistry();
         InfixOperator infixOp = registry.findInfixMatch(parser, minBindingPower);
         if (infixOp == null) {
