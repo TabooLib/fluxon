@@ -60,7 +60,7 @@ public class PrattParser {
      * 循环解析中缀运算符
      */
     private static Trampoline<ParseResult> parseInfixLoop(Parser parser, ParseResult left, int minBindingPower, Trampoline.Continuation<ParseResult> continuation) {
-        if (parser.isStatementBoundary()) {
+        if (parser.isStatementBoundary() && !isLineContinuationOperator(parser)) {
             return continuation.apply(left);
         }
         OperatorRegistry registry = parser.getContext().getOperatorRegistry();
@@ -70,6 +70,14 @@ public class PrattParser {
         }
         Token operator = parser.consume();
         return infixOp.parse(parser, left, operator, newLeft -> parseInfixLoop(parser, newLeft, minBindingPower, continuation));
+    }
+
+    private static boolean isLineContinuationOperator(Parser parser) {
+        TokenType type = parser.peek().getType();
+        return type == TokenType.DOT
+                || type == TokenType.QUESTION_DOT
+                || type == TokenType.CONTEXT_CALL
+                || type == TokenType.QUESTION_CONTEXT_CALL;
     }
 
     /**
