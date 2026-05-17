@@ -153,6 +153,27 @@ public final class Intrinsics {
     }
 
     /**
+     * 准备上下文调用右侧直接 callee。
+     * obj::foo() 必须命中 obj 的扩展函数；只有 g()::foo() 可以显式回到全局函数。
+     */
+    public static FunctionContext<?> prepareContextCall(FunctionContextPool pool, Environment environment, String name, int argCount, int pos, int exPos) {
+        if (pool == null) pool = FunctionContextPool.local();
+        Object target = environment.getTarget();
+        if (target == GlobalObject.INSTANCE) {
+            Function function = resolveFunction(environment, target, name, argCount, pos, -1);
+            return pool.borrow(function, target, argCount, environment);
+        }
+        Function function = null;
+        if (target != null && exPos != -1) {
+            function = environment.getExtensionFunctionOrNull(target.getClass(), exPos, argCount);
+        }
+        if (function == null) {
+            throw new FunctionNotFoundError(environment, target, name, argCount, pos, exPos);
+        }
+        return pool.borrow(function, target, argCount, environment);
+    }
+
+    /**
      * 直接准备函数调用：跳过动态解析，直接使用编译期已解析的函数
      *
      * @param pool        函数上下文池

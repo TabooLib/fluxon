@@ -59,9 +59,16 @@ public class ContextCallInfixOperator implements InfixOperator {
             // 右侧是函数调用：expr :: foo(...) 或 expr ?:: foo(...)
             SymbolEnvironment env = parser.getSymbolEnvironment();
             boolean isContextCall = env.isContextCall();
+            boolean directContextCall = env.isDirectContextCall();
             env.setContextCall(true);
-            ParseResult context = FunctionCallParser.parse(parser);
-            env.setContextCall(isContextCall);
+            env.setDirectContextCall(true);
+            ParseResult context;
+            try {
+                context = FunctionCallParser.parse(parser);
+            } finally {
+                env.setContextCall(isContextCall);
+                env.setDirectContextCall(directContextCall);
+            }
             ParseResult combined = parser.attachSource(new ContextCallExpression(finalLeft, context, safe), operator);
             // 处理后缀操作（如索引访问 []），链式 :: 由 parseInfixLoop 自动处理
             return continuation.apply(PostfixParser.parsePostfixOperations(parser, combined));

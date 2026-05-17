@@ -40,6 +40,8 @@ public class SymbolEnvironment {
     private boolean isContinuable = false;
     // 是否在上下文调用环境
     private boolean isContextCall = false;
+    // 下一次函数调用是否为上下文调用右侧的直接 callee
+    private boolean directContextCall = false;
     // 有局部变量被子 Lambda 捕获的函数名集合
     private final Set<String> functionsWithCapturedVars = new HashSet<>();
 
@@ -343,6 +345,29 @@ public class SymbolEnvironment {
      */
     public boolean isContextCall() {
         return isContextCall;
+    }
+
+    /**
+     * 设置下一次函数调用是否为上下文调用右侧的直接 callee
+     */
+    public void setDirectContextCall(boolean directContextCall) {
+        this.directContextCall = directContextCall;
+    }
+
+    /**
+     * 判断下一次函数调用是否为上下文调用右侧的直接 callee
+     */
+    public boolean isDirectContextCall() {
+        return directContextCall;
+    }
+
+    /**
+     * 消费上下文调用右侧直接 callee 标记
+     */
+    public boolean consumeDirectContextCall() {
+        boolean value = directContextCall;
+        directContextCall = false;
+        return value;
     }
 
     /**

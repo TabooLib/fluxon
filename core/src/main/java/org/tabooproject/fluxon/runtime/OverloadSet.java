@@ -154,7 +154,11 @@ public class OverloadSet {
     @Nullable
     public Function resolveByArgCount(int argCount) {
         if (singleOverload != null) {
-            return singleOverload;
+            FunctionSignature sig = singleOverload.getSignature();
+            if (sig == null) {
+                return singleOverload;
+            }
+            return sig.getParameterCount() == argCount ? singleOverload : null;
         }
         Function fallback = null;
         for (Function f : overloads) {

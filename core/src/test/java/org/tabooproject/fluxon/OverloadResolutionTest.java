@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 
 import java.util.UUID;
 
@@ -42,6 +43,14 @@ public class OverloadResolutionTest {
 
         public MockWorld world() {
             return world;
+        }
+    }
+
+    // 模拟 MockCenter 子类
+    public static class MockSubCenter extends MockCenter {
+
+        public MockSubCenter(MockWorld world) {
+            super(world);
         }
     }
 
@@ -101,6 +110,10 @@ public class OverloadResolutionTest {
         runtime.registerFunction("location", returns(Type.STRING).params(Type.fromClass(MockWorld.class), Type.D, Type.D, Type.D), ctx -> {
             ctx.setReturnRef("world-xyz:" + ctx.getRef(0) + "," + ctx.getDouble(1) + "," + ctx.getDouble(2) + "," + ctx.getDouble(3));
         });
+        // marker(String) -> "root-marker:" + arg
+        runtime.registerFunction("marker", returns(Type.STRING).params(Type.STRING), ctx -> {
+            ctx.setReturnRef("root-marker:" + ctx.getString(0));
+        });
         // 扩展函数：MockVector::multiply(MockVector)
         runtime.registerExtensionFunction(MockVector.class, null, "multiply",
                 returns(Type.fromClass(MockVector.class)).params(Type.fromClass(MockVector.class)), ctx -> {
@@ -153,6 +166,33 @@ public class OverloadResolutionTest {
                 returns(Type.D).noParams(), ctx -> {
             MockVector target = ctx.getTarget();
             ctx.setReturnRef(target.z);
+        }, false, false);
+        // 扩展函数：MockCenter::location()
+        runtime.registerExtensionFunction(MockCenter.class, null, "location",
+                returns(Type.STRING).noParams(), ctx -> {
+            MockCenter target = ctx.getTarget();
+            ctx.setReturnRef("center-location:" + target.world);
+        }, false, false);
+        // 扩展函数：MockCenter::location(D, D, D)
+        runtime.registerExtensionFunction(MockCenter.class, null, "location",
+                returns(Type.STRING).params(Type.D, Type.D, Type.D), ctx -> {
+            ctx.setReturnRef("center-location-xyz:" + ctx.getDouble(0) + "," + ctx.getDouble(1) + "," + ctx.getDouble(2));
+        }, false, false);
+        // 扩展函数：MockCenter::world()
+        runtime.registerExtensionFunction(MockCenter.class, null, "world",
+                returns(Type.fromClass(MockWorld.class)).noParams(), ctx -> {
+            MockCenter target = ctx.getTarget();
+            ctx.setReturnRef(target.world);
+        }, false, false);
+        // 扩展函数：MockWorld::location()
+        runtime.registerExtensionFunction(MockWorld.class, null, "location",
+                returns(Type.STRING).noParams(), ctx -> {
+            ctx.setReturnRef("world-location:" + ctx.getTarget());
+        }, false, false);
+        // 扩展函数：MockCenter::marker(I)
+        runtime.registerExtensionFunction(MockCenter.class, null, "marker",
+                returns(Type.STRING).params(Type.I), ctx -> {
+            ctx.setReturnRef("center-marker:" + ctx.getInt(0));
         }, false, false);
         // compute(String, D) -> "sd:" + ...
         runtime.registerFunction("compute", returns(Type.STRING).params(Type.STRING, Type.D), ctx -> {
@@ -854,6 +894,117 @@ public class OverloadResolutionTest {
         );
         assertNotNull(inChain.getInterpretResult());
         assertNotNull(inChain.getCompileResult());
+    }
+
+    @Test
+    void testContextCallPrefersRegisteredExtensionOverRootFunction() {
+        // 已注册扩展函数时必须命中目标对象扩展，不能被同名全局函数 location(D, D, D) 抢走。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::location()",
+                "ContextCallPrefersRegisteredExtension",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("world")))
+        );
+        assertEquals("center-location:World:world", result.getInterpretResult());
+        assertEquals("center-location:World:world", result.getCompileResult());
+    }
+
+    @Test
+    void testContextCallPrefersExtensionWithSameArityAsRootFunction() {
+        // 扩展函数与全局函数同名同参时，上下文调用必须优先命中目标对象扩展。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::location(1.0, 2.0, 3.0)",
+                "ContextCallPrefersSameArityExtension",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("world")))
+        );
+        assertEquals("center-location-xyz:1.0,2.0,3.0", result.getInterpretResult());
+        assertEquals("center-location-xyz:1.0,2.0,3.0", result.getCompileResult());
+    }
+
+    @Test
+    void testContextCallUsesAssignableExtensionBeforeRootFunction() {
+        // 目标对象是子类时，父类扩展仍然应优先于同名全局函数。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::location()",
+                "ContextCallUsesAssignableExtension",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockSubCenter(new MockWorld("sub-world")))
+        );
+        assertEquals("center-location:World:sub-world", result.getInterpretResult());
+        assertEquals("center-location:World:sub-world", result.getCompileResult());
+    }
+
+    @Test
+    void testContextCallWithRuntimeOnlyTargetTypePrefersExtension() {
+        // 编译期只有 Object 类型时，运行期 target 匹配扩展也不能被同名全局重载抢走。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::location()",
+                "ContextCallRuntimeOnlyTargetType",
+                ctx -> ctx.defineRootVariable("sender", Object.class),
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("dynamic-world")))
+        );
+        assertEquals("center-location:World:dynamic-world", result.getInterpretResult());
+        assertEquals("center-location:World:dynamic-world", result.getCompileResult());
+    }
+
+    @Test
+    void testRuntimeOnlyTargetTypeUsesExtensionParameterSignature() {
+        // 编译期无法确定 target 类型时，也不能用同名全局函数的参数签名转换扩展参数。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::marker(7)",
+                "RuntimeOnlyTargetTypeUsesExtensionParameterSignature",
+                ctx -> ctx.defineRootVariable("sender", Object.class),
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("dynamic-world")))
+        );
+        assertEquals("center-marker:7", result.getInterpretResult());
+        assertEquals("center-marker:7", result.getCompileResult());
+    }
+
+    @Test
+    void testChainedContextCallKeepsExtensionPriorityAtEveryStep() {
+        // 链式上下文调用的后续节点也不能被同名全局函数抢走。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::world()::location()",
+                "ChainedContextCallKeepsExtensionPriority",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("chain-world")))
+        );
+        assertEquals("world-location:World:chain-world", result.getInterpretResult());
+        assertEquals("world-location:World:chain-world", result.getCompileResult());
+    }
+
+    @Test
+    void testDirectContextCallDoesNotFallbackWhenTargetHasNoExtension() {
+        // 直接上下文调用目标没有匹配扩展时必须报错，不能退回同名全局函数。
+        assertThrows(FunctionNotFoundError.class, () -> FluxonTestUtil.runSilent(
+                "&sender::location()::location()",
+                "DirectContextCallNoExtensionFallback",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("chain-world")))
+        ));
+    }
+
+    @Test
+    void testDirectContextCallDoesNotFallbackWhenExtensionArityMismatch() {
+        // 目标类型存在同名扩展但参数数量不匹配时，也不能退回同名全局函数。
+        assertThrows(FunctionNotFoundError.class, () -> FluxonTestUtil.runSilent(
+                "&sender::world()::location(1.0, 2.0, 3.0)",
+                "DirectContextCallArityMismatchNoFallback",
+                ctx -> {},
+                env -> env.defineRootVariable("sender", new MockCenter(new MockWorld("chain-world")))
+        ));
+    }
+
+    @Test
+    void testRootFunctionStillUsesRootOverloadsOutsideContextCall() {
+        // 普通全局调用不能被上下文扩展优先级修复影响，仍然走原来的全局重载。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "location(1.0, 2.0, 3.0)",
+                "RootFunctionStillUsesRootOverloads"
+        );
+        assertEquals("xyz:1.0,2.0,3.0", result.getInterpretResult());
+        assertEquals("xyz:1.0,2.0,3.0", result.getCompileResult());
     }
 
     @Test

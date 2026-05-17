@@ -103,7 +103,13 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                 if (overloadSet != null && overloadSet.size() > 1) {
                     return DeferredExtensionHandler.INSTANCE;
                 }
+                if (overloadSet != null) {
+                    return DynamicResolutionHandler.INSTANCE;
+                }
             }
+        }
+        if (expr.isDirectContextCall()) {
+            return DynamicResolutionHandler.INSTANCE;
         }
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1) {
@@ -161,6 +167,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         if (extPos != null && needsDeferredExtensionResolution(extPos, argCount, analyzer)) {
             return DeferredExtensionHandler.INSTANCE;
         }
+        if (extPos != null && hasMatchingExtensionTarget(extPos, analyzer)) {
+            return DynamicResolutionHandler.INSTANCE;
+        }
+        if (expr.isDirectContextCall()) {
+            return DynamicResolutionHandler.INSTANCE;
+        }
         // 检查系统函数重载
         FunctionPosition position = expr.getPosition();
         if (position != null && position.getOverloadSet().size() > 1 && hasUnknownType(argTypes)) {
@@ -215,6 +227,20 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             }
         }
         return count;
+    }
+
+    private boolean hasMatchingExtensionTarget(ExtensionFunctionPosition extPos, TypeAnalyzer analyzer) {
+        Type targetType = analyzer != null ? analyzer.getCurrentTargetType() : null;
+        if (targetType == null || targetType.getSource() == null || targetType == Type.OBJECT) {
+            return false;
+        }
+        Class<?> targetClass = targetType.getSource();
+        for (Class<?> extensionClass : extPos.getOverloadSets().keySet()) {
+            if (extensionClass.isAssignableFrom(targetClass)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

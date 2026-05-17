@@ -40,6 +40,8 @@ public class FunctionCallExpression extends Expression {
     private FunctionPosition position;
     @Nullable
     private ExtensionFunctionPosition extensionPosition;
+    // 是否为 obj::foo() 右侧的直接上下文调用目标
+    private final boolean directContextCall;
     // 类型分析后解析的具体重载索引
     private int resolvedPositionIndex = -1;
     // 类型分析后解析的具体扩展函数（基于 target 类型）
@@ -56,11 +58,16 @@ public class FunctionCallExpression extends Expression {
     public volatile CachedResolution cachedResolution;
 
     public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2) {
+        this(functionName, arguments, pos1, pos2, false);
+    }
+
+    public FunctionCallExpression(String functionName, ParseResult[] arguments, @Nullable FunctionPosition pos1, @Nullable ExtensionFunctionPosition pos2, boolean directContextCall) {
         super(ExpressionType.FUNCTION_CALL);
         this.functionName = functionName;
         this.arguments = arguments;
         this.position = pos1;
         this.extensionPosition = pos2;
+        this.directContextCall = directContextCall;
     }
 
     /**
@@ -206,6 +213,13 @@ public class FunctionCallExpression extends Expression {
     @Nullable
     public ExtensionFunctionPosition getExtensionPosition() {
         return extensionPosition;
+    }
+
+    /**
+     * 判断是否为上下文调用右侧的直接 callee
+     */
+    public boolean isDirectContextCall() {
+        return directContextCall;
     }
 
     /**

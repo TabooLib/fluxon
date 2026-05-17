@@ -20,14 +20,15 @@ public class FunctionCallParser {
     public static ParseResult parse(Parser parser) {
         ParseResult name = ExpressionParser.parsePrimary(parser);
         if (name instanceof Identifier) {
+            boolean directContextCall = parser.getSymbolEnvironment().consumeDirectContextCall();
             // 有括号
             if (parser.match(TokenType.LEFT_PAREN)) {
-                return finishCall(parser, (Identifier) name);
+                return finishCall(parser, (Identifier) name, directContextCall);
             }
             // 一种特殊写法：
             // 允许 time :: now() 这种无参数顶层函数调用，类似于静态工具
             else if (parser.check(TokenType.CONTEXT_CALL)) {
-                name = finishTopLevelContextCall(parser, (Identifier) name);
+                name = finishTopLevelContextCall(parser, (Identifier) name, directContextCall);
             }
         }
         // 处理后缀操作：函数调用 () 和索引访问 []
@@ -35,6 +36,10 @@ public class FunctionCallParser {
     }
 
     public static ParseResult finishCall(Parser parser, Identifier callee) {
+        return finishCall(parser, callee, false);
+    }
+
+    public static ParseResult finishCall(Parser parser, Identifier callee, boolean directContextCall) {
         List<ParseResult> arguments = new ArrayList<>();
         // 如果参数列表不为空
         if (!parser.check(TokenType.RIGHT_PAREN)) {
@@ -43,11 +48,11 @@ public class FunctionCallParser {
             } while (parser.match(TokenType.COMMA) && !parser.check(TokenType.RIGHT_PAREN));
         }
         parser.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments");
-        return getFunctionCallExpression(parser, callee, arguments.toArray(new ParseResult[0]));
+        return getFunctionCallExpression(parser, callee, arguments.toArray(new ParseResult[0]), directContextCall);
     }
 
-    private static ParseResult finishTopLevelContextCall(Parser parser, Identifier callee) {
-        return getFunctionCallExpression(parser, callee, new ParseResult[0]);
+    private static ParseResult finishTopLevelContextCall(Parser parser, Identifier callee, boolean directContextCall) {
+        return getFunctionCallExpression(parser, callee, new ParseResult[0], directContextCall);
     }
 
     /**
@@ -61,16 +66,20 @@ public class FunctionCallParser {
      * @return 函数调用表达式实例
      */
     public static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, ParseResult[] arguments) {
+        return getFunctionCallExpression(parser, callee, arguments, false);
+    }
+
+    public static FunctionCallExpression getFunctionCallExpression(Parser parser, Identifier callee, ParseResult[] arguments, boolean directContextCall) {
         String name = callee.getValue();
         // 先尝试查找函数信息（普通函数和扩展函数）
         FunctionInfo funcInfo = FunctionInfo.lookup(parser, name);
         // 如果找到了函数，直接返回
         if (funcInfo.isFound()) {
-            return parser.copySource(new FunctionCallExpression(name, arguments, funcInfo.getPosition(), funcInfo.getExtensionPosition()), callee);
+            return parser.copySource(new FunctionCallExpression(name, arguments, funcInfo.getPosition(), funcInfo.getExtensionPosition(), directContextCall), callee);
         }
         // 如果函数不存在，创建未解析的调用表达式并注册到待解析列表
         // 这样可以支持前向引用（函数定义在调用之后）
-        FunctionCallExpression expression = new FunctionCallExpression(name, arguments, null, null);
+        FunctionCallExpression expression = new FunctionCallExpression(name, arguments, null, null, directContextCall);
         parser.copySource(expression, callee);
         parser.registerPendingCall(expression, parser.previous());
         return expression;

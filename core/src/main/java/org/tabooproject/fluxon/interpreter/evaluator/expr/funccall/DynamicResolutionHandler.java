@@ -24,6 +24,16 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
 
     @Override
     public FunctionContext<?> prepareCall(Interpreter interpreter, FunctionCallExpression expr, int argCount) {
+        if (expr.isDirectContextCall()) {
+            return Intrinsics.prepareContextCall(
+                    interpreter.getPool(),
+                    interpreter.getEnvironment(),
+                    expr.getFunctionName(),
+                    argCount,
+                    expr.getPositionIndex(),
+                    expr.getExtensionPositionIndex()
+            );
+        }
         return Intrinsics.prepareCall(
                 interpreter.getPool(),
                 interpreter.getEnvironment(),
@@ -47,10 +57,11 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
         mv.visitLdcInsn(argCount);
         mv.visitLdcInsn(expr.getPositionIndex());
         mv.visitLdcInsn(expr.getExtensionPositionIndex());
+        String methodName = expr.isDirectContextCall() ? "prepareContextCall" : "prepareCall";
         mv.visitMethodInsn(
                 INVOKESTATIC,
                 Intrinsics.TYPE.getPath(),
-                "prepareCall",
+                methodName,
                 "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + "III)" + FunctionContext.TYPE,
                 false
         );
