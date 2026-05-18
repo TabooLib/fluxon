@@ -357,6 +357,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         Label handler = new Label();
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
+        // 空函数体不会生成实际指令，保留一条 no-op 避免异常表出现空区间。
+        mv.visitInsn(NOP);
         // 根据函数体类型生成字节码
         Type returnType;
         if (funcDef.getBody() instanceof Statement) {

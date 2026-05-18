@@ -24,6 +24,14 @@ public class AwaitTest {
     }
 
     @Test
+    public void testEmptyAsyncFunction() {
+        // 空函数体会让函数字节码的异常保护区没有实际指令，必须能正常定义类。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("async def test = { } await test()");
+        assertEquals(null, result.getInterpretResult());
+        assertEquals(null, result.getCompileResult());
+    }
+
+    @Test
     public void testAwaitNonAsync() {
         // 测试 await 非异步值
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("await 123");
