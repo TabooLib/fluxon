@@ -467,6 +467,29 @@ public final class FunctionContext<Target> implements AutoCloseable {
     }
 
     /**
+     * 脚本执行结束后清理空闲槽引用，避免线程池复用线程时保留上一轮变量图
+     */
+    void clearIdleReferences() {
+        function = null;
+        target = null;
+        environment = null;
+        interpreter = null;
+        returnRef = null;
+        returnPrimitive = 0L;
+        returnType = null;
+        if (capacity == 0) {
+            refs = EMPTY_REFS;
+            primitives = EMPTY_PRIMITIVES;
+            argTypes = EMPTY_ARG_TYPES;
+        } else {
+            for (int i = 0; i < argumentCount && i < refs.length; i++) {
+                refs[i] = null;
+            }
+        }
+        argumentCount = 0;
+    }
+
+    /**
      * 从池中分离（用于 async 转移所有权）
      * 用新 context 替换自己在栈中的槽位，使 close() 无需 detached 检查
      */

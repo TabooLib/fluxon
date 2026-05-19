@@ -102,7 +102,7 @@ public class ExportRegistry {
             for (int i = 0; i < parameterTypes.length; i++) {
                 paramTypes[i] = Type.fromClass(parameterTypes[i]);
             }
-            FunctionSignature signature = FunctionSignature.returns(Type.fromClass(method.getReturnType())).params(paramTypes);
+            FunctionSignature signature = FunctionSignature.returns(Type.fromClass(method.getReturnType())).paramsWithMin(requiredParameterCount(method), paramTypes);
             boolean isAsync = exportMethod.isAsync();
             boolean isSync = exportMethod.isSync();
             runtime.registerExtensionFunction(clazz, namespace, methodName, signature, callable, isAsync, isSync);
@@ -116,6 +116,18 @@ public class ExportRegistry {
                 }
             }
         }
+    }
+
+    private int requiredParameterCount(Method method) {
+        Parameter[] parameters = method.getParameters();
+        int required = parameters.length;
+        for (int i = parameters.length - 1; i >= 0; i--) {
+            if (!parameters[i].isAnnotationPresent(Optional.class)) {
+                break;
+            }
+            required--;
+        }
+        return required;
     }
 
     private ExportMethod[] convertToExportMethods(Method[] methods) {

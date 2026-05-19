@@ -122,14 +122,18 @@ public class ParsedScript {
         if (!rootTypes.isEmpty()) {
             interpreter.setRootVariableTypes(rootTypes);
         }
-        Object result = interpreter.execute(results);
-        if (interpreter.hasReturn) {
-            Object rv = interpreter.returnValue;
-            interpreter.hasReturn = false;
-            interpreter.returnValue = null;
-            return rv;
+        try {
+            Object result = interpreter.execute(results);
+            if (interpreter.hasReturn) {
+                Object rv = interpreter.returnValue;
+                interpreter.hasReturn = false;
+                interpreter.returnValue = null;
+                return rv;
+            }
+            return result;
+        } finally {
+            interpreter.getPool().clearIdleContexts();
         }
-        return result;
     }
 
     /**

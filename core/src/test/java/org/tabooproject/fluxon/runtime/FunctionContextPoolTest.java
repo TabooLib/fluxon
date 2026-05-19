@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -130,6 +131,27 @@ public class FunctionContextPoolTest {
     }
 
     /**
+     * 脚本顶层执行结束后清理空闲池槽，避免线程复用时保留上一轮 Environment.rootVariables
+     */
+    @Test
+    public void scriptEvalClearsIdleContextReferences() throws Exception {
+        Object payload = new Object();
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def hold(x) = &x\n" +
+                        "hold(&payload)",
+                ctx -> {},
+                env -> env.defineRootVariable("payload", payload)
+        );
+        assertBothEqual(payload, result);
+
+        FunctionContextPool pool = FunctionContextPool.local();
+        FunctionContext<?> firstContext = firstStackContext(pool);
+        assertNull(field(firstContext, "function"), "Idle context should not retain function after script eval");
+        assertNull(field(firstContext, "environment"), "Idle context should not retain Environment after script eval");
+        assertFalse(refsContain(firstContext, payload), "Idle context should not retain script argument values");
+    }
+
+    /**
      * 并发压力测试：async 函数内嵌套调用不应出现参数交叉
      * 模拟 Frontier 场景：多线程同时触发 async 函数，每个 async 函数内做嵌套调用
      */
@@ -171,5 +193,28 @@ public class FunctionContextPoolTest {
         // calc(3) = 3+3=6, 6*3=18; calc(5) = 5+5=10, 10*5=50; calc(7) = 7+7=14, 14*7=98
         // 18 + 50 + 98 = 166
         assertBothEqual(166, result);
+    }
+
+    private static FunctionContext<?> firstStackContext(FunctionContextPool pool) throws Exception {
+        Field stackField = FunctionContextPool.class.getDeclaredField("stack");
+        stackField.setAccessible(true);
+        FunctionContext<?>[] stack = (FunctionContext<?>[]) stackField.get(pool);
+        return stack[0];
+    }
+
+    private static Object field(FunctionContext<?> context, String name) throws Exception {
+        Field field = FunctionContext.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(context);
+    }
+
+    private static boolean refsContain(FunctionContext<?> context, Object value) throws Exception {
+        Object[] refs = (Object[]) field(context, "refs");
+        for (Object ref : refs) {
+            if (ref == value) {
+                return true;
+            }
+        }
+        return false;
     }
 }

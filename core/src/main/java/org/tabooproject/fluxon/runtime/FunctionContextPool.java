@@ -20,6 +20,7 @@ public final class FunctionContextPool {
 
     private final FunctionContext<?>[] stack;
     private int depth;
+    private int usedDepth;
 
     private FunctionContextPool() {
         stack = new FunctionContext<?>[MAX_DEPTH];
@@ -84,6 +85,19 @@ public final class FunctionContextPool {
     }
 
     /**
+     * 清理当前线程空闲池槽中残留的上次脚本对象图
+     */
+    public void clearIdleContexts() {
+        if (depth != 0) {
+            return;
+        }
+        for (int i = 0; i < usedDepth; i++) {
+            stack[i].clearIdleReferences();
+        }
+        usedDepth = 0;
+    }
+
+    /**
      * 分离 context（async 转移所有权）
      * 用新 context 替换栈槽位，使 close() 时身份校验自然失败
      * 同时回收 depth 以防泄漏：栈顶 context 被分离后，该槽位立即可复用
@@ -105,7 +119,11 @@ public final class FunctionContextPool {
 
     private FunctionContext<?> acquire() {
         if (depth < MAX_DEPTH) {
-            return stack[depth++];
+            FunctionContext<?> context = stack[depth++];
+            if (depth > usedDepth) {
+                usedDepth = depth;
+            }
+            return context;
         }
         // 溢出时分配堆上的 context，stackIndex = -1 表示不在栈中
         // 仍然递增 depth 以保持 borrow/releaseTop 配对平衡

@@ -17,10 +17,12 @@ public final class FunctionSignature {
 
     private final Type returnType;
     private final Type[] parameterTypes;
+    private final int minParameterCount;
 
-    private FunctionSignature(Type returnType, Type[] parameterTypes) {
+    private FunctionSignature(Type returnType, Type[] parameterTypes, int minParameterCount) {
         this.returnType = returnType;
         this.parameterTypes = parameterTypes;
+        this.minParameterCount = minParameterCount;
     }
 
     @NotNull
@@ -35,6 +37,10 @@ public final class FunctionSignature {
 
     public int getParameterCount() {
         return parameterTypes.length;
+    }
+
+    public boolean acceptsParameterCount(int argCount) {
+        return argCount >= minParameterCount && argCount <= parameterTypes.length;
     }
 
     /**
@@ -72,14 +78,21 @@ public final class FunctionSignature {
          * 指定参数类型
          */
         public FunctionSignature params(Type... types) {
-            return new FunctionSignature(returnType, types);
+            return new FunctionSignature(returnType, types, types.length);
+        }
+
+        /**
+         * 指定参数类型和最少实参数，用于 Java 导出方法的 @Optional 参数
+         */
+        public FunctionSignature paramsWithMin(int minParameterCount, Type... types) {
+            return new FunctionSignature(returnType, types, minParameterCount);
         }
 
         /**
          * 无参函数
          */
         public FunctionSignature noParams() {
-            return new FunctionSignature(returnType, EMPTY_TYPES);
+            return new FunctionSignature(returnType, EMPTY_TYPES, 0);
         }
     }
 

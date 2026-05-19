@@ -222,7 +222,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int count = 0;
         for (Function f : overloadSet.getOverloads()) {
             FunctionSignature sig = f.getSignature();
-            if (sig == null || sig.getParameterCount() == argCount) {
+            if (sig == null || sig.acceptsParameterCount(argCount)) {
                 count++;
             }
         }

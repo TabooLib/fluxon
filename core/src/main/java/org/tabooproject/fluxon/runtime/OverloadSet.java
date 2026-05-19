@@ -158,7 +158,7 @@ public class OverloadSet {
             if (sig == null) {
                 return singleOverload;
             }
-            return sig.getParameterCount() == argCount ? singleOverload : null;
+            return sig.acceptsParameterCount(argCount) ? singleOverload : null;
         }
         Function fallback = null;
         for (Function f : overloads) {
@@ -169,7 +169,7 @@ public class OverloadSet {
                 }
                 continue;
             }
-            if (sig.getParameterCount() == argCount) {
+            if (sig.acceptsParameterCount(argCount)) {
                 return f;
             }
         }
@@ -182,10 +182,9 @@ public class OverloadSet {
      * @return 匹配分数，-1 表示不匹配
      */
     private int computeMatchScore(FunctionSignature sig, Type[] argTypes) {
-        int paramCount = sig.getParameterCount();
         int argCount = argTypes.length;
-        // 参数数量检查
-        if (argCount != paramCount) {
+        // 可选参数只允许尾部省略，实际提供的参数仍按声明顺序检查类型。
+        if (!sig.acceptsParameterCount(argCount)) {
             return -1;
         }
         int score = 0;

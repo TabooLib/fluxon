@@ -95,7 +95,8 @@ public class MainClassEmitter extends ClassEmitter {
         Label start = new Label();
         Label end = new Label();
         Label handler = new Label();
-        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        Label cleanupStart = new Label();
+        Label cleanup = new Label();
         mv.visitLabel(start);
         // 设置 environment 参数
         mv.visitVarInsn(ALOAD, 0);
@@ -125,6 +126,8 @@ public class MainClassEmitter extends ClassEmitter {
         int poolSlot = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, poolSlot);
         ctx.setPoolLocalSlot(poolSlot);
+        int errorSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitLabel(cleanupStart);
         // 将脚本定义列表注入 CodeContext，供编译期查询函数属性（如 async）
         ctx.addDefinitions(definitions);
         // 注册用户定义的函数到 environment
@@ -153,18 +156,33 @@ public class MainClassEmitter extends ClassEmitter {
             Instructions.emitBoxing(mv, last);
         }
         mv.visitLabel(end);
+        // 入口清理 handler 必须晚于脚本内部 try/catch 注册，避免抢先吞掉用户 try 块异常。
+        mv.visitTryCatchBlock(cleanupStart, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitTryCatchBlock(cleanupStart, cleanup, cleanup, null);
+        emitClearIdleContexts(mv, poolSlot);
         mv.visitInsn(ARETURN);
         // 异常处理器
         mv.visitLabel(handler);
-        mv.visitVarInsn(ASTORE, 2);
-        mv.visitVarInsn(ALOAD, 2);
+        mv.visitVarInsn(ASTORE, errorSlot);
+        emitClearIdleContexts(mv, poolSlot);
+        mv.visitVarInsn(ALOAD, errorSlot);
         loadSourceMetadata(mv);
         mv.visitLdcInsn(externalName(className));
         mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
         mv.visitInsn(ATHROW);
+        mv.visitLabel(cleanup);
+        mv.visitVarInsn(ASTORE, errorSlot);
+        emitClearIdleContexts(mv, poolSlot);
+        mv.visitVarInsn(ALOAD, errorSlot);
+        mv.visitInsn(ATHROW);
         mv.visitMaxs(0, ctx.getLocalVarIndex() + 3);
         mv.visitEnd();
         lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
+    }
+
+    private void emitClearIdleContexts(MethodVisitor mv, int poolSlot) {
+        mv.visitVarInsn(ALOAD, poolSlot);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContextPool.TYPE.getPath(), "clearIdleContexts", "()V", false);
     }
 
     /**

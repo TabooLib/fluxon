@@ -163,8 +163,13 @@ public final class Intrinsics {
             Function function = resolveFunction(environment, target, name, argCount, pos, -1);
             return pool.borrow(function, target, argCount, environment);
         }
+        // 可选引用缺失时没有扩展目标，需要回到普通函数解析路径。
+        if (target == null) {
+            Function function = resolveFunction(environment, target, name, argCount, pos, -1);
+            return pool.borrow(function, null, argCount, environment);
+        }
         Function function = null;
-        if (target != null && exPos != -1) {
+        if (exPos != -1) {
             function = environment.getExtensionFunctionOrNull(target.getClass(), exPos, argCount);
         }
         if (function == null) {
