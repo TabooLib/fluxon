@@ -1,7 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr.funccall;
 
 import org.objectweb.asm.MethodVisitor;
-import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -64,9 +63,8 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             argIndex++;
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, funcClass, "callDirect", FunctionClassEmitter.getDirectCallDescriptor(definition), false);
-        Type returnType = inferDirectReturnType(definition);
+        Type returnType = FunctionClassEmitter.getDirectReturnType(definition);
         if (returnType.isPrimitive()) {
-            FunctionCallHandlers.emitUnbox(returnType, mv);
             return returnType;
         }
         return Type.OBJECT;
@@ -131,12 +129,5 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (definition.isAsync() || definition.isPrimarySync()) return false;
         if (definition.hasVariablesCapturedByChildren()) return false;
         return definition.getBody().getType() != ParseResult.ResultType.STATEMENT;
-    }
-
-    private static Type inferDirectReturnType(FunctionDefinition definition) {
-        TypeAnalyzer analyzer = new TypeAnalyzer();
-        analyzer.initFromParameterTypes(definition.getParameterTypes());
-        analyzer.analyzeNode(definition.getBody());
-        return analyzer.inferType(definition.getBody());
     }
 }

@@ -232,7 +232,7 @@ public class FunctionCallTest {
                         "inc(5)",
                 "UserDirectPrimitiveParameterTest"
         );
-        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;I)Ljava/lang/Object;"));
+        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;I)I"));
     }
 
     @Test
@@ -242,7 +242,7 @@ public class FunctionCallTest {
         FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
         FluxonTestUtil.assertBothEqual(2.5, runResult);
         CompileResult result = Fluxon.compile(source, "UserDirectWidePrimitiveParameterTest");
-        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;JD)Ljava/lang/Object;"));
+        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;JD)D"));
     }
 
     @Test

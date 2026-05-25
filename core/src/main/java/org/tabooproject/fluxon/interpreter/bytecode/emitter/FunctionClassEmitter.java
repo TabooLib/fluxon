@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.funccall.FunctionCallHandlers;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -385,17 +386,29 @@ public class FunctionClassEmitter extends ClassEmitter {
         Label start = new Label();
         Label end = new Label();
         Label handler = new Label();
+        Type directReturnType = getDirectReturnType(funcDef);
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
         Instructions.emitLineNumber(funcDef.getBody(), mv);
         Type returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
-        if (returnType == Type.VOID) {
-            mv.visitInsn(ACONST_NULL);
-        } else if (returnType.isPrimitive()) {
-            Instructions.emitBoxing(mv, returnType);
+        if (directReturnType.isPrimitive()) {
+            // primitive 表达式函数直接返回原始值，避免 callDirect 内装箱、调用点再拆箱。
+            if (returnType.isPrimitive()) {
+                FunctionCallHandlers.emitPrimitiveConversion(returnType, directReturnType, mv);
+            } else {
+                FunctionCallHandlers.emitUnbox(directReturnType, mv);
+            }
+            mv.visitLabel(end);
+            mv.visitInsn(returnOpcode(directReturnType));
+        } else {
+            if (returnType == Type.VOID) {
+                mv.visitInsn(ACONST_NULL);
+            } else if (returnType.isPrimitive()) {
+                Instructions.emitBoxing(mv, returnType);
+            }
+            mv.visitLabel(end);
+            mv.visitInsn(ARETURN);
         }
-        mv.visitLabel(end);
-        mv.visitInsn(ARETURN);
         mv.visitLabel(handler);
         int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, exceptionSlot);
@@ -413,8 +426,17 @@ public class FunctionClassEmitter extends ClassEmitter {
             descriptor.append(getDirectParameterType(definition, entry.getValue()));
         }
         descriptor.append(")");
-        descriptor.append(OBJECT);
+        descriptor.append(getDirectReturnType(definition));
         return descriptor.toString();
+    }
+
+    public static Type getDirectReturnType(FunctionDefinition definition) {
+        TypeAnalyzer analyzer = new TypeAnalyzer();
+        analyzer.initFromParameterTypes(definition.getParameterTypes());
+        analyzer.analyzeNode(definition.getBody());
+        Type returnType = analyzer.inferType(definition.getBody());
+        if (returnType.isPrimitive()) return returnType;
+        return Type.OBJECT;
     }
 
     public static Type getDirectParameterType(FunctionDefinition definition, int varPosition) {
@@ -434,6 +456,14 @@ public class FunctionClassEmitter extends ClassEmitter {
             return 2;
         }
         return 1;
+    }
+
+    public static int returnOpcode(Type type) {
+        if (type == Type.J) return LRETURN;
+        if (type == Type.F) return FRETURN;
+        if (type == Type.D) return DRETURN;
+        if (type.isPrimitive()) return IRETURN;
+        return ARETURN;
     }
 
     /**
