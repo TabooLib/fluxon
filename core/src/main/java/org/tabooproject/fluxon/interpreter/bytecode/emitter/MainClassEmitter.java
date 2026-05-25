@@ -13,9 +13,22 @@ import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
+import org.tabooproject.fluxon.parser.expression.BinaryExpression;
+import org.tabooproject.fluxon.parser.expression.ElvisExpression;
+import org.tabooproject.fluxon.parser.expression.GroupingExpression;
+import org.tabooproject.fluxon.parser.expression.IfExpression;
+import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
+import org.tabooproject.fluxon.parser.expression.LogicalExpression;
+import org.tabooproject.fluxon.parser.expression.MapExpression;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
+import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.parser.expression.TernaryExpression;
+import org.tabooproject.fluxon.parser.expression.UnaryExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
 import org.tabooproject.fluxon.parser.expression.literal.LongLiteral;
+import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
@@ -152,7 +165,18 @@ public class MainClassEmitter extends ClassEmitter {
         Type last = null;
         for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
             Instructions.emitLineNumber(statements.get(i), mv);
-            last = generator.generateStatementBytecode(statements.get(i), ctx, mv);
+            // 只有纯直线表达式能读取编译期 root 常量，避免函数调用后继续使用旧值。
+            boolean rootConstantReferenceMode = canUseRootConstantReads(statements.get(i));
+            if (rootConstantReferenceMode) {
+                ctx.enterRootConstantReferenceMode();
+            }
+            try {
+                last = generator.generateStatementBytecode(statements.get(i), ctx, mv);
+            } finally {
+                if (rootConstantReferenceMode) {
+                    ctx.exitRootConstantReferenceMode();
+                }
+            }
             updateRootConstantValues(statements.get(i), ctx);
             if (i < statementsSize - 1 && last != VOID) {
                 mv.visitInsn((last == J || last == D) ? POP2 : POP);
@@ -189,11 +213,13 @@ public class MainClassEmitter extends ClassEmitter {
     }
 
     private void updateRootConstantValues(Statement statement, CodeContext ctx) {
-        Object[] constantAssignment = extractRootConstantAssignment(statement);
-        if (constantAssignment == null) {
+        // 遇到外部可观察语义边界时清空常量事实，避免跨函数、命令、await 传播旧 root 值。
+        if (!canUseRootConstantReads(statement)) {
             ctx.clearRootConstantValues();
             return;
         }
+        Object[] constantAssignment = extractRootConstantAssignment(statement);
+        if (constantAssignment == null) return;
         ctx.recordRootConstantValue((String) constantAssignment[0], constantAssignment[1]);
     }
 
@@ -205,7 +231,6 @@ public class MainClassEmitter extends ClassEmitter {
         if (assign.getOperator().getType() != TokenType.ASSIGN) return null;
         if (assign.getPosition() >= 0 || !(assign.getTarget() instanceof Identifier)) return null;
         Object value = extractNumericConstant(assign.getValue());
-        if (value == null) return null;
         return new Object[]{((Identifier) assign.getTarget()).getValue(), value};
     }
 
@@ -213,6 +238,88 @@ public class MainClassEmitter extends ClassEmitter {
         if (value instanceof IntLiteral) return ((IntLiteral) value).getValue();
         if (value instanceof LongLiteral) return ((LongLiteral) value).getValue();
         return null;
+    }
+
+    private boolean canUseRootConstantReads(Statement statement) {
+        if (!(statement instanceof ExpressionStatement)) return false;
+        return canUseRootConstantReads(((ExpressionStatement) statement).getExpression(), true);
+    }
+
+    private boolean canUseRootConstantReads(ParseResult node, boolean allowAssignment) {
+        if (node == null) return true;
+        if (node instanceof AssignExpression) {
+            if (!allowAssignment) return false;
+            AssignExpression assign = (AssignExpression) node;
+            if (assign.getOperator().getType() != TokenType.ASSIGN) return false;
+            if (!(assign.getTarget() instanceof Identifier)) return false;
+            return canUseRootConstantReads(assign.getValue(), false);
+        }
+        if (node instanceof Block) {
+            for (ParseResult statement : ((Block) node).getStatements()) {
+                if (!(statement instanceof ExpressionStatement)) return false;
+                if (!canUseRootConstantReads(((ExpressionStatement) statement).getExpression(), false)) return false;
+            }
+            return true;
+        }
+        if (node instanceof BinaryExpression) {
+            BinaryExpression binary = (BinaryExpression) node;
+            return canUseRootConstantReads(binary.getLeft(), false) && canUseRootConstantReads(binary.getRight(), false);
+        }
+        if (node instanceof LogicalExpression) {
+            LogicalExpression logical = (LogicalExpression) node;
+            return canUseRootConstantReads(logical.getLeft(), false) && canUseRootConstantReads(logical.getRight(), false);
+        }
+        if (node instanceof UnaryExpression) {
+            return canUseRootConstantReads(((UnaryExpression) node).getRight(), false);
+        }
+        if (node instanceof GroupingExpression) {
+            return canUseRootConstantReads(((GroupingExpression) node).getExpression(), false);
+        }
+        if (node instanceof IfExpression) {
+            IfExpression ifExpression = (IfExpression) node;
+            return canUseRootConstantReads(ifExpression.getCondition(), false)
+                    && canUseRootConstantReads(ifExpression.getThenBranch(), false)
+                    && canUseRootConstantReads(ifExpression.getElseBranch(), false);
+        }
+        if (node instanceof TernaryExpression) {
+            TernaryExpression ternary = (TernaryExpression) node;
+            return canUseRootConstantReads(ternary.getCondition(), false)
+                    && canUseRootConstantReads(ternary.getTrueExpr(), false)
+                    && canUseRootConstantReads(ternary.getFalseExpr(), false);
+        }
+        if (node instanceof ElvisExpression) {
+            ElvisExpression elvis = (ElvisExpression) node;
+            return canUseRootConstantReads(elvis.getCondition(), false)
+                    && canUseRootConstantReads(elvis.getAlternative(), false);
+        }
+        if (node instanceof ListExpression) {
+            for (ParseResult element : ((ListExpression) node).getElements()) {
+                if (!canUseRootConstantReads(element, false)) return false;
+            }
+            return true;
+        }
+        if (node instanceof MapExpression) {
+            for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
+                if (!canUseRootConstantReads(entry.getKey(), false)) return false;
+                if (!canUseRootConstantReads(entry.getValue(), false)) return false;
+            }
+            return true;
+        }
+        if (node instanceof RangeExpression) {
+            RangeExpression range = (RangeExpression) node;
+            return canUseRootConstantReads(range.getStart(), false)
+                    && canUseRootConstantReads(range.getEnd(), false);
+        }
+        if (node instanceof IndexAccessExpression) {
+            IndexAccessExpression index = (IndexAccessExpression) node;
+            if (!canUseRootConstantReads(index.getTarget(), false)) return false;
+            for (ParseResult item : index.getIndices()) {
+                if (!canUseRootConstantReads(item, false)) return false;
+            }
+            return true;
+        }
+        if (node instanceof ReferenceExpression || node instanceof Identifier) return true;
+        return node.getClass().getSimpleName().endsWith("Literal");
     }
 
     private void emitClearIdleContexts(MethodVisitor mv, int poolSlot) {

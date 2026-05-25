@@ -82,6 +82,8 @@ public class CodeContext {
     private final Deque<Map<Integer, InlineLocalVariable>> inlineLocalVariableScopes = new ArrayDeque<>();
     // 顶层直接赋值产生的 root 常量，仅用于后续紧邻循环缓存初始化
     private final Map<String, Object> rootConstantValues = new HashMap<>();
+    // 同一段纯直线代码中的 root 引用也会读取该表，遇到可观察语义边界时由主类生成器清空。
+    private boolean rootConstantReferenceMode = false;
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -381,6 +383,18 @@ public class CodeContext {
 
     public void clearRootConstantValues() {
         rootConstantValues.clear();
+    }
+
+    public void enterRootConstantReferenceMode() {
+        rootConstantReferenceMode = true;
+    }
+
+    public void exitRootConstantReferenceMode() {
+        rootConstantReferenceMode = false;
+    }
+
+    public boolean isRootConstantReferenceMode() {
+        return rootConstantReferenceMode;
     }
 
     /**

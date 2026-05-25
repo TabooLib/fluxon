@@ -115,6 +115,11 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             emitJvmLoad(cache.type, cache.slot, mv);
             return cache.type;
         }
+        Type rootType = ctx.getRootVariableType(name);
+        if (ctx.isRootConstantReferenceMode() && emitRootConstantReference(ctx.getRootConstantValue(name), rootType, mv)) {
+            // 纯直线表达式内的顶层常量读取不需要回到 Environment map。
+            return rootType;
+        }
         Instructions.loadEnvironment(mv, ctx);
         mv.visitLdcInsn(name);
         mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
@@ -125,13 +130,29 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                 "(" + Environment.TYPE + Type.STRING + Type.Z + Type.I + ")" + Type.OBJECT,
                 false
         );
-        Type rootType = ctx.getRootVariableType(name);
         if (rootType.isPrimitive()) {
             Instructions.unbox(mv, rootType);
         } else {
             emitReferenceCast(rootType, mv);
         }
         return rootType;
+    }
+
+    private static boolean emitRootConstantReference(Object value, Type type, MethodVisitor mv) {
+        if (!(value instanceof Number)) return false;
+        Number number = (Number) value;
+        if (type == Type.I) {
+            mv.visitLdcInsn(number.intValue());
+        } else if (type == Type.J) {
+            mv.visitLdcInsn(number.longValue());
+        } else if (type == Type.F) {
+            mv.visitLdcInsn(number.floatValue());
+        } else if (type == Type.D) {
+            mv.visitLdcInsn(number.doubleValue());
+        } else {
+            return false;
+        }
+        return true;
     }
 
     private static void emitReferenceCast(Type type, MethodVisitor mv) {
