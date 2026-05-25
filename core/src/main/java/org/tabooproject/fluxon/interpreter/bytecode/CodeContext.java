@@ -75,6 +75,9 @@ public class CodeContext {
     // 类型分析器（用于编译期优化局部变量存储）
     private TypeAnalyzer typeAnalyzer;
 
+    // root 变量缓存作用域：只在已证明循环体不可外部观察时短暂启用
+    private final Deque<Map<String, RootVariableCache>> rootVariableCacheScopes = new ArrayDeque<>();
+
     public CodeContext(String className, String superClassName) {
         this.className = className;
         this.superClassName = superClassName;
@@ -314,6 +317,49 @@ public class CodeContext {
             return typeAnalyzer.getRootVariableType(name);
         }
         return Type.OBJECT;
+    }
+
+    /**
+     * root 变量缓存槽位
+     */
+    public static class RootVariableCache {
+        public final String name;
+        public final Type type;
+        public final int slot;
+
+        public RootVariableCache(String name, Type type, int slot) {
+            this.name = name;
+            this.type = type;
+            this.slot = slot;
+        }
+    }
+
+    /**
+     * 进入 root 变量缓存作用域
+     * 缓存只用于循环内不可观察的纯计算段，退出前必须统一写回 Environment。
+     */
+    public void enterRootVariableCacheScope(Map<String, RootVariableCache> caches) {
+        rootVariableCacheScopes.push(caches);
+    }
+
+    /**
+     * 退出 root 变量缓存作用域
+     */
+    public void exitRootVariableCacheScope() {
+        if (!rootVariableCacheScopes.isEmpty()) {
+            rootVariableCacheScopes.pop();
+        }
+    }
+
+    /**
+     * 获取当前可见的 root 变量缓存
+     */
+    public RootVariableCache getRootVariableCache(String name) {
+        for (Map<String, RootVariableCache> scope : rootVariableCacheScopes) {
+            RootVariableCache cache = scope.get(name);
+            if (cache != null) return cache;
+        }
+        return null;
     }
 
     /**

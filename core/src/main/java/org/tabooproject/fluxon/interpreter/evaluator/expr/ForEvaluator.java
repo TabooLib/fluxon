@@ -9,10 +9,25 @@ import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.destructure.DestructuringRegistry;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
+import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.expression.AssignExpression;
+import org.tabooproject.fluxon.parser.expression.BinaryExpression;
+import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.expression.GroupingExpression;
+import org.tabooproject.fluxon.parser.expression.IfExpression;
+import org.tabooproject.fluxon.parser.expression.LogicalExpression;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
+import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.parser.expression.UnaryExpression;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.statement.Block;
+import org.tabooproject.fluxon.parser.statement.BreakStatement;
+import org.tabooproject.fluxon.parser.statement.ContinueStatement;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -22,6 +37,7 @@ import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.IntFunction;
 
@@ -306,6 +322,10 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         int step = start <= end ? 1 : -1;
         int effectiveEnd = range.isInclusive() ? end : end - step;
         int loopVar = ctx.allocateLocalVar(Type.I);
+        LoopRootCachePlan rootCachePlan = tryPlanRootCaches(result, ctx);
+        if (rootCachePlan != null) {
+            emitLoadRootCaches(rootCachePlan, ctx, mv);
+        }
         Label condition = new Label();
         Label increment = new Label();
         Label loopEnd = new Label();
@@ -320,7 +340,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         int varPos = entry.getValue();
         Type varType = ctx.getVariableType(varPos);
         emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+        if (rootCachePlan != null) {
+            ctx.enterRootVariableCacheScope(rootCachePlan.caches);
+        }
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (rootCachePlan != null) {
+            ctx.exitRootVariableCacheScope();
+        }
         if (bodyType != Type.VOID) {
             mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
         }
@@ -329,8 +355,140 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitJumpInsn(GOTO, condition);
         mv.visitLabel(loopEnd);
         ctx.exitLoop();
+        if (rootCachePlan != null) {
+            emitWriteBackRootCaches(rootCachePlan, ctx, mv);
+        }
         ctx.restoreLocalVarIndex(saved);
         return Type.VOID;
+    }
+
+    /**
+     * root 累加变量缓存只在循环体没有调用、命令、lambda、await 等外部观察点时启用。
+     */
+    private LoopRootCachePlan tryPlanRootCaches(ForExpression result, CodeContext ctx) {
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        if (analyzer == null || ctx.isEnvFreeMode()) return null;
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer();
+        if (!scanner.scan(result.getBody())) return null;
+        if (scanner.assignedRootNames.isEmpty()) return null;
+        LinkedHashMap<String, CodeContext.RootVariableCache> caches = new LinkedHashMap<>();
+        for (String name : scanner.assignedRootNames.keySet()) {
+            Type type = ctx.getRootVariableType(name);
+            Object constant = analyzer.inferRootConstant(name);
+            if (!isCacheableRootType(type) || !(constant instanceof Number)) return null;
+            int slot = ctx.allocateLocalVar(type);
+            caches.put(name, new CodeContext.RootVariableCache(name, type, slot));
+        }
+        return new LoopRootCachePlan(caches);
+    }
+
+    private static boolean isCacheableRootType(Type type) {
+        return type == Type.I || type == Type.J || type == Type.F || type == Type.D;
+    }
+
+    private static void emitLoadRootCaches(LoopRootCachePlan plan, CodeContext ctx, MethodVisitor mv) {
+        for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(cache.name);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", "(" + Type.STRING + ")" + Type.OBJECT, false);
+            Instructions.unbox(mv, cache.type);
+            mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
+        }
+    }
+
+    private static void emitWriteBackRootCaches(LoopRootCachePlan plan, CodeContext ctx, MethodVisitor mv) {
+        for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(cache.name);
+            mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
+            boxing(cache.type, mv);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + Type.STRING + Type.OBJECT + ")V", false);
+        }
+    }
+
+    private static boolean isRootNumericAssignment(TokenType op) {
+        return op == TokenType.ASSIGN
+                || op == TokenType.PLUS_ASSIGN
+                || op == TokenType.MINUS_ASSIGN
+                || op == TokenType.MULTIPLY_ASSIGN
+                || op == TokenType.DIVIDE_ASSIGN
+                || op == TokenType.MODULO_ASSIGN;
+    }
+
+    private static final class LoopRootCachePlan {
+        private final LinkedHashMap<String, CodeContext.RootVariableCache> caches;
+
+        private LoopRootCachePlan(LinkedHashMap<String, CodeContext.RootVariableCache> caches) {
+            this.caches = caches;
+        }
+    }
+
+    private static final class RootCacheAnalyzer {
+        private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
+
+        private boolean scan(ParseResult node) {
+            if (node == null) return true;
+            if (node instanceof Block) {
+                for (ParseResult statement : ((Block) node).getStatements()) {
+                    if (!scan(statement)) return false;
+                }
+                return true;
+            }
+            if (node instanceof ExpressionStatement) {
+                return scan(((ExpressionStatement) node).getExpression());
+            }
+            if (node instanceof BreakStatement || node instanceof ContinueStatement) {
+                return true;
+            }
+            if (node instanceof Statement) {
+                return false;
+            }
+            if (!(node instanceof Expression)) {
+                return true;
+            }
+            if (node instanceof AssignExpression) {
+                AssignExpression assign = (AssignExpression) node;
+                if (assign.getTarget() instanceof Identifier && assign.getPosition() < 0) {
+                    TokenType op = assign.getOperator().getType();
+                    if (!isRootNumericAssignment(op)) return false;
+                    assignedRootNames.put(((Identifier) assign.getTarget()).getValue(), Boolean.TRUE);
+                    return scan(assign.getValue());
+                }
+                if (assign.getTarget() instanceof Identifier) {
+                    return scan(assign.getValue());
+                }
+                return false;
+            }
+            if (node instanceof BinaryExpression) {
+                BinaryExpression binary = (BinaryExpression) node;
+                return scan(binary.getLeft()) && scan(binary.getRight());
+            }
+            if (node instanceof LogicalExpression) {
+                LogicalExpression logical = (LogicalExpression) node;
+                return scan(logical.getLeft()) && scan(logical.getRight());
+            }
+            if (node instanceof UnaryExpression) {
+                return scan(((UnaryExpression) node).getRight());
+            }
+            if (node instanceof GroupingExpression) {
+                return scan(((GroupingExpression) node).getExpression());
+            }
+            if (node instanceof IfExpression) {
+                IfExpression ifExpression = (IfExpression) node;
+                return scan(ifExpression.getCondition())
+                        && scan(ifExpression.getThenBranch())
+                        && scan(ifExpression.getElseBranch());
+            }
+            if (node instanceof ReferenceExpression || node instanceof Identifier) {
+                return true;
+            }
+            return isSimpleLiteral(node);
+        }
+
+        private boolean isSimpleLiteral(ParseResult node) {
+            String name = node.getClass().getSimpleName();
+            return name.endsWith("Literal");
+        }
     }
 
     private static boolean isIntRangeEndpoint(Type type) {

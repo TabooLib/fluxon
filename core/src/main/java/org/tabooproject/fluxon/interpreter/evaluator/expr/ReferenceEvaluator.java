@@ -102,8 +102,14 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             }
         }
         // root 变量：先获取 Object，再根据类型拆箱
-        Instructions.loadEnvironment(mv, ctx);
         String name = result.getIdentifier().getValue();
+        CodeContext.RootVariableCache cache = ctx.getRootVariableCache(name);
+        if (cache != null) {
+            // 循环内已证明不可外部观察的 root 读，直接读取缓存槽位。
+            emitJvmLoad(cache.type, cache.slot, mv);
+            return cache.type;
+        }
+        Instructions.loadEnvironment(mv, ctx);
         mv.visitLdcInsn(name);
         mv.visitInsn(result.isOptional() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
         mv.visitLdcInsn(-1);
@@ -184,5 +190,19 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             desc = "(" + Type.I + Type.D + ")" + Type.VOID;
         }
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
+    }
+
+    private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {
+        if (type == Type.I || type == Type.Z) {
+            mv.visitVarInsn(Opcodes.ILOAD, slot);
+        } else if (type == Type.J) {
+            mv.visitVarInsn(Opcodes.LLOAD, slot);
+        } else if (type == Type.F) {
+            mv.visitVarInsn(Opcodes.FLOAD, slot);
+        } else if (type == Type.D) {
+            mv.visitVarInsn(Opcodes.DLOAD, slot);
+        } else {
+            mv.visitVarInsn(Opcodes.ALOAD, slot);
+        }
     }
 }

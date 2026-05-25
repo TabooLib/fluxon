@@ -191,6 +191,11 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
      */
     private void generateRootVariable(AssignExpression expr, Identifier target, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, TokenType op) {
         String name = target.getValue();
+        CodeContext.RootVariableCache cache = ctx.getRootVariableCache(name);
+        if (cache != null) {
+            generateCachedRootVariable(expr, valueEval, ctx, mv, op, cache);
+            return;
+        }
         Type varType = ctx.getRootVariableType(name);
         Instructions.loadEnvironment(mv, ctx);
         if (op == TokenType.ASSIGN) {
@@ -227,6 +232,37 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             mv.visitInsn(SWAP);
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
+    }
+
+    /**
+     * root 缓存变量赋值：循环体内先写 JVM 槽位，循环出口再统一写回 Environment。
+     */
+    private void generateCachedRootVariable(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, TokenType op, CodeContext.RootVariableCache cache) {
+        Type varType = cache.type;
+        if (op == TokenType.ASSIGN) {
+            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+            emitConvert(vt, varType, mv);
+            emitJvmStore(varType, cache.slot, mv);
+            return;
+        }
+        if (varType.isPrimitive() && isNumericCompound(op, varType)) {
+            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+            if (vt.isPrimitive()) {
+                emitJvmLoad(varType, cache.slot, mv);
+                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                emitConvert(vt, varType, mv);
+                emitPrimitiveCompound(op, varType, mv);
+                emitJvmStore(varType, cache.slot, mv);
+                return;
+            }
+        }
+        emitJvmLoad(varType, cache.slot, mv);
+        box(varType, mv);
+        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+        unbox(varType, mv);
+        emitJvmStore(varType, cache.slot, mv);
     }
 
     private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
@@ -393,6 +394,31 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRootCompoundAssignmentCachesPureRangeBody() {
+        String source = "sum = 0\n" +
+                "for i in 1..10 { sum += &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootCacheShapeTest");
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+    }
+
+    @Test
+    public void testForLoopRootCacheSkipsObservableBody() {
+        String source = "sum = 0\n" +
+                "for i in 1..3 {\n" +
+                "  print(&sum)\n" +
+                "  sum += &i\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(6, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootCacheObservableShapeTest");
+        assertEquals(2, countMethodInvocation(result, Intrinsics.TYPE.getPath(), "getVariable"));
+    }
+
+    @Test
     public void testForLoopRangeWithRootConstantUsesSingleDirectionLoop() {
         String source = "LIMIT = 10\n" +
                 "sum = 0\n" +
@@ -528,6 +554,27 @@ public class ForExpressionTest {
             }
         }, 0);
         return matched[0];
+    }
+
+    private static int countMethodInvocation(CompileResult result, String owner, String method) {
+        int[] count = {0};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (owner.equals(actualOwner) && method.equals(actualName)) {
+                            count[0]++;
+                        }
+                        super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return count[0];
     }
 
     private static boolean hasJumpOpcode(CompileResult result, int expectedOpcode) {
