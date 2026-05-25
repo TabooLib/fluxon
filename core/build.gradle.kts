@@ -32,6 +32,37 @@ tasks.register<JavaExec>("benchmarkEnv") {
     classpath = sourceSets["test"].runtimeClasspath
 }
 
+tasks.register<Exec>("decompileTestFs") {
+    group = "fluxon"
+    description = "Decompile src/test/fs class artifacts with Vineflower."
+    val vineflowerJar = providers.gradleProperty("vineflowerJar")
+    val classFilter = providers.gradleProperty("fluxonTestFsClasses")
+    val sourceDir = layout.projectDirectory.dir("src/test/fs")
+    val outputDir = layout.buildDirectory.dir("decompiled-test-fs")
+    inputs.files(fileTree(sourceDir) { include("*.class") })
+    outputs.dir(outputDir)
+    doFirst {
+        val jarFile = file(vineflowerJar.get())
+        if (!jarFile.isFile) {
+            throw IllegalStateException("Vineflower jar not found: ${jarFile.absolutePath}")
+        }
+        val selectedNames = if (classFilter.isPresent) {
+            classFilter.get().split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        } else {
+            emptySet()
+        }
+        val classFiles = fileTree(sourceDir) {
+            include("*.class")
+        }.files.filter { selectedNames.isEmpty() || selectedNames.contains(it.nameWithoutExtension) }.sortedBy { it.name }
+        if (classFiles.isEmpty()) {
+            throw IllegalStateException("No test fs class files matched.")
+        }
+        val out = outputDir.get().asFile
+        out.mkdirs()
+        commandLine(listOf("java", "-jar", jarFile.absolutePath, "--folder", "--silent") + classFiles.map { it.absolutePath } + out.absolutePath)
+    }
+}
+
 tasks.jar {
     archiveBaseName = "fluxon-core"
 }
