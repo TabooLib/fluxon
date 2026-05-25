@@ -53,6 +53,14 @@ public class WhileExpressionTest {
     }
 
     @Test
+    public void testWhileRootCacheDoesNotReadSkippedBodyAssignment() {
+        String source = "while false { sum = 1 }\n" +
+                "'ok'";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("ok", runResult);
+    }
+
+    @Test
     public void testWhileLocalCompoundAssignmentCachesPureBody() {
         String source = "_i = 0\n" +
                 "_sum = 0\n" +

@@ -25,8 +25,10 @@ import org.tabooproject.fluxon.interpreter.evaluator.expr.funccall.DirectFunctio
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
@@ -45,14 +47,15 @@ final class LoopRootCachePlanner {
     static Plan planForBody(ParseResult body, CodeContext ctx) {
         RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx);
         if (!scanner.scan(body, true)) return null;
-        return createPlan(scanner.assignedRootNames, ctx);
+        return createPlan(scanner.assignedRootNames, ctx, null);
     }
 
     static Plan planForConditionAndBody(ParseResult condition, ParseResult body, CodeContext ctx) {
         RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx);
         if (!scanner.scan(condition, false)) return null;
+        Set<String> conditionRootNames = new HashSet<>(scanner.referencedRootNames.keySet());
         if (!scanner.scan(body, true)) return null;
-        return createPlan(scanner.assignedRootNames, ctx);
+        return createPlan(scanner.assignedRootNames, ctx, conditionRootNames);
     }
 
     static LocalPlan planLocalForConditionAndBody(ParseResult condition, ParseResult body, CodeContext ctx) {
@@ -170,17 +173,25 @@ final class LoopRootCachePlanner {
         }
     }
 
-    private static Plan createPlan(LinkedHashMap<String, Boolean> assignedRootNames, CodeContext ctx) {
+    private static Plan createPlan(LinkedHashMap<String, Boolean> assignedRootNames, CodeContext ctx, Set<String> conditionRootNames) {
         if (ctx.getTypeAnalyzer() == null || ctx.isEnvFreeMode()) return null;
         if (assignedRootNames.isEmpty()) return null;
         LinkedHashMap<String, CodeContext.RootVariableCache> caches = new LinkedHashMap<>();
         for (String name : assignedRootNames.keySet()) {
+            // root cache 会在条件判断前加载变量，未确认已存在的 body-only 赋值必须回退到原环境路径。
+            if (!hasSafeRootCacheEntry(name, ctx, conditionRootNames)) return null;
             Type type = ctx.getRootVariableType(name);
             if (!isCacheableRootType(type)) return null;
             int slot = ctx.allocateLocalVar(type);
             caches.put(name, new CodeContext.RootVariableCache(name, type, slot));
         }
         return new Plan(caches);
+    }
+
+    private static boolean hasSafeRootCacheEntry(String name, CodeContext ctx, Set<String> conditionRootNames) {
+        if (ctx.getRootVariableCache(name) != null) return true;
+        if (ctx.getRootConstantValue(name) != null) return true;
+        return conditionRootNames != null && conditionRootNames.contains(name);
     }
 
     private static LocalPlan createLocalPlan(LinkedHashMap<Integer, Boolean> assignedLocalPositions, CodeContext ctx) {
@@ -233,6 +244,7 @@ final class LoopRootCachePlanner {
         private final int protectedLocalPosition;
         private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
         private final LinkedHashMap<Integer, Boolean> assignedLocalPositions = new LinkedHashMap<>();
+        private final LinkedHashMap<String, Boolean> referencedRootNames = new LinkedHashMap<>();
 
         private RootCacheAnalyzer(CodeContext ctx) {
             this(ctx, -1);
@@ -294,7 +306,14 @@ final class LoopRootCachePlanner {
                 }
                 return true;
             }
-            if (node instanceof ReferenceExpression || node instanceof Identifier) {
+            if (node instanceof ReferenceExpression) {
+                ReferenceExpression reference = (ReferenceExpression) node;
+                if (reference.getPosition() < 0) {
+                    referencedRootNames.put(reference.getIdentifier().getValue(), Boolean.TRUE);
+                }
+                return true;
+            }
+            if (node instanceof Identifier) {
                 return true;
             }
             return isSimpleLiteral(node);
