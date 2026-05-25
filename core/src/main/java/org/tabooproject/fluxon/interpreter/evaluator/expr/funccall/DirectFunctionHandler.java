@@ -90,6 +90,17 @@ public class DirectFunctionHandler implements FunctionCallHandler {
     }
 
     /**
+     * 判断函数调用是否会被展开为纯表达式。
+     * 循环缓存规划器依赖这个判断识别可内联调用，避免把纯函数调用误判为外部观察点。
+     */
+    public static boolean canInlinePureExpression(FunctionCallExpression expr, CodeContext ctx) {
+        FunctionDefinition definition = findDefinition(expr, ctx);
+        if (!canUseDirectInvoke(definition)) return false;
+        if (expr.getArguments().length != definition.getParameters().size()) return false;
+        return canInlineExpression(definition.getBody());
+    }
+
+    /**
      * 尝试把纯表达式用户函数直接展开到调用点。
      * 参数先写入临时槽位，保证实参与普通函数调用一样只求值一次。
      */

@@ -56,6 +56,7 @@ public class BytecodeHotPathBenchmark {
     private RuntimeScriptBase localWhileCompoundLoop;
     private RuntimeScriptBase directPrimitiveFunctionCall;
     private RuntimeScriptBase directDoubleFunctionCall;
+    private RuntimeScriptBase rootRangeInlinedFunctionLoop;
     private RuntimeScriptBase stringConcatPrimitive;
     private RuntimeScriptBase whenConstantRange;
     private RuntimeScriptBase printPrimitive;
@@ -69,6 +70,7 @@ public class BytecodeHotPathBenchmark {
         localWhileCompoundLoop = compile("_i = 0; _sum = 0; while &_i < 10 { _sum += &_i; _i += 1 }; &_sum");
         directPrimitiveFunctionCall = compile("def inc(x: int) = &x + 1; inc(41)");
         directDoubleFunctionCall = compile("def mix(a: long, b: double) = &a + &b; mix(2, 0.5)");
+        rootRangeInlinedFunctionLoop = compile("def inc(x: int) = &x + 1; sum = 0; for i in 1..10 { sum = inc(&sum) }; &sum");
         stringConcatPrimitive = compile("sum = 55; \"Sum: \" + &sum");
         whenConstantRange = compile("LIMIT = 10; sum = 5; when &sum { in 0..&LIMIT -> 'hit' else -> 'miss' }");
         printPrimitive = compile("print(1)");
@@ -107,6 +109,11 @@ public class BytecodeHotPathBenchmark {
     @Benchmark
     public void directDoubleFunctionCall(Blackhole bh) {
         bh.consume(directDoubleFunctionCall.eval(FluxonRuntime.getInstance().newEnvironment()));
+    }
+
+    @Benchmark
+    public void rootRangeInlinedFunctionLoop(Blackhole bh) {
+        bh.consume(rootRangeInlinedFunctionLoop.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
 
     @Benchmark

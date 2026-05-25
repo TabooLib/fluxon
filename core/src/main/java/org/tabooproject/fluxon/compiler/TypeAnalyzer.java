@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
 import org.tabooproject.fluxon.parser.expression.literal.LongLiteral;
@@ -13,8 +14,10 @@ import org.tabooproject.fluxon.runtime.Type;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 变量类型分析器
@@ -36,6 +39,10 @@ public class TypeAnalyzer {
     private final Map<Integer, Object> localConstants = new HashMap<>();
     // root 变量常量值，仅记录当前编译单元内的直接赋值
     private final Map<String, Object> rootConstants = new HashMap<>();
+    // 用户函数定义表，用于在调用点推断返回值类型
+    private final Map<String, FunctionDefinition> functionDefinitions = new HashMap<>();
+    // 正在推断返回值的函数，避免递归函数导致类型分析无限递归
+    private final Set<String> resolvingFunctionReturns = new HashSet<>();
 
     /**
      * 从函数定义初始化参数类型
@@ -86,6 +93,11 @@ public class TypeAnalyzer {
      */
     public void analyze(List<ParseResult> results) {
         for (ParseResult result : results) {
+            if (result instanceof FunctionDefinition) {
+                registerFunctionDefinition((FunctionDefinition) result);
+            }
+        }
+        for (ParseResult result : results) {
             analyzeNode(result);
         }
     }
@@ -104,6 +116,7 @@ public class TypeAnalyzer {
         } else if (node instanceof FunctionDefinition) {
             // 分析用户定义函数体（需要临时初始化参数类型）
             FunctionDefinition funcDef = (FunctionDefinition) node;
+            registerFunctionDefinition(funcDef);
             Map<Integer, Type> savedTypes = new HashMap<>(variableTypes);
             // 初始化参数类型
             for (Map.Entry<Integer, Class<?>> entry : funcDef.getParameterTypes().entrySet()) {
@@ -126,6 +139,60 @@ public class TypeAnalyzer {
             return ((Expression) expr).getExpressionType().evaluator.inferResultType(expr, this);
         }
         return Type.OBJECT;
+    }
+
+    /**
+     * 推断脚本内用户函数返回类型
+     * 用户函数调用参与变量类型合并，否则 root 变量会因调用表达式退化为 OBJECT。
+     */
+    public Type inferUserFunctionReturnType(FunctionCallExpression expr, Type[] argumentTypes) {
+        FunctionDefinition definition = functionDefinitions.get(expr.getFunctionName());
+        if (definition == null) return Type.OBJECT;
+        if (definition.getParameters().size() != expr.getArguments().length) return Type.OBJECT;
+        String name = definition.getName();
+        if (resolvingFunctionReturns.contains(name)) return Type.OBJECT;
+        resolvingFunctionReturns.add(name);
+        try {
+            TypeAnalyzer child = createFunctionBodyAnalyzer(definition, argumentTypes);
+            child.analyzeNode(definition.getBody());
+            return child.inferType(definition.getBody());
+        } finally {
+            resolvingFunctionReturns.remove(name);
+        }
+    }
+
+    /**
+     * 判断调用是否命中脚本内用户函数
+     * 命中后即使返回 OBJECT，也不能继续套用同名系统函数的返回类型。
+     */
+    public boolean hasUserFunctionDefinition(FunctionCallExpression expr) {
+        FunctionDefinition definition = functionDefinitions.get(expr.getFunctionName());
+        return definition != null && definition.getParameters().size() == expr.getArguments().length;
+    }
+
+    private void registerFunctionDefinition(FunctionDefinition definition) {
+        functionDefinitions.put(definition.getName(), definition);
+    }
+
+    private TypeAnalyzer createFunctionBodyAnalyzer(FunctionDefinition definition, Type[] argumentTypes) {
+        TypeAnalyzer child = new TypeAnalyzer();
+        child.rootVariableTypes = rootVariableTypes;
+        child.inferredRootVariableTypes.putAll(inferredRootVariableTypes);
+        child.functionDefinitions.putAll(functionDefinitions);
+        child.resolvingFunctionReturns.addAll(resolvingFunctionReturns);
+        for (Map.Entry<Integer, Class<?>> entry : definition.getParameterTypes().entrySet()) {
+            child.forceType(entry.getKey(), Type.fromClass(entry.getValue()));
+        }
+        if (argumentTypes == null) return child;
+        int index = 0;
+        for (Integer position : definition.getParameters().values()) {
+            if (index >= argumentTypes.length) break;
+            if (!definition.getParameterTypes().containsKey(position)) {
+                child.forceType(position, argumentTypes[index]);
+            }
+            index++;
+        }
+        return child;
     }
 
     public Integer inferIntConstant(ParseResult expr) {

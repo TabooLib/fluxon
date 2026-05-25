@@ -416,6 +416,19 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRootCacheAcceptsInlinedPureFunctionCall() {
+        String source = "def inc(x: int) = &x + 1\n" +
+                "sum = 0\n" +
+                "for i in 1..10 { sum = inc(&sum) }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(10, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootInlineFunctionCacheShapeTest");
+        assertFalse(hasMethodInvocation(result, "callDirect"));
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+    }
+
+    @Test
     public void testForLoopRootCacheSkipsObservableBody() {
         String source = "sum = 0\n" +
                 "for i in 1..3 {\n" +
@@ -544,6 +557,27 @@ public class ForExpressionTest {
 
     private static boolean hasMethodInvocation(CompileResult result, String owner, String method) {
         return hasMethodInvocation(result, owner, method, null);
+    }
+
+    private static boolean hasMethodInvocation(CompileResult result, String method) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (method.equals(actualName)) {
+                            matched[0] = true;
+                        }
+                        super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
     }
 
     private static boolean hasMethodInvocation(CompileResult result, String owner, String method, String descriptor) {

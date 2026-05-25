@@ -8,6 +8,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.expression.GroupingExpression;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.parser.expression.LogicalExpression;
@@ -19,6 +20,7 @@ import org.tabooproject.fluxon.parser.statement.BreakStatement;
 import org.tabooproject.fluxon.parser.statement.ContinueStatement;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.interpreter.evaluator.expr.funccall.DirectFunctionHandler;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
@@ -38,13 +40,13 @@ import static org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator.
 final class LoopRootCachePlanner {
 
     static Plan planForBody(ParseResult body, CodeContext ctx) {
-        RootCacheAnalyzer scanner = new RootCacheAnalyzer();
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx);
         if (!scanner.scan(body, true)) return null;
         return createPlan(scanner.assignedRootNames, ctx);
     }
 
     static Plan planForConditionAndBody(ParseResult condition, ParseResult body, CodeContext ctx) {
-        RootCacheAnalyzer scanner = new RootCacheAnalyzer();
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx);
         if (!scanner.scan(condition, false)) return null;
         if (!scanner.scan(body, true)) return null;
         return createPlan(scanner.assignedRootNames, ctx);
@@ -125,7 +127,12 @@ final class LoopRootCachePlanner {
     }
 
     private static final class RootCacheAnalyzer {
+        private final CodeContext ctx;
         private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
+
+        private RootCacheAnalyzer(CodeContext ctx) {
+            this.ctx = ctx;
+        }
 
         private boolean scan(ParseResult node, boolean allowRootAssignment) {
             if (node == null) return true;
@@ -169,6 +176,14 @@ final class LoopRootCachePlanner {
                 return scan(ifExpression.getCondition(), false)
                         && scan(ifExpression.getThenBranch(), allowRootAssignment)
                         && scan(ifExpression.getElseBranch(), allowRootAssignment);
+            }
+            if (node instanceof FunctionCallExpression) {
+                FunctionCallExpression call = (FunctionCallExpression) node;
+                if (!DirectFunctionHandler.canInlinePureExpression(call, ctx)) return false;
+                for (ParseResult argument : call.getArguments()) {
+                    if (!scan(argument, false)) return false;
+                }
+                return true;
             }
             if (node instanceof ReferenceExpression || node instanceof Identifier) {
                 return true;

@@ -271,6 +271,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         Function resolvedExt = expr.getResolvedExtensionFunction();
         if (resolvedExt != null) return resolvedExt.getReturnType();
         Type[] argTypes = inferArgTypes(expr.getArguments(), analyzer);
+        if (analyzer != null) {
+            Type userFunctionReturn = analyzer.inferUserFunctionReturnType(expr, argTypes);
+            if (userFunctionReturn != Type.OBJECT || analyzer.hasUserFunctionDefinition(expr)) return userFunctionReturn;
+        }
         OverloadSet overloadSet = FluxonRuntime.getInstance().getSystemFunctions().get(expr.getFunctionName());
         if (overloadSet != null) {
             Function function = overloadSet.resolve(argTypes);
