@@ -253,6 +253,14 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testThrowUsesDirectBytecode() {
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent("try throw('error') catch 'ok'");
+        FluxonTestUtil.assertBothEqual("ok", runResult);
+        CompileResult result = Fluxon.compile("try throw('error') catch 'ok'", "ThrowDirectShapeTest");
+        assertFalse(hasMethodInvocation(result, "prepareCall"));
+    }
+
+    @Test
     public void testFunctionWithContextCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "def getName = 'hello'; " +

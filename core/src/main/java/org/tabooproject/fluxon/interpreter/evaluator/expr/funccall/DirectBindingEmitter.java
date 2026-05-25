@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr.funccall;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -35,6 +36,8 @@ public final class DirectBindingEmitter {
         }
         // 有 extensionPosition 但未解析到具体函数，不能 DirectBinding
         if (expr.getExtensionPosition() != null) return null;
+        Type throwResult = tryEmitThrow(expr, args, ctx, mv);
+        if (throwResult != null) return throwResult;
         Type outputResult = tryEmitOutput(expr, args, ctx, mv);
         if (outputResult != null) return outputResult;
         // 系统函数
@@ -47,6 +50,33 @@ public final class DirectBindingEmitter {
         DirectBinding binding = function.getDirectBinding();
         if (binding == null || !canDirectBind(function)) return null;
         return emitInvoke(function, binding, args, ctx, mv, 0);
+    }
+
+    private static Type tryEmitThrow(FunctionCallExpression expr, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
+        if (!"throw".equals(expr.getFunctionName()) || args.length != 1) {
+            return null;
+        }
+        Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
+        if (argType.isPrimitive()) {
+            FunctionCallHandlers.emitBox(argType, mv);
+        }
+        int valueSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, valueSlot);
+        Label runtimeException = new Label();
+        mv.visitVarInsn(ALOAD, valueSlot);
+        mv.visitTypeInsn(INSTANCEOF, "java/lang/Error");
+        mv.visitJumpInsn(IFEQ, runtimeException);
+        mv.visitVarInsn(ALOAD, valueSlot);
+        mv.visitTypeInsn(CHECKCAST, "java/lang/Error");
+        mv.visitInsn(ATHROW);
+        mv.visitLabel(runtimeException);
+        mv.visitTypeInsn(NEW, "java/lang/RuntimeException");
+        mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, valueSlot);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.OBJECT.getPath(), "toString", "()" + Type.STRING, false);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(" + Type.STRING + ")V", false);
+        mv.visitInsn(ATHROW);
+        return Type.VOID;
     }
 
     private static Type tryEmitOutput(FunctionCallExpression expr, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
