@@ -167,7 +167,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 if (varType.isPrimitive()) {
                     // 拆箱并存入原始槽位
                     mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                    emitSetLocalPrimitive(varType, mv);
+                    emitUnboxNumber(varType, mv);
+                    ReferenceEvaluator.emitSetLocal(varType, mv);
                 } else {
                     // 存入引用槽位
                     mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
@@ -260,36 +261,20 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
         mv.visitVarInsn(ILOAD, startVar);
         mv.visitVarInsn(ISTORE, loopVar);
+        RangeLoopCacheState cacheState = createRangeLoopCacheState(result, loopVar, ctx);
+        emitRangeLoopEnter(cacheState, ctx, mv);
         ctx.enterLoop(loopEnd, increment);
         mv.visitLabel(condition);
-        mv.visitVarInsn(ILOAD, stepVar);
-        mv.visitJumpInsn(IFLE, negativeCondition);
-        mv.visitVarInsn(ILOAD, loopVar);
-        mv.visitVarInsn(ILOAD, endVar);
-        mv.visitJumpInsn(IF_ICMPGT, loopEnd);
-        mv.visitJumpInsn(GOTO, body);
-        mv.visitLabel(negativeCondition);
-        mv.visitVarInsn(ILOAD, loopVar);
-        mv.visitVarInsn(ILOAD, endVar);
-        mv.visitJumpInsn(IF_ICMPLT, loopEnd);
-
+        emitDynamicRangeCondition(loopVar, endVar, stepVar, negativeCondition, body, loopEnd, mv);
         mv.visitLabel(body);
-        Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
-        int varPos = entry.getValue();
-        Type varType = ctx.getVariableType(varPos);
-        emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
-        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
-        if (bodyType != Type.VOID) {
-            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
-        }
+        emitRangeLoopBody(result, bodyEval, cacheState, ctx, mv);
         mv.visitLabel(increment);
         mv.visitVarInsn(ILOAD, loopVar);
         mv.visitVarInsn(ILOAD, stepVar);
         mv.visitInsn(IADD);
         mv.visitVarInsn(ISTORE, loopVar);
         mv.visitJumpInsn(GOTO, condition);
-        mv.visitLabel(loopEnd);
-        ctx.exitLoop();
+        emitRangeLoopExit(loopEnd, cacheState, ctx, mv);
         ctx.restoreLocalVarIndex(saved);
         return Type.VOID;
     }
@@ -307,6 +292,41 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         int step = start <= end ? 1 : -1;
         int effectiveEnd = range.isInclusive() ? end : end - step;
         int loopVar = ctx.allocateLocalVar(Type.I);
+        RangeLoopCacheState cacheState = createRangeLoopCacheState(result, loopVar, ctx);
+        emitRangeLoopEnter(cacheState, ctx, mv);
+        Label condition = new Label();
+        Label increment = new Label();
+        Label loopEnd = new Label();
+        mv.visitLdcInsn(start);
+        mv.visitVarInsn(ISTORE, loopVar);
+        ctx.enterLoop(loopEnd, increment);
+        mv.visitLabel(condition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitLdcInsn(effectiveEnd);
+        mv.visitJumpInsn(step > 0 ? IF_ICMPGT : IF_ICMPLT, loopEnd);
+        emitRangeLoopBody(result, bodyEval, cacheState, ctx, mv);
+        mv.visitLabel(increment);
+        mv.visitIincInsn(loopVar, step);
+        mv.visitJumpInsn(GOTO, condition);
+        emitRangeLoopExit(loopEnd, cacheState, ctx, mv);
+        ctx.restoreLocalVarIndex(saved);
+        return Type.VOID;
+    }
+
+    private void emitDynamicRangeCondition(int loopVar, int endVar, int stepVar, Label negativeCondition, Label body, Label loopEnd, MethodVisitor mv) {
+        mv.visitVarInsn(ILOAD, stepVar);
+        mv.visitJumpInsn(IFLE, negativeCondition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPGT, loopEnd);
+        mv.visitJumpInsn(GOTO, body);
+        mv.visitLabel(negativeCondition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPLT, loopEnd);
+    }
+
+    private RangeLoopCacheState createRangeLoopCacheState(ForExpression result, int loopVar, CodeContext ctx) {
         Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
         int varPos = entry.getValue();
         Type varType = ctx.getVariableType(varPos);
@@ -321,68 +341,91 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
             loopValueWriteBackVar = ctx.allocateLocalVar(Type.I);
             loopExecutedVar = ctx.allocateLocalVar(Type.I);
         }
-        if (rootCachePlan != null) {
-            LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
+        return new RangeLoopCacheState(varPos, varType, loopVar, rootCachePlan, loopLocals, loopValueWriteBackVar, loopExecutedVar);
+    }
+
+    private void emitRangeLoopEnter(RangeLoopCacheState state, CodeContext ctx, MethodVisitor mv) {
+        if (state.rootCachePlan != null) {
+            LoopRootCachePlanner.emitLoadCaches(state.rootCachePlan, ctx, mv);
         }
         // 顶层常量只允许初始化当前循环 cache，进入循环后不能继续影响嵌套循环。
         ctx.clearRootConstantValues();
-        Label condition = new Label();
-        Label increment = new Label();
-        Label loopEnd = new Label();
-        mv.visitLdcInsn(start);
-        mv.visitVarInsn(ISTORE, loopVar);
-        if (loopExecutedVar >= 0) {
+        if (state.loopExecutedVar >= 0) {
             mv.visitInsn(ICONST_0);
-            mv.visitVarInsn(ISTORE, loopValueWriteBackVar);
+            mv.visitVarInsn(ISTORE, state.loopValueWriteBackVar);
             mv.visitInsn(ICONST_0);
-            mv.visitVarInsn(ISTORE, loopExecutedVar);
+            mv.visitVarInsn(ISTORE, state.loopExecutedVar);
         }
-        ctx.enterLoop(loopEnd, increment);
-        mv.visitLabel(condition);
-        mv.visitVarInsn(ILOAD, loopVar);
-        mv.visitLdcInsn(effectiveEnd);
-        mv.visitJumpInsn(step > 0 ? IF_ICMPGT : IF_ICMPLT, loopEnd);
-        if (loopLocals != null) {
-            mv.visitVarInsn(ILOAD, loopVar);
-            mv.visitVarInsn(ISTORE, loopValueWriteBackVar);
+    }
+
+    private void emitRangeLoopBody(ForExpression result, Evaluator<ParseResult> bodyEval, RangeLoopCacheState state, CodeContext ctx, MethodVisitor mv) {
+        if (state.loopLocals != null) {
+            mv.visitVarInsn(ILOAD, state.loopVar);
+            mv.visitVarInsn(ISTORE, state.loopValueWriteBackVar);
             mv.visitInsn(ICONST_1);
-            mv.visitVarInsn(ISTORE, loopExecutedVar);
+            mv.visitVarInsn(ISTORE, state.loopExecutedVar);
         } else {
-            emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+            emitStoreRangeLoopVariable(state.varPos, state.varType, state.loopVar, ctx, mv);
         }
-        if (rootCachePlan != null) {
-            ctx.enterRootVariableCacheScope(rootCachePlan.caches);
+        if (state.rootCachePlan != null) {
+            ctx.enterRootVariableCacheScope(state.rootCachePlan.caches);
         }
-        if (loopLocals != null) {
-            ctx.enterInlineLocalVariableScope(loopLocals);
+        if (state.loopLocals != null) {
+            ctx.enterInlineLocalVariableScope(state.loopLocals);
         }
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
-        if (loopLocals != null) {
+        if (state.loopLocals != null) {
             ctx.exitInlineLocalVariableScope();
         }
-        if (rootCachePlan != null) {
+        if (state.rootCachePlan != null) {
             ctx.exitRootVariableCacheScope();
         }
         if (bodyType != Type.VOID) {
             mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
         }
-        mv.visitLabel(increment);
-        mv.visitIincInsn(loopVar, step);
-        mv.visitJumpInsn(GOTO, condition);
+    }
+
+    private void emitRangeLoopExit(Label loopEnd, RangeLoopCacheState state, CodeContext ctx, MethodVisitor mv) {
         mv.visitLabel(loopEnd);
         ctx.exitLoop();
-        if (loopLocals != null) {
+        if (state.loopLocals != null) {
             Label skipLoopValueWriteBack = new Label();
-            mv.visitVarInsn(ILOAD, loopExecutedVar);
+            mv.visitVarInsn(ILOAD, state.loopExecutedVar);
             mv.visitJumpInsn(IFEQ, skipLoopValueWriteBack);
-            emitStoreRangeLoopVariable(varPos, varType, loopValueWriteBackVar, ctx, mv);
+            emitStoreRangeLoopVariable(state.varPos, state.varType, state.loopValueWriteBackVar, ctx, mv);
             mv.visitLabel(skipLoopValueWriteBack);
         }
-        if (rootCachePlan != null) {
-            LoopRootCachePlanner.emitWriteBackCaches(rootCachePlan, ctx, mv);
+        if (state.rootCachePlan != null) {
+            LoopRootCachePlanner.emitWriteBackCaches(state.rootCachePlan, ctx, mv);
         }
-        ctx.restoreLocalVarIndex(saved);
-        return Type.VOID;
+    }
+
+    private static final class RangeLoopCacheState {
+        private final int varPos;
+        private final Type varType;
+        private final int loopVar;
+        private final LoopRootCachePlanner.Plan rootCachePlan;
+        private final Map<Integer, CodeContext.InlineLocalVariable> loopLocals;
+        private final int loopValueWriteBackVar;
+        private final int loopExecutedVar;
+
+        private RangeLoopCacheState(
+                int varPos,
+                Type varType,
+                int loopVar,
+                LoopRootCachePlanner.Plan rootCachePlan,
+                Map<Integer, CodeContext.InlineLocalVariable> loopLocals,
+                int loopValueWriteBackVar,
+                int loopExecutedVar
+        ) {
+            this.varPos = varPos;
+            this.varType = varType;
+            this.loopVar = loopVar;
+            this.rootCachePlan = rootCachePlan;
+            this.loopLocals = loopLocals;
+            this.loopValueWriteBackVar = loopValueWriteBackVar;
+            this.loopExecutedVar = loopExecutedVar;
+        }
     }
 
     private static boolean isIntRangeEndpoint(Type type) {
@@ -420,14 +463,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Instructions.loadEnvironment(mv, ctx);
         mv.visitLdcInsn(varPos);
         emitLoadRangeLoopValue(varType, loopVar, mv);
-        if (varType == Type.I || varType == Type.Z) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(II)V", false);
-        } else if (varType == Type.J) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalLong", "(IJ)V", false);
-        } else if (varType == Type.F) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(IF)V", false);
-        } else if (varType == Type.D) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalDouble", "(ID)V", false);
+        if (varType.isPrimitive()) {
+            ReferenceEvaluator.emitSetLocal(varType, mv);
         } else {
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
         }
@@ -446,42 +483,24 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         }
     }
 
-    /**
-     * 生成原始类型设置字节码
-     * 栈输入: [env, pos, Number]
-     * 栈输出: []
-     */
-    private void emitSetLocalPrimitive(Type type, MethodVisitor mv) {
-        String methodName;
-        String desc;
+    private static void emitUnboxNumber(Type type, MethodVisitor mv) {
         switch (type.getDescriptor()) {
             case "I":
             case "Z":
                 mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
-                methodName = "setLocalInt";
-                desc = "(II)V";
                 break;
             case "J":
                 mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
-                methodName = "setLocalLong";
-                desc = "(IJ)V";
                 break;
             case "D":
                 mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
-                methodName = "setLocalDouble";
-                desc = "(ID)V";
                 break;
             case "F":
                 mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
-                methodName = "setLocalFloat";
-                desc = "(IF)V";
                 break;
             default:
-                // 非数字原始类型，回退到 Object
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
-                return;
+                break;
         }
-        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), methodName, desc, false);
     }
 
     /**
@@ -490,25 +509,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
      * 栈输出: []
      */
     private void emitUnboxAndStoreJvm(Type type, int jvmSlot, MethodVisitor mv) {
-        switch (type.getDescriptor()) {
-            case "I":
-            case "Z":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
-                mv.visitVarInsn(ISTORE, jvmSlot);
-                break;
-            case "J":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
-                mv.visitVarInsn(LSTORE, jvmSlot);
-                break;
-            case "D":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
-                mv.visitVarInsn(DSTORE, jvmSlot);
-                break;
-            case "F":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
-                mv.visitVarInsn(FSTORE, jvmSlot);
-                break;
-        }
+        emitUnboxNumber(type, mv);
+        Instructions.emitStoreLocal(mv, type, jvmSlot);
     }
 
     @Override

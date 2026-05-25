@@ -506,6 +506,51 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testDynamicForLoopPureRangeBodyReadsLoopVariableFromJvmSlot() {
+        String source = "def limit(x: int) = &x\n" +
+                "sum = 0\n" +
+                "for i in 1..limit(10) { sum += &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "DynamicForLoopLocalCacheShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getLocalInt"));
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+    }
+
+    @Test
+    public void testDynamicForLoopLocalCacheSkipsWhenLoopVariableAssigned() {
+        String source = "def limit(x: int) = &x\n" +
+                "sum = 0\n" +
+                "for i in 1..limit(3) {\n" +
+                "  i = 100\n" +
+                "  sum += &i\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(300, runResult);
+        CompileResult result = Fluxon.compile(source, "DynamicForLoopAssignedShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+        assertTrue(countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt") > 1);
+    }
+
+    @Test
+    public void testDynamicForLoopLocalCacheWritesBackBreakValue() {
+        String source = "def limit(x: int) = &x\n" +
+                "for i in 1..limit(10) {\n" +
+                "  if &i == 4 { break }\n" +
+                "}\n" +
+                "&i";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(4, runResult);
+        CompileResult result = Fluxon.compile(source, "DynamicForLoopBreakWriteBackShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
+    }
+
+    @Test
     public void testCompiledStringPlusPrimitiveSkipsOperationsAdd() {
         String source = "sum = 55\n" +
                 "\"Sum: \" + &sum";
