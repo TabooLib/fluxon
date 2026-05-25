@@ -84,6 +84,8 @@ public class CodeContext {
     private final Map<String, Object> rootConstantValues = new HashMap<>();
     // 同一段纯直线代码中的 root 引用也会读取该表，遇到可观察语义边界时由主类生成器清空。
     private boolean rootConstantReferenceMode = false;
+    // 已由当前脚本写入过的 root 变量，即使值未知，也能安全作为循环 cache 的进场读取来源。
+    private final Set<String> initializedRootVariables = new HashSet<>();
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -395,6 +397,14 @@ public class CodeContext {
 
     public boolean isRootConstantReferenceMode() {
         return rootConstantReferenceMode;
+    }
+
+    public void recordRootVariableInitialized(String name) {
+        initializedRootVariables.add(name);
+    }
+
+    public boolean isRootVariableInitialized(String name) {
+        return initializedRootVariables.contains(name);
     }
 
     /**

@@ -213,6 +213,10 @@ public class MainClassEmitter extends ClassEmitter {
     }
 
     private void updateRootConstantValues(Statement statement, CodeContext ctx) {
+        String assignedRootName = extractRootAssignmentName(statement);
+        if (assignedRootName != null) {
+            ctx.recordRootVariableInitialized(assignedRootName);
+        }
         // 遇到外部可观察语义边界时清空常量事实，避免跨函数、命令、await 传播旧 root 值。
         if (!canUseRootConstantReads(statement)) {
             ctx.clearRootConstantValues();
@@ -221,6 +225,15 @@ public class MainClassEmitter extends ClassEmitter {
         Object[] constantAssignment = extractRootConstantAssignment(statement);
         if (constantAssignment == null) return;
         ctx.recordRootConstantValue((String) constantAssignment[0], constantAssignment[1]);
+    }
+
+    private String extractRootAssignmentName(Statement statement) {
+        if (!(statement instanceof ExpressionStatement)) return null;
+        ParseResult expression = ((ExpressionStatement) statement).getExpression();
+        if (!(expression instanceof AssignExpression)) return null;
+        AssignExpression assign = (AssignExpression) expression;
+        if (assign.getPosition() >= 0 || !(assign.getTarget() instanceof Identifier)) return null;
+        return ((Identifier) assign.getTarget()).getValue();
     }
 
     private Object[] extractRootConstantAssignment(Statement statement) {

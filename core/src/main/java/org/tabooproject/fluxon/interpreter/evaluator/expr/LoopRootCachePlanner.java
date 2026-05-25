@@ -191,6 +191,7 @@ final class LoopRootCachePlanner {
     private static boolean hasSafeRootCacheEntry(String name, CodeContext ctx, Set<String> conditionRootNames) {
         if (ctx.getRootVariableCache(name) != null) return true;
         if (ctx.getRootConstantValue(name) != null) return true;
+        if (ctx.isRootVariableInitialized(name)) return true;
         return conditionRootNames != null && conditionRootNames.contains(name);
     }
 

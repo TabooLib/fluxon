@@ -61,6 +61,22 @@ public class WhileExpressionTest {
     }
 
     @Test
+    public void testWhileRootCacheUsesInitializedRootAfterObservableBoundary() {
+        String source = "sum = 0\n" +
+                "print(&sum)\n" +
+                "i = 0\n" +
+                "while &i < 3 {\n" +
+                "  sum += &i\n" +
+                "  i += 1\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(3, runResult);
+        CompileResult result = Fluxon.compile(source, "WhileInitializedRootCacheShapeTest");
+        assertEquals(2, countMethodInvocation(result, Intrinsics.TYPE.getPath(), "getVariable"));
+    }
+
+    @Test
     public void testWhileLocalCompoundAssignmentCachesPureBody() {
         String source = "_i = 0\n" +
                 "_sum = 0\n" +
