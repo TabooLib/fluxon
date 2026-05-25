@@ -52,6 +52,8 @@ public class BytecodeHotPathBenchmark {
     private RuntimeScriptBase rootRangeAssignLoop;
     private RuntimeScriptBase rootRangeCompoundLoop;
     private RuntimeScriptBase localRangeCompoundLoop;
+    private RuntimeScriptBase rootWhileCompoundLoop;
+    private RuntimeScriptBase localWhileCompoundLoop;
     private RuntimeScriptBase stringConcatPrimitive;
     private RuntimeScriptBase whenConstantRange;
     private RuntimeScriptBase printPrimitive;
@@ -61,6 +63,8 @@ public class BytecodeHotPathBenchmark {
         rootRangeAssignLoop = compile("sum = 0; for i in 1..10 { sum = &sum + &i }; &sum");
         rootRangeCompoundLoop = compile("sum = 0; for i in 1..10 { sum += &i }; &sum");
         localRangeCompoundLoop = compile("_sum = 0; for i in 1..10 { _sum += &i }; &_sum");
+        rootWhileCompoundLoop = compile("i = 0; sum = 0; while &i < 10 { sum += &i; i += 1 }; &sum");
+        localWhileCompoundLoop = compile("_i = 0; _sum = 0; while &_i < 10 { _sum += &_i; _i += 1 }; &_sum");
         stringConcatPrimitive = compile("sum = 55; \"Sum: \" + &sum");
         whenConstantRange = compile("LIMIT = 10; sum = 5; when &sum { in 0..&LIMIT -> 'hit' else -> 'miss' }");
         printPrimitive = compile("print(1)");
@@ -79,6 +83,16 @@ public class BytecodeHotPathBenchmark {
     @Benchmark
     public void localRangeCompoundLoop(Blackhole bh) {
         bh.consume(localRangeCompoundLoop.eval(FluxonRuntime.getInstance().newEnvironment()));
+    }
+
+    @Benchmark
+    public void rootWhileCompoundLoop(Blackhole bh) {
+        bh.consume(rootWhileCompoundLoop.eval(FluxonRuntime.getInstance().newEnvironment()));
+    }
+
+    @Benchmark
+    public void localWhileCompoundLoop(Blackhole bh) {
+        bh.consume(localWhileCompoundLoop.eval(FluxonRuntime.getInstance().newEnvironment()));
     }
 
     @Benchmark

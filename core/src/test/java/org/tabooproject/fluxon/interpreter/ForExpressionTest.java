@@ -405,6 +405,17 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRootAssignExpressionUsesCachedReference() {
+        String source = "sum = 0\n" +
+                "for i in 1..10 { sum = &sum + &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootAssignCacheShapeTest");
+        assertEquals(1, countMethodInvocation(result, Intrinsics.TYPE.getPath(), "getVariable"));
+    }
+
+    @Test
     public void testForLoopRootCacheSkipsObservableBody() {
         String source = "sum = 0\n" +
                 "for i in 1..3 {\n" +

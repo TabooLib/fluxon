@@ -158,13 +158,6 @@ public class TypeAnalyzer {
         return null;
     }
 
-    /**
-     * 获取当前编译单元内直接赋值得到的 root 常量
-     */
-    public Object inferRootConstant(String name) {
-        return rootConstants.get(name);
-    }
-
     public void recordLocalConstant(int position, Object value) {
         if (value == null) {
             localConstants.remove(position);

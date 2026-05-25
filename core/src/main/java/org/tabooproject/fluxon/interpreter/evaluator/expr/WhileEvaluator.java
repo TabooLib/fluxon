@@ -62,6 +62,13 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
             throw new EvaluatorNotFoundError("No evaluator found for body expression");
         }
 
+        int saved = ctx.getLocalVarIndex();
+        LoopRootCachePlanner.Plan rootCachePlan = LoopRootCachePlanner.planForConditionAndBody(result.getCondition(), result.getBody(), ctx);
+        if (rootCachePlan != null) {
+            LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
+            ctx.enterRootVariableCacheScope(rootCachePlan.caches);
+        }
+
         // 创建标签用于跳转
         Label whileStart = new Label();
         Label whileEnd = new Label();
@@ -75,7 +82,14 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (rootCachePlan != null) {
+            ctx.exitRootVariableCacheScope();
+        }
         finishLoopBody(bodyType, mv, ctx, whileStart, whileEnd);
+        if (rootCachePlan != null) {
+            LoopRootCachePlanner.emitWriteBackCaches(rootCachePlan, ctx, mv);
+            ctx.restoreLocalVarIndex(saved);
+        }
         return Type.VOID;
     }
 

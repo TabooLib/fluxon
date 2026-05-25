@@ -1,0 +1,198 @@
+package org.tabooproject.fluxon.interpreter.evaluator.expr;
+
+import org.objectweb.asm.MethodVisitor;
+import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.expression.AssignExpression;
+import org.tabooproject.fluxon.parser.expression.BinaryExpression;
+import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.GroupingExpression;
+import org.tabooproject.fluxon.parser.expression.IfExpression;
+import org.tabooproject.fluxon.parser.expression.LogicalExpression;
+import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.parser.expression.UnaryExpression;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.statement.Block;
+import org.tabooproject.fluxon.parser.statement.BreakStatement;
+import org.tabooproject.fluxon.parser.statement.ContinueStatement;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statement.Statement;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.Type;
+
+import java.util.LinkedHashMap;
+
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator.loadOpcode;
+import static org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator.storeOpcode;
+
+/**
+ * 循环 root 变量缓存规划器
+ * 只处理没有调用、命令、lambda、await 等外部观察点的纯计算循环。
+ *
+ * @author sky
+ */
+final class LoopRootCachePlanner {
+
+    static Plan planForBody(ParseResult body, CodeContext ctx) {
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer();
+        if (!scanner.scan(body, true)) return null;
+        return createPlan(scanner.assignedRootNames, ctx);
+    }
+
+    static Plan planForConditionAndBody(ParseResult condition, ParseResult body, CodeContext ctx) {
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer();
+        if (!scanner.scan(condition, false)) return null;
+        if (!scanner.scan(body, true)) return null;
+        return createPlan(scanner.assignedRootNames, ctx);
+    }
+
+    static void emitLoadCaches(Plan plan, CodeContext ctx, MethodVisitor mv) {
+        for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(cache.name);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", "(" + Type.STRING + ")" + Type.OBJECT, false);
+            Instructions.unbox(mv, cache.type);
+            mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
+        }
+    }
+
+    static void emitWriteBackCaches(Plan plan, CodeContext ctx, MethodVisitor mv) {
+        for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(cache.name);
+            mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
+            emitBox(cache.type, mv);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + Type.STRING + Type.OBJECT + ")V", false);
+        }
+    }
+
+    private static void emitBox(Type type, MethodVisitor mv) {
+        switch (type.getDescriptor()) {
+            case "I":
+                mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
+                break;
+            case "J":
+                mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
+                break;
+            case "F":
+                mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
+                break;
+            case "D":
+                mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
+                break;
+            case "Z":
+                mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
+                break;
+        }
+    }
+
+    private static Plan createPlan(LinkedHashMap<String, Boolean> assignedRootNames, CodeContext ctx) {
+        if (ctx.getTypeAnalyzer() == null || ctx.isEnvFreeMode()) return null;
+        if (assignedRootNames.isEmpty()) return null;
+        LinkedHashMap<String, CodeContext.RootVariableCache> caches = new LinkedHashMap<>();
+        for (String name : assignedRootNames.keySet()) {
+            Type type = ctx.getRootVariableType(name);
+            if (!isCacheableRootType(type)) return null;
+            int slot = ctx.allocateLocalVar(type);
+            caches.put(name, new CodeContext.RootVariableCache(name, type, slot));
+        }
+        return new Plan(caches);
+    }
+
+    private static boolean isCacheableRootType(Type type) {
+        return type == Type.I || type == Type.J || type == Type.F || type == Type.D;
+    }
+
+    private static boolean isRootNumericAssignment(TokenType op) {
+        return op == TokenType.ASSIGN
+                || op == TokenType.PLUS_ASSIGN
+                || op == TokenType.MINUS_ASSIGN
+                || op == TokenType.MULTIPLY_ASSIGN
+                || op == TokenType.DIVIDE_ASSIGN
+                || op == TokenType.MODULO_ASSIGN;
+    }
+
+    static final class Plan {
+        final LinkedHashMap<String, CodeContext.RootVariableCache> caches;
+
+        Plan(LinkedHashMap<String, CodeContext.RootVariableCache> caches) {
+            this.caches = caches;
+        }
+    }
+
+    private static final class RootCacheAnalyzer {
+        private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
+
+        private boolean scan(ParseResult node, boolean allowRootAssignment) {
+            if (node == null) return true;
+            if (node instanceof Block) {
+                for (ParseResult statement : ((Block) node).getStatements()) {
+                    if (!scan(statement, allowRootAssignment)) return false;
+                }
+                return true;
+            }
+            if (node instanceof ExpressionStatement) {
+                return scan(((ExpressionStatement) node).getExpression(), allowRootAssignment);
+            }
+            if (node instanceof BreakStatement || node instanceof ContinueStatement) {
+                return true;
+            }
+            if (node instanceof Statement) {
+                return false;
+            }
+            if (!(node instanceof Expression)) {
+                return true;
+            }
+            if (node instanceof AssignExpression) {
+                return scanAssign((AssignExpression) node, allowRootAssignment);
+            }
+            if (node instanceof BinaryExpression) {
+                BinaryExpression binary = (BinaryExpression) node;
+                return scan(binary.getLeft(), allowRootAssignment) && scan(binary.getRight(), allowRootAssignment);
+            }
+            if (node instanceof LogicalExpression) {
+                LogicalExpression logical = (LogicalExpression) node;
+                return scan(logical.getLeft(), allowRootAssignment) && scan(logical.getRight(), allowRootAssignment);
+            }
+            if (node instanceof UnaryExpression) {
+                return scan(((UnaryExpression) node).getRight(), allowRootAssignment);
+            }
+            if (node instanceof GroupingExpression) {
+                return scan(((GroupingExpression) node).getExpression(), allowRootAssignment);
+            }
+            if (node instanceof IfExpression) {
+                IfExpression ifExpression = (IfExpression) node;
+                return scan(ifExpression.getCondition(), false)
+                        && scan(ifExpression.getThenBranch(), allowRootAssignment)
+                        && scan(ifExpression.getElseBranch(), allowRootAssignment);
+            }
+            if (node instanceof ReferenceExpression || node instanceof Identifier) {
+                return true;
+            }
+            return isSimpleLiteral(node);
+        }
+
+        private boolean scanAssign(AssignExpression assign, boolean allowRootAssignment) {
+            if (assign.getTarget() instanceof Identifier && assign.getPosition() < 0) {
+                if (!allowRootAssignment) return false;
+                TokenType op = assign.getOperator().getType();
+                if (!isRootNumericAssignment(op)) return false;
+                assignedRootNames.put(((Identifier) assign.getTarget()).getValue(), Boolean.TRUE);
+                return scan(assign.getValue(), true);
+            }
+            if (assign.getTarget() instanceof Identifier) {
+                return scan(assign.getValue(), allowRootAssignment);
+            }
+            return false;
+        }
+
+        private boolean isSimpleLiteral(ParseResult node) {
+            String name = node.getClass().getSimpleName();
+            return name.endsWith("Literal");
+        }
+    }
+}
