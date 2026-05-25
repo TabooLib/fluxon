@@ -345,7 +345,6 @@ public class MainClassEmitter extends ClassEmitter {
      */
     private void emitUserFunctionRegister(FunctionDefinition funcDef, MethodVisitor mv, CodeContext ctx) {
         Instructions.loadEnvironment(mv, ctx);
-        mv.visitInsn(DUP);
         mv.visitLdcInsn(funcDef.getName());
         String functionClassName = className + funcDef.getName();
         mv.visitFieldInsn(GETSTATIC, className, funcDef.getName(), "L" + functionClassName + ";");

@@ -45,6 +45,14 @@ public class TryTest {
     }
 
     @Test
+    public void testTryWithUserFunctionCall() {
+        FluxonTestUtil.TestResult result = runSilent(
+                "def value(x) = &x\n" +
+                        "try value(1) catch 0");
+        assertBothEqual(1, result);
+    }
+
+    @Test
     public void testAsyncError() {
         FluxonTestUtil.TestResult result = runSilent(
                 "async test() = throw('error')\n" +
