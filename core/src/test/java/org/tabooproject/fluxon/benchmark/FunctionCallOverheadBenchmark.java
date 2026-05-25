@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
+import org.tabooproject.fluxon.parser.ParsedScript;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -66,6 +67,36 @@ public class FunctionCallOverheadBenchmark {
             "r = 0\n" +
             "for i in 1..100000 { r = call(&f, [&r]) }\n" +
             "&r";
+    private static final String INTERPRET_ROOT_LOOP =
+            "r = 0\n" +
+            "for i in 1..1000 { r = &r + 1 }\n" +
+            "&r";
+    private static final String INTERPRET_LOCAL_LOOP =
+            "_r = 0\n" +
+            "for i in 1..1000 { _r = &_r + 1 }\n" +
+            "&_r";
+    private static final String INTERPRET_FUNCTION_LOOP =
+            "def run() {\n" +
+            "  r = 0\n" +
+            "  for i in 1..1000 { r = &r + 1 }\n" +
+            "  &r\n" +
+            "}\n" +
+            "run()";
+    private static final String INTERPRET_FUNCTION_CALL_LOOP =
+            "def inc(x) = &x + 1\n" +
+            "r = 0\n" +
+            "for i in 1..1000 { r = inc(&r) }\n" +
+            "&r";
+    private static final String INTERPRET_ENV_FUNCTION_CALL_LOOP =
+            "def inc(x) { _c = || &x; &x + 1 }\n" +
+            "r = 0\n" +
+            "for i in 1..1000 { r = inc(&r) }\n" +
+            "&r";
+    private static final String INTERPRET_DYNAMIC_LAMBDA_CALL =
+            "f = |x| &x + 1\n" +
+            "r = 0\n" +
+            "for i in 1..1000 { r = call(&f, [&r]) }\n" +
+            "&r";
 
     @Test
     public void functionCallOverhead() throws Exception {
@@ -108,6 +139,30 @@ public class FunctionCallOverheadBenchmark {
         printDelta("Dynamic call overhead", dynamicResult, baselineResult);
     }
 
+    @Test
+    public void interpretHotPathBreakdown() {
+        ParsedScript rootLoop = parse(INTERPRET_ROOT_LOOP);
+        ParsedScript localLoop = parse(INTERPRET_LOCAL_LOOP);
+        ParsedScript functionLoop = parse(INTERPRET_FUNCTION_LOOP);
+        ParsedScript functionCallLoop = parse(INTERPRET_FUNCTION_CALL_LOOP);
+        ParsedScript envFunctionCallLoop = parse(INTERPRET_ENV_FUNCTION_CALL_LOOP);
+        ParsedScript dynamicLambdaCall = parse(INTERPRET_DYNAMIC_LAMBDA_CALL);
+
+        System.out.println("=== Interpret Hot Path Breakdown: 1000 loop iterations ===");
+        BenchResult rootLoopResult = bench("Root loop           ", rootLoop);
+        BenchResult localLoopResult = bench("Local loop          ", localLoop);
+        BenchResult functionLoopResult = bench("Function loop       ", functionLoop);
+        BenchResult functionCallResult = bench("Function call loop  ", functionCallLoop);
+        BenchResult envFunctionCallResult = bench("Env function call   ", envFunctionCallLoop);
+        BenchResult dynamicLambdaResult = bench("call(lambda, list)  ", dynamicLambdaCall);
+
+        printDelta("Root map extra      ", rootLoopResult, localLoopResult, 1000);
+        printDelta("Function frame extra", functionLoopResult, localLoopResult, 1000);
+        printDelta("User call extra     ", functionCallResult, functionLoopResult, 1000);
+        printDelta("Env call extra      ", envFunctionCallResult, functionCallResult, 1000);
+        printDelta("Lambda call extra   ", dynamicLambdaResult, localLoopResult, 1000);
+    }
+
     private RuntimeScriptBase compile(String source) throws Exception {
         String className = "FunctionCallOverhead_" + CLASS_COUNTER.incrementAndGet();
         CompilationContext ctx = new CompilationContext(source);
@@ -115,6 +170,12 @@ public class FunctionCallOverheadBenchmark {
         CompileResult result = Fluxon.compile(env, ctx, className);
         Class<?> scriptClass = result.defineClass(new FluxonClassLoader());
         return (RuntimeScriptBase) scriptClass.newInstance();
+    }
+
+    private ParsedScript parse(String source) {
+        CompilationContext ctx = new CompilationContext(source);
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        return Fluxon.parse(ctx, env);
     }
 
     private BenchResult bench(String label, RuntimeScriptBase script) {
@@ -143,9 +204,40 @@ public class FunctionCallOverheadBenchmark {
         return result;
     }
 
+    private BenchResult bench(String label, ParsedScript script) {
+        for (int i = 0; i < WARMUP; i++) {
+            sink = script.eval();
+        }
+        long total = 0;
+        long min = Long.MAX_VALUE;
+        long max = 0;
+        for (int i = 0; i < ITERATIONS; i++) {
+            long start = System.nanoTime();
+            sink = script.eval();
+            long elapsed = System.nanoTime() - start;
+            total += elapsed;
+            min = Math.min(min, elapsed);
+            max = Math.max(max, elapsed);
+        }
+        BenchResult result = new BenchResult(total / (double) ITERATIONS, min, max);
+        System.out.printf(
+                "  %s avg=%.3f ms  min=%.3f ms  max=%.3f ms%n",
+                label,
+                result.avgNs / 1_000_000.0,
+                result.minNs / 1_000_000.0,
+                result.maxNs / 1_000_000.0
+        );
+        return result;
+    }
+
     private void printDelta(String label, BenchResult current, BenchResult baseline) {
         double deltaNs = (current.avgNs - baseline.avgNs) / 100000.0;
         System.out.printf("  %s %.2f ns/call%n", label, deltaNs);
+    }
+
+    private void printDelta(String label, BenchResult current, BenchResult baseline, int operations) {
+        double deltaNs = (current.avgNs - baseline.avgNs) / operations;
+        System.out.printf("  %s %.2f ns/op%n", label, deltaNs);
     }
 
     private static final class BenchResult {

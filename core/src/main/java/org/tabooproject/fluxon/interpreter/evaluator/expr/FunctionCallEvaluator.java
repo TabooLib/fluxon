@@ -12,8 +12,10 @@ import org.tabooproject.fluxon.parser.FunctionPosition;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.runtime.*;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.ALOAD;
@@ -35,6 +37,10 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         ParseResult[] args = expr.getArguments();
         int argCount = args.length;
         Environment env = interpreter.getEnvironment();
+        Type dynamicCallType = tryEvaluateDynamicFunctionCall(interpreter, expr, args, argCount, env);
+        if (dynamicCallType != null) {
+            return dynamicCallType;
+        }
         // 快速路径：使用缓存的解析结果，跳过 selectHandler + resolveFunction
         // volatile 读取保证跨线程可见性，CachedResolution 不可变保证读到的字段值完整
         FunctionCallExpression.CachedResolution cached = expr.cachedResolution;
@@ -79,6 +85,43 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             }
         }
         return handler.finishCall(interpreter, expr, ctx);
+    }
+
+    private Type tryEvaluateDynamicFunctionCall(Interpreter interpreter, FunctionCallExpression expr, ParseResult[] args, int argCount, Environment env) {
+        if (!"call".equals(expr.getFunctionName()) || argCount > 2) {
+            return null;
+        }
+        if (isUserDefinedCall(env)) {
+            return null;
+        }
+        if (argCount == 2 && !(args[1] instanceof ListExpression)) {
+            return null;
+        }
+        Type funcType = interpreter.evaluate(args[0]);
+        Object funcValue = interpreter.getResultBoxed(funcType);
+        Function function = funcValue instanceof Function ? (Function) funcValue : env.getFunction(funcValue.toString());
+        List<ParseResult> callArgs = argCount == 2 ? ((ListExpression) args[1]).getElements() : null;
+        int callArgCount = callArgs != null ? callArgs.size() : 0;
+        FunctionContextPool pool = interpreter.getPool();
+        FunctionContext<?> ctx = pool.borrow(function, null, callArgCount, env);
+        try {
+            if (callArgs != null) {
+                for (int i = 0; i < callArgCount; i++) {
+                    Type valueType = interpreter.evaluate(callArgs.get(i));
+                    FunctionCallHandlers.setArgument(interpreter, ctx, i, valueType, Type.OBJECT);
+                }
+            }
+        } catch (Throwable ex) {
+            pool.releaseTop();
+            throw ex;
+        }
+        return FunctionCallHandlers.executeSync(interpreter, ctx, function);
+    }
+
+    private boolean isUserDefinedCall(Environment env) {
+        Function resolved = env.getFunctionOrNull("call");
+        OverloadSet systemCall = FluxonRuntime.getInstance().getSystemFunctions().get("call");
+        return systemCall == null || resolved != systemCall.first();
     }
 
     private static void evaluateArguments(Interpreter interpreter, FunctionContext<?> ctx, ParseResult[] args, int argCount, Type[] expectedTypes) {
