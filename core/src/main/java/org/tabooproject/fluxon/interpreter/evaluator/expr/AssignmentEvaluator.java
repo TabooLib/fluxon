@@ -68,21 +68,37 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     public void analyzeTypes(AssignExpression result, TypeAnalyzer analyzer) {
         analyzer.analyzeNode(result.getValue());
         int position = result.getPosition();
-        if (position < 0) return;
-        Type valueType;
-        if (result.getOperator().getType() != TokenType.ASSIGN) {
-            Type currentType = analyzer.getVariableType(position);
-            Type rightType = analyzer.inferType(result.getValue());
-            valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
-        } else {
-            valueType = analyzer.inferType(result.getValue());
+        if (position >= 0) {
+            Type valueType;
+            if (result.getOperator().getType() != TokenType.ASSIGN) {
+                Type currentType = analyzer.getVariableType(position);
+                Type rightType = analyzer.inferType(result.getValue());
+                valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+            } else {
+                valueType = analyzer.inferType(result.getValue());
+            }
+            analyzer.recordType(position, valueType);
         }
-        analyzer.recordType(position, valueType);
+        recordConstant(result, analyzer);
     }
 
     @Override
     public Type inferResultType(AssignExpression result, TypeAnalyzer analyzer) {
         return analyzer.inferType(result.getValue());
+    }
+
+    private void recordConstant(AssignExpression result, TypeAnalyzer analyzer) {
+        if (!(result.getTarget() instanceof Identifier)) {
+            return;
+        }
+        Identifier target = (Identifier) result.getTarget();
+        Object value = result.getOperator().getType() == TokenType.ASSIGN ? analyzer.inferConstant(result.getValue()) : null;
+        int position = result.getPosition();
+        if (position >= 0) {
+            analyzer.recordLocalConstant(position, value);
+        } else {
+            analyzer.recordRootConstant(target.getValue(), value);
+        }
     }
 
     public static final String SET_LOCAL_REF = "(" + I + OBJECT + ")" + VOID;

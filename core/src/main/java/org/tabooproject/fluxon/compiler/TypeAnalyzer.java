@@ -4,6 +4,9 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.parser.expression.literal.LongLiteral;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Type;
 
@@ -27,6 +30,10 @@ public class TypeAnalyzer {
     private final Deque<Type> targetTypeStack = new ArrayDeque<>();
     // root 变量类型
     private Map<String, Type> rootVariableTypes;
+    // 局部变量常量值，仅用于编译期收敛确定安全的循环形态
+    private final Map<Integer, Object> localConstants = new HashMap<>();
+    // root 变量常量值，仅记录当前编译单元内的直接赋值
+    private final Map<String, Object> rootConstants = new HashMap<>();
 
     /**
      * 从函数定义初始化参数类型
@@ -115,6 +122,52 @@ public class TypeAnalyzer {
             return ((Expression) expr).getExpressionType().evaluator.inferResultType(expr, this);
         }
         return Type.OBJECT;
+    }
+
+    public Integer inferIntConstant(ParseResult expr) {
+        Object value = inferConstant(expr);
+        if (value instanceof Integer) return (Integer) value;
+        if (value instanceof Long) {
+            long longValue = (Long) value;
+            if (longValue >= Integer.MIN_VALUE && longValue <= Integer.MAX_VALUE) {
+                return (int) longValue;
+            }
+        }
+        return null;
+    }
+
+    public Object inferConstant(ParseResult expr) {
+        if (expr instanceof IntLiteral) {
+            return ((IntLiteral) expr).getValue();
+        }
+        if (expr instanceof LongLiteral) {
+            return ((LongLiteral) expr).getValue();
+        }
+        if (expr instanceof ReferenceExpression) {
+            ReferenceExpression reference = (ReferenceExpression) expr;
+            int position = reference.getPosition();
+            if (position >= 0) {
+                return localConstants.get(position);
+            }
+            return rootConstants.get(reference.getIdentifier().getValue());
+        }
+        return null;
+    }
+
+    public void recordLocalConstant(int position, Object value) {
+        if (value == null) {
+            localConstants.remove(position);
+        } else {
+            localConstants.put(position, value);
+        }
+    }
+
+    public void recordRootConstant(String name, Object value) {
+        if (value == null) {
+            rootConstants.remove(name);
+        } else {
+            rootConstants.put(name, value);
+        }
     }
 
     /**

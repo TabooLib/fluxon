@@ -393,6 +393,19 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRangeWithRootConstantUsesSingleDirectionLoop() {
+        String source = "LIMIT = 10\n" +
+                "sum = 0\n" +
+                "for i in 1..&LIMIT { sum += &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootConstantRangeShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+        assertFalse(hasJumpOpcode(result, Opcodes.IFLE));
+    }
+
+    @Test
     public void testCompiledRangeExpressionUsesPrimitiveCreation() {
         CompileResult result = Fluxon.compile(
                 "range = 1..5\n" +
@@ -484,6 +497,27 @@ public class ForExpressionTest {
                             matched[0] = true;
                         }
                         super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
+    }
+
+    private static boolean hasJumpOpcode(CompileResult result, int expectedOpcode) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitJumpInsn(int opcode, org.objectweb.asm.Label label) {
+                        if (opcode == expectedOpcode) {
+                            matched[0] = true;
+                        }
+                        super.visitJumpInsn(opcode, label);
                     }
                 };
             }

@@ -218,6 +218,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         }
 
         int saved = ctx.getLocalVarIndex();
+        Integer constantStart = analyzer != null ? analyzer.inferIntConstant(range.getStart()) : null;
+        Integer constantEnd = analyzer != null ? analyzer.inferIntConstant(range.getEnd()) : null;
+        if (constantStart != null && constantEnd != null) {
+            return emitConstantIntRangeLoop(result, range, constantStart, constantEnd, ctx, mv, bodyEval, saved);
+        }
         int startVar = ctx.allocateLocalVar(Type.I);
         int endVar = ctx.allocateLocalVar(Type.I);
         int stepVar = ctx.allocateLocalVar(Type.I);
@@ -281,6 +286,46 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitVarInsn(ILOAD, stepVar);
         mv.visitInsn(IADD);
         mv.visitVarInsn(ISTORE, loopVar);
+        mv.visitJumpInsn(GOTO, condition);
+        mv.visitLabel(loopEnd);
+        ctx.exitLoop();
+        ctx.restoreLocalVarIndex(saved);
+        return Type.VOID;
+    }
+
+    private Type emitConstantIntRangeLoop(
+            ForExpression result,
+            RangeExpression range,
+            int start,
+            int end,
+            CodeContext ctx,
+            MethodVisitor mv,
+            Evaluator<ParseResult> bodyEval,
+            int saved
+    ) {
+        int step = start <= end ? 1 : -1;
+        int effectiveEnd = range.isInclusive() ? end : end - step;
+        int loopVar = ctx.allocateLocalVar(Type.I);
+        Label condition = new Label();
+        Label increment = new Label();
+        Label loopEnd = new Label();
+        mv.visitLdcInsn(start);
+        mv.visitVarInsn(ISTORE, loopVar);
+        ctx.enterLoop(loopEnd, increment);
+        mv.visitLabel(condition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitLdcInsn(effectiveEnd);
+        mv.visitJumpInsn(step > 0 ? IF_ICMPGT : IF_ICMPLT, loopEnd);
+        Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
+        int varPos = entry.getValue();
+        Type varType = ctx.getVariableType(varPos);
+        emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (bodyType != Type.VOID) {
+            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
+        }
+        mv.visitLabel(increment);
+        mv.visitIincInsn(loopVar, step);
         mv.visitJumpInsn(GOTO, condition);
         mv.visitLabel(loopEnd);
         ctx.exitLoop();
