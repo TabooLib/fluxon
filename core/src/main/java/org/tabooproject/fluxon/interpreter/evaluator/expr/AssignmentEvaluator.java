@@ -96,7 +96,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
 
     @Override
     public Type inferResultType(AssignExpression result, TypeAnalyzer analyzer) {
-        return analyzer.inferType(result.getValue());
+        return VOID;
     }
 
     private void recordConstant(AssignExpression result, TypeAnalyzer analyzer) {

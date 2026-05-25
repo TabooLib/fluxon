@@ -326,7 +326,6 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         else if (type == Type.F) descriptor = "(" + Type.F + ")Ljava/lang/StringBuilder;";
         else if (type == Type.D) descriptor = "(" + Type.D + ")Ljava/lang/StringBuilder;";
         else if (type == Type.Z) descriptor = "(" + Type.Z + ")Ljava/lang/StringBuilder;";
-        else if (type == Type.STRING) descriptor = "(" + Type.STRING + ")Ljava/lang/StringBuilder;";
         else descriptor = "(" + Type.OBJECT + ")Ljava/lang/StringBuilder;";
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", descriptor, false);
     }

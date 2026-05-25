@@ -92,12 +92,15 @@ public final class DirectBindingEmitter {
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "print".equals(functionName) ? "getOut" : "getErr", "()Ljava/io/PrintStream;", false);
         if (args.length == 0) {
             mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "()V", false);
-            return Type.VOID;
+            mv.visitInsn(ACONST_NULL);
+            return Type.OBJECT;
         }
         Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         String descriptor = getPrintlnDescriptor(argType);
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", descriptor, false);
-        return Type.VOID;
+        // print/error 是普通函数语义，表达式位置仍需要产生 null 结果。
+        mv.visitInsn(ACONST_NULL);
+        return Type.OBJECT;
     }
 
     private static String getPrintlnDescriptor(Type type) {

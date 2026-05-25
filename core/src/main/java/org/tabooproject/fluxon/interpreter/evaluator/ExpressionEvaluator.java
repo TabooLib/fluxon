@@ -64,6 +64,8 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
      * 统一两个分支的类型（用于 if-then-else、三元运算符等）
      */
     public static Type unifyBranchTypes(Type trueType, Type falseType) {
+        // void 分支在表达式位置统一为 null，不能按 primitive void 分配局部槽位。
+        if (trueType == Type.VOID || falseType == Type.VOID) return Type.OBJECT;
         if (trueType.isPrimitive() && trueType.equals(falseType)) {
             return trueType;
         }
