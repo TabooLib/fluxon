@@ -17,16 +17,14 @@ public class FunctionCallTest {
 
     @Test
     public void testZeroParamFunctionWithOperator() {
-        // 测试 0 参数函数后面跟操作符
-        // now 返回当前时间戳
+        // now() 会读取真实时钟，两次调用之间允许出现毫秒级推进。
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "start = now(); " +
                         "end = now() + 1000; " +
                         "diff = &end - &start; " +
                         "&diff");
-        // 应该返回 1000
-        assertEquals(1000L, result.getInterpretResult());
-        assertEquals(1000L, result.getCompileResult());
+        assertTrue(((Number) result.getInterpretResult()).longValue() >= 1000L);
+        assertTrue(((Number) result.getCompileResult()).longValue() >= 1000L);
     }
 
     @Test

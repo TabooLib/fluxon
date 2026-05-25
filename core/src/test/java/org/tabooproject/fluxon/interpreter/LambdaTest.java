@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 
@@ -156,6 +157,26 @@ public class LambdaTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
         // 1+3=4, 1+4=5(skip), 2+3=5(skip), 2+4=6 -> count = 2
         assertEquals(2, result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试同一个 lambda 语法在多个函数调用帧中逃逸后的捕获隔离。
+     * 这会压住 lambda 缓存复用时错误共享最后一次父环境的问题。
+     */
+    @Test
+    @Disabled("已知缺陷：捕获型 lambda 逃逸后还没有绑定定义时 Environment")
+    public void testEscapedLambdaFactoryKeepsIndependentCapturedFrames() {
+        String script = ""
+                + "def makeCombiner(prefix, offset) = {\n"
+                + "  local = &prefix + ':' + &offset\n"
+                + "  |value| &local + ':' + &value\n"
+                + "}\n"
+                + "first = makeCombiner('A', 1)\n"
+                + "second = makeCombiner('B', 2)\n"
+                + "[call(&first, [10]), call(&second, [20]), call(&first, [30]), call(&second, [40])]";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        assertEquals(Arrays.asList("A:1:10", "B:2:20", "A:1:30", "B:2:40"), result.getInterpretResult());
         assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
     }
 }

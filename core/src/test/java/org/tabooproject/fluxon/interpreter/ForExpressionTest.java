@@ -301,6 +301,65 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopExclusiveReverseRange() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = 0; " +
+                        "for i in 5..<1 { " +
+                        "  result += &i " +
+                        "}; " +
+                        "&result");
+        assertEquals(14, result.getInterpretResult());
+        assertEquals(14, result.getCompileResult());
+    }
+
+    @Test
+    public void testForLoopSingleValueRange() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = 0; " +
+                        "for i in 0..0 { " +
+                        "  result += &i + 1 " +
+                        "}; " +
+                        "&result");
+        assertEquals(1, result.getInterpretResult());
+        assertEquals(1, result.getCompileResult());
+    }
+
+    @Test
+    public void testForLoopRangeContinueKeepsIteratorProgress() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = ''\n" +
+                        "for i in 1..5 {\n" +
+                        "  if &i % 2 == 0 {\n" +
+                        "    continue\n" +
+                        "  }\n" +
+                        "  result = &result + &i\n" +
+                        "}\n" +
+                        "&result");
+        assertEquals("135", result.getInterpretResult());
+        assertEquals("135", result.getCompileResult());
+    }
+
+    @Test
+    public void testNestedForLoopRangeBreakAndContinueStayScoped() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "result = ''\n" +
+                        "for i in 1..3 {\n" +
+                        "  for j in 1..4 {\n" +
+                        "    if &j == 2 {\n" +
+                        "      continue\n" +
+                        "    }\n" +
+                        "    if &j == 4 {\n" +
+                        "      break\n" +
+                        "    }\n" +
+                        "    result = &result + &i + ':' + &j + ','\n" +
+                        "  }\n" +
+                        "}\n" +
+                        "&result");
+        assertEquals("1:1,1:3,2:1,2:3,3:1,3:3,", result.getInterpretResult());
+        assertEquals("1:1,1:3,2:1,2:3,3:1,3:3,", result.getCompileResult());
+    }
+
+    @Test
     public void testForLoopListBuilding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "result = []; " +
