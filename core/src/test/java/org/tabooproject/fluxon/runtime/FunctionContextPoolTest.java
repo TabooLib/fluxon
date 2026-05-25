@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.runtime;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.runtime.concurrent.ThreadPoolManager;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.lang.reflect.Field;
@@ -89,8 +90,10 @@ public class FunctionContextPoolTest {
 
             for (int i = 0; i < tasks; i++) {
                 String async = asyncResults.get(i).get(30, TimeUnit.SECONDS);
-                assertTrue(async.startsWith("fluxon-worker-"),
-                        "Async functions should execute on worker threads");
+                if (!ThreadPoolManager.getInstance().isVirtualThreadExecutor()) {
+                    assertTrue(async.startsWith("fluxon-worker-"),
+                            "Async functions should execute on worker threads");
+                }
                 assertTrue(async.endsWith("A" + i),
                         "Async calls should keep their argument binding");
 

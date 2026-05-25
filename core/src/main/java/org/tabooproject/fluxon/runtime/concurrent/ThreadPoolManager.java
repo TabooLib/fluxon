@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.runtime.concurrent;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,6 +22,7 @@ public class ThreadPoolManager {
     
     private final ExecutorService executorService;
     private final ScheduledExecutorService scheduledExecutorService;
+    private final boolean virtualThreadExecutor;
     private final AtomicInteger activeTaskCount = new AtomicInteger(0);
     
     /**
@@ -28,16 +31,23 @@ public class ThreadPoolManager {
     private static final ThreadPoolManager INSTANCE = new ThreadPoolManager();
     
     private ThreadPoolManager() {
-        // 创建核心线程池
-        this.executorService = new ThreadPoolExecutor(
-                CORE_POOL_SIZE,
-                MAX_POOL_SIZE,
-                KEEP_ALIVE_TIME,
-                TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(QUEUE_CAPACITY),
-                new FluxonThreadFactory("fluxon-worker"),
-                new ThreadPoolExecutor.CallerRunsPolicy()
-        );
+        ExecutorService executor = createVirtualThreadExecutor();
+        if (executor != null) {
+            this.executorService = executor;
+            this.virtualThreadExecutor = true;
+        } else {
+            // await 会阻塞当前执行单元，旧运行时保留有界线程池以避免无上限创建平台线程。
+            this.executorService = new ThreadPoolExecutor(
+                    CORE_POOL_SIZE,
+                    MAX_POOL_SIZE,
+                    KEEP_ALIVE_TIME,
+                    TimeUnit.SECONDS,
+                    new LinkedBlockingQueue<>(QUEUE_CAPACITY),
+                    new FluxonThreadFactory("fluxon-worker"),
+                    new ThreadPoolExecutor.CallerRunsPolicy()
+            );
+            this.virtualThreadExecutor = false;
+        }
         
         // 创建调度线程池
         this.scheduledExecutorService = Executors.newScheduledThreadPool(
@@ -122,6 +132,13 @@ public class ThreadPoolManager {
     }
 
     /**
+     * 是否使用虚拟线程执行异步任务
+     */
+    public boolean isVirtualThreadExecutor() {
+        return virtualThreadExecutor;
+    }
+
+    /**
      * 获取核心线程池
      */
     public ExecutorService getExecutorService() {
@@ -153,6 +170,26 @@ public class ThreadPoolManager {
             executorService.shutdownNow();
             scheduledExecutorService.shutdownNow();
             Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * 在 Java 21 运行时创建虚拟线程执行器
+     * <p>
+     * Fluxon 仍保持 Java 8 编译目标，不能直接引用虚拟线程 API。
+     * 这里通过反射探测运行时能力，让阻塞式 await 在新运行时不再耗尽平台线程。
+     * </p>
+     */
+    private ExecutorService createVirtualThreadExecutor() {
+        try {
+            Method method = Executors.class.getMethod("newVirtualThreadPerTaskExecutor");
+            return (ExecutorService) method.invoke(null);
+        } catch (NoSuchMethodException e) {
+            return null;
+        } catch (IllegalAccessException e) {
+            return null;
+        } catch (InvocationTargetException e) {
+            return null;
         }
     }
     
