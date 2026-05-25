@@ -253,6 +253,14 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testPrintPrimitiveUsesPrimitivePrintlnBytecode() {
+        CompileResult result = Fluxon.compile("print(1)", "PrintPrimitiveOutputShapeTest");
+        assertTrue(hasMethodInvocation(result, "println", "(I)V"));
+        assertFalse(hasMethodInvocation(result, "valueOf"));
+        assertFalse(hasMethodInvocation(result, "prepareCall"));
+    }
+
+    @Test
     public void testThrowUsesDirectBytecode() {
         FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent("try throw('error') catch 'ok'");
         FluxonTestUtil.assertBothEqual("ok", runResult);

@@ -95,11 +95,19 @@ public final class DirectBindingEmitter {
             return Type.VOID;
         }
         Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
-        if (argType.isPrimitive()) {
-            FunctionCallHandlers.emitBox(argType, mv);
-        }
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(" + Type.OBJECT + ")V", false);
+        String descriptor = getPrintlnDescriptor(argType);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", descriptor, false);
         return Type.VOID;
+    }
+
+    private static String getPrintlnDescriptor(Type type) {
+        if (type == Type.I) return "(" + Type.I + ")V";
+        if (type == Type.J) return "(" + Type.J + ")V";
+        if (type == Type.F) return "(" + Type.F + ")V";
+        if (type == Type.D) return "(" + Type.D + ")V";
+        if (type == Type.Z) return "(" + Type.Z + ")V";
+        if (type == Type.STRING) return "(" + Type.STRING + ")V";
+        return "(" + Type.OBJECT + ")V";
     }
 
     /**
