@@ -125,8 +125,13 @@ public final class Intrinsics {
         // 局部变量直接索引访问
         if (index >= 0) return environment.getLocalRef(index);
         // 根变量
+        Object value = environment.getRootVariable(name);
+        if (value != null) {
+            return value;
+        }
+        // root 变量允许显式保存 null，仅在空值时补一次 containsKey 判断。
         if (environment.hasRootVariable(name)) {
-            return environment.getRootVariable(name);
+            return null;
         }
         if (isOptional) {
             return null;
