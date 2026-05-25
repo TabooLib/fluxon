@@ -9,24 +9,19 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.LambdaExpression;
-import org.tabooproject.fluxon.runtime.CapturedFunction;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.HashSet;
 
-import static org.objectweb.asm.Opcodes.DUP;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
-import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
-import static org.objectweb.asm.Opcodes.NEW;
+import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 
 /**
  * Lambda 表达式求值/生成
  */
 public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
-
-    private static final Type CAPTURED_FUNCTION = CapturedFunction.TYPE;
 
     @Override
     public ExpressionType getType() {
@@ -37,7 +32,7 @@ public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
     public Type evaluate(Interpreter interpreter, LambdaExpression expr) {
         Function function = interpreter.getOrCreateLambda(expr);
         if (expr.getCaptureOffset() > 0) {
-            interpreter.resultRef = new CapturedFunction(function, interpreter.getEnvironment());
+            interpreter.resultRef = interpreter.getEnvironment().captureFunction(function);
             return Type.OBJECT;
         }
         interpreter.resultRef = function;
@@ -50,16 +45,14 @@ public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
         ctx.addLambdaDefinition(definition);
         String lambdaClassName = definition.getOwnerClassName() + definition.getName();
         if (definition.getCaptureOffset() > 0) {
-            // 捕获型 Lambda 每次求值都绑定当前 Environment，防止逃逸后读取调用点环境。
-            mv.visitTypeInsn(NEW, CAPTURED_FUNCTION.getPath());
-            mv.visitInsn(DUP);
-            mv.visitFieldInsn(GETSTATIC, ctx.getClassName(), definition.getName(), "L" + lambdaClassName + ";");
+            // 捕获型 Lambda 仍绑定当前 Environment，但同一环境内复用包装对象，避免循环求值反复分配。
             Instructions.loadEnvironment(mv, ctx);
+            mv.visitFieldInsn(GETSTATIC, ctx.getClassName(), definition.getName(), "L" + lambdaClassName + ";");
             mv.visitMethodInsn(
-                    INVOKESPECIAL,
-                    CAPTURED_FUNCTION.getPath(),
-                    "<init>",
-                    "(" + Function.TYPE + Environment.TYPE + ")" + Type.VOID,
+                    INVOKEVIRTUAL,
+                    Environment.TYPE.getPath(),
+                    "captureFunction",
+                    "(" + Function.TYPE + ")" + Function.TYPE,
                     false
             );
             return Function.TYPE;

@@ -49,6 +49,9 @@ public class Environment {
     protected Type[] variableTypes;
     // 闭包捕获偏移量：索引 < captureOffset 的变量走父环境链
     protected int captureOffset;
+    // 捕获型 Lambda 包装缓存，同一个定义时环境内重复求值同一个函数时复用包装对象
+    @Nullable
+    protected Map<Function, CapturedFunction> capturedFunctionCache;
     // 上下文目标
     @Nullable
     protected Object target;
@@ -86,6 +89,22 @@ public class Environment {
         this.localRefs = localVariables > 0 ? new Object[localVariables] : null;
         this.localVariableCount = localVariables;
         this.target = parentEnv.target;
+    }
+
+    /**
+     * 绑定捕获型 Lambda 的定义时环境。
+     * 包装对象只保存函数实例和当前环境引用，复用不会改变捕获变量的可变语义。
+     */
+    @NotNull
+    public Function captureFunction(@NotNull Function function) {
+        if (capturedFunctionCache == null) {
+            capturedFunctionCache = new IdentityHashMap<>();
+        }
+        CapturedFunction captured = capturedFunctionCache.get(function);
+        if (captured != null) return captured;
+        captured = new CapturedFunction(function, this);
+        capturedFunctionCache.put(function, captured);
+        return captured;
     }
 
     /**

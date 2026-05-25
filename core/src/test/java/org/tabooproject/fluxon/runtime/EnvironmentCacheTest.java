@@ -53,6 +53,21 @@ public class EnvironmentCacheTest {
     }
 
     @Test
+    public void testCapturedFunctionCachedPerEnvironment() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Environment env1 = runtime.newEnvironment();
+        Environment env2 = runtime.newEnvironment();
+        Function function = env1.getFunction("print");
+
+        Function captured1 = env1.captureFunction(function);
+        Function captured2 = env1.captureFunction(function);
+        Function captured3 = env2.captureFunction(function);
+
+        assertSame(captured1, captured2, "同一环境内的捕获函数包装应该复用");
+        assertNotSame(captured1, captured3, "不同环境必须保留独立捕获包装");
+    }
+
+    @Test
     public void testDirtyFlagAfterRegisterFunction() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
 
