@@ -73,6 +73,16 @@ final class LoopRootCachePlanner {
 
     static void emitLoadCaches(Plan plan, CodeContext ctx, MethodVisitor mv) {
         for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            CodeContext.RootVariableCache parentCache = ctx.getRootVariableCache(cache.name);
+            if (parentCache != null) {
+                mv.visitVarInsn(loadOpcode(parentCache.type), parentCache.slot);
+                mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
+                continue;
+            }
+            Object constantValue = ctx.getRootConstantValue(cache.name);
+            if (emitRootConstantCacheLoad(constantValue, cache, mv)) {
+                continue;
+            }
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(cache.name);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", "(" + Type.STRING + ")" + Type.OBJECT, false);
@@ -81,8 +91,33 @@ final class LoopRootCachePlanner {
         }
     }
 
+    private static boolean emitRootConstantCacheLoad(Object value, CodeContext.RootVariableCache cache, MethodVisitor mv) {
+        if (!(value instanceof Number)) return false;
+        // 顶层直接赋值已经写入 root map，循环缓存进场只需复用同一个常量值。
+        Number number = (Number) value;
+        if (cache.type == Type.I) {
+            mv.visitLdcInsn(number.intValue());
+        } else if (cache.type == Type.J) {
+            mv.visitLdcInsn(number.longValue());
+        } else if (cache.type == Type.F) {
+            mv.visitLdcInsn(number.floatValue());
+        } else if (cache.type == Type.D) {
+            mv.visitLdcInsn(number.doubleValue());
+        } else {
+            return false;
+        }
+        mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
+        return true;
+    }
+
     static void emitWriteBackCaches(Plan plan, CodeContext ctx, MethodVisitor mv) {
         for (CodeContext.RootVariableCache cache : plan.caches.values()) {
+            CodeContext.RootVariableCache parentCache = ctx.getRootVariableCache(cache.name);
+            if (parentCache != null) {
+                mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
+                mv.visitVarInsn(storeOpcode(parentCache.type), parentCache.slot);
+                continue;
+            }
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(cache.name);
             mv.visitVarInsn(loadOpcode(cache.type), cache.slot);

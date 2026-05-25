@@ -324,6 +324,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         if (rootCachePlan != null) {
             LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
         }
+        // 顶层常量只允许初始化当前循环 cache，进入循环后不能继续影响嵌套循环。
+        ctx.clearRootConstantValues();
         Label condition = new Label();
         Label increment = new Label();
         Label loopEnd = new Label();

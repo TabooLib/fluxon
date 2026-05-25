@@ -80,6 +80,8 @@ public class CodeContext {
 
     // 内联函数的局部变量槽位作用域：仅在生成被内联函数体期间可见
     private final Deque<Map<Integer, InlineLocalVariable>> inlineLocalVariableScopes = new ArrayDeque<>();
+    // 顶层直接赋值产生的 root 常量，仅用于后续紧邻循环缓存初始化
+    private final Map<String, Object> rootConstantValues = new HashMap<>();
 
     public CodeContext(String className, String superClassName) {
         this.className = className;
@@ -363,6 +365,22 @@ public class CodeContext {
             if (cache != null) return cache;
         }
         return null;
+    }
+
+    public void recordRootConstantValue(String name, Object value) {
+        if (value == null) {
+            rootConstantValues.remove(name);
+        } else {
+            rootConstantValues.put(name, value);
+        }
+    }
+
+    public Object getRootConstantValue(String name) {
+        return rootConstantValues.get(name);
+    }
+
+    public void clearRootConstantValues() {
+        rootConstantValues.clear();
     }
 
     /**

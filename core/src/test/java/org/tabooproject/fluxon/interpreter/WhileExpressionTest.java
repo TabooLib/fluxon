@@ -33,6 +33,7 @@ public class WhileExpressionTest {
         FluxonTestUtil.assertBothEqual(45, runResult);
         CompileResult result = Fluxon.compile(source, "WhileRootCacheShapeTest");
         assertEquals(1, countMethodInvocation(result, Intrinsics.TYPE.getPath(), "getVariable"));
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
     }
 
     @Test

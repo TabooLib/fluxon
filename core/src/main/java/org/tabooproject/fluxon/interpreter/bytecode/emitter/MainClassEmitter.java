@@ -7,9 +7,16 @@ import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.DefaultBytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.AssignExpression;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.parser.expression.literal.LongLiteral;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
@@ -146,6 +153,7 @@ public class MainClassEmitter extends ClassEmitter {
         for (int i = 0, statementsSize = statements.size(); i < statementsSize; i++) {
             Instructions.emitLineNumber(statements.get(i), mv);
             last = generator.generateStatementBytecode(statements.get(i), ctx, mv);
+            updateRootConstantValues(statements.get(i), ctx);
             if (i < statementsSize - 1 && last != VOID) {
                 mv.visitInsn((last == J || last == D) ? POP2 : POP);
             }
@@ -178,6 +186,33 @@ public class MainClassEmitter extends ClassEmitter {
         mv.visitMaxs(0, ctx.getLocalVarIndex() + 3);
         mv.visitEnd();
         lambdaDefinitions.addAll(ctx.getLambdaDefinitions());
+    }
+
+    private void updateRootConstantValues(Statement statement, CodeContext ctx) {
+        Object[] constantAssignment = extractRootConstantAssignment(statement);
+        if (constantAssignment == null) {
+            ctx.clearRootConstantValues();
+            return;
+        }
+        ctx.recordRootConstantValue((String) constantAssignment[0], constantAssignment[1]);
+    }
+
+    private Object[] extractRootConstantAssignment(Statement statement) {
+        if (!(statement instanceof ExpressionStatement)) return null;
+        ParseResult expression = ((ExpressionStatement) statement).getExpression();
+        if (!(expression instanceof AssignExpression)) return null;
+        AssignExpression assign = (AssignExpression) expression;
+        if (assign.getOperator().getType() != TokenType.ASSIGN) return null;
+        if (assign.getPosition() >= 0 || !(assign.getTarget() instanceof Identifier)) return null;
+        Object value = extractNumericConstant(assign.getValue());
+        if (value == null) return null;
+        return new Object[]{((Identifier) assign.getTarget()).getValue(), value};
+    }
+
+    private Object extractNumericConstant(ParseResult value) {
+        if (value instanceof IntLiteral) return ((IntLiteral) value).getValue();
+        if (value instanceof LongLiteral) return ((LongLiteral) value).getValue();
+        return null;
     }
 
     private void emitClearIdleContexts(MethodVisitor mv, int poolSlot) {

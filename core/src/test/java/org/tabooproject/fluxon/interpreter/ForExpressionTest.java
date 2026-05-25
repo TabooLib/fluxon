@@ -402,7 +402,7 @@ public class ForExpressionTest {
         FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
         FluxonTestUtil.assertBothEqual(55, runResult);
         CompileResult result = Fluxon.compile(source, "ForRootCacheShapeTest");
-        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
     }
 
     @Test
@@ -474,7 +474,7 @@ public class ForExpressionTest {
         FluxonTestUtil.assertBothEqual(10, runResult);
         CompileResult result = Fluxon.compile(source, "ForRootInlineFunctionCacheShapeTest");
         assertFalse(hasMethodInvocation(result, "callDirect"));
-        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
     }
 
     @Test

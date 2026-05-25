@@ -79,6 +79,8 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
             LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
             ctx.enterRootVariableCacheScope(rootCachePlan.caches);
         }
+        // 顶层常量只允许初始化当前循环 cache，进入循环后不能继续影响嵌套循环。
+        ctx.clearRootConstantValues();
 
         // 创建标签用于跳转
         Label whileStart = new Label();
