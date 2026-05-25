@@ -212,6 +212,20 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testExpressionFunctionDirectCallKeepsPrimitiveReturn() {
+        String source = "def inc(x: int) = &x + 1\n" +
+                "inc(5) + 2";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(8, runResult);
+        CompileResult result = Fluxon.compile(
+                source,
+                "UserDirectPrimitiveReturnTest"
+        );
+        assertTrue(hasMethodInvocation(result, "callDirect"));
+        assertFalse(hasMethodInvocation(result, "add"));
+    }
+
+    @Test
     public void testFunctionWithContextCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "def getName = 'hello'; " +
