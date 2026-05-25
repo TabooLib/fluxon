@@ -213,6 +213,32 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testExpressionFunctionDirectCallKeepsBooleanObjectArgument() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def id(x) = &x\n" +
+                        "id(true)");
+        FluxonTestUtil.assertBothEqual(true, result);
+    }
+
+    @Test
+    public void testExpressionFunctionDirectCallAcceptsNumberForBooleanParameter() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def pick(flag: boolean) = &flag ? 7 : 3\n" +
+                        "pick(intOrNull('1'))");
+        FluxonTestUtil.assertBothEqual(7, result);
+    }
+
+    @Test
+    public void testExpressionFunctionDirectCallFallsBackOnArgumentCountMismatch() {
+        CompileResult result = Fluxon.compile(
+                "def id(x) = &x\n" +
+                        "id(1, 2)",
+                "UserDirectArgumentCountMismatchTest"
+        );
+        assertFalse(hasMethodInvocation(result, "callDirect"));
+    }
+
+    @Test
     public void testExpressionFunctionDirectCallKeepsPrimitiveReturn() {
         String source = "def inc(x: int) = &x + 1\n" +
                 "inc(5) + 2";
@@ -278,6 +304,14 @@ public class FunctionCallTest {
         CompileResult result = Fluxon.compile("print(1)", "PrintPrimitiveOutputShapeTest");
         assertTrue(hasMethodInvocation(result, "println", "(I)V"));
         assertFalse(hasMethodInvocation(result, "valueOf"));
+        assertFalse(hasMethodInvocation(result, "prepareCall"));
+    }
+
+    @Test
+    public void testErrorUsesDirectOutputBytecode() {
+        CompileResult result = Fluxon.compile("error()", "ErrorDirectOutputShapeTest");
+        assertTrue(hasMethodInvocationInAnyClass(result, Environment.TYPE.getPath(), "getErr"));
+        assertTrue(hasMethodInvocation(result, "println", "()V"));
         assertFalse(hasMethodInvocation(result, "prepareCall"));
     }
 

@@ -59,8 +59,8 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type startType = analyzer != null ? analyzer.inferType(result.getStart()) : Type.OBJECT;
         Type endType = analyzer != null ? analyzer.inferType(result.getEnd()) : Type.OBJECT;
-        if (isNumericEndpoint(startType) && isNumericEndpoint(endType)) {
-            // 数值范围在编译期已确定为数字时直接走 primitive overload，避免 Object 装箱往返。
+        if (isPrimitiveNumericEndpoint(startType) && isPrimitiveNumericEndpoint(endType)) {
+            // 只有栈上已是 primitive 数字时才走 primitive overload，动态 Object 值保留运行时错误边界。
             emitIntEndpoint(result.getStart(), startEval, ctx, mv);
             emitIntEndpoint(result.getEnd(), endEval, ctx, mv);
             mv.visitInsn(result.isInclusive() ? ICONST_1 : ICONST_0);
@@ -86,10 +86,8 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         return Type.OBJECT;
     }
 
-    private static boolean isNumericEndpoint(Type type) {
-        return type == Type.I || type == Type.J || type == Type.F || type == Type.D
-                || type == Type.INT || type == Type.LONG || type == Type.FLOAT || type == Type.DOUBLE
-                || type == Type.NUMBER;
+    private static boolean isPrimitiveNumericEndpoint(Type type) {
+        return type == Type.I || type == Type.J || type == Type.F || type == Type.D;
     }
 
     private static void emitIntEndpoint(ParseResult endpoint, Evaluator<ParseResult> evaluator, CodeContext ctx, MethodVisitor mv) {

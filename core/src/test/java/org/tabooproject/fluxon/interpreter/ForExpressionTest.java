@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
@@ -465,6 +467,17 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRootCacheSkipsNonNumericRootAssignment() {
+        String source = "sum = 0\n" +
+                "for i in 1..1 {\n" +
+                "  sum = 'x'\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("x", runResult);
+    }
+
+    @Test
     public void testForLoopRootCacheAcceptsInlinedPureFunctionCall() {
         String source = "def inc(x: int) = &x + 1\n" +
                 "sum = 0\n" +
@@ -576,13 +589,50 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testWhenConstantIntRangeNotContainsMatchesWithoutRangeAllocation() {
+        String source = "sum = 5\n" +
+                "when &sum {\n" +
+                "  ! in 0..3 -> 'miss'\n" +
+                "  else -> 'hit'\n" +
+                "}";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("miss", runResult);
+        CompileResult result = Fluxon.compile(source, "WhenConstantIntRangeNotContainsShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange"));
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "matchWhenBranch"));
+    }
+
+    @Test
+    public void testWhenConstantIntRangeMissesNonNumberSubject() {
+        String source = "sum = 'x'\n" +
+                "when &sum {\n" +
+                "  in 0..3 -> 'bad'\n" +
+                "  else -> 'ok'\n" +
+                "}";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("ok", runResult);
+    }
+
+    @Test
     public void testCompiledRangeExpressionUsesPrimitiveCreation() {
         CompileResult result = Fluxon.compile(
                 "range = 1..5\n" +
                         "&range::size()",
                 "RangePrimitiveShapeTest"
         );
-        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange", "(Ljava/lang/Object;Ljava/lang/Object;Z)"));
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange", "(Ljava/lang/Object;Ljava/lang/Object;Z)Lorg/tabooproject/fluxon/runtime/collection/IntRange;"));
+    }
+
+    @Test
+    public void testCompiledRangeExpressionKeepsObjectPathForBoxedEndpoint() {
+        CompilationContext context = new CompilationContext(
+                "range = &start..5\n" +
+                        "&range::size()"
+        );
+        context.defineRootVariable("start", Number.class);
+        Environment environment = FluxonRuntime.getInstance().newEnvironment();
+        CompileResult result = Fluxon.compile(environment, context, "RangeBoxedEndpointShapeTest");
+        assertTrue(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange", "(Ljava/lang/Object;Ljava/lang/Object;Z)Lorg/tabooproject/fluxon/runtime/collection/IntRange;"));
     }
 
     @Test
@@ -674,7 +724,7 @@ public class ForExpressionTest {
         return matched[0];
     }
 
-    private static boolean hasMethodInvocation(CompileResult result, String owner, String method, String descriptor) {
+    private static boolean hasMethodInvocation(CompileResult result, String owner, String method, String expectedDescriptor) {
         boolean[] matched = {false};
         ClassReader reader = new ClassReader(result.getMainClass());
         reader.accept(new ClassVisitor(Opcodes.ASM9) {
@@ -684,7 +734,7 @@ public class ForExpressionTest {
                 return new MethodVisitor(Opcodes.ASM9, visitor) {
                     @Override
                     public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
-                        if (owner.equals(actualOwner) && method.equals(actualName) && (descriptor == null || descriptor.equals(actualDescriptor))) {
+                        if (owner.equals(actualOwner) && method.equals(actualName) && (expectedDescriptor == null || expectedDescriptor.equals(actualDescriptor))) {
                             matched[0] = true;
                         }
                         super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);

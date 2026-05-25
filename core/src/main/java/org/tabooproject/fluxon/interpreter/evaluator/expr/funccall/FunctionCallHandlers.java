@@ -239,8 +239,7 @@ public final class FunctionCallHandlers {
      */
     public static void emitUnbox(Type target, MethodVisitor mv) {
         if (target == Type.Z) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+            Instructions.emitUnboxBooleanCompatible(mv);
             return;
         }
         mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
@@ -259,7 +258,9 @@ public final class FunctionCallHandlers {
      * 生成原始类型 → Object 的装箱指令（栈操作）
      */
     public static void emitBox(Type source, MethodVisitor mv) {
-        if (source == Type.I || source == Type.Z) {
+        if (source == Type.Z) {
+            mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
+        } else if (source == Type.I) {
             mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
         } else if (source == Type.J) {
             mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);

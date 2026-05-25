@@ -54,6 +54,9 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (!canUseDirectInvoke(definition)) {
             return null;
         }
+        if (args.length != definition.getParameters().size()) {
+            return null;
+        }
         Type inlineResult = tryEmitInlineExpression(definition, args, ctx, mv);
         if (inlineResult != null) {
             return inlineResult;

@@ -86,7 +86,7 @@ public class WhenSyntaxMacro implements SyntaxMacro {
                 break;
             case NOT:
                 parser.advance();
-                if (parser.peek(1).getType() == TokenType.IN) {
+                if (parser.check(TokenType.IN)) {
                     parser.advance();
                     matchType = WhenExpression.MatchType.NOT_CONTAINS;
                 } else {

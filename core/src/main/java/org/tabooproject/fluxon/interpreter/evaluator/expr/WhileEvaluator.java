@@ -89,12 +89,13 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         ctx.enterLoop(whileEnd, whileStart);
         // while 循环开始标签
         mv.visitLabel(whileStart);
-        // 评估条件表达式
-        generateCondition(ctx, mv, result.getCondition(), conditionEval, whileEnd);
         if (localCachePlan != null) {
+            // condition 本身也可能修改缓存局部变量，即使条件为 false 也必须在退出时写回。
             mv.visitInsn(ICONST_1);
             mv.visitVarInsn(ISTORE, localCachePlan.executedSlot);
         }
+        // 评估条件表达式
+        generateCondition(ctx, mv, result.getCondition(), conditionEval, whileEnd);
 
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令

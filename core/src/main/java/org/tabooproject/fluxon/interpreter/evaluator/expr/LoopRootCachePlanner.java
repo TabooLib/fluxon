@@ -326,6 +326,9 @@ final class LoopRootCachePlanner {
                 if (!allowRootAssignment) return false;
                 TokenType op = assign.getOperator().getType();
                 if (!isRootNumericAssignment(op)) return false;
+                if (ctx.getTypeAnalyzer() == null) return false;
+                Type valueType = ctx.getTypeAnalyzer().inferType(assign.getValue());
+                if (!isCacheableRootType(valueType)) return false;
                 assignedRootNames.put(((Identifier) assign.getTarget()).getValue(), Boolean.TRUE);
                 return scan(assign.getValue(), true);
             }

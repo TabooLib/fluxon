@@ -398,19 +398,7 @@ public class FunctionClassEmitter extends ClassEmitter {
                 mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
                 mv.visitVarInsn(ISTORE, jvmSlot);
             } else if (type == Type.Z) {
-                // 兼容旧 FunctionContext 协议：布尔既可能是 Boolean，也可能是 int bit。
-                Label numberLabel = new Label();
-                Label storeLabel = new Label();
-                mv.visitInsn(DUP);
-                mv.visitTypeInsn(INSTANCEOF, "java/lang/Boolean");
-                mv.visitJumpInsn(IFEQ, numberLabel);
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
-                mv.visitJumpInsn(GOTO, storeLabel);
-                mv.visitLabel(numberLabel);
-                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
-                mv.visitLabel(storeLabel);
+                Instructions.emitUnboxBooleanCompatible(mv);
                 mv.visitVarInsn(ISTORE, jvmSlot);
             } else if (type == Type.J) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
