@@ -1,10 +1,18 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.tabooproject.fluxon.Fluxon;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -360,6 +368,19 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testCompiledIntRangeLoopSkipsIteratorCreation() {
+        CompileResult result = Fluxon.compile(
+                "result = 0\n" +
+                        "for i in 1..5 {\n" +
+                        "  result += &i\n" +
+                        "}\n" +
+                        "&result",
+                "ForRangeShapeTest"
+        );
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+    }
+
+    @Test
     public void testForLoopListBuilding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "result = []; " +
@@ -421,5 +442,26 @@ public class ForExpressionTest {
                         "&result");
         assertEquals("[1, 2, 3]", result.getInterpretResult().toString());
         assertEquals("[1, 2, 3]", result.getCompileResult().toString());
+    }
+
+    private static boolean hasMethodInvocation(CompileResult result, String owner, String method) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (owner.equals(actualOwner) && method.equals(actualName)) {
+                            matched[0] = true;
+                        }
+                        super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
     }
 }

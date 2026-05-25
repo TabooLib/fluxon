@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.RuntimeScriptBase;
@@ -99,6 +100,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Evaluator<ParseResult> bodyEval = ctx.getEvaluator(result.getBody());
         if (bodyEval == null) {
             throw new EvaluatorNotFoundError("No evaluator found for body expression");
+        }
+
+        Type rangeLoopType = tryGenerateIntRangeLoop(result, ctx, mv, bodyEval);
+        if (rangeLoopType != null) {
+            return rangeLoopType;
         }
 
         // 分配局部变量存储迭代器和变量Map
@@ -189,6 +195,159 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
     private static final Type ITERATOR = new Type(Iterator.class);
     private static final Type MAP = new Type(Map.class);
+
+    /**
+     * 为单变量 int range 生成计数循环。
+     * 动态起止值、解构和非 range 集合保持通用 Iterator 路径，避免改变运行时错误边界。
+     */
+    private Type tryGenerateIntRangeLoop(ForExpression result, CodeContext ctx, MethodVisitor mv, Evaluator<ParseResult> bodyEval) {
+        if (!(result.getCollection() instanceof RangeExpression) || result.getVariables().size() != 1) {
+            return null;
+        }
+        RangeExpression range = (RangeExpression) result.getCollection();
+        TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
+        Type startType = analyzer != null ? analyzer.inferType(range.getStart()) : Type.OBJECT;
+        Type endType = analyzer != null ? analyzer.inferType(range.getEnd()) : Type.OBJECT;
+        if (!isIntRangeEndpoint(startType) || !isIntRangeEndpoint(endType)) {
+            return null;
+        }
+        Evaluator<ParseResult> startEval = ctx.getEvaluator(range.getStart());
+        Evaluator<ParseResult> endEval = ctx.getEvaluator(range.getEnd());
+        if (startEval == null || endEval == null) {
+            throw new EvaluatorNotFoundError("No evaluator found for range endpoint");
+        }
+
+        int saved = ctx.getLocalVarIndex();
+        int startVar = ctx.allocateLocalVar(Type.I);
+        int endVar = ctx.allocateLocalVar(Type.I);
+        int stepVar = ctx.allocateLocalVar(Type.I);
+        int loopVar = ctx.allocateLocalVar(Type.I);
+        Label descending = new Label();
+        Label afterStep = new Label();
+        Label condition = new Label();
+        Label negativeCondition = new Label();
+        Label body = new Label();
+        Label increment = new Label();
+        Label loopEnd = new Label();
+
+        emitIntEndpoint(range.getStart(), startEval, ctx, mv);
+        mv.visitVarInsn(ISTORE, startVar);
+        emitIntEndpoint(range.getEnd(), endEval, ctx, mv);
+        mv.visitVarInsn(ISTORE, endVar);
+
+        mv.visitVarInsn(ILOAD, startVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPGT, descending);
+        mv.visitInsn(ICONST_1);
+        mv.visitJumpInsn(GOTO, afterStep);
+        mv.visitLabel(descending);
+        mv.visitInsn(ICONST_M1);
+        mv.visitLabel(afterStep);
+        mv.visitVarInsn(ISTORE, stepVar);
+
+        if (!range.isInclusive()) {
+            mv.visitVarInsn(ILOAD, endVar);
+            mv.visitVarInsn(ILOAD, stepVar);
+            mv.visitInsn(ISUB);
+            mv.visitVarInsn(ISTORE, endVar);
+        }
+
+        mv.visitVarInsn(ILOAD, startVar);
+        mv.visitVarInsn(ISTORE, loopVar);
+        ctx.enterLoop(loopEnd, increment);
+        mv.visitLabel(condition);
+        mv.visitVarInsn(ILOAD, stepVar);
+        mv.visitJumpInsn(IFLE, negativeCondition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPGT, loopEnd);
+        mv.visitJumpInsn(GOTO, body);
+        mv.visitLabel(negativeCondition);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, endVar);
+        mv.visitJumpInsn(IF_ICMPLT, loopEnd);
+
+        mv.visitLabel(body);
+        Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
+        int varPos = entry.getValue();
+        Type varType = ctx.getVariableType(varPos);
+        emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+        Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (bodyType != Type.VOID) {
+            mv.visitInsn((bodyType == Type.J || bodyType == Type.D) ? POP2 : POP);
+        }
+        mv.visitLabel(increment);
+        mv.visitVarInsn(ILOAD, loopVar);
+        mv.visitVarInsn(ILOAD, stepVar);
+        mv.visitInsn(IADD);
+        mv.visitVarInsn(ISTORE, loopVar);
+        mv.visitJumpInsn(GOTO, condition);
+        mv.visitLabel(loopEnd);
+        ctx.exitLoop();
+        ctx.restoreLocalVarIndex(saved);
+        return Type.VOID;
+    }
+
+    private static boolean isIntRangeEndpoint(Type type) {
+        return type == Type.I || type == Type.J || type == Type.F || type == Type.D
+                || type == Type.INT || type == Type.LONG || type == Type.FLOAT || type == Type.DOUBLE
+                || type == Type.NUMBER;
+    }
+
+    private static void emitIntEndpoint(ParseResult endpoint, Evaluator<ParseResult> evaluator, CodeContext ctx, MethodVisitor mv) {
+        Type type = evaluator.generateBytecode(endpoint, ctx, mv);
+        if (type == Type.VOID) {
+            throw new VoidError("Void type is not allowed for range endpoint");
+        }
+        if (!type.isPrimitive()) {
+            mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+            return;
+        }
+        if (type == Type.J) {
+            mv.visitInsn(L2I);
+        } else if (type == Type.F) {
+            mv.visitInsn(F2I);
+        } else if (type == Type.D) {
+            mv.visitInsn(D2I);
+        }
+    }
+
+    private static void emitStoreRangeLoopVariable(int varPos, Type varType, int loopVar, CodeContext ctx, MethodVisitor mv) {
+        if (ctx.isEnvFreeMode()) {
+            int jvmSlot = ctx.getJvmSlot(varPos);
+            emitLoadRangeLoopValue(varType, loopVar, mv);
+            mv.visitVarInsn(storeOpcode(varType.isPrimitive() ? varType : Type.OBJECT), jvmSlot);
+            return;
+        }
+        Instructions.loadEnvironment(mv, ctx);
+        mv.visitLdcInsn(varPos);
+        emitLoadRangeLoopValue(varType, loopVar, mv);
+        if (varType == Type.I || varType == Type.Z) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(II)V", false);
+        } else if (varType == Type.J) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalLong", "(IJ)V", false);
+        } else if (varType == Type.F) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(IF)V", false);
+        } else if (varType == Type.D) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalDouble", "(ID)V", false);
+        } else {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
+        }
+    }
+
+    private static void emitLoadRangeLoopValue(Type varType, int loopVar, MethodVisitor mv) {
+        mv.visitVarInsn(ILOAD, loopVar);
+        if (varType == Type.J) {
+            mv.visitInsn(I2L);
+        } else if (varType == Type.F) {
+            mv.visitInsn(I2F);
+        } else if (varType == Type.D) {
+            mv.visitInsn(I2D);
+        } else if (!varType.isPrimitive()) {
+            boxing(Type.I, mv);
+        }
+    }
 
     /**
      * 生成原始类型设置字节码
