@@ -197,8 +197,8 @@ public class FunctionCallTest {
     @Test
     public void testExpressionFunctionUsesDirectCallBytecode() {
         CompileResult result = Fluxon.compile(
-                "def inc(x) = &x + 1\n" +
-                        "inc(5)",
+                "def expose() = env()\n" +
+                        "expose()",
                 "UserDirectShapeTest"
         );
         assertTrue(hasMethodInvocation(result, "callDirect"));
@@ -222,14 +222,14 @@ public class FunctionCallTest {
                 source,
                 "UserDirectPrimitiveReturnTest"
         );
-        assertTrue(hasMethodInvocation(result, "callDirect"));
+        assertFalse(hasMethodInvocation(result, "callDirect"));
         assertFalse(hasMethodInvocation(result, "add"));
     }
 
     @Test
     public void testExpressionFunctionDirectCallUsesPrimitiveParameterDescriptor() {
         CompileResult result = Fluxon.compile(
-                "def inc(x: int) = &x + 1\n" +
+                "def inc(x: int) = &x + max(1, 2)\n" +
                         "inc(5)",
                 "UserDirectPrimitiveParameterTest"
         );
@@ -258,10 +258,10 @@ public class FunctionCallTest {
 
     @Test
     public void testExpressionFunctionDirectCallUsesWidePrimitiveParameterSlots() {
-        String source = "def mix(a: long, b: double) = &a + &b\n" +
+        String source = "def mix(a: long, b: double) = &a + max(1, 2) + &b\n" +
                 "mix(2, 0.5)";
         FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
-        FluxonTestUtil.assertBothEqual(2.5, runResult);
+        FluxonTestUtil.assertBothEqual(4.5, runResult);
         CompileResult result = Fluxon.compile(source, "UserDirectWidePrimitiveParameterTest");
         assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;JD)D"));
     }

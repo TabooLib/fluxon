@@ -78,6 +78,9 @@ public class CodeContext {
     // root 变量缓存作用域：只在已证明循环体不可外部观察时短暂启用
     private final Deque<Map<String, RootVariableCache>> rootVariableCacheScopes = new ArrayDeque<>();
 
+    // 内联函数的局部变量槽位作用域：仅在生成被内联函数体期间可见
+    private final Deque<Map<Integer, InlineLocalVariable>> inlineLocalVariableScopes = new ArrayDeque<>();
+
     public CodeContext(String className, String superClassName) {
         this.className = className;
         this.superClassName = superClassName;
@@ -358,6 +361,46 @@ public class CodeContext {
         for (Map<String, RootVariableCache> scope : rootVariableCacheScopes) {
             RootVariableCache cache = scope.get(name);
             if (cache != null) return cache;
+        }
+        return null;
+    }
+
+    /**
+     * 内联函数局部变量槽位
+     */
+    public static class InlineLocalVariable {
+        public final Type type;
+        public final int slot;
+
+        public InlineLocalVariable(Type type, int slot) {
+            this.type = type;
+            this.slot = slot;
+        }
+    }
+
+    /**
+     * 进入内联函数局部变量作用域
+     */
+    public void enterInlineLocalVariableScope(Map<Integer, InlineLocalVariable> locals) {
+        inlineLocalVariableScopes.push(locals);
+    }
+
+    /**
+     * 退出内联函数局部变量作用域
+     */
+    public void exitInlineLocalVariableScope() {
+        if (!inlineLocalVariableScopes.isEmpty()) {
+            inlineLocalVariableScopes.pop();
+        }
+    }
+
+    /**
+     * 获取当前内联函数局部变量槽位
+     */
+    public InlineLocalVariable getInlineLocalVariable(int position) {
+        for (Map<Integer, InlineLocalVariable> scope : inlineLocalVariableScopes) {
+            InlineLocalVariable local = scope.get(position);
+            if (local != null) return local;
         }
         return null;
     }

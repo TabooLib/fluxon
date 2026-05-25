@@ -67,6 +67,12 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
     public Type generateBytecode(ReferenceExpression result, CodeContext ctx, MethodVisitor mv) {
         int position = result.getPosition();
         if (position >= 0) {
+            CodeContext.InlineLocalVariable inlineLocal = ctx.getInlineLocalVariable(position);
+            if (inlineLocal != null) {
+                // 内联函数体读取参数临时槽位，避免退回 FunctionContext 或 Environment。
+                emitJvmLoad(inlineLocal.type, inlineLocal.slot, mv);
+                return inlineLocal.type;
+            }
             // Env-free 模式：从 JVM 局部变量读取
             if (ctx.isEnvFreeMode()) {
                 int jvmSlot = ctx.getJvmSlot(position);
