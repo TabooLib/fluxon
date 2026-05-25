@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
@@ -85,6 +86,9 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitDefaultConstructor();
         // 实现 Function 接口方法
         emitFunctionInterfaceMethods(lambdaDefinitions, funcCtx);
+        if (canUseDirectCallMethod()) {
+            emitDirectCallMethod();
+        }
         // 为此函数类的 lambda 创建静态字段
         List<LambdaFunctionDefinition> ownedLambdas = getOwnedLambdas(className, lambdaDefinitions);
         for (LambdaFunctionDefinition lambdaDef : ownedLambdas) {
@@ -107,6 +111,16 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitIsPrimarySyncMethod();
         emitGetAnnotationsMethod();
         emitCallMethod(lambdaDefinitions, funcCtx);
+    }
+
+    /**
+     * 判断此函数是否可以生成直接调用方法。
+     * 直接调用只覆盖同步表达式函数，显式 return 的块函数仍保留 FunctionContext 返回协议。
+     */
+    private boolean canUseDirectCallMethod() {
+        if (!canUseEnvFreeMode()) return false;
+        if (funcDef.isAsync() || funcDef.isPrimarySync()) return false;
+        return funcDef.getBody().getType() != ParseResult.ResultType.STATEMENT;
     }
 
     private void emitGetNameMethod() {
@@ -210,6 +224,166 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitEnd();
         // 收集函数体中发现的 Lambda 定义
         lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
+    }
+
+    private void emitDirectCallMethod() {
+        String descriptor = getDirectCallDescriptor(funcDef);
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "callDirect", descriptor, null, null);
+        mv.visitCode();
+        CodeContext directCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
+        directCtx.addDefinitions(generator.getDefinitions());
+        for (Definition def : generator.getDefinitions()) {
+            if (def instanceof FunctionDefinition) {
+                FunctionDefinition fd = (FunctionDefinition) def;
+                if (fd.isRegisterToRoot()) {
+                    directCtx.registerUserFunction(fd.getName(), parentClassName);
+                }
+            }
+        }
+        directCtx.allocateLocalVar(Type.OBJECT);
+        directCtx.allocateLocalVar(Type.OBJECT);
+        for (int i = 0; i < funcDef.getParameters().size(); i++) {
+            directCtx.allocateLocalVar(Type.OBJECT);
+        }
+        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
+        typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
+        typeAnalyzer.analyzeNode(funcDef.getBody());
+        directCtx.setTypeAnalyzer(typeAnalyzer);
+        directCtx.enableEnvFreeMode(funcDef.getLocalVariables().size());
+        directCtx.setExpectedReturnType(Object.class);
+        mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
+        int poolSlot = directCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, poolSlot);
+        directCtx.setPoolLocalSlot(poolSlot);
+        emitDirectChildEnvironment(mv, directCtx);
+        emitDirectParameterBinding(mv, directCtx);
+        emitDirectFunctionBody(mv, directCtx);
+        mv.visitMaxs(0, directCtx.getLocalVarIndex() + 1);
+        mv.visitEnd();
+    }
+
+    private void emitDirectChildEnvironment(MethodVisitor mv, CodeContext funcCtx) {
+        mv.visitTypeInsn(NEW, Environment.TYPE.getPath());
+        mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitInsn(ICONST_0);
+        mv.visitMethodInsn(INVOKESPECIAL, Environment.TYPE.getPath(), "<init>", "(" + Environment.TYPE + I + ")V", false);
+        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, envSlot);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(ALOAD, envSlot);
+        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
+        funcCtx.setEnvironmentLocalSlot(envSlot);
+    }
+
+    private void emitDirectParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
+        Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
+        int argSlot = 2;
+        for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
+            int varPosition = entry.getValue();
+            Class<?> declaredType = parameterTypes.get(varPosition);
+            Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            int jvmSlot = funcCtx.allocateLocalVar(type);
+            funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
+            mv.visitVarInsn(ALOAD, argSlot);
+            if (type == Type.I) {
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+            } else if (type == Type.Z) {
+                // 兼容旧 FunctionContext 协议：布尔既可能是 Boolean，也可能是 int bit。
+                Label numberLabel = new Label();
+                Label storeLabel = new Label();
+                mv.visitInsn(DUP);
+                mv.visitTypeInsn(INSTANCEOF, "java/lang/Boolean");
+                mv.visitJumpInsn(IFEQ, numberLabel);
+                mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                mv.visitJumpInsn(GOTO, storeLabel);
+                mv.visitLabel(numberLabel);
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+                mv.visitLabel(storeLabel);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+            } else if (type == Type.J) {
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
+                mv.visitVarInsn(LSTORE, jvmSlot);
+            } else if (type == Type.D) {
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
+                mv.visitVarInsn(DSTORE, jvmSlot);
+            } else if (type == Type.F) {
+                mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
+                mv.visitVarInsn(FSTORE, jvmSlot);
+            } else {
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
+            argSlot++;
+        }
+        emitEnvFreeLocalDefaults(mv, funcCtx);
+    }
+
+    private void emitEnvFreeLocalDefaults(MethodVisitor mv, CodeContext funcCtx) {
+        for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
+            Type varType = funcCtx.getVariableType(pos);
+            if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
+            int jvmSlot = funcCtx.allocateLocalVar(varType);
+            funcCtx.mapVarToJvmSlot(pos, jvmSlot);
+            if (varType == Type.I || varType == Type.Z) {
+                mv.visitInsn(ICONST_0);
+                mv.visitVarInsn(ISTORE, jvmSlot);
+            } else if (varType == Type.J) {
+                mv.visitInsn(LCONST_0);
+                mv.visitVarInsn(LSTORE, jvmSlot);
+            } else if (varType == Type.D) {
+                mv.visitInsn(DCONST_0);
+                mv.visitVarInsn(DSTORE, jvmSlot);
+            } else if (varType == Type.F) {
+                mv.visitInsn(FCONST_0);
+                mv.visitVarInsn(FSTORE, jvmSlot);
+            } else {
+                mv.visitInsn(ACONST_NULL);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
+        }
+    }
+
+    private void emitDirectFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
+        Label start = new Label();
+        Label end = new Label();
+        Label handler = new Label();
+        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitLabel(start);
+        Instructions.emitLineNumber(funcDef.getBody(), mv);
+        Type returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
+        if (returnType == Type.VOID) {
+            mv.visitInsn(ACONST_NULL);
+        } else if (returnType.isPrimitive()) {
+            Instructions.emitBoxing(mv, returnType);
+        }
+        mv.visitLabel(end);
+        mv.visitInsn(ARETURN);
+        mv.visitLabel(handler);
+        int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, exceptionSlot);
+        mv.visitVarInsn(ALOAD, exceptionSlot);
+        loadSourceMetadata(mv);
+        mv.visitLdcInsn(externalName(className));
+        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
+        mv.visitInsn(ATHROW);
+    }
+
+    public static String getDirectCallDescriptor(FunctionDefinition definition) {
+        StringBuilder descriptor = new StringBuilder("(");
+        descriptor.append(Environment.TYPE);
+        for (int i = 0; i < definition.getParameters().size(); i++) {
+            descriptor.append(OBJECT);
+        }
+        descriptor.append(")");
+        descriptor.append(OBJECT);
+        return descriptor.toString();
     }
 
     /**

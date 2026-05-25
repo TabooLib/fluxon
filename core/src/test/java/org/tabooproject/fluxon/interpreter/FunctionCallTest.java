@@ -1,8 +1,14 @@
 package org.tabooproject.fluxon.interpreter;
 
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.tabooproject.fluxon.Fluxon;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -185,6 +191,24 @@ public class FunctionCallTest {
                         "&result");
         assertEquals("[1, 4, 9, 16, 25]", result.getInterpretResult().toString());
         assertEquals("[1, 4, 9, 16, 25]", result.getCompileResult().toString());
+    }
+
+    @Test
+    public void testExpressionFunctionUsesDirectCallBytecode() {
+        CompileResult result = Fluxon.compile(
+                "def inc(x) = &x + 1\n" +
+                        "inc(5)",
+                "UserDirectShapeTest"
+        );
+        assertTrue(hasMethodInvocation(result, "callDirect"));
+    }
+
+    @Test
+    public void testExpressionFunctionDirectCallWithBooleanParameter() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "def pick(flag: boolean) = &flag ? 7 : 3\n" +
+                        "pick(true)");
+        FluxonTestUtil.assertBothEqual(7, result);
     }
 
     @Test
@@ -458,5 +482,26 @@ public class FunctionCallTest {
                 "sep = ','\n" +
                 "'a,b,c'::split(&sep)::size()");
         FluxonTestUtil.assertBothEqual(3, result);
+    }
+
+    private static boolean hasMethodInvocation(CompileResult result, String method) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String owner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (method.equals(actualName)) {
+                            matched[0] = true;
+                        }
+                        super.visitMethodInsn(opcode, owner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
     }
 }

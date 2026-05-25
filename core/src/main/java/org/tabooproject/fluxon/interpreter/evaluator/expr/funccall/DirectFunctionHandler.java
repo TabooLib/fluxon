@@ -3,8 +3,12 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr.funccall;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
+import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
+import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
+import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.*;
 
@@ -22,6 +26,32 @@ public class DirectFunctionHandler implements FunctionCallHandler {
     public static final DirectFunctionHandler INSTANCE = new DirectFunctionHandler();
 
     private DirectFunctionHandler() {
+    }
+
+    /**
+     * 尝试生成用户函数直接调用。
+     * 仅覆盖同步表达式函数，块函数继续走 FunctionContext 返回协议，避免 return 语义分叉。
+     */
+    public static Type tryEmitDirectInvoke(FunctionCallExpression expr, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
+        FunctionDefinition definition = findDefinition(expr, ctx);
+        if (!canUseDirectInvoke(definition)) {
+            return null;
+        }
+        String ownerClass = ctx.getUserFunctionOwner(expr.getFunctionName());
+        if (ownerClass == null) {
+            return null;
+        }
+        String funcClass = ownerClass + expr.getFunctionName();
+        mv.visitFieldInsn(GETSTATIC, ownerClass, expr.getFunctionName(), "L" + funcClass + ";");
+        Instructions.loadEnvironment(mv, ctx);
+        for (ParseResult arg : args) {
+            Type argType = FunctionCallHandlers.emitArgExpression(arg, ctx, mv);
+            if (argType.isPrimitive()) {
+                FunctionCallHandlers.emitBox(argType, mv);
+            }
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, funcClass, "callDirect", FunctionClassEmitter.getDirectCallDescriptor(definition), false);
+        return Type.OBJECT;
     }
 
     @Override
@@ -57,15 +87,31 @@ public class DirectFunctionHandler implements FunctionCallHandler {
      * 查找用户定义函数的定义，判断是否确定为同步调用
      */
     private static boolean isKnownSync(FunctionCallExpression expr, CodeContext ctx) {
+        FunctionDefinition fd = findDefinition(expr, ctx);
+        if (fd != null) {
+            return !fd.isAsync() && !fd.isPrimarySync();
+        }
+        return true;
+    }
+
+    private static FunctionDefinition findDefinition(FunctionCallExpression expr, CodeContext ctx) {
         String funcName = expr.getFunctionName();
         for (Definition def : ctx.getDefinitions()) {
             if (def instanceof FunctionDefinition) {
                 FunctionDefinition fd = (FunctionDefinition) def;
                 if (fd.getName().equals(funcName)) {
-                    return !fd.isAsync() && !fd.isPrimarySync();
+                    return fd;
                 }
             }
         }
-        return true;
+        return null;
+    }
+
+    private static boolean canUseDirectInvoke(FunctionDefinition definition) {
+        if (definition == null) return false;
+        if (definition instanceof LambdaFunctionDefinition) return false;
+        if (definition.isAsync() || definition.isPrimarySync()) return false;
+        if (definition.hasVariablesCapturedByChildren()) return false;
+        return definition.getBody().getType() != ParseResult.ResultType.STATEMENT;
     }
 }

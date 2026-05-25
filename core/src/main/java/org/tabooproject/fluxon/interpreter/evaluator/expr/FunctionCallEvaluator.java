@@ -131,6 +131,12 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             ctx.restoreLocalVarIndex(savedLocalVar);
             return directResult;
         }
+        // 用户表达式函数快速路径：直接调用函数类上的 callDirect，保留复杂函数的框架路径。
+        Type directFunctionResult = DirectFunctionHandler.tryEmitDirectInvoke(expr, args, ctx, mv);
+        if (directFunctionResult != null) {
+            ctx.restoreLocalVarIndex(savedLocalVar);
+            return directFunctionResult;
+        }
         // 框架路径：selectHandler → prepareCall → 参数求值 → finishCall
         FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
         boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
