@@ -122,20 +122,7 @@ public class UserFunction implements Function, Symbolic {
             exec.consumeCostStep();
         }
         Type t = exec.executeWithEnvironment(definition.getBody(), functionEnv);
-        if (exec.hasReturn) {
-            context.setReturnRef(exec.returnValue);
-            exec.hasReturn = false;
-            exec.returnValue = null;
-        } else if (t.isPrimitive()) {
-            long bits = exec.resultPrimitive;
-            if (t == Type.I) context.setReturnInt((int) bits);
-            else if (t == Type.Z) context.setReturnBool(bits != 0);
-            else if (t == Type.J) context.setReturnLong(bits);
-            else if (t == Type.D) context.setReturnDouble(Double.longBitsToDouble(bits));
-            else if (t == Type.F) context.setReturnFloat(Float.intBitsToFloat((int) bits));
-        } else {
-            context.setReturnRef(exec.resultRef);
-        }
+        storeReturnValue(context, exec, t);
     }
 
     /**
@@ -162,17 +149,24 @@ public class UserFunction implements Function, Symbolic {
             exec.consumeCostStep();
         }
         Type t = exec.executeWithFunctionContext(definition.getBody(), context);
+        storeReturnValue(context, exec, t);
+    }
+
+    /**
+     * 收集解释器执行结果，统一处理普通函数和 env-free 函数的返回写回。
+     */
+    private void storeReturnValue(FunctionContext<?> context, Interpreter exec, Type type) {
         if (exec.hasReturn) {
             context.setReturnRef(exec.returnValue);
             exec.hasReturn = false;
             exec.returnValue = null;
-        } else if (t.isPrimitive()) {
+        } else if (type.isPrimitive()) {
             long bits = exec.resultPrimitive;
-            if (t == Type.I) context.setReturnInt((int) bits);
-            else if (t == Type.Z) context.setReturnBool(bits != 0);
-            else if (t == Type.J) context.setReturnLong(bits);
-            else if (t == Type.D) context.setReturnDouble(Double.longBitsToDouble(bits));
-            else if (t == Type.F) context.setReturnFloat(Float.intBitsToFloat((int) bits));
+            if (type == Type.I) context.setReturnInt((int) bits);
+            else if (type == Type.Z) context.setReturnBool(bits != 0);
+            else if (type == Type.J) context.setReturnLong(bits);
+            else if (type == Type.D) context.setReturnDouble(Double.longBitsToDouble(bits));
+            else if (type == Type.F) context.setReturnFloat(Float.intBitsToFloat((int) bits));
         } else {
             context.setReturnRef(exec.resultRef);
         }
