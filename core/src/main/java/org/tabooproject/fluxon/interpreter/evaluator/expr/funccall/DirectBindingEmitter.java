@@ -35,6 +35,8 @@ public final class DirectBindingEmitter {
         }
         // 有 extensionPosition 但未解析到具体函数，不能 DirectBinding
         if (expr.getExtensionPosition() != null) return null;
+        Type outputResult = tryEmitOutput(expr, args, ctx, mv);
+        if (outputResult != null) return outputResult;
         // 系统函数
         OverloadSet overloadSet = FluxonRuntime.getInstance().getSystemFunctions().get(expr.getFunctionName());
         if (overloadSet == null) return null;
@@ -45,6 +47,29 @@ public final class DirectBindingEmitter {
         DirectBinding binding = function.getDirectBinding();
         if (binding == null || !canDirectBind(function)) return null;
         return emitInvoke(function, binding, args, ctx, mv, 0);
+    }
+
+    private static Type tryEmitOutput(FunctionCallExpression expr, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
+        String functionName = expr.getFunctionName();
+        if (!"print".equals(functionName) && !"error".equals(functionName)) {
+            return null;
+        }
+        if (args.length > 1) {
+            return null;
+        }
+        // print/error 只依赖当前 Environment 的输出流，直接发出 PrintStream 调用可跳过 FunctionContext。
+        Instructions.loadEnvironment(mv, ctx);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "print".equals(functionName) ? "getOut" : "getErr", "()Ljava/io/PrintStream;", false);
+        if (args.length == 0) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "()V", false);
+            return Type.VOID;
+        }
+        Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
+        if (argType.isPrimitive()) {
+            FunctionCallHandlers.emitBox(argType, mv);
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(" + Type.OBJECT + ")V", false);
+        return Type.VOID;
     }
 
     /**

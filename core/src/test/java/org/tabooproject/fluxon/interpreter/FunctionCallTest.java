@@ -246,6 +246,13 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testPrintUsesDirectOutputBytecode() {
+        CompileResult result = Fluxon.compile("print('ok')", "PrintDirectOutputShapeTest");
+        assertTrue(hasMethodInvocation(result, "println"));
+        assertFalse(hasMethodInvocation(result, "prepareCall"));
+    }
+
+    @Test
     public void testFunctionWithContextCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "def getName = 'hello'; " +
