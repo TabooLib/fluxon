@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
+import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
@@ -100,7 +101,17 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         FunctionDefinition definition = findDefinition(expr, ctx);
         if (!canUseDirectInvoke(definition)) return false;
         if (expr.getArguments().length != definition.getParameters().size()) return false;
-        return canInlineExpression(definition.getBody());
+        return canInlineExpression(definition.getBody(), InlineMode.DIRECT);
+    }
+
+    /**
+     * 循环缓存只接受不会在中途抛出常规运行时异常的内联表达式，否则异常被外层 catch 捕获时会丢失已发生的写入。
+     */
+    public static boolean canInlineCacheSafeExpression(FunctionCallExpression expr, CodeContext ctx) {
+        FunctionDefinition definition = findDefinition(expr, ctx);
+        if (!canUseDirectInvoke(definition)) return false;
+        if (expr.getArguments().length != definition.getParameters().size()) return false;
+        return canInlineExpression(definition.getBody(), InlineMode.CACHE_SAFE);
     }
 
     /**
@@ -108,7 +119,7 @@ public class DirectFunctionHandler implements FunctionCallHandler {
      * 参数先写入临时槽位，保证实参与普通函数调用一样只求值一次。
      */
     private static Type tryEmitInlineExpression(FunctionDefinition definition, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
-        if (!canInlineExpression(definition.getBody())) return null;
+        if (!canInlineExpression(definition.getBody(), InlineMode.DIRECT)) return null;
         if (args.length != definition.getParameters().size()) return null;
         Map<Integer, CodeContext.InlineLocalVariable> locals = new LinkedHashMap<>();
         int argIndex = 0;
@@ -200,60 +211,63 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         return definition.getBody().getType() != ParseResult.ResultType.STATEMENT;
     }
 
-    private static boolean canInlineExpression(ParseResult node) {
+    private static boolean canInlineExpression(ParseResult node, InlineMode mode) {
         if (node == null) return true;
         if (node instanceof BinaryExpression) {
             BinaryExpression binary = (BinaryExpression) node;
-            return canInlineExpression(binary.getLeft()) && canInlineExpression(binary.getRight());
+            if (mode == InlineMode.CACHE_SAFE && isMayThrowArithmetic(binary.getOperator().getType())) return false;
+            return canInlineExpression(binary.getLeft(), mode) && canInlineExpression(binary.getRight(), mode);
         }
         if (node instanceof LogicalExpression) {
             LogicalExpression logical = (LogicalExpression) node;
-            return canInlineExpression(logical.getLeft()) && canInlineExpression(logical.getRight());
+            return canInlineExpression(logical.getLeft(), mode) && canInlineExpression(logical.getRight(), mode);
         }
         if (node instanceof UnaryExpression) {
-            return canInlineExpression(((UnaryExpression) node).getRight());
+            return canInlineExpression(((UnaryExpression) node).getRight(), mode);
         }
         if (node instanceof GroupingExpression) {
-            return canInlineExpression(((GroupingExpression) node).getExpression());
+            return canInlineExpression(((GroupingExpression) node).getExpression(), mode);
         }
         if (node instanceof IfExpression) {
             IfExpression ifExpression = (IfExpression) node;
-            return canInlineExpression(ifExpression.getCondition())
-                    && canInlineExpression(ifExpression.getThenBranch())
-                    && canInlineExpression(ifExpression.getElseBranch());
+            return canInlineExpression(ifExpression.getCondition(), mode)
+                    && canInlineExpression(ifExpression.getThenBranch(), mode)
+                    && canInlineExpression(ifExpression.getElseBranch(), mode);
         }
         if (node instanceof TernaryExpression) {
             TernaryExpression ternary = (TernaryExpression) node;
-            return canInlineExpression(ternary.getCondition())
-                    && canInlineExpression(ternary.getTrueExpr())
-                    && canInlineExpression(ternary.getFalseExpr());
+            return canInlineExpression(ternary.getCondition(), mode)
+                    && canInlineExpression(ternary.getTrueExpr(), mode)
+                    && canInlineExpression(ternary.getFalseExpr(), mode);
         }
         if (node instanceof ElvisExpression) {
             ElvisExpression elvis = (ElvisExpression) node;
-            return canInlineExpression(elvis.getCondition()) && canInlineExpression(elvis.getAlternative());
+            return canInlineExpression(elvis.getCondition(), mode) && canInlineExpression(elvis.getAlternative(), mode);
         }
         if (node instanceof ListExpression) {
             for (ParseResult element : ((ListExpression) node).getElements()) {
-                if (!canInlineExpression(element)) return false;
+                if (!canInlineExpression(element, mode)) return false;
             }
             return true;
         }
         if (node instanceof MapExpression) {
             for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
-                if (!canInlineExpression(entry.getKey())) return false;
-                if (!canInlineExpression(entry.getValue())) return false;
+                if (!canInlineExpression(entry.getKey(), mode)) return false;
+                if (!canInlineExpression(entry.getValue(), mode)) return false;
             }
             return true;
         }
         if (node instanceof RangeExpression) {
+            if (mode == InlineMode.CACHE_SAFE) return false;
             RangeExpression range = (RangeExpression) node;
-            return canInlineExpression(range.getStart()) && canInlineExpression(range.getEnd());
+            return canInlineExpression(range.getStart(), mode) && canInlineExpression(range.getEnd(), mode);
         }
         if (node instanceof IndexAccessExpression) {
+            if (mode == InlineMode.CACHE_SAFE) return false;
             IndexAccessExpression index = (IndexAccessExpression) node;
-            if (!canInlineExpression(index.getTarget())) return false;
+            if (!canInlineExpression(index.getTarget(), mode)) return false;
             for (ParseResult item : index.getIndices()) {
-                if (!canInlineExpression(item)) return false;
+                if (!canInlineExpression(item, mode)) return false;
             }
             return true;
         }
@@ -264,5 +278,14 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             return false;
         }
         return node.getClass().getSimpleName().endsWith("Literal");
+    }
+
+    private static boolean isMayThrowArithmetic(TokenType type) {
+        return type == TokenType.DIVIDE || type == TokenType.MODULO;
+    }
+
+    private enum InlineMode {
+        DIRECT,
+        CACHE_SAFE
     }
 }

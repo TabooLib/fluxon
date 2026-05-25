@@ -222,6 +222,14 @@ final class LoopRootCachePlanner {
                 || op == TokenType.MODULO_ASSIGN;
     }
 
+    private static boolean isMayThrowArithmetic(TokenType op) {
+        return op == TokenType.DIVIDE || op == TokenType.MODULO;
+    }
+
+    private static boolean isMayThrowArithmeticAssignment(TokenType op) {
+        return op == TokenType.DIVIDE_ASSIGN || op == TokenType.MODULO_ASSIGN;
+    }
+
     static final class Plan {
         final LinkedHashMap<String, CodeContext.RootVariableCache> caches;
 
@@ -281,6 +289,7 @@ final class LoopRootCachePlanner {
             }
             if (node instanceof BinaryExpression) {
                 BinaryExpression binary = (BinaryExpression) node;
+                if (isMayThrowArithmetic(binary.getOperator().getType())) return false;
                 return scan(binary.getLeft(), allowRootAssignment) && scan(binary.getRight(), allowRootAssignment);
             }
             if (node instanceof LogicalExpression) {
@@ -301,7 +310,7 @@ final class LoopRootCachePlanner {
             }
             if (node instanceof FunctionCallExpression) {
                 FunctionCallExpression call = (FunctionCallExpression) node;
-                if (!DirectFunctionHandler.canInlinePureExpression(call, ctx)) return false;
+                if (!DirectFunctionHandler.canInlineCacheSafeExpression(call, ctx)) return false;
                 for (ParseResult argument : call.getArguments()) {
                     if (!scan(argument, false)) return false;
                 }
@@ -326,6 +335,7 @@ final class LoopRootCachePlanner {
                 if (!allowRootAssignment) return false;
                 TokenType op = assign.getOperator().getType();
                 if (!isRootNumericAssignment(op)) return false;
+                if (isMayThrowArithmeticAssignment(op)) return false;
                 if (ctx.getTypeAnalyzer() == null) return false;
                 Type valueType = ctx.getTypeAnalyzer().inferType(assign.getValue());
                 if (!isCacheableRootType(valueType)) return false;
@@ -333,6 +343,7 @@ final class LoopRootCachePlanner {
                 return scan(assign.getValue(), true);
             }
             if (assign.getTarget() instanceof Identifier) {
+                if (isMayThrowArithmeticAssignment(assign.getOperator().getType())) return false;
                 assignedLocalPositions.put(assign.getPosition(), Boolean.TRUE);
                 return scan(assign.getValue(), allowRootAssignment);
             }

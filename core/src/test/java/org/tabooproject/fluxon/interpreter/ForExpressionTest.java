@@ -478,6 +478,35 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testForLoopRootCacheSkipsMayThrowArithmeticBeforeOuterCatch() {
+        String source = "sum = 0\n" +
+                "try {\n" +
+                "  for i in 1..1 {\n" +
+                "    sum += 1\n" +
+                "    sum += 1 / 0\n" +
+                "  }\n" +
+                "} catch 0\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(1, runResult);
+    }
+
+    @Test
+    public void testForLoopRootCacheSkipsMayThrowInlinedFunction() {
+        String source = "def boom(x: int) = 1 / &x\n" +
+                "sum = 0\n" +
+                "for i in 1..1 {\n" +
+                "  sum += 1\n" +
+                "  sum += boom(1)\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(2, runResult);
+        CompileResult result = Fluxon.compile(source, "ForRootCacheMayThrowInlineCallShapeTest");
+        assertTrue(countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable") > 0);
+    }
+
+    @Test
     public void testForLoopRootCacheAcceptsInlinedPureFunctionCall() {
         String source = "def inc(x: int) = &x + 1\n" +
                 "sum = 0\n" +
