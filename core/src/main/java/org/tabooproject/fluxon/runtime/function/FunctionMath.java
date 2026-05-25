@@ -21,16 +21,6 @@ public class FunctionMath {
         runtime.registerVariable("E", Math.E);
         // 扫描注册所有 @FluxonFunction 方法
         FluxonFunctionScanner.register(runtime, FunctionMath.class);
-        // 组合逻辑函数（不适合单方法注解，保持手动注册）
-        runtime.registerFunction("clamp", returns(I).params(I, I, I), ctx -> ctx.setReturnInt(Math.max(ctx.getInt(1), Math.min(ctx.getInt(0), ctx.getInt(2)))));
-        runtime.registerFunction("clamp", returns(J).params(J, J, J), ctx -> ctx.setReturnLong(Math.max(ctx.getLong(1), Math.min(ctx.getLong(0), ctx.getLong(2)))));
-        runtime.registerFunction("clamp", returns(D).params(D, D, D), ctx -> ctx.setReturnDouble(Math.max(ctx.getDouble(1), Math.min(ctx.getDouble(0), ctx.getDouble(2)))));
-        runtime.registerFunction("lerp", returns(D).params(D, D, D), ctx -> {
-            double start = ctx.getDouble(0);
-            double end = ctx.getDouble(1);
-            double t = ctx.getDouble(2);
-            ctx.setReturnDouble(start + (end - start) * t);
-        });
         // random 系列：有副作用，不适合 DirectBinding
         runtime.registerFunction("random", returns(D).noParams(), ctx -> ctx.setReturnDouble(Math.random()));
         runtime.registerFunction("random", returns(I).params(I), ctx -> {
@@ -55,6 +45,30 @@ public class FunctionMath {
             if (start >= end) throw new IllegalArgumentException("random " + start + " must be less than " + end);
             ctx.setReturnDouble(start + Math.random() * (end - start));
         });
+    }
+
+    // region 区间限制与插值
+
+    // 组合逻辑函数（不适合单方法注解，保持手动注册）
+    // 拆成类型明确的静态重载后可由 Scanner 生成 DirectBinding，同时保留旧参数顺序。
+    @FluxonFunction("clamp")
+    public static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    @FluxonFunction("clamp")
+    public static long clamp(long value, long min, long max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    @FluxonFunction("clamp")
+    public static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    @FluxonFunction
+    public static double lerp(double start, double end, double t) {
+        return start + (end - start) * t;
     }
 
     // region min

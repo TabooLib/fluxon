@@ -1,7 +1,13 @@
 package org.tabooproject.fluxon.runtime.function;
 
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.tabooproject.fluxon.Fluxon;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.compiler.CompileResult;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -239,6 +245,19 @@ public class FunctionMathTest {
     }
 
     @Test
+    void testClampAndLerpUseDirectBindingBytecode() {
+        CompileResult result = Fluxon.compile(
+                "a = clamp(15, 0, 10)\n" +
+                        "b = lerp(0.0, 10.0, 0.5)\n" +
+                        "&a + &b",
+                "MathDirectBindingTest"
+        );
+        String owner = "org/tabooproject/fluxon/runtime/function/FunctionMath";
+        assertTrue(hasStaticInvocation(result, owner, "clamp"));
+        assertTrue(hasStaticInvocation(result, owner, "lerp"));
+    }
+
+    @Test
     void testRadDeg() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("rad(180.0)");
         assertEquals(Math.PI, (Double) result.getInterpretResult(), 0.0001);
@@ -266,5 +285,26 @@ public class FunctionMathTest {
         assertEquals(Math.PI, result.getInterpretResult());
         result = FluxonTestUtil.runSilent("&E");
         assertEquals(Math.E, result.getInterpretResult());
+    }
+
+    private static boolean hasStaticInvocation(CompileResult result, String owner, String method) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(result.getMainClass());
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (opcode == Opcodes.INVOKESTATIC && owner.equals(actualOwner) && method.equals(actualName)) {
+                            matched[0] = true;
+                        }
+                        super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
     }
 }
