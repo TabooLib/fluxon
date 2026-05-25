@@ -53,6 +53,21 @@ class RuntimeErrorDiagnosticsTest {
     }
 
     @Test
+    void directInlineFunctionErrorKeepsFunctionBodyExcerpt() {
+        String script = ""
+                + "def bad = [1][1]\n"
+                + "bad()";
+        FluxonRuntimeError error1 = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.interpret(script));
+        FluxonRuntimeError error2 = assertThrows(FluxonRuntimeError.class, () -> FluxonTestUtil.compile(script, "TestScript"));
+        String msg1 = error1.getMessage();
+        String msg2 = error2.getMessage();
+        assertTrue(msg1.contains("main:1"), "interpretation should point to function body line");
+        assertTrue(msg1.contains("def bad = [1][1]"), "interpretation should render function body");
+        assertTrue(msg2.contains("main:1"), "compiled should point to function body line");
+        assertTrue(msg2.contains("def bad = [1][1]"), "compiled should render function body");
+    }
+
+    @Test
     void testLambdaEachCountInsideFunction() {
         String script = ""
                 + "def countAll(list) = {\n"

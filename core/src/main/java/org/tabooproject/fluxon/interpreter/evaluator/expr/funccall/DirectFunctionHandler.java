@@ -144,6 +144,8 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         }
         ctx.enterInlineLocalVariableScope(locals);
         try {
+            // 内联展开仍然保留函数体源码行号，运行时错误才能指向函数定义而不是调用点。
+            Instructions.emitLineNumber(definition.getBody(), mv);
             return ctx.getEvaluator(definition.getBody()).generateBytecode(definition.getBody(), ctx, mv);
         } finally {
             ctx.exitInlineLocalVariableScope();
