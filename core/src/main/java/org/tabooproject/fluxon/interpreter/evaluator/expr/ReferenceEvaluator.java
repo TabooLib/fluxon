@@ -97,6 +97,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                         "(" + Type.I + ")" + Type.OBJECT,
                         false
                 );
+                emitReferenceCast(varType, mv);
                 return varType;
             }
         }
@@ -115,8 +116,16 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         Type rootType = ctx.getRootVariableType(name);
         if (rootType.isPrimitive()) {
             Instructions.unbox(mv, rootType);
+        } else {
+            emitReferenceCast(rootType, mv);
         }
         return rootType;
+    }
+
+    private static void emitReferenceCast(Type type, MethodVisitor mv) {
+        if (type != Type.STRING) return;
+        // 仅收窄字符串引用，集合和解构槽位存在复用，不能按推断容器类型强制 cast。
+        mv.visitTypeInsn(Opcodes.CHECKCAST, type.getPath());
     }
 
     @Override

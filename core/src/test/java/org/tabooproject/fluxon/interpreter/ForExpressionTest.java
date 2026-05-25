@@ -407,6 +407,16 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testCompiledStringPlusPrimitiveSkipsOperationsAdd() {
+        String source = "sum = 55\n" +
+                "\"Sum: \" + &sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("Sum: 55", runResult);
+        CompileResult result = Fluxon.compile(source, "StringPlusPrimitiveShapeTest");
+        assertFalse(hasMethodInvocation(result, Operations.TYPE.getPath(), "add"));
+    }
+
+    @Test
     public void testCompiledRangeExpressionUsesPrimitiveCreation() {
         CompileResult result = Fluxon.compile(
                 "range = 1..5\n" +

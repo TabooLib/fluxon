@@ -238,6 +238,7 @@ public class TypeAnalyzer {
      */
     public Type inferBinaryResultType(Type left, Type right, TokenType op) {
         if (isComparisonOp(op)) return Type.Z;
+        if (op == TokenType.PLUS && (left == Type.STRING || right == Type.STRING)) return Type.STRING;
         if (!left.isPrimitive() || !right.isPrimitive()) return Type.OBJECT;
         if (left == Type.D || right == Type.D) return Type.D;
         if (left == Type.F || right == Type.F) return Type.F;

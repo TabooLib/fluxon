@@ -233,6 +233,11 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (rt == Type.VOID) {
             throw new VoidError("Void type is not allowed for binary expression right operand");
         }
+        if (opType == TokenType.PLUS && (lt == Type.STRING || rt == Type.STRING)) {
+            // 只有静态可判定的字符串拼接才跳过 Operations.add，保留 Object + Object 的动态集合/数字语义。
+            emitStringConcat(lt, rt, ctx, mv);
+            return Type.STRING;
+        }
         // primitive 直通优化
         if (lt.isPrimitive() && rt.isPrimitive()) {
             // POWER 需要特殊处理，因为 Math.pow 需要两个 double
@@ -295,6 +300,35 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         if (type == Type.J) return "Long";
         if (type == Type.D) return "Double";
         return "";
+    }
+
+    private static void emitStringConcat(Type leftType, Type rightType, CodeContext ctx, MethodVisitor mv) {
+        int saved = ctx.getLocalVarIndex();
+        int rightSlot = ctx.allocateLocalVar(rightType);
+        emitStoreAny(rightType, rightSlot, mv);
+        int leftSlot = ctx.allocateLocalVar(leftType);
+        emitStoreAny(leftType, leftSlot, mv);
+        mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false);
+        emitLoadAny(leftType, leftSlot, mv);
+        emitStringBuilderAppend(leftType, mv);
+        emitLoadAny(rightType, rightSlot, mv);
+        emitStringBuilderAppend(rightType, mv);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()" + Type.STRING, false);
+        ctx.restoreLocalVarIndex(saved);
+    }
+
+    private static void emitStringBuilderAppend(Type type, MethodVisitor mv) {
+        String descriptor;
+        if (type == Type.I) descriptor = "(" + Type.I + ")Ljava/lang/StringBuilder;";
+        else if (type == Type.J) descriptor = "(" + Type.J + ")Ljava/lang/StringBuilder;";
+        else if (type == Type.F) descriptor = "(" + Type.F + ")Ljava/lang/StringBuilder;";
+        else if (type == Type.D) descriptor = "(" + Type.D + ")Ljava/lang/StringBuilder;";
+        else if (type == Type.Z) descriptor = "(" + Type.Z + ")Ljava/lang/StringBuilder;";
+        else if (type == Type.STRING) descriptor = "(" + Type.STRING + ")Ljava/lang/StringBuilder;";
+        else descriptor = "(" + Type.OBJECT + ")Ljava/lang/StringBuilder;";
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", descriptor, false);
     }
 
     /**
