@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -233,6 +234,26 @@ public class FunctionCallTest {
                 "UserDirectPrimitiveParameterTest"
         );
         assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;I)I"));
+    }
+
+    @Test
+    public void testPureExpressionFunctionDirectCallSkipsChildEnvironment() {
+        CompileResult result = Fluxon.compile(
+                "def inc(x: int) = &x + 1\n" +
+                        "inc(5)",
+                "UserDirectNoChildEnvironmentTest"
+        );
+        assertFalse(hasMethodInvocationInAnyClass(result, "callDirect", Environment.TYPE.getPath(), "<init>"));
+    }
+
+    @Test
+    public void testEnvironmentObservableExpressionFunctionKeepsChildEnvironment() {
+        CompileResult result = Fluxon.compile(
+                "def expose() = env()\n" +
+                        "expose()",
+                "UserDirectChildEnvironmentTest"
+        );
+        assertTrue(hasMethodInvocationInAnyClass(result, "callDirect", Environment.TYPE.getPath(), "<init>"));
     }
 
     @Test
@@ -556,6 +577,50 @@ public class FunctionCallTest {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String actualName, String actualDescriptor, boolean isInterface) {
                         if (method.equals(actualName) && (expectedDescriptor == null || expectedDescriptor.equals(actualDescriptor))) {
+                            matched[0] = true;
+                        }
+                        super.visitMethodInsn(opcode, owner, actualName, actualDescriptor, isInterface);
+                    }
+                };
+            }
+        }, 0);
+        return matched[0];
+    }
+
+    private static boolean hasMethodInvocationInAnyClass(CompileResult result, String expectedOwner, String method) {
+        if (hasMethodInvocation(result.getMainClass(), expectedOwner, method)) return true;
+        for (byte[] innerClass : result.getInnerClasses()) {
+            if (hasMethodInvocation(innerClass, expectedOwner, method)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasMethodInvocationInAnyClass(CompileResult result, String expectedMethodName, String expectedOwner, String method) {
+        if (hasMethodInvocation(result.getMainClass(), expectedMethodName, expectedOwner, method)) return true;
+        for (byte[] innerClass : result.getInnerClasses()) {
+            if (hasMethodInvocation(innerClass, expectedMethodName, expectedOwner, method)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasMethodInvocation(byte[] bytecode, String expectedOwner, String method) {
+        return hasMethodInvocation(bytecode, null, expectedOwner, method);
+    }
+
+    private static boolean hasMethodInvocation(byte[] bytecode, String expectedMethodName, String expectedOwner, String method) {
+        boolean[] matched = {false};
+        ClassReader reader = new ClassReader(bytecode);
+        reader.accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                if (expectedMethodName != null && !expectedMethodName.equals(name)) {
+                    return super.visitMethod(access, name, descriptor, signature, exceptions);
+                }
+                MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
+                return new MethodVisitor(Opcodes.ASM9, visitor) {
+                    @Override
+                    public void visitMethodInsn(int opcode, String owner, String actualName, String actualDescriptor, boolean isInterface) {
+                        if (expectedOwner.equals(owner) && method.equals(actualName)) {
                             matched[0] = true;
                         }
                         super.visitMethodInsn(opcode, owner, actualName, actualDescriptor, isInterface);

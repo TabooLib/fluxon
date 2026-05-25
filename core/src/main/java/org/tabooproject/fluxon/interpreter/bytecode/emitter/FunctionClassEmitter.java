@@ -12,7 +12,20 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.BinaryExpression;
+import org.tabooproject.fluxon.parser.expression.ElvisExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
+import org.tabooproject.fluxon.parser.expression.GroupingExpression;
+import org.tabooproject.fluxon.parser.expression.IfExpression;
+import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
+import org.tabooproject.fluxon.parser.expression.LogicalExpression;
+import org.tabooproject.fluxon.parser.expression.MapExpression;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
+import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.parser.expression.TernaryExpression;
+import org.tabooproject.fluxon.parser.expression.UnaryExpression;
+import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
@@ -256,11 +269,86 @@ public class FunctionClassEmitter extends ClassEmitter {
         int poolSlot = directCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, poolSlot);
         directCtx.setPoolLocalSlot(poolSlot);
-        emitDirectChildEnvironment(mv, directCtx);
+        if (canReuseCallerEnvironmentForDirectCall(funcDef.getBody())) {
+            directCtx.setEnvironmentLocalSlot(1);
+        } else {
+            emitDirectChildEnvironment(mv, directCtx);
+        }
         emitDirectParameterBinding(mv, directCtx);
         emitDirectFunctionBody(mv, directCtx);
         mv.visitMaxs(0, directCtx.getLocalVarIndex() + 1);
         mv.visitEnd();
+    }
+
+    /**
+     * 纯表达式函数复用调用方 Environment，避免每次 callDirect 创建子 Environment。
+     * 出现函数调用、上下文调用等可观察 Environment 身份或 target 的节点时保留隔离环境。
+     */
+    private boolean canReuseCallerEnvironmentForDirectCall(ParseResult node) {
+        if (node == null) return true;
+        if (node instanceof BinaryExpression) {
+            BinaryExpression binary = (BinaryExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(binary.getLeft())
+                    && canReuseCallerEnvironmentForDirectCall(binary.getRight());
+        }
+        if (node instanceof LogicalExpression) {
+            LogicalExpression logical = (LogicalExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(logical.getLeft())
+                    && canReuseCallerEnvironmentForDirectCall(logical.getRight());
+        }
+        if (node instanceof UnaryExpression) {
+            return canReuseCallerEnvironmentForDirectCall(((UnaryExpression) node).getRight());
+        }
+        if (node instanceof GroupingExpression) {
+            return canReuseCallerEnvironmentForDirectCall(((GroupingExpression) node).getExpression());
+        }
+        if (node instanceof IfExpression) {
+            IfExpression ifExpression = (IfExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(ifExpression.getCondition())
+                    && canReuseCallerEnvironmentForDirectCall(ifExpression.getThenBranch())
+                    && canReuseCallerEnvironmentForDirectCall(ifExpression.getElseBranch());
+        }
+        if (node instanceof TernaryExpression) {
+            TernaryExpression ternary = (TernaryExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(ternary.getCondition())
+                    && canReuseCallerEnvironmentForDirectCall(ternary.getTrueExpr())
+                    && canReuseCallerEnvironmentForDirectCall(ternary.getFalseExpr());
+        }
+        if (node instanceof ElvisExpression) {
+            ElvisExpression elvis = (ElvisExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(elvis.getCondition())
+                    && canReuseCallerEnvironmentForDirectCall(elvis.getAlternative());
+        }
+        if (node instanceof ListExpression) {
+            for (ParseResult element : ((ListExpression) node).getElements()) {
+                if (!canReuseCallerEnvironmentForDirectCall(element)) return false;
+            }
+            return true;
+        }
+        if (node instanceof MapExpression) {
+            for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
+                if (!canReuseCallerEnvironmentForDirectCall(entry.getKey())) return false;
+                if (!canReuseCallerEnvironmentForDirectCall(entry.getValue())) return false;
+            }
+            return true;
+        }
+        if (node instanceof RangeExpression) {
+            RangeExpression range = (RangeExpression) node;
+            return canReuseCallerEnvironmentForDirectCall(range.getStart())
+                    && canReuseCallerEnvironmentForDirectCall(range.getEnd());
+        }
+        if (node instanceof IndexAccessExpression) {
+            IndexAccessExpression index = (IndexAccessExpression) node;
+            if (!canReuseCallerEnvironmentForDirectCall(index.getTarget())) return false;
+            for (ParseResult item : index.getIndices()) {
+                if (!canReuseCallerEnvironmentForDirectCall(item)) return false;
+            }
+            return true;
+        }
+        if (node instanceof ReferenceExpression || node instanceof Identifier) {
+            return true;
+        }
+        return node.getClass().getSimpleName().endsWith("Literal");
     }
 
     private void emitDirectChildEnvironment(MethodVisitor mv, CodeContext funcCtx) {
