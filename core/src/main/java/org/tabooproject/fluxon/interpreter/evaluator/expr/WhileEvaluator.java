@@ -13,6 +13,10 @@ import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.ISTORE;
+
 public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 
     @Override
@@ -64,6 +68,13 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
 
         int saved = ctx.getLocalVarIndex();
         LoopRootCachePlanner.Plan rootCachePlan = LoopRootCachePlanner.planForConditionAndBody(result.getCondition(), result.getBody(), ctx);
+        LoopRootCachePlanner.LocalPlan localCachePlan = LoopRootCachePlanner.planLocalForConditionAndBody(result.getCondition(), result.getBody(), ctx);
+        if (localCachePlan != null) {
+            LoopRootCachePlanner.emitLoadLocalCaches(localCachePlan, ctx, mv);
+            mv.visitInsn(ICONST_0);
+            mv.visitVarInsn(ISTORE, localCachePlan.executedSlot);
+            ctx.enterInlineLocalVariableScope(localCachePlan.caches);
+        }
         if (rootCachePlan != null) {
             LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
             ctx.enterRootVariableCacheScope(rootCachePlan.caches);
@@ -78,6 +89,10 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
         mv.visitLabel(whileStart);
         // 评估条件表达式
         generateCondition(ctx, mv, result.getCondition(), conditionEval, whileEnd);
+        if (localCachePlan != null) {
+            mv.visitInsn(ICONST_1);
+            mv.visitVarInsn(ISTORE, localCachePlan.executedSlot);
+        }
 
         // 执行循环体
         // break 和 continue 语句会直接生成跳转指令
@@ -86,10 +101,14 @@ public class WhileEvaluator extends ExpressionEvaluator<WhileExpression> {
             ctx.exitRootVariableCacheScope();
         }
         finishLoopBody(bodyType, mv, ctx, whileStart, whileEnd);
+        if (localCachePlan != null) {
+            ctx.exitInlineLocalVariableScope();
+            LoopRootCachePlanner.emitWriteBackLocalCaches(localCachePlan, ctx, mv);
+        }
         if (rootCachePlan != null) {
             LoopRootCachePlanner.emitWriteBackCaches(rootCachePlan, ctx, mv);
-            ctx.restoreLocalVarIndex(saved);
         }
+        ctx.restoreLocalVarIndex(saved);
         return Type.VOID;
     }
 

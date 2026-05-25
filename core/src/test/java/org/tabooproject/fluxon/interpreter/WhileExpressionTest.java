@@ -8,6 +8,7 @@ import org.objectweb.asm.Opcodes;
 import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
+import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,6 +49,34 @@ public class WhileExpressionTest {
         FluxonTestUtil.assertBothEqual(3, runResult);
         CompileResult result = Fluxon.compile(source, "WhileRootCacheObservableShapeTest");
         assertEquals(4, countMethodInvocation(result, Intrinsics.TYPE.getPath(), "getVariable"));
+    }
+
+    @Test
+    public void testWhileLocalCompoundAssignmentCachesPureBody() {
+        String source = "_i = 0\n" +
+                "_sum = 0\n" +
+                "while &_i < 10 {\n" +
+                "  _sum += &_i\n" +
+                "  _i += 1\n" +
+                "}\n" +
+                "&_sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(45, runResult);
+        CompileResult result = Fluxon.compile(source, "WhileLocalCacheShapeTest");
+        assertEquals(3, countMethodInvocation(result, Environment.TYPE.getPath(), "getLocalInt"));
+        assertEquals(4, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
+    }
+
+    @Test
+    public void testWhileLocalCacheWritesBackBreakValue() {
+        String source = "_i = 0\n" +
+                "while true {\n" +
+                "  _i += 1\n" +
+                "  if &_i == 3 { break }\n" +
+                "}\n" +
+                "&_i";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(3, runResult);
     }
 
     private static int countMethodInvocation(CompileResult result, String owner, String method) {

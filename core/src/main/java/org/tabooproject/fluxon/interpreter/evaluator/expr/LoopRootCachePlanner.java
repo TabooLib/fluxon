@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.interpreter.evaluator.expr;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
@@ -25,7 +26,9 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.LinkedHashMap;
+import java.util.Map;
 
+import static org.objectweb.asm.Opcodes.IFEQ;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator.loadOpcode;
@@ -50,6 +53,13 @@ final class LoopRootCachePlanner {
         if (!scanner.scan(condition, false)) return null;
         if (!scanner.scan(body, true)) return null;
         return createPlan(scanner.assignedRootNames, ctx);
+    }
+
+    static LocalPlan planLocalForConditionAndBody(ParseResult condition, ParseResult body, CodeContext ctx) {
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx);
+        if (!scanner.scan(condition, false)) return null;
+        if (!scanner.scan(body, true)) return null;
+        return createLocalPlan(scanner.assignedLocalPositions, ctx);
     }
 
     /**
@@ -79,6 +89,30 @@ final class LoopRootCachePlanner {
             emitBox(cache.type, mv);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + Type.STRING + Type.OBJECT + ")V", false);
         }
+    }
+
+    static void emitLoadLocalCaches(LocalPlan plan, CodeContext ctx, MethodVisitor mv) {
+        for (Map.Entry<Integer, CodeContext.InlineLocalVariable> entry : plan.caches.entrySet()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(entry.getKey());
+            CodeContext.InlineLocalVariable cache = entry.getValue();
+            ReferenceEvaluator.emitGetLocal(cache.type, mv);
+            mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
+        }
+    }
+
+    static void emitWriteBackLocalCaches(LocalPlan plan, CodeContext ctx, MethodVisitor mv) {
+        Label skipWriteBack = new Label();
+        mv.visitVarInsn(loadOpcode(Type.I), plan.executedSlot);
+        mv.visitJumpInsn(IFEQ, skipWriteBack);
+        for (Map.Entry<Integer, CodeContext.InlineLocalVariable> entry : plan.caches.entrySet()) {
+            Instructions.loadEnvironment(mv, ctx);
+            mv.visitLdcInsn(entry.getKey());
+            CodeContext.InlineLocalVariable cache = entry.getValue();
+            mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
+            ReferenceEvaluator.emitSetLocal(cache.type, mv);
+        }
+        mv.visitLabel(skipWriteBack);
     }
 
     private static void emitBox(Type type, MethodVisitor mv) {
@@ -114,6 +148,20 @@ final class LoopRootCachePlanner {
         return new Plan(caches);
     }
 
+    private static LocalPlan createLocalPlan(LinkedHashMap<Integer, Boolean> assignedLocalPositions, CodeContext ctx) {
+        if (ctx.getTypeAnalyzer() == null || ctx.isEnvFreeMode()) return null;
+        if (assignedLocalPositions.isEmpty()) return null;
+        LinkedHashMap<Integer, CodeContext.InlineLocalVariable> caches = new LinkedHashMap<>();
+        for (Integer position : assignedLocalPositions.keySet()) {
+            Type type = ctx.getVariableType(position);
+            if (!isCacheableRootType(type)) return null;
+            int slot = ctx.allocateLocalVar(type);
+            caches.put(position, new CodeContext.InlineLocalVariable(type, slot));
+        }
+        int executedSlot = ctx.allocateLocalVar(Type.I);
+        return new LocalPlan(caches, executedSlot);
+    }
+
     private static boolean isCacheableRootType(Type type) {
         return type == Type.I || type == Type.J || type == Type.F || type == Type.D;
     }
@@ -135,10 +183,21 @@ final class LoopRootCachePlanner {
         }
     }
 
+    static final class LocalPlan {
+        final LinkedHashMap<Integer, CodeContext.InlineLocalVariable> caches;
+        final int executedSlot;
+
+        LocalPlan(LinkedHashMap<Integer, CodeContext.InlineLocalVariable> caches, int executedSlot) {
+            this.caches = caches;
+            this.executedSlot = executedSlot;
+        }
+    }
+
     private static final class RootCacheAnalyzer {
         private final CodeContext ctx;
         private final int protectedLocalPosition;
         private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
+        private final LinkedHashMap<Integer, Boolean> assignedLocalPositions = new LinkedHashMap<>();
 
         private RootCacheAnalyzer(CodeContext ctx) {
             this(ctx, -1);
@@ -216,6 +275,7 @@ final class LoopRootCachePlanner {
                 return scan(assign.getValue(), true);
             }
             if (assign.getTarget() instanceof Identifier) {
+                assignedLocalPositions.put(assign.getPosition(), Boolean.TRUE);
                 return scan(assign.getValue(), allowRootAssignment);
             }
             return false;

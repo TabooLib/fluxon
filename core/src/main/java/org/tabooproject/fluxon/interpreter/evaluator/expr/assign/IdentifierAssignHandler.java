@@ -76,6 +76,11 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         int position = expr.getPosition();
         TokenType op = expr.getOperator().getType();
         if (position >= 0) {
+            CodeContext.InlineLocalVariable cachedLocal = ctx.getInlineLocalVariable(position);
+            if (cachedLocal != null) {
+                generateCachedLocal(expr, valueEval, ctx, mv, cachedLocal, op);
+                return;
+            }
             if (ctx.isEnvFreeMode()) {
                 generateEnvFreeLocal(expr, valueEval, ctx, mv, position, op);
             } else {
@@ -83,6 +88,47 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             }
         } else {
             generateRootVariable(expr, target, valueEval, ctx, mv, op);
+        }
+    }
+
+    /**
+     * 循环局部变量缓存：循环体内先写 JVM 槽位，循环出口再统一写回 Environment。
+     */
+    private void generateCachedLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, CodeContext.InlineLocalVariable cache, TokenType op) {
+        Type varType = cache.type;
+        int jvmSlot = cache.slot;
+        if (op == TokenType.ASSIGN) {
+            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+            if (varType.isPrimitive()) {
+                emitConvert(vt, varType, mv);
+                emitJvmStore(varType, jvmSlot, mv);
+            } else {
+                box(vt, mv);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+            }
+            return;
+        }
+        if (varType.isPrimitive()) {
+            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+            if (vt.isPrimitive() && isNumericCompound(op, varType)) {
+                emitJvmLoad(varType, jvmSlot, mv);
+                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                emitConvert(vt, varType, mv);
+                emitPrimitiveCompound(op, varType, mv);
+                emitJvmStore(varType, jvmSlot, mv);
+                return;
+            }
+            emitJvmLoad(varType, jvmSlot, mv);
+            box(varType, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            unbox(varType, mv);
+            emitJvmStore(varType, jvmSlot, mv);
+        } else {
+            mv.visitVarInsn(ALOAD, jvmSlot);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            mv.visitVarInsn(ASTORE, jvmSlot);
         }
     }
 
