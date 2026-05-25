@@ -429,9 +429,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
     }
 
     private static boolean isIntRangeEndpoint(Type type) {
-        return type == Type.I || type == Type.J || type == Type.F || type == Type.D
-                || type == Type.INT || type == Type.LONG || type == Type.FLOAT || type == Type.DOUBLE
-                || type == Type.NUMBER;
+        return type == Type.I || type == Type.J || type == Type.F || type == Type.D;
     }
 
     private static void emitIntEndpoint(ParseResult endpoint, Evaluator<ParseResult> evaluator, CodeContext ctx, MethodVisitor mv) {

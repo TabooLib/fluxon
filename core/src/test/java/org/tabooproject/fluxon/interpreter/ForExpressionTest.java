@@ -665,6 +665,22 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testCompiledForLoopKeepsObjectRangePathForBoxedEndpoint() {
+        CompilationContext context = new CompilationContext(
+                "sum = 0\n" +
+                        "for i in &start..3 {\n" +
+                        "  sum += &i\n" +
+                        "}\n" +
+                        "&sum"
+        );
+        context.defineRootVariable("start", Number.class);
+        Environment environment = FluxonRuntime.getInstance().newEnvironment();
+        CompileResult result = Fluxon.compile(environment, context, "ForRangeBoxedEndpointShapeTest");
+        assertTrue(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange", "(Ljava/lang/Object;Ljava/lang/Object;Z)Lorg/tabooproject/fluxon/runtime/collection/IntRange;"));
+        assertTrue(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+    }
+
+    @Test
     public void testForLoopListBuilding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "result = []; " +
