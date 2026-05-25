@@ -35,6 +35,8 @@ public final class FunctionContext<Target> implements AutoCloseable {
     private FunctionContextPool pool;
     private Interpreter interpreter;
     int stackIndex = -1;
+    // 普通 env-free 函数没有捕获槽，局部变量读写可跳过 CaptureCell 分支。
+    private boolean hasCapturedLocals;
 
     private long[] primitives;
     private Object[] refs;
@@ -330,6 +332,9 @@ public final class FunctionContext<Target> implements AutoCloseable {
 
     public void setCaptureFrame(@Nullable CaptureFrame captureFrame) {
         this.captureFrame = captureFrame;
+        if (captureFrame != null) {
+            hasCapturedLocals = true;
+        }
     }
 
     @NotNull
@@ -471,6 +476,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.capacity = 0;
         this.environment = environment;
         this.captureFrame = null;
+        this.hasCapturedLocals = false;
         this.returnRef = null;
         this.returnType = null;
         this.interpreter = null;
@@ -488,6 +494,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.argumentCount = argCount;
         this.environment = environment;
         this.captureFrame = null;
+        this.hasCapturedLocals = false;
         this.returnRef = null;
         this.returnType = null;
         this.interpreter = null;
@@ -501,6 +508,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         target = null;
         environment = null;
         captureFrame = null;
+        hasCapturedLocals = false;
         interpreter = null;
         returnRef = null;
         returnPrimitive = 0L;
@@ -617,6 +625,9 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @return 值
      */
     public Object getLocal(int index) {
+        if (!hasCapturedLocals) {
+            return refs[index];
+        }
         if (captureFrame != null && index < captureFrame.size()) {
             return captureFrame.get(index);
         }
@@ -631,6 +642,10 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param value 值
      */
     public void setLocal(int index, Object value) {
+        if (!hasCapturedLocals) {
+            refs[index] = value;
+            return;
+        }
         if (captureFrame != null && index < captureFrame.size()) {
             captureFrame.set(index, value);
             return;
@@ -647,6 +662,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * 将指定槽位转换为捕获 cell，供父函数和逃逸 Lambda 共享。
      */
     public void ensureCaptureCell(int index) {
+        hasCapturedLocals = true;
         Object value = refs[index];
         if (!(value instanceof CaptureCell)) {
             refs[index] = new CaptureCell(value);
