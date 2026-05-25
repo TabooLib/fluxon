@@ -141,6 +141,9 @@ public class TypeAnalyzer {
      * 合并两个类型
      */
     private Type mergeTypes(Type a, Type b) {
+        if (a.isPrimitive() && b.isPrimitive()) {
+            return promotePrimitive(a, b);
+        }
         // 如果容器类型相同，尝试合并元素类型
         if (a.getSource().equals(b.getSource())) {
             Type elemA = a.getElementType();
@@ -150,6 +153,14 @@ public class TypeAnalyzer {
                 return a.withElementType(mergedElem);
             }
         }
+        return Type.OBJECT;
+    }
+
+    private Type promotePrimitive(Type a, Type b) {
+        if (a == Type.D || b == Type.D) return Type.D;
+        if (a == Type.F || b == Type.F) return Type.F;
+        if (a == Type.J || b == Type.J) return Type.J;
+        if (a == Type.I && b == Type.I) return Type.I;
         return Type.OBJECT;
     }
 

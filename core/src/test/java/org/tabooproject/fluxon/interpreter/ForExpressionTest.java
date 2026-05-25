@@ -10,6 +10,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -378,6 +379,17 @@ public class ForExpressionTest {
                 "ForRangeShapeTest"
         );
         assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+    }
+
+    @Test
+    public void testForLoopPrimitiveCompoundAssignmentAvoidsOperationsAdd() {
+        String source = "sum = 0\n" +
+                "for i in 1..10 { sum += &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "ForPrimitiveCompoundShapeTest");
+        assertFalse(hasMethodInvocation(result, Operations.TYPE.getPath(), "add"));
     }
 
     @Test

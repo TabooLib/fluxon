@@ -106,6 +106,17 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         }
         // 复合赋值：从 JVM 局部变量加载 → 运算 → 存回
         if (varType.isPrimitive()) {
+            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+            if (vt.isPrimitive() && isNumericCompound(op, varType)) {
+                // 热路径局部累加直接使用 JVM 算术指令，避免每次迭代装箱并进入 Operations。
+                emitJvmLoad(varType, jvmSlot, mv);
+                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                emitConvert(vt, varType, mv);
+                emitPrimitiveCompound(op, varType, mv);
+                emitJvmStore(varType, jvmSlot, mv);
+                return;
+            }
             emitJvmLoad(varType, jvmSlot, mv);
             box(varType, mv);
             generateCompoundOperation(expr, valueEval, op, ctx, mv);
@@ -139,6 +150,21 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         }
         // 复合赋值：从 Environment 加载 → 运算 → 存回
         if (varType.isPrimitive()) {
+            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+            if (vt.isPrimitive() && isNumericCompound(op, varType)) {
+                // 传统 Environment 路径也保留 primitive 累加，避免 range for 内部退回 Object 运算。
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitLdcInsn(position);
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitLdcInsn(position);
+                ReferenceEvaluator.emitGetLocal(varType, mv);
+                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                emitConvert(vt, varType, mv);
+                emitPrimitiveCompound(op, varType, mv);
+                ReferenceEvaluator.emitSetLocal(varType, mv);
+                return;
+            }
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(position);
             Instructions.loadEnvironment(mv, ctx);
@@ -194,5 +220,43 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         else if (type == Type.D) mv.visitVarInsn(DSTORE, slot);
         else if (type == Type.F) mv.visitVarInsn(FSTORE, slot);
         else mv.visitVarInsn(ASTORE, slot);
+    }
+
+    private static boolean isNumericCompound(TokenType op, Type type) {
+        if (type == Type.Z) return false;
+        return op == TokenType.PLUS_ASSIGN
+                || op == TokenType.MINUS_ASSIGN
+                || op == TokenType.MULTIPLY_ASSIGN
+                || op == TokenType.DIVIDE_ASSIGN
+                || op == TokenType.MODULO_ASSIGN;
+    }
+
+    private static void emitPrimitiveCompound(TokenType op, Type type, MethodVisitor mv) {
+        int typeOffset;
+        if (type == Type.I) typeOffset = 0;
+        else if (type == Type.J) typeOffset = 1;
+        else if (type == Type.F) typeOffset = 2;
+        else typeOffset = 3;
+        int opOffset;
+        switch (op) {
+            case PLUS_ASSIGN:
+                opOffset = 0;
+                break;
+            case MINUS_ASSIGN:
+                opOffset = 1;
+                break;
+            case MULTIPLY_ASSIGN:
+                opOffset = 2;
+                break;
+            case DIVIDE_ASSIGN:
+                opOffset = 3;
+                break;
+            case MODULO_ASSIGN:
+                opOffset = 4;
+                break;
+            default:
+                throw new RuntimeException("Unknown compound assignment operator: " + op);
+        }
+        mv.visitInsn(IADD + opOffset * 4 + typeOffset);
     }
 }
