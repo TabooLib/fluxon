@@ -584,21 +584,39 @@ public class Instructions {
      * @param paramType 参数类型
      */
     public static void loadAndBoxParameter(MethodVisitor mv, int slot, Class<?> paramType) {
-        if (paramType == long.class) {
-            mv.visitVarInsn(LLOAD, slot);
-            emitBoxing(mv, long.class);
-        } else if (paramType == double.class) {
-            mv.visitVarInsn(DLOAD, slot);
-            emitBoxing(mv, double.class);
-        } else if (paramType == float.class) {
-            mv.visitVarInsn(FLOAD, slot);
-            emitBoxing(mv, float.class);
-        } else if (paramType.isPrimitive()) {
-            mv.visitVarInsn(ILOAD, slot);
+        if (paramType.isPrimitive()) {
+            emitLoadLocal(mv, Type.fromClass(paramType), slot);
             emitBoxing(mv, paramType);
         } else {
             mv.visitVarInsn(ALOAD, slot);
         }
+    }
+
+    /**
+     * 按 Fluxon 类型加载 JVM 局部变量槽位。
+     */
+    public static void emitLoadLocal(MethodVisitor mv, Type type, int slot) {
+        mv.visitVarInsn(localOpcode(type, false), slot);
+    }
+
+    /**
+     * 按 Fluxon 类型写入 JVM 局部变量槽位。
+     */
+    public static void emitStoreLocal(MethodVisitor mv, Type type, int slot) {
+        mv.visitVarInsn(localOpcode(type, true), slot);
+    }
+
+    private static int localOpcode(Type type, boolean store) {
+        if (type == Type.J) {
+            return store ? LSTORE : LLOAD;
+        }
+        if (type == Type.D) {
+            return store ? DSTORE : DLOAD;
+        }
+        if (type == Type.F) {
+            return store ? FSTORE : FLOAD;
+        }
+        return type.isPrimitive() ? (store ? ISTORE : ILOAD) : (store ? ASTORE : ALOAD);
     }
 
     /**

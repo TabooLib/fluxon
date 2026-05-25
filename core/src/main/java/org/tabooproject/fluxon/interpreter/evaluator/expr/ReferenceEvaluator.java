@@ -70,24 +70,14 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             CodeContext.InlineLocalVariable inlineLocal = ctx.getInlineLocalVariable(position);
             if (inlineLocal != null) {
                 // 内联函数体读取参数临时槽位，避免退回 FunctionContext 或 Environment。
-                emitJvmLoad(inlineLocal.type, inlineLocal.slot, mv);
+                Instructions.emitLoadLocal(mv, inlineLocal.type, inlineLocal.slot);
                 return inlineLocal.type;
             }
             // Env-free 模式：从 JVM 局部变量读取
             if (ctx.isEnvFreeMode()) {
                 int jvmSlot = ctx.getJvmSlot(position);
                 Type varType = ctx.getVariableType(position);
-                if (varType == Type.I || varType == Type.Z) {
-                    mv.visitVarInsn(Opcodes.ILOAD, jvmSlot);
-                } else if (varType == Type.J) {
-                    mv.visitVarInsn(Opcodes.LLOAD, jvmSlot);
-                } else if (varType == Type.D) {
-                    mv.visitVarInsn(Opcodes.DLOAD, jvmSlot);
-                } else if (varType == Type.F) {
-                    mv.visitVarInsn(Opcodes.FLOAD, jvmSlot);
-                } else {
-                    mv.visitVarInsn(Opcodes.ALOAD, jvmSlot);
-                }
+                Instructions.emitLoadLocal(mv, varType, jvmSlot);
                 return varType;
             }
             Instructions.loadEnvironment(mv, ctx);
@@ -112,7 +102,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         CodeContext.RootVariableCache cache = ctx.getRootVariableCache(name);
         if (cache != null) {
             // 循环内已证明不可外部观察的 root 读，直接读取缓存槽位。
-            emitJvmLoad(cache.type, cache.slot, mv);
+            Instructions.emitLoadLocal(mv, cache.type, cache.slot);
             return cache.type;
         }
         Type rootType = ctx.getRootVariableType(name);
@@ -219,17 +209,4 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
     }
 
-    private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.I || type == Type.Z) {
-            mv.visitVarInsn(Opcodes.ILOAD, slot);
-        } else if (type == Type.J) {
-            mv.visitVarInsn(Opcodes.LLOAD, slot);
-        } else if (type == Type.F) {
-            mv.visitVarInsn(Opcodes.FLOAD, slot);
-        } else if (type == Type.D) {
-            mv.visitVarInsn(Opcodes.DLOAD, slot);
-        } else {
-            mv.visitVarInsn(Opcodes.ALOAD, slot);
-        }
-    }
 }

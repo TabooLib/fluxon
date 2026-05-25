@@ -124,7 +124,7 @@ public class DirectFunctionHandler implements FunctionCallHandler {
                 FunctionCallHandlers.emitBox(argType, mv);
             }
             int slot = ctx.allocateLocalVar(localType);
-            emitJvmStore(localType, slot, mv);
+            Instructions.emitStoreLocal(mv, localType, slot);
             locals.put(position, new CodeContext.InlineLocalVariable(localType, slot));
             argIndex++;
         }
@@ -134,14 +134,6 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         } finally {
             ctx.exitInlineLocalVariableScope();
         }
-    }
-
-    private static void emitJvmStore(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.J) mv.visitVarInsn(LSTORE, slot);
-        else if (type == Type.D) mv.visitVarInsn(DSTORE, slot);
-        else if (type == Type.F) mv.visitVarInsn(FSTORE, slot);
-        else if (type.isPrimitive()) mv.visitVarInsn(ISTORE, slot);
-        else mv.visitVarInsn(ASTORE, slot);
     }
 
     @Override

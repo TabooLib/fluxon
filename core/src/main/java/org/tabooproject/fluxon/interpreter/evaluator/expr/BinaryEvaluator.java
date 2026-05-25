@@ -5,6 +5,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
@@ -244,9 +245,9 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
             if (opType == TokenType.POWER) {
                 int saved = ctx.getLocalVarIndex();
                 int rightSlot = ctx.allocateLocalVar(rt);
-                emitStore(rt, rightSlot, mv);
+                Instructions.emitStoreLocal(mv, rt, rightSlot);
                 emitWidening(lt, Type.D, mv);
-                emitLoad(rt, rightSlot, mv);
+                Instructions.emitLoadLocal(mv, rt, rightSlot);
                 emitWidening(rt, Type.D, mv);
                 ctx.restoreLocalVarIndex(saved);
                 mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "pow", "(DD)D", false);
@@ -257,9 +258,9 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 // 混合类型：存 right 到临时变量，widen left，重新加载并 widen right
                 int saved = ctx.getLocalVarIndex();
                 int rightSlot = ctx.allocateLocalVar(rt);
-                emitStore(rt, rightSlot, mv);
+                Instructions.emitStoreLocal(mv, rt, rightSlot);
                 emitWidening(lt, common, mv);
-                emitLoad(rt, rightSlot, mv);
+                Instructions.emitLoadLocal(mv, rt, rightSlot);
                 emitWidening(rt, common, mv);
                 ctx.restoreLocalVarIndex(saved);
             }
@@ -272,9 +273,9 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         }
         int saved = ctx.getLocalVarIndex();
         int rightSlot = ctx.allocateLocalVar(rt.isPrimitive() ? rt : Type.OBJECT);
-        emitStoreAny(rt, rightSlot, mv);
+        Instructions.emitStoreLocal(mv, rt, rightSlot);
         boxing(lt, mv);
-        emitLoadAny(rt, rightSlot, mv);
+        Instructions.emitLoadLocal(mv, rt, rightSlot);
         boxing(rt, mv);
         ctx.restoreLocalVarIndex(saved);
         // 算术运算：根据推断的结果类型选择基本类型方法
@@ -305,15 +306,15 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
     private static void emitStringConcat(Type leftType, Type rightType, CodeContext ctx, MethodVisitor mv) {
         int saved = ctx.getLocalVarIndex();
         int rightSlot = ctx.allocateLocalVar(rightType);
-        emitStoreAny(rightType, rightSlot, mv);
+        Instructions.emitStoreLocal(mv, rightType, rightSlot);
         int leftSlot = ctx.allocateLocalVar(leftType);
-        emitStoreAny(leftType, leftSlot, mv);
+        Instructions.emitStoreLocal(mv, leftType, leftSlot);
         mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false);
-        emitLoadAny(leftType, leftSlot, mv);
+        Instructions.emitLoadLocal(mv, leftType, leftSlot);
         emitStringBuilderAppend(leftType, mv);
-        emitLoadAny(rightType, rightSlot, mv);
+        Instructions.emitLoadLocal(mv, rightType, rightSlot);
         emitStringBuilderAppend(rightType, mv);
         mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()" + Type.STRING, false);
         ctx.restoreLocalVarIndex(saved);
@@ -512,30 +513,6 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 mv.visitInsn(F2D);
                 break;
         }
-    }
-
-    private static void emitStore(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.J) mv.visitVarInsn(LSTORE, slot);
-        else if (type == Type.D) mv.visitVarInsn(DSTORE, slot);
-        else if (type == Type.F) mv.visitVarInsn(FSTORE, slot);
-        else mv.visitVarInsn(ISTORE, slot); // I 或 Z
-    }
-
-    private static void emitLoad(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.J) mv.visitVarInsn(LLOAD, slot);
-        else if (type == Type.D) mv.visitVarInsn(DLOAD, slot);
-        else if (type == Type.F) mv.visitVarInsn(FLOAD, slot);
-        else mv.visitVarInsn(ILOAD, slot); // I 或 Z
-    }
-
-    private static void emitStoreAny(Type type, int slot, MethodVisitor mv) {
-        if (type.isPrimitive()) emitStore(type, slot, mv);
-        else mv.visitVarInsn(ASTORE, slot);
-    }
-
-    private static void emitLoadAny(Type type, int slot, MethodVisitor mv) {
-        if (type.isPrimitive()) emitLoad(type, slot, mv);
-        else mv.visitVarInsn(ALOAD, slot);
     }
 
     /**

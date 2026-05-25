@@ -95,41 +95,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
      * 循环局部变量缓存：循环体内先写 JVM 槽位，循环出口再统一写回 Environment。
      */
     private void generateCachedLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, CodeContext.InlineLocalVariable cache, TokenType op) {
-        Type varType = cache.type;
-        int jvmSlot = cache.slot;
-        if (op == TokenType.ASSIGN) {
-            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
-            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-            if (varType.isPrimitive()) {
-                emitConvert(vt, varType, mv);
-                emitJvmStore(varType, jvmSlot, mv);
-            } else {
-                box(vt, mv);
-                mv.visitVarInsn(ASTORE, jvmSlot);
-            }
-            return;
-        }
-        if (varType.isPrimitive()) {
-            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
-            if (vt.isPrimitive() && isNumericCompound(op, varType)) {
-                emitJvmLoad(varType, jvmSlot, mv);
-                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
-                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                emitConvert(vt, varType, mv);
-                emitPrimitiveCompound(op, varType, mv);
-                emitJvmStore(varType, jvmSlot, mv);
-                return;
-            }
-            emitJvmLoad(varType, jvmSlot, mv);
-            box(varType, mv);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
-            unbox(varType, mv);
-            emitJvmStore(varType, jvmSlot, mv);
-        } else {
-            mv.visitVarInsn(ALOAD, jvmSlot);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
-            mv.visitVarInsn(ASTORE, jvmSlot);
-        }
+        generateJvmLocalAssignment(expr, valueEval, ctx, mv, cache.type, cache.slot, op);
     }
 
     /**
@@ -138,12 +104,19 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
     private void generateEnvFreeLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, int position, TokenType op) {
         Type varType = ctx.getVariableType(position);
         int jvmSlot = ctx.getJvmSlot(position);
+        generateJvmLocalAssignment(expr, valueEval, ctx, mv, varType, jvmSlot, op);
+    }
+
+    /**
+     * 处理已经落到 JVM 局部槽位的变量赋值，供 env-free 与循环缓存共用。
+     */
+    private void generateJvmLocalAssignment(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, Type varType, int jvmSlot, TokenType op) {
         if (op == TokenType.ASSIGN) {
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
             if (varType.isPrimitive()) {
                 emitConvert(vt, varType, mv);
-                emitJvmStore(varType, jvmSlot, mv);
+                Instructions.emitStoreLocal(mv, varType, jvmSlot);
             } else {
                 box(vt, mv);
                 mv.visitVarInsn(ASTORE, jvmSlot);
@@ -155,19 +128,19 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
             if (vt.isPrimitive() && isNumericCompound(op, varType)) {
                 // 热路径局部累加直接使用 JVM 算术指令，避免每次迭代装箱并进入 Operations。
-                emitJvmLoad(varType, jvmSlot, mv);
+                Instructions.emitLoadLocal(mv, varType, jvmSlot);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
                 emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
-                emitJvmStore(varType, jvmSlot, mv);
+                Instructions.emitStoreLocal(mv, varType, jvmSlot);
                 return;
             }
-            emitJvmLoad(varType, jvmSlot, mv);
+            Instructions.emitLoadLocal(mv, varType, jvmSlot);
             box(varType, mv);
             generateCompoundOperation(expr, valueEval, op, ctx, mv);
             unbox(varType, mv);
-            emitJvmStore(varType, jvmSlot, mv);
+            Instructions.emitStoreLocal(mv, varType, jvmSlot);
         } else {
             mv.visitVarInsn(ALOAD, jvmSlot);
             generateCompoundOperation(expr, valueEval, op, ctx, mv);
@@ -289,42 +262,26 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
             emitConvert(vt, varType, mv);
-            emitJvmStore(varType, cache.slot, mv);
+            Instructions.emitStoreLocal(mv, varType, cache.slot);
             return;
         }
         if (varType.isPrimitive() && isNumericCompound(op, varType)) {
             Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
             if (vt.isPrimitive()) {
-                emitJvmLoad(varType, cache.slot, mv);
+                Instructions.emitLoadLocal(mv, varType, cache.slot);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
                 emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
-                emitJvmStore(varType, cache.slot, mv);
+                Instructions.emitStoreLocal(mv, varType, cache.slot);
                 return;
             }
         }
-        emitJvmLoad(varType, cache.slot, mv);
+        Instructions.emitLoadLocal(mv, varType, cache.slot);
         box(varType, mv);
         generateCompoundOperation(expr, valueEval, op, ctx, mv);
         unbox(varType, mv);
-        emitJvmStore(varType, cache.slot, mv);
-    }
-
-    private static void emitJvmLoad(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.I || type == Type.Z) mv.visitVarInsn(ILOAD, slot);
-        else if (type == Type.J) mv.visitVarInsn(LLOAD, slot);
-        else if (type == Type.D) mv.visitVarInsn(DLOAD, slot);
-        else if (type == Type.F) mv.visitVarInsn(FLOAD, slot);
-        else mv.visitVarInsn(ALOAD, slot);
-    }
-
-    private static void emitJvmStore(Type type, int slot, MethodVisitor mv) {
-        if (type == Type.I || type == Type.Z) mv.visitVarInsn(ISTORE, slot);
-        else if (type == Type.J) mv.visitVarInsn(LSTORE, slot);
-        else if (type == Type.D) mv.visitVarInsn(DSTORE, slot);
-        else if (type == Type.F) mv.visitVarInsn(FSTORE, slot);
-        else mv.visitVarInsn(ASTORE, slot);
+        Instructions.emitStoreLocal(mv, varType, cache.slot);
     }
 
     private static boolean isNumericCompound(TokenType op, Type type) {

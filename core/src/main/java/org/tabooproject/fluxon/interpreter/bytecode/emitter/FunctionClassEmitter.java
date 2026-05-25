@@ -76,17 +76,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     @Override
     public EmitResult emit() {
         List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
-        CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
-        // 传播定义列表和用户函数注册表，使函数体内可查询兄弟函数属性（如 async）并直接引用静态字段
-        funcCtx.addDefinitions(generator.getDefinitions());
-        for (Definition def : generator.getDefinitions()) {
-            if (def instanceof FunctionDefinition) {
-                FunctionDefinition fd = (FunctionDefinition) def;
-                if (fd.isRegisterToRoot()) {
-                    funcCtx.registerUserFunction(fd.getName(), parentClassName);
-                }
-            }
-        }
+        CodeContext funcCtx = createFunctionCodeContext();
         // 类声明
         beginClass(ACC_PUBLIC, fileName);
         emitSourceMetadataFields(source, fileName);
@@ -125,6 +115,21 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitIsPrimarySyncMethod();
         emitGetAnnotationsMethod();
         emitCallMethod(lambdaDefinitions, funcCtx);
+    }
+
+    private CodeContext createFunctionCodeContext() {
+        CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
+        // 传播定义列表和用户函数注册表，使函数体内可查询兄弟函数属性（如 async）并直接引用静态字段
+        funcCtx.addDefinitions(generator.getDefinitions());
+        for (Definition def : generator.getDefinitions()) {
+            if (def instanceof FunctionDefinition) {
+                FunctionDefinition fd = (FunctionDefinition) def;
+                if (fd.isRegisterToRoot()) {
+                    funcCtx.registerUserFunction(fd.getName(), parentClassName);
+                }
+            }
+        }
+        return funcCtx;
     }
 
     /**
@@ -244,16 +249,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         String descriptor = getDirectCallDescriptor(funcDef);
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "callDirect", descriptor, null, null);
         mv.visitCode();
-        CodeContext directCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
-        directCtx.addDefinitions(generator.getDefinitions());
-        for (Definition def : generator.getDefinitions()) {
-            if (def instanceof FunctionDefinition) {
-                FunctionDefinition fd = (FunctionDefinition) def;
-                if (fd.isRegisterToRoot()) {
-                    directCtx.registerUserFunction(fd.getName(), parentClassName);
-                }
-            }
-        }
+        CodeContext directCtx = createFunctionCodeContext();
         directCtx.allocateLocalVar(Type.OBJECT);
         directCtx.allocateLocalVar(Type.OBJECT);
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
@@ -376,8 +372,8 @@ public class FunctionClassEmitter extends ClassEmitter {
             int jvmSlot = funcCtx.allocateLocalVar(type);
             funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
             if (directType.isPrimitive()) {
-                emitLoadDirectParameter(mv, directType, argSlot);
-                emitStoreDirectParameter(mv, directType, jvmSlot);
+                Instructions.emitLoadLocal(mv, directType, argSlot);
+                Instructions.emitStoreLocal(mv, directType, jvmSlot);
                 argSlot += getJvmSlotSize(directType);
                 continue;
             }
@@ -421,53 +417,29 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitEnvFreeLocalDefaults(mv, funcCtx);
     }
 
-    private static void emitLoadDirectParameter(MethodVisitor mv, Type type, int slot) {
-        if (type == Type.J) {
-            mv.visitVarInsn(LLOAD, slot);
-        } else if (type == Type.D) {
-            mv.visitVarInsn(DLOAD, slot);
-        } else if (type == Type.F) {
-            mv.visitVarInsn(FLOAD, slot);
-        } else {
-            mv.visitVarInsn(ILOAD, slot);
-        }
-    }
-
-    private static void emitStoreDirectParameter(MethodVisitor mv, Type type, int slot) {
-        if (type == Type.J) {
-            mv.visitVarInsn(LSTORE, slot);
-        } else if (type == Type.D) {
-            mv.visitVarInsn(DSTORE, slot);
-        } else if (type == Type.F) {
-            mv.visitVarInsn(FSTORE, slot);
-        } else {
-            mv.visitVarInsn(ISTORE, slot);
-        }
-    }
-
     private void emitEnvFreeLocalDefaults(MethodVisitor mv, CodeContext funcCtx) {
         for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
-            Type varType = funcCtx.getVariableType(pos);
-            if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
-            int jvmSlot = funcCtx.allocateLocalVar(varType);
-            funcCtx.mapVarToJvmSlot(pos, jvmSlot);
-            if (varType == Type.I || varType == Type.Z) {
-                mv.visitInsn(ICONST_0);
-                mv.visitVarInsn(ISTORE, jvmSlot);
-            } else if (varType == Type.J) {
-                mv.visitInsn(LCONST_0);
-                mv.visitVarInsn(LSTORE, jvmSlot);
-            } else if (varType == Type.D) {
-                mv.visitInsn(DCONST_0);
-                mv.visitVarInsn(DSTORE, jvmSlot);
-            } else if (varType == Type.F) {
-                mv.visitInsn(FCONST_0);
-                mv.visitVarInsn(FSTORE, jvmSlot);
-            } else {
-                mv.visitInsn(ACONST_NULL);
-                mv.visitVarInsn(ASTORE, jvmSlot);
-            }
+            emitEnvFreeLocalDefault(mv, funcCtx, pos);
         }
+    }
+
+    private void emitEnvFreeLocalDefault(MethodVisitor mv, CodeContext funcCtx, int pos) {
+        Type varType = funcCtx.getVariableType(pos);
+        if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
+        int jvmSlot = funcCtx.allocateLocalVar(varType);
+        funcCtx.mapVarToJvmSlot(pos, jvmSlot);
+        if (varType == Type.I || varType == Type.Z) {
+            mv.visitInsn(ICONST_0);
+        } else if (varType == Type.J) {
+            mv.visitInsn(LCONST_0);
+        } else if (varType == Type.D) {
+            mv.visitInsn(DCONST_0);
+        } else if (varType == Type.F) {
+            mv.visitInsn(FCONST_0);
+        } else {
+            mv.visitInsn(ACONST_NULL);
+        }
+        Instructions.emitStoreLocal(mv, varType, jvmSlot);
     }
 
     private void emitDirectFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
@@ -498,13 +470,7 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitInsn(ARETURN);
         }
         mv.visitLabel(handler);
-        int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, exceptionSlot);
-        mv.visitVarInsn(ALOAD, exceptionSlot);
-        loadSourceMetadata(mv);
-        mv.visitLdcInsn(externalName(className));
-        mv.visitMethodInsn(INVOKESTATIC, RuntimeScriptBase.TYPE.getPath(), "attachRuntimeError", "(" + FluxonRuntimeError.TYPE + STRING + STRING + STRING + ")" + FluxonRuntimeError.TYPE, false);
-        mv.visitInsn(ATHROW);
+        emitRuntimeErrorHandler(mv, funcCtx);
     }
 
     public static String getDirectCallDescriptor(FunctionDefinition definition) {
@@ -669,26 +635,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         // 必须在方法入口处初始化所有局部变量，否则当首次赋值出现在分支内部时，
         // 另一条分支路径上该槽位仍为 top，JVM 验证器会拒绝后续的 ALOAD/ILOAD
         for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
-            Type varType = funcCtx.getVariableType(pos);
-            if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
-            int jvmSlot = funcCtx.allocateLocalVar(varType);
-            funcCtx.mapVarToJvmSlot(pos, jvmSlot);
-            if (varType == Type.I || varType == Type.Z) {
-                mv.visitInsn(ICONST_0);
-                mv.visitVarInsn(ISTORE, jvmSlot);
-            } else if (varType == Type.J) {
-                mv.visitInsn(LCONST_0);
-                mv.visitVarInsn(LSTORE, jvmSlot);
-            } else if (varType == Type.D) {
-                mv.visitInsn(DCONST_0);
-                mv.visitVarInsn(DSTORE, jvmSlot);
-            } else if (varType == Type.F) {
-                mv.visitInsn(FCONST_0);
-                mv.visitVarInsn(FSTORE, jvmSlot);
-            } else {
-                mv.visitInsn(ACONST_NULL);
-                mv.visitVarInsn(ASTORE, jvmSlot);
-            }
+            emitEnvFreeLocalDefault(mv, funcCtx, pos);
         }
     }
 
@@ -734,6 +681,10 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitInsn(RETURN);
         // 异常处理：附加源码位置信息后重新抛出
         mv.visitLabel(handler);
+        emitRuntimeErrorHandler(mv, funcCtx);
+    }
+
+    private void emitRuntimeErrorHandler(MethodVisitor mv, CodeContext funcCtx) {
         int exceptionSlot = funcCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, exceptionSlot);
         mv.visitVarInsn(ALOAD, exceptionSlot);
