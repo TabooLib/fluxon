@@ -38,5 +38,13 @@ public class LambdaFunctionDefinition extends FunctionDefinition {
     public int getCaptureOffset() {
         return captureOffset;
     }
-}
 
+    /**
+     * 非捕获 Lambda 可以复用普通函数的 env-free 局部变量路径。
+     * 真捕获 Lambda 仍依赖定义时 Environment 链读取父槽位。
+     */
+    @Override
+    public boolean canUseEnvFreeLocals() {
+        return captureOffset == 0 && super.canUseEnvFreeLocals();
+    }
+}

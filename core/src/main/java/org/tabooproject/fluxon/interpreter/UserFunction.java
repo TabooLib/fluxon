@@ -41,8 +41,7 @@ public class UserFunction implements Function, Symbolic {
         this.definition = definition;
         this.interpreter = interpreter;
         this.signature = buildSignature(definition);
-        this.envFree = !(definition instanceof LambdaFunctionDefinition)
-                && !definition.hasVariablesCapturedByChildren();
+        this.envFree = definition.canUseEnvFreeLocals();
         this.paramCount = definition.getParameters().size();
         this.localVarCount = definition.getLocalVariables().size();
     }

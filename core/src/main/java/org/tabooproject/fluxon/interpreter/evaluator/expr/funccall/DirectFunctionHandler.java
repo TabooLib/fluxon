@@ -210,7 +210,8 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (definition instanceof LambdaFunctionDefinition) return false;
         if (definition.isAsync() || definition.isPrimarySync()) return false;
         if (definition.hasVariablesCapturedByChildren()) return false;
-        return definition.getBody().getType() != ParseResult.ResultType.STATEMENT;
+        if (definition.getBody().getType() == ParseResult.ResultType.STATEMENT) return false;
+        return FunctionClassEmitter.getDirectReturnType(definition) != Type.VOID;
     }
 
     private static boolean canInlineExpression(ParseResult node, InlineMode mode) {

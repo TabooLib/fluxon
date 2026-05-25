@@ -117,6 +117,13 @@ public class FunctionDefinition implements Definition {
         return variablesCapturedByChildren;
     }
 
+    /**
+     * 是否可以把局部变量放到 FunctionContext/JVM 槽位，跳过函数 Environment 局部数组。
+     */
+    public boolean canUseEnvFreeLocals() {
+        return !variablesCapturedByChildren;
+    }
+
     public void setVariablesCapturedByChildren(boolean v) {
         this.variablesCapturedByChildren = v;
     }

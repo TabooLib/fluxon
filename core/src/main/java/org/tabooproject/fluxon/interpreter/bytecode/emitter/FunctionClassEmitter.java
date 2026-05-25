@@ -139,7 +139,8 @@ public class FunctionClassEmitter extends ClassEmitter {
     private boolean canUseDirectCallMethod() {
         if (!canUseEnvFreeMode()) return false;
         if (funcDef.isAsync() || funcDef.isPrimarySync()) return false;
-        return funcDef.getBody().getType() != ParseResult.ResultType.STATEMENT;
+        if (funcDef.getBody().getType() == ParseResult.ResultType.STATEMENT) return false;
+        return getDirectReturnType(funcDef) != Type.VOID;
     }
 
     private void emitGetNameMethod() {
@@ -238,7 +239,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         directCtx.enableEnvFreeMode(funcDef.getLocalVariables().size());
         directCtx.setExpectedReturnType(Object.class);
         emitLocalPoolLocal(mv, directCtx);
-        if (canReuseCallerEnvironmentForDirectCall(funcDef.getBody())) {
+        if (canReuseCallerEnvironment(funcDef.getBody())) {
             directCtx.setEnvironmentLocalSlot(1);
         } else {
             emitDirectChildEnvironment(mv, directCtx);
@@ -292,67 +293,67 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     /**
-     * 纯表达式函数复用调用方 Environment，避免每次 callDirect 创建子 Environment。
+     * 纯表达式函数复用调用方 Environment，避免每次调用创建子 Environment。
      * 出现函数调用、上下文调用等可观察 Environment 身份或 target 的节点时保留隔离环境。
      */
-    private boolean canReuseCallerEnvironmentForDirectCall(ParseResult node) {
+    private boolean canReuseCallerEnvironment(ParseResult node) {
         if (node == null) return true;
         if (node instanceof BinaryExpression) {
             BinaryExpression binary = (BinaryExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(binary.getLeft())
-                    && canReuseCallerEnvironmentForDirectCall(binary.getRight());
+            return canReuseCallerEnvironment(binary.getLeft())
+                    && canReuseCallerEnvironment(binary.getRight());
         }
         if (node instanceof LogicalExpression) {
             LogicalExpression logical = (LogicalExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(logical.getLeft())
-                    && canReuseCallerEnvironmentForDirectCall(logical.getRight());
+            return canReuseCallerEnvironment(logical.getLeft())
+                    && canReuseCallerEnvironment(logical.getRight());
         }
         if (node instanceof UnaryExpression) {
-            return canReuseCallerEnvironmentForDirectCall(((UnaryExpression) node).getRight());
+            return canReuseCallerEnvironment(((UnaryExpression) node).getRight());
         }
         if (node instanceof GroupingExpression) {
-            return canReuseCallerEnvironmentForDirectCall(((GroupingExpression) node).getExpression());
+            return canReuseCallerEnvironment(((GroupingExpression) node).getExpression());
         }
         if (node instanceof IfExpression) {
             IfExpression ifExpression = (IfExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(ifExpression.getCondition())
-                    && canReuseCallerEnvironmentForDirectCall(ifExpression.getThenBranch())
-                    && canReuseCallerEnvironmentForDirectCall(ifExpression.getElseBranch());
+            return canReuseCallerEnvironment(ifExpression.getCondition())
+                    && canReuseCallerEnvironment(ifExpression.getThenBranch())
+                    && canReuseCallerEnvironment(ifExpression.getElseBranch());
         }
         if (node instanceof TernaryExpression) {
             TernaryExpression ternary = (TernaryExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(ternary.getCondition())
-                    && canReuseCallerEnvironmentForDirectCall(ternary.getTrueExpr())
-                    && canReuseCallerEnvironmentForDirectCall(ternary.getFalseExpr());
+            return canReuseCallerEnvironment(ternary.getCondition())
+                    && canReuseCallerEnvironment(ternary.getTrueExpr())
+                    && canReuseCallerEnvironment(ternary.getFalseExpr());
         }
         if (node instanceof ElvisExpression) {
             ElvisExpression elvis = (ElvisExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(elvis.getCondition())
-                    && canReuseCallerEnvironmentForDirectCall(elvis.getAlternative());
+            return canReuseCallerEnvironment(elvis.getCondition())
+                    && canReuseCallerEnvironment(elvis.getAlternative());
         }
         if (node instanceof ListExpression) {
             for (ParseResult element : ((ListExpression) node).getElements()) {
-                if (!canReuseCallerEnvironmentForDirectCall(element)) return false;
+                if (!canReuseCallerEnvironment(element)) return false;
             }
             return true;
         }
         if (node instanceof MapExpression) {
             for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
-                if (!canReuseCallerEnvironmentForDirectCall(entry.getKey())) return false;
-                if (!canReuseCallerEnvironmentForDirectCall(entry.getValue())) return false;
+                if (!canReuseCallerEnvironment(entry.getKey())) return false;
+                if (!canReuseCallerEnvironment(entry.getValue())) return false;
             }
             return true;
         }
         if (node instanceof RangeExpression) {
             RangeExpression range = (RangeExpression) node;
-            return canReuseCallerEnvironmentForDirectCall(range.getStart())
-                    && canReuseCallerEnvironmentForDirectCall(range.getEnd());
+            return canReuseCallerEnvironment(range.getStart())
+                    && canReuseCallerEnvironment(range.getEnd());
         }
         if (node instanceof IndexAccessExpression) {
             IndexAccessExpression index = (IndexAccessExpression) node;
-            if (!canReuseCallerEnvironmentForDirectCall(index.getTarget())) return false;
+            if (!canReuseCallerEnvironment(index.getTarget())) return false;
             for (ParseResult item : index.getIndices()) {
-                if (!canReuseCallerEnvironmentForDirectCall(item)) return false;
+                if (!canReuseCallerEnvironment(item)) return false;
             }
             return true;
         }
@@ -368,12 +369,29 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitVarInsn(ALOAD, 1);
         mv.visitInsn(ICONST_0);
         mv.visitMethodInsn(INVOKESPECIAL, Environment.TYPE.getPath(), "<init>", "(" + Environment.TYPE + I + ")V", false);
+        storeGeneratedEnvironment(mv, funcCtx);
+    }
+
+    /**
+     * 复用 FunctionContext 里的调用方 Environment，并同步 RuntimeScriptBase.environment 字段。
+     */
+    private void emitCallerEnvironment(MethodVisitor mv, CodeContext funcCtx) {
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
+        storeGeneratedEnvironment(mv, funcCtx);
+    }
+
+    /**
+     * 保存栈顶 Environment，并同步 CodeContext 与 RuntimeScriptBase.environment。
+     */
+    private int storeGeneratedEnvironment(MethodVisitor mv, CodeContext funcCtx) {
         int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, envSlot);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, envSlot);
         mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
         funcCtx.setEnvironmentLocalSlot(envSlot);
+        return envSlot;
     }
 
     private void emitDirectParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
@@ -519,6 +537,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     public static int returnOpcode(Type type) {
+        if (type == Type.VOID) return RETURN;
         if (type == Type.J) return LRETURN;
         if (type == Type.F) return FRETURN;
         if (type == Type.D) return DRETURN;
@@ -539,13 +558,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
         mv.visitLdcInsn(localVarCount);
         mv.visitMethodInsn(INVOKESPECIAL, Environment.TYPE.getPath(), "<init>", "(" + Environment.TYPE + I + ")V", false);
-        int envSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, envSlot);
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitVarInsn(ALOAD, envSlot);
-        mv.visitFieldInsn(PUTFIELD, className, "environment", Environment.TYPE.getDescriptor());
-        funcCtx.setEnvironmentLocalSlot(envSlot);
-        return envSlot;
+        return storeGeneratedEnvironment(mv, funcCtx);
     }
 
     private void emitParameterBinding(MethodVisitor mv, CodeContext funcCtx) {
@@ -595,11 +608,10 @@ public class FunctionClassEmitter extends ClassEmitter {
 
     /**
      * 判断此函数是否可以使用 env-free 模式
-     * 资格条件：非 Lambda，且局部变量未被子 Lambda 捕获
+     * 资格条件由 FunctionDefinition 统一维护，保持解释执行和编译执行一致。
      */
     private boolean canUseEnvFreeMode() {
-        if (funcDef instanceof LambdaFunctionDefinition) return false;
-        return !funcDef.hasVariablesCapturedByChildren();
+        return funcDef.canUseEnvFreeLocals();
     }
 
     /**
@@ -608,7 +620,12 @@ public class FunctionClassEmitter extends ClassEmitter {
      */
     private void emitParameterBindingEnvFree(MethodVisitor mv, CodeContext funcCtx) {
         Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
-        emitChildEnvironment(mv, funcCtx, 0);
+        if (canReuseCallerEnvironment(funcDef.getBody())) {
+            // 纯表达式 env-free 调用没有 target 隔离需求，复用调用方环境可省掉每次回调的子 Environment 分配。
+            emitCallerEnvironment(mv, funcCtx);
+        } else {
+            emitChildEnvironment(mv, funcCtx, 0);
+        }
         // 从 FunctionContext 读取参数，直接存入 JVM 局部变量
         int argIndex = 0;
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
