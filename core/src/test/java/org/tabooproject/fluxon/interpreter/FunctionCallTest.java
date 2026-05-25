@@ -10,9 +10,14 @@ import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.CompileResult;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.NativeFunction;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 /**
  * 函数调用测试
@@ -226,6 +231,27 @@ public class FunctionCallTest {
                 "def pick(flag: boolean) = &flag ? 7 : 3\n" +
                         "pick(intOrNull('1'))");
         FluxonTestUtil.assertBothEqual(7, result);
+    }
+
+    @Test
+    public void testFrameworkFunctionCallAcceptsNumberForBooleanParameter() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Function function = new NativeFunction<>(
+                "acceptBoolFromNumberTest",
+                returns(Type.I).params(Type.Z),
+                ctx -> ctx.setReturnInt(ctx.getAsBoolean(0) ? 7 : 3)
+        );
+        runtime.registerFunction(function);
+        try {
+            FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                    "acceptBoolFromNumberTest(&flag)",
+                    ctx -> ctx.defineRootVariable("flag", Object.class),
+                    env -> env.defineRootVariable("flag", 1)
+            );
+            FluxonTestUtil.assertBothEqual(7, result);
+        } finally {
+            runtime.unregisterFunction(function);
+        }
     }
 
     @Test

@@ -211,8 +211,7 @@ public final class FunctionCallHandlers {
     private static void emitUnboxToPrimitive(Type expected, String ctxPath, MethodVisitor mv) {
         String valueMethod, setMethod, setDesc, retDesc;
         if (expected == Type.Z) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+            Instructions.emitUnboxBooleanCompatible(mv);
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setBool", "(IZ)V", false);
             return;
         }
