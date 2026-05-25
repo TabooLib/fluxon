@@ -57,7 +57,7 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
                     pool.releaseTop();
                     throw ex;
                 }
-                return FunctionCallHandlers.executeSync(interpreter, ctx, fn);
+                return FunctionCallHandlers.executeKnownSync(interpreter, ctx, fn);
             }
         }
         // 慢速路径：完整解析

@@ -40,6 +40,13 @@ public final class FunctionCallHandlers {
             interpreter.resultRef = Intrinsics.finishCall(ctx, interpreter);
             return Type.OBJECT;
         }
+        return executeKnownSync(interpreter, ctx, function);
+    }
+
+    /**
+     * 已缓存解析结果保证同步，热路径跳过 async/primarySync 分支。
+     */
+    public static Type executeKnownSync(Interpreter interpreter, FunctionContext<?> ctx, Function function) {
         FunctionContextPool pool = ctx.getPool();
         try {
             ctx.setInterpreter(interpreter);

@@ -24,6 +24,7 @@ public class FunctionCallOverheadBenchmark {
     private static final AtomicInteger CLASS_COUNTER = new AtomicInteger(0);
     private static final int WARMUP = 8;
     private static final int ITERATIONS = 12;
+    private static final int INTERPRET_OPERATIONS = 10000;
     private static volatile Object sink;
 
     private static final String LOOP_BASELINE =
@@ -69,33 +70,33 @@ public class FunctionCallOverheadBenchmark {
             "&r";
     private static final String INTERPRET_ROOT_LOOP =
             "r = 0\n" +
-            "for i in 1..1000 { r = &r + 1 }\n" +
+            "for i in 1..10000 { r = &r + 1 }\n" +
             "&r";
     private static final String INTERPRET_LOCAL_LOOP =
             "_r = 0\n" +
-            "for i in 1..1000 { _r = &_r + 1 }\n" +
+            "for i in 1..10000 { _r = &_r + 1 }\n" +
             "&_r";
     private static final String INTERPRET_FUNCTION_LOOP =
             "def run() {\n" +
             "  r = 0\n" +
-            "  for i in 1..1000 { r = &r + 1 }\n" +
+            "  for i in 1..10000 { r = &r + 1 }\n" +
             "  &r\n" +
             "}\n" +
             "run()";
     private static final String INTERPRET_FUNCTION_CALL_LOOP =
             "def inc(x) = &x + 1\n" +
             "r = 0\n" +
-            "for i in 1..1000 { r = inc(&r) }\n" +
+            "for i in 1..10000 { r = inc(&r) }\n" +
             "&r";
     private static final String INTERPRET_ENV_FUNCTION_CALL_LOOP =
             "def inc(x) { _c = || &x; &x + 1 }\n" +
             "r = 0\n" +
-            "for i in 1..1000 { r = inc(&r) }\n" +
+            "for i in 1..10000 { r = inc(&r) }\n" +
             "&r";
     private static final String INTERPRET_DYNAMIC_LAMBDA_CALL =
             "f = |x| &x + 1\n" +
             "r = 0\n" +
-            "for i in 1..1000 { r = call(&f, [&r]) }\n" +
+            "for i in 1..10000 { r = call(&f, [&r]) }\n" +
             "&r";
 
     @Test
@@ -148,7 +149,7 @@ public class FunctionCallOverheadBenchmark {
         ParsedScript envFunctionCallLoop = parse(INTERPRET_ENV_FUNCTION_CALL_LOOP);
         ParsedScript dynamicLambdaCall = parse(INTERPRET_DYNAMIC_LAMBDA_CALL);
 
-        System.out.println("=== Interpret Hot Path Breakdown: 1000 loop iterations ===");
+        System.out.println("=== Interpret Hot Path Breakdown: " + INTERPRET_OPERATIONS + " loop iterations ===");
         BenchResult rootLoopResult = bench("Root loop           ", rootLoop);
         BenchResult localLoopResult = bench("Local loop          ", localLoop);
         BenchResult functionLoopResult = bench("Function loop       ", functionLoop);
@@ -156,11 +157,11 @@ public class FunctionCallOverheadBenchmark {
         BenchResult envFunctionCallResult = bench("Env function call   ", envFunctionCallLoop);
         BenchResult dynamicLambdaResult = bench("call(lambda, list)  ", dynamicLambdaCall);
 
-        printDelta("Root map extra      ", rootLoopResult, localLoopResult, 1000);
-        printDelta("Function frame extra", functionLoopResult, localLoopResult, 1000);
-        printDelta("User call extra     ", functionCallResult, functionLoopResult, 1000);
-        printDelta("Env call extra      ", envFunctionCallResult, functionCallResult, 1000);
-        printDelta("Lambda call extra   ", dynamicLambdaResult, localLoopResult, 1000);
+        printDelta("Root map extra      ", rootLoopResult, localLoopResult, INTERPRET_OPERATIONS);
+        printDelta("Function frame extra", functionLoopResult, localLoopResult, INTERPRET_OPERATIONS);
+        printDelta("User call extra     ", functionCallResult, functionLoopResult, INTERPRET_OPERATIONS);
+        printDelta("Env call extra      ", envFunctionCallResult, functionCallResult, INTERPRET_OPERATIONS);
+        printDelta("Lambda call extra   ", dynamicLambdaResult, localLoopResult, INTERPRET_OPERATIONS);
     }
 
     private RuntimeScriptBase compile(String source) throws Exception {
