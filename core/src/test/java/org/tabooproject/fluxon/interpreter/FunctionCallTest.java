@@ -255,6 +255,26 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testIndexedSystemFunctionSkipsNameResolutionBytecode() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        Function function = new NativeFunction<>(
+                "indexedSystemFunctionTest",
+                returns(Type.I).params(Type.I),
+                ctx -> ctx.setReturnInt(ctx.getInt(0) + 1)
+        );
+        runtime.registerFunction(function);
+        try {
+            FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent("indexedSystemFunctionTest(41)");
+            FluxonTestUtil.assertBothEqual(42, runResult);
+            CompileResult result = Fluxon.compile("indexedSystemFunctionTest(41)", "IndexedSystemFunctionShapeTest");
+            assertTrue(hasMethodInvocation(result, "prepareCallDirect"));
+            assertFalse(hasMethodInvocation(result, "prepareCall"));
+        } finally {
+            runtime.unregisterFunction(function);
+        }
+    }
+
+    @Test
     public void testExpressionFunctionDirectCallFallsBackOnArgumentCountMismatch() {
         CompileResult result = Fluxon.compile(
                 "def id(x) = &x\n" +

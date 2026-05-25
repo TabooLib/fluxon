@@ -51,6 +51,9 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
 
     @Override
     public PrepareCallResult generatePrepareCall(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv, int argCount) {
+        if (!expr.isDirectContextCall() && expr.getPositionIndex() >= 0 && expr.getExtensionPositionIndex() < 0) {
+            return generateIndexedSystemPrepareCall(expr, ctx, mv, argCount);
+        }
         Instructions.loadPool(mv, ctx);
         Instructions.loadEnvironment(mv, ctx);
         mv.visitLdcInsn(expr.getFunctionName());
@@ -63,6 +66,27 @@ public class DynamicResolutionHandler implements FunctionCallHandler {
                 Intrinsics.TYPE.getPath(),
                 methodName,
                 "(" + FunctionContextPool.TYPE + Environment.TYPE + Type.STRING + "III)" + FunctionContext.TYPE,
+                false
+        );
+        int ctxSlot = ctx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, ctxSlot);
+        return new PrepareCallResult(ctxSlot);
+    }
+
+    private PrepareCallResult generateIndexedSystemPrepareCall(FunctionCallExpression expr, CodeContext ctx, MethodVisitor mv, int argCount) {
+        Instructions.loadPool(mv, ctx);
+        Instructions.loadEnvironment(mv, ctx);
+        // 已有 position 的系统函数语义本来就是读取 rootSystemFunctions[pos]，这里提前展开避免运行时名称解析分支。
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootSystemFunctions", "()[" + Function.TYPE, false);
+        mv.visitLdcInsn(expr.getPositionIndex());
+        mv.visitInsn(AALOAD);
+        mv.visitLdcInsn(argCount);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                Intrinsics.TYPE.getPath(),
+                "prepareCallDirect",
+                "(" + FunctionContextPool.TYPE + Environment.TYPE + Function.TYPE + "I)" + FunctionContext.TYPE,
                 false
         );
         int ctxSlot = ctx.allocateLocalVar(Type.OBJECT);
