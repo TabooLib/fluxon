@@ -206,29 +206,9 @@ public class FunctionClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")V", null, null);
         mv.visitCode();
         // 初始化代码上下文，预留 slot 0 (this) 和 slot 1 (FunctionContext 参数)
-        funcCtx.allocateLocalVar(Type.OBJECT);  // slot 0: this
-        funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext
-        // 对函数体进行类型分析
-        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
-        // 从参数类型注解初始化变量类型
-        typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
-        typeAnalyzer.analyzeNode(funcDef.getBody());
-        // Lambda 函数：位置 >= 自身局部变量数的变量是从父作用域捕获的，必须用引用类型
-        if (funcDef instanceof LambdaFunctionDefinition) {
-            int ownLocalCount = funcDef.getLocalVariables().size();
-            for (int pos : new HashSet<>(typeAnalyzer.getVariableTypes().keySet())) {
-                if (pos >= ownLocalCount) {
-                    typeAnalyzer.markCaptured(pos);
-                }
-            }
-        }
-        funcCtx.setTypeAnalyzer(typeAnalyzer);
-        // 从 FunctionContext 获取 pool 并存入局部变量（避免重复 ThreadLocal.get()）
-        mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getPool", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
-        int poolSlot = funcCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, poolSlot);
-        funcCtx.setPoolLocalSlot(poolSlot);
+        reserveReceiverAndArgumentSlots(funcCtx);
+        funcCtx.setTypeAnalyzer(createFunctionTypeAnalyzer());
+        emitContextPoolLocal(mv, funcCtx);
         // 绑定参数到环境
         boolean envFree = canUseEnvFreeMode();
         if (envFree) {
@@ -250,21 +230,14 @@ public class FunctionClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "callDirect", descriptor, null, null);
         mv.visitCode();
         CodeContext directCtx = createFunctionCodeContext();
-        directCtx.allocateLocalVar(Type.OBJECT);
-        directCtx.allocateLocalVar(Type.OBJECT);
+        reserveReceiverAndArgumentSlots(directCtx);
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
             directCtx.allocateLocalVar(getDirectParameterType(funcDef, entry.getValue()));
         }
-        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
-        typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
-        typeAnalyzer.analyzeNode(funcDef.getBody());
-        directCtx.setTypeAnalyzer(typeAnalyzer);
+        directCtx.setTypeAnalyzer(createFunctionTypeAnalyzer());
         directCtx.enableEnvFreeMode(funcDef.getLocalVariables().size());
         directCtx.setExpectedReturnType(Object.class);
-        mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
-        int poolSlot = directCtx.allocateLocalVar(Type.OBJECT);
-        mv.visitVarInsn(ASTORE, poolSlot);
-        directCtx.setPoolLocalSlot(poolSlot);
+        emitLocalPoolLocal(mv, directCtx);
         if (canReuseCallerEnvironmentForDirectCall(funcDef.getBody())) {
             directCtx.setEnvironmentLocalSlot(1);
         } else {
@@ -274,6 +247,48 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitDirectFunctionBody(mv, directCtx);
         mv.visitMaxs(0, directCtx.getLocalVarIndex() + 1);
         mv.visitEnd();
+    }
+
+    private void reserveReceiverAndArgumentSlots(CodeContext funcCtx) {
+        funcCtx.allocateLocalVar(Type.OBJECT);  // slot 0: this
+        funcCtx.allocateLocalVar(Type.OBJECT);  // slot 1: FunctionContext 或 Environment 参数
+    }
+
+    private TypeAnalyzer createFunctionTypeAnalyzer() {
+        // 对函数体进行类型分析
+        TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
+        // 从参数类型注解初始化变量类型
+        typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
+        typeAnalyzer.analyzeNode(funcDef.getBody());
+        // Lambda 函数：位置 >= 自身局部变量数的变量是从父作用域捕获的，必须用引用类型
+        if (funcDef instanceof LambdaFunctionDefinition) {
+            int ownLocalCount = funcDef.getLocalVariables().size();
+            for (int pos : new HashSet<>(typeAnalyzer.getVariableTypes().keySet())) {
+                if (pos >= ownLocalCount) {
+                    typeAnalyzer.markCaptured(pos);
+                }
+            }
+        }
+        return typeAnalyzer;
+    }
+
+    private void emitContextPoolLocal(MethodVisitor mv, CodeContext funcCtx) {
+        // 从 FunctionContext 获取 pool 并存入局部变量（避免重复 ThreadLocal.get()）
+        mv.visitVarInsn(ALOAD, 1);  // load FunctionContext
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getPool", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
+        storePoolLocal(mv, funcCtx);
+    }
+
+    private void emitLocalPoolLocal(MethodVisitor mv, CodeContext funcCtx) {
+        // callDirect 没有 FunctionContext，只能取线程本地 pool 来复用临时参数数组。
+        mv.visitMethodInsn(INVOKESTATIC, FunctionContextPool.TYPE.getPath(), "local", "()" + FunctionContextPool.TYPE.getDescriptor(), false);
+        storePoolLocal(mv, funcCtx);
+    }
+
+    private void storePoolLocal(MethodVisitor mv, CodeContext funcCtx) {
+        int poolSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+        mv.visitVarInsn(ASTORE, poolSlot);
+        funcCtx.setPoolLocalSlot(poolSlot);
     }
 
     /**
@@ -418,6 +433,9 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     private void emitEnvFreeLocalDefaults(MethodVisitor mv, CodeContext funcCtx) {
+        // 为非参数的局部变量分配 JVM 槽位并生成默认值初始化
+        // 必须在方法入口处初始化所有局部变量，否则当首次赋值出现在分支内部时，
+        // 另一条分支路径上该槽位仍为 top，JVM 验证器会拒绝后续的 ALOAD/ILOAD
         for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
             emitEnvFreeLocalDefault(mv, funcCtx, pos);
         }
@@ -631,12 +649,7 @@ public class FunctionClassEmitter extends ClassEmitter {
             }
             argIndex++;
         }
-        // 为非参数的局部变量分配 JVM 槽位并生成默认值初始化
-        // 必须在方法入口处初始化所有局部变量，否则当首次赋值出现在分支内部时，
-        // 另一条分支路径上该槽位仍为 top，JVM 验证器会拒绝后续的 ALOAD/ILOAD
-        for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
-            emitEnvFreeLocalDefault(mv, funcCtx, pos);
-        }
+        emitEnvFreeLocalDefaults(mv, funcCtx);
     }
 
     private void emitFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
