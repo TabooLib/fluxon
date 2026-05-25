@@ -48,10 +48,6 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
         parser.pushCapture(parentCaptures);
         // 将捕获的父变量名添加到 lambda 作用域，使 lambda 自身参数的索引偏移到捕获变量之后
         int captureOffset = parentCaptures.size();
-        // 标记父函数的变量被子 Lambda 捕获，使其不能使用 env-free 模式
-        if (captureOffset > 0 && previousFunction != null) {
-            parser.getSymbolEnvironment().markFunctionHasCapturedVars(previousFunction);
-        }
         for (String capturedName : parentCaptures.keySet()) {
             parser.defineVariable(capturedName);
         }
@@ -124,9 +120,15 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
             if (defined != null) {
                 locals.addAll(defined);
             }
+            // 候选捕获只服务解析期符号绑定，只有 body 实际访问父槽位时才污染父函数的 env-free 路径。
+            boolean hasActualCapture = LambdaCaptureAnalyzer.hasActualCapture(body, captureOffset);
+            if (hasActualCapture && previousFunction != null) {
+                parser.getSymbolEnvironment().markFunctionHasCapturedVars(previousFunction);
+            }
             parser.getSymbolEnvironment().setCurrentFunction(previousFunction);
             parser.popCapture();
-            return continuation.apply(parser.attachSource(new LambdaExpression(lambdaName, parameters, body, locals, captureOffset), lambdaStart));
+            int actualCaptureOffset = hasActualCapture ? captureOffset : 0;
+            return continuation.apply(parser.attachSource(new LambdaExpression(lambdaName, parameters, body, locals, actualCaptureOffset), lambdaStart));
         };
         if (parser.match(TokenType.LEFT_BRACE)) {
             return BlockParser.parse(parser, finish);

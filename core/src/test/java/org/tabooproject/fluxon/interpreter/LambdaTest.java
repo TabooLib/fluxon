@@ -1,7 +1,11 @@
 package org.tabooproject.fluxon.interpreter;
 
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.Fluxon;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParsedScript;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 
 import java.util.Arrays;
 
@@ -217,5 +221,35 @@ public class LambdaTest {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
         assertEquals(Arrays.asList("A:1:10", "A:2:20", "B:3:30", "A:1:40"), result.getInterpretResult());
         assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试函数内的非捕获 lambda 不会误判为捕获父变量。
+     */
+    @Test
+    public void testNonCapturingLambdaDoesNotDisableParentEnvFree() {
+        ParsedScript script = Fluxon.parse("def apply(value) { callback = |it| &it + 1; &value + 1 }\napply(1)");
+        FunctionDefinition definition = findFunction(script, "apply");
+        assertTrue(!definition.hasVariablesCapturedByChildren(), "非捕获 lambda 不应该禁用父函数 env-free");
+    }
+
+    /**
+     * 测试真正捕获父变量的 lambda 仍会标记父函数。
+     */
+    @Test
+    public void testCapturingLambdaStillDisablesParentEnvFree() {
+        ParsedScript script = Fluxon.parse("def apply(value) { callback = |it| &it + &value; &value + 1 }\napply(1)");
+        FunctionDefinition definition = findFunction(script, "apply");
+        assertTrue(definition.hasVariablesCapturedByChildren(), "捕获父变量的 lambda 必须禁用父函数 env-free");
+    }
+
+    private FunctionDefinition findFunction(ParsedScript script, String name) {
+        for (ParseResult result : script.getResults()) {
+            if (result instanceof FunctionDefinition) {
+                FunctionDefinition definition = (FunctionDefinition) result;
+                if (name.equals(definition.getName())) return definition;
+            }
+        }
+        throw new AssertionError("Function not found: " + name);
     }
 }
