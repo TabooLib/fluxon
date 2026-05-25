@@ -48,6 +48,24 @@ public class FunctionCallOverheadBenchmark {
             "r = 0\n" +
             "for i in 1..100000 { r = inc(&r) }\n" +
             "&r";
+    private static final String HIGH_ORDER_BASELINE =
+            "sum = 0\n" +
+            "for i in 1..100000 { sum += &i }\n" +
+            "&sum";
+    private static final String HIGH_ORDER_LAMBDA =
+            "(1..100000)::sumOf(|| &it)";
+    private static final String HIGH_ORDER_READ_CAPTURE =
+            "base = 1\n" +
+            "(1..100000)::sumOf(|| &it + &base)";
+    private static final String HIGH_ORDER_WRITE_CAPTURE =
+            "sum = 0\n" +
+            "(1..100000)::each(|| sum += &it)\n" +
+            "&sum";
+    private static final String DYNAMIC_LAMBDA_CALL =
+            "f = |x| &x + 1\n" +
+            "r = 0\n" +
+            "for i in 1..100000 { r = call(&f, [&r]) }\n" +
+            "&r";
 
     @Test
     public void functionCallOverhead() throws Exception {
@@ -67,6 +85,27 @@ public class FunctionCallOverheadBenchmark {
         printDelta("Inline vs loop       ", inlineResult, baselineResult);
         printDelta("callDirect overhead  ", directResult, directBaselineResult);
         printDelta("Framework overhead   ", frameworkResult, baselineResult);
+    }
+
+    @Test
+    public void lambdaCallOverhead() throws Exception {
+        RuntimeScriptBase baseline = compile(HIGH_ORDER_BASELINE);
+        RuntimeScriptBase highOrderLambda = compile(HIGH_ORDER_LAMBDA);
+        RuntimeScriptBase readCapture = compile(HIGH_ORDER_READ_CAPTURE);
+        RuntimeScriptBase writeCapture = compile(HIGH_ORDER_WRITE_CAPTURE);
+        RuntimeScriptBase dynamicCall = compile(DYNAMIC_LAMBDA_CALL);
+
+        System.out.println("=== Lambda Call Overhead Benchmark: 100000 callback invocations ===");
+        BenchResult baselineResult = bench("Loop baseline       ", baseline);
+        BenchResult highOrderResult = bench("sumOf lambda        ", highOrderLambda);
+        BenchResult readCaptureResult = bench("sumOf read capture  ", readCapture);
+        BenchResult writeCaptureResult = bench("each write capture  ", writeCapture);
+        BenchResult dynamicResult = bench("call(lambda, list)  ", dynamicCall);
+
+        printDelta("sumOf lambda overhead", highOrderResult, baselineResult);
+        printDelta("Read capture extra   ", readCaptureResult, highOrderResult);
+        printDelta("Write capture extra  ", writeCaptureResult, baselineResult);
+        printDelta("Dynamic call overhead", dynamicResult, baselineResult);
     }
 
     private RuntimeScriptBase compile(String source) throws Exception {

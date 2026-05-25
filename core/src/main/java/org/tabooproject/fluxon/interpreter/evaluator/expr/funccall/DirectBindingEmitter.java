@@ -6,6 +6,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.runtime.*;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -40,6 +41,8 @@ public final class DirectBindingEmitter {
         if (throwResult != null) return throwResult;
         Type outputResult = tryEmitOutput(expr, args, ctx, mv);
         if (outputResult != null) return outputResult;
+        Type dynamicCallResult = tryEmitDynamicFunctionCall(expr, args, argTypes, ctx, mv);
+        if (dynamicCallResult != null) return dynamicCallResult;
         // 系统函数
         OverloadSet overloadSet = FluxonRuntime.getInstance().getSystemFunctions().get(expr.getFunctionName());
         if (overloadSet == null) return null;
@@ -111,6 +114,45 @@ public final class DirectBindingEmitter {
         if (type == Type.Z) return "(" + Type.Z + ")V";
         if (type == Type.STRING) return "(" + Type.STRING + ")V";
         return "(" + Type.OBJECT + ")V";
+    }
+
+    private static Type tryEmitDynamicFunctionCall(FunctionCallExpression expr, ParseResult[] args, Type[] argTypes, CodeContext ctx, MethodVisitor mv) {
+        if (!"call".equals(expr.getFunctionName()) || args.length > 2) {
+            return null;
+        }
+        if (argTypes == null || argTypes.length == 0 || !Function.TYPE.equals(argTypes[0])) {
+            return null;
+        }
+        if (args.length == 2 && !(args[1] instanceof ListExpression)) {
+            return null;
+        }
+        ListExpression arguments = args.length == 2 ? (ListExpression) args[1] : null;
+        int argCount = arguments != null ? arguments.getElements().size() : 0;
+        Type functionType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
+        if (functionType.isPrimitive()) {
+            FunctionCallHandlers.emitBox(functionType, mv);
+        }
+        mv.visitTypeInsn(CHECKCAST, Function.TYPE.getPath());
+        int functionSlot = ctx.allocateLocalVar(Function.TYPE);
+        mv.visitVarInsn(ASTORE, functionSlot);
+        // call(&fn, [args]) 是脚本层 Lambda 调用惯用入口，编译期直接拆开参数列表，避免每次构造 List 和 Object[]。
+        FunctionCallHandler.PrepareCallResult prepareResult = FunctionCallHandlers.emitPrepareCallDirect(
+                ctx,
+                mv,
+                argCount,
+                () -> mv.visitVarInsn(ALOAD, functionSlot)
+        );
+        if (arguments != null) {
+            for (int i = 0; i < argCount; i++) {
+                mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
+                mv.visitLdcInsn(i);
+                Type valueType = FunctionCallHandlers.emitArgExpression(arguments.getElements().get(i), ctx, mv);
+                FunctionCallHandlers.emitSetArg(valueType, null, mv);
+            }
+        }
+        mv.visitVarInsn(ALOAD, prepareResult.ctxSlot);
+        FunctionCallHandlers.emitFinishCall(Type.OBJECT, true, mv);
+        return Type.OBJECT;
     }
 
     /**

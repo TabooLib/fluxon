@@ -120,4 +120,9 @@ public class LambdaEvaluator extends ExpressionEvaluator<LambdaExpression> {
             }
         }
     }
+
+    @Override
+    public Type inferResultType(LambdaExpression result, TypeAnalyzer analyzer) {
+        return Function.TYPE;
+    }
 }
