@@ -381,6 +381,16 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testCompiledRangeExpressionUsesPrimitiveCreation() {
+        CompileResult result = Fluxon.compile(
+                "range = 1..5\n" +
+                        "&range::size()",
+                "RangePrimitiveShapeTest"
+        );
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange", "(Ljava/lang/Object;Ljava/lang/Object;Z)"));
+    }
+
+    @Test
     public void testForLoopListBuilding() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "result = []; " +
@@ -445,6 +455,10 @@ public class ForExpressionTest {
     }
 
     private static boolean hasMethodInvocation(CompileResult result, String owner, String method) {
+        return hasMethodInvocation(result, owner, method, null);
+    }
+
+    private static boolean hasMethodInvocation(CompileResult result, String owner, String method, String descriptor) {
         boolean[] matched = {false};
         ClassReader reader = new ClassReader(result.getMainClass());
         reader.accept(new ClassVisitor(Opcodes.ASM9) {
@@ -454,7 +468,7 @@ public class ForExpressionTest {
                 return new MethodVisitor(Opcodes.ASM9, visitor) {
                     @Override
                     public void visitMethodInsn(int opcode, String actualOwner, String actualName, String actualDescriptor, boolean isInterface) {
-                        if (owner.equals(actualOwner) && method.equals(actualName)) {
+                        if (owner.equals(actualOwner) && method.equals(actualName) && (descriptor == null || descriptor.equals(actualDescriptor))) {
                             matched[0] = true;
                         }
                         super.visitMethodInsn(opcode, actualOwner, actualName, actualDescriptor, isInterface);
