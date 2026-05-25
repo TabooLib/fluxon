@@ -402,6 +402,7 @@ public class ForExpressionTest {
         FluxonTestUtil.assertBothEqual(55, runResult);
         CompileResult result = Fluxon.compile(source, "ForRootConstantRangeShapeTest");
         assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createIterator"));
+        assertFalse(hasMethodInvocation(result, Operations.TYPE.getPath(), "add"));
         assertFalse(hasJumpOpcode(result, Opcodes.IFLE));
     }
 

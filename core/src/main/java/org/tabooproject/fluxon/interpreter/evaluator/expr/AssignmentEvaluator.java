@@ -78,6 +78,18 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
                 valueType = analyzer.inferType(result.getValue());
             }
             analyzer.recordType(position, valueType);
+        } else if (result.getTarget() instanceof Identifier) {
+            // root 变量不能变成本地缓存，但可记录脚本内数值类型供字节码选择 primitive 运算。
+            Identifier target = (Identifier) result.getTarget();
+            Type valueType;
+            if (result.getOperator().getType() != TokenType.ASSIGN) {
+                Type currentType = analyzer.getRootVariableType(target.getValue());
+                Type rightType = analyzer.inferType(result.getValue());
+                valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+            } else {
+                valueType = analyzer.inferType(result.getValue());
+            }
+            analyzer.recordRootType(target.getValue(), valueType);
         }
         recordConstant(result, analyzer);
     }

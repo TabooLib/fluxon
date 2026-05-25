@@ -191,10 +191,33 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
      */
     private void generateRootVariable(AssignExpression expr, Identifier target, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, TokenType op) {
         String name = target.getValue();
+        Type varType = ctx.getRootVariableType(name);
         Instructions.loadEnvironment(mv, ctx);
         if (op == TokenType.ASSIGN) {
             mv.visitLdcInsn(name);
             generateBoxedValue(valueEval, expr.getValue(), ctx, mv);
+        } else if (varType.isPrimitive() && isNumericCompound(op, varType)) {
+            Type vt = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(expr.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+            if (vt.isPrimitive()) {
+                // root 变量必须保持 Environment 可观察写入，只把读出后的数字运算压到 primitive 路径。
+                mv.visitLdcInsn(name);
+                Instructions.loadEnvironment(mv, ctx);
+                mv.visitLdcInsn(name);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
+                unbox(varType, mv);
+                vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+                if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+                emitConvert(vt, varType, mv);
+                emitPrimitiveCompound(op, varType, mv);
+                box(varType, mv);
+            } else {
+                mv.visitInsn(DUP);
+                mv.visitLdcInsn(name);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
+                generateCompoundOperation(expr, valueEval, op, ctx, mv);
+                mv.visitLdcInsn(name);
+                mv.visitInsn(SWAP);
+            }
         } else {
             mv.visitInsn(DUP);
             mv.visitLdcInsn(name);

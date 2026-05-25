@@ -30,6 +30,8 @@ public class TypeAnalyzer {
     private final Deque<Type> targetTypeStack = new ArrayDeque<>();
     // root 变量类型
     private Map<String, Type> rootVariableTypes;
+    // 脚本内赋值推断出的 root 变量类型，不能覆盖外部显式声明
+    private final Map<String, Type> inferredRootVariableTypes = new HashMap<>();
     // 局部变量常量值，仅用于编译期收敛确定安全的循环形态
     private final Map<Integer, Object> localConstants = new HashMap<>();
     // root 变量常量值，仅记录当前编译单元内的直接赋值
@@ -74,6 +76,8 @@ public class TypeAnalyzer {
             Type type = rootVariableTypes.get(name);
             if (type != null) return type;
         }
+        Type inferredType = inferredRootVariableTypes.get(name);
+        if (inferredType != null) return inferredType;
         return Type.OBJECT;
     }
 
@@ -179,6 +183,18 @@ public class TypeAnalyzer {
             variableTypes.put(position, valueType);
         } else if (!existing.equals(valueType)) {
             variableTypes.put(position, mergeTypes(existing, valueType));
+        }
+    }
+
+    /**
+     * 记录脚本内 root 变量类型，外部声明类型仍由 getRootVariableType 优先返回
+     */
+    public void recordRootType(String name, Type valueType) {
+        Type existing = inferredRootVariableTypes.get(name);
+        if (existing == null) {
+            inferredRootVariableTypes.put(name, valueType);
+        } else if (!existing.equals(valueType)) {
+            inferredRootVariableTypes.put(name, mergeTypes(existing, valueType));
         }
     }
 
