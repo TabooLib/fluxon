@@ -52,6 +52,15 @@ final class LoopRootCachePlanner {
         return createPlan(scanner.assignedRootNames, ctx);
     }
 
+    /**
+     * 判断循环局部变量是否可以在循环体内直接读取 JVM 槽位
+     * 只要循环体可能改写该变量，就必须保留 Environment 读路径。
+     */
+    static boolean canUseLocalVariableCache(ParseResult body, int position, CodeContext ctx) {
+        RootCacheAnalyzer scanner = new RootCacheAnalyzer(ctx, position);
+        return scanner.scan(body, true);
+    }
+
     static void emitLoadCaches(Plan plan, CodeContext ctx, MethodVisitor mv) {
         for (CodeContext.RootVariableCache cache : plan.caches.values()) {
             Instructions.loadEnvironment(mv, ctx);
@@ -128,10 +137,16 @@ final class LoopRootCachePlanner {
 
     private static final class RootCacheAnalyzer {
         private final CodeContext ctx;
+        private final int protectedLocalPosition;
         private final LinkedHashMap<String, Boolean> assignedRootNames = new LinkedHashMap<>();
 
         private RootCacheAnalyzer(CodeContext ctx) {
+            this(ctx, -1);
+        }
+
+        private RootCacheAnalyzer(CodeContext ctx, int protectedLocalPosition) {
             this.ctx = ctx;
+            this.protectedLocalPosition = protectedLocalPosition;
         }
 
         private boolean scan(ParseResult node, boolean allowRootAssignment) {
@@ -192,6 +207,7 @@ final class LoopRootCachePlanner {
         }
 
         private boolean scanAssign(AssignExpression assign, boolean allowRootAssignment) {
+            if (protectedLocalPosition >= 0 && assign.getPosition() == protectedLocalPosition) return false;
             if (assign.getTarget() instanceof Identifier && assign.getPosition() < 0) {
                 if (!allowRootAssignment) return false;
                 TokenType op = assign.getOperator().getType();

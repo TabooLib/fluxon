@@ -21,6 +21,7 @@ import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
 import org.tabooproject.fluxon.runtime.error.VoidError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.IntFunction;
@@ -306,7 +307,20 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         int step = start <= end ? 1 : -1;
         int effectiveEnd = range.isInclusive() ? end : end - step;
         int loopVar = ctx.allocateLocalVar(Type.I);
+        Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
+        int varPos = entry.getValue();
+        Type varType = ctx.getVariableType(varPos);
         LoopRootCachePlanner.Plan rootCachePlan = LoopRootCachePlanner.planForBody(result.getBody(), ctx);
+        Map<Integer, CodeContext.InlineLocalVariable> loopLocals = null;
+        int loopValueWriteBackVar = -1;
+        int loopExecutedVar = -1;
+        if (LoopRootCachePlanner.canUseLocalVariableCache(result.getBody(), varPos, ctx)) {
+            // 纯循环体内没有外部观察点，循环变量可延迟到退出循环时一次性写回。
+            loopLocals = new HashMap<>();
+            loopLocals.put(varPos, new CodeContext.InlineLocalVariable(varType, loopVar));
+            loopValueWriteBackVar = ctx.allocateLocalVar(Type.I);
+            loopExecutedVar = ctx.allocateLocalVar(Type.I);
+        }
         if (rootCachePlan != null) {
             LoopRootCachePlanner.emitLoadCaches(rootCachePlan, ctx, mv);
         }
@@ -315,19 +329,35 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         Label loopEnd = new Label();
         mv.visitLdcInsn(start);
         mv.visitVarInsn(ISTORE, loopVar);
+        if (loopExecutedVar >= 0) {
+            mv.visitInsn(ICONST_0);
+            mv.visitVarInsn(ISTORE, loopValueWriteBackVar);
+            mv.visitInsn(ICONST_0);
+            mv.visitVarInsn(ISTORE, loopExecutedVar);
+        }
         ctx.enterLoop(loopEnd, increment);
         mv.visitLabel(condition);
         mv.visitVarInsn(ILOAD, loopVar);
         mv.visitLdcInsn(effectiveEnd);
         mv.visitJumpInsn(step > 0 ? IF_ICMPGT : IF_ICMPLT, loopEnd);
-        Map.Entry<String, Integer> entry = result.getVariables().entrySet().iterator().next();
-        int varPos = entry.getValue();
-        Type varType = ctx.getVariableType(varPos);
-        emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+        if (loopLocals != null) {
+            mv.visitVarInsn(ILOAD, loopVar);
+            mv.visitVarInsn(ISTORE, loopValueWriteBackVar);
+            mv.visitInsn(ICONST_1);
+            mv.visitVarInsn(ISTORE, loopExecutedVar);
+        } else {
+            emitStoreRangeLoopVariable(varPos, varType, loopVar, ctx, mv);
+        }
         if (rootCachePlan != null) {
             ctx.enterRootVariableCacheScope(rootCachePlan.caches);
         }
+        if (loopLocals != null) {
+            ctx.enterInlineLocalVariableScope(loopLocals);
+        }
         Type bodyType = bodyEval.generateBytecode(result.getBody(), ctx, mv);
+        if (loopLocals != null) {
+            ctx.exitInlineLocalVariableScope();
+        }
         if (rootCachePlan != null) {
             ctx.exitRootVariableCacheScope();
         }
@@ -339,6 +369,13 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitJumpInsn(GOTO, condition);
         mv.visitLabel(loopEnd);
         ctx.exitLoop();
+        if (loopLocals != null) {
+            Label skipLoopValueWriteBack = new Label();
+            mv.visitVarInsn(ILOAD, loopExecutedVar);
+            mv.visitJumpInsn(IFEQ, skipLoopValueWriteBack);
+            emitStoreRangeLoopVariable(varPos, varType, loopValueWriteBackVar, ctx, mv);
+            mv.visitLabel(skipLoopValueWriteBack);
+        }
         if (rootCachePlan != null) {
             LoopRootCachePlanner.emitWriteBackCaches(rootCachePlan, ctx, mv);
         }

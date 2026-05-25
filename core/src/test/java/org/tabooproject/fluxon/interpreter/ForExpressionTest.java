@@ -16,6 +16,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Operations;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * For 循环表达式测试
@@ -402,6 +403,54 @@ public class ForExpressionTest {
         FluxonTestUtil.assertBothEqual(55, runResult);
         CompileResult result = Fluxon.compile(source, "ForRootCacheShapeTest");
         assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "getRootVariable"));
+    }
+
+    @Test
+    public void testForLoopPureRangeBodyReadsLoopVariableFromJvmSlot() {
+        String source = "sum = 0\n" +
+                "for i in 1..10 { sum += &i }\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(55, runResult);
+        CompileResult result = Fluxon.compile(source, "ForLoopLocalCacheShapeTest");
+        assertEquals(0, countMethodInvocation(result, Environment.TYPE.getPath(), "getLocalInt"));
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
+    }
+
+    @Test
+    public void testForLoopLocalCacheSkipsWhenLoopVariableAssigned() {
+        String source = "sum = 0\n" +
+                "for i in 1..10 {\n" +
+                "  i = 100\n" +
+                "  sum += &i\n" +
+                "}\n" +
+                "&sum";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(1000, runResult);
+        CompileResult result = Fluxon.compile(source, "ForLoopLocalCacheAssignedShapeTest");
+        assertTrue(countMethodInvocation(result, Environment.TYPE.getPath(), "getLocalInt") > 0);
+    }
+
+    @Test
+    public void testForLoopLocalCacheWritesBackVisibleLoopVariable() {
+        String source = "for i in 1..3 { }\n" +
+                "&i";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(3, runResult);
+        CompileResult result = Fluxon.compile(source, "ForLoopLocalCacheWriteBackShapeTest");
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
+    }
+
+    @Test
+    public void testForLoopLocalCacheWritesBackBreakValue() {
+        String source = "for i in 1..10 {\n" +
+                "  if &i == 4 { break }\n" +
+                "}\n" +
+                "&i";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(4, runResult);
+        CompileResult result = Fluxon.compile(source, "ForLoopLocalCacheBreakWriteBackShapeTest");
+        assertEquals(1, countMethodInvocation(result, Environment.TYPE.getPath(), "setLocalInt"));
     }
 
     @Test
