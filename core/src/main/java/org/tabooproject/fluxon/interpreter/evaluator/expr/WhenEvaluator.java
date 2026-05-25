@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
+import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.parser.expression.WhenExpression;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -107,6 +108,9 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
                 mv.visitJumpInsn(IFNE, branchLabels[i]);
                 continue;
             }
+            if (tryEmitIntRangeContains(branch, subjectVar, branchLabels[i], ctx, mv)) {
+                continue;
+            }
             // 其他匹配类型：使用 Intrinsics.matchWhenBranch()
             // 加载 subject
             mv.visitVarInsn(ALOAD, subjectVar);
@@ -156,6 +160,60 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
         mv.visitLabel(endLabel);
         ctx.restoreLocalVarIndex(saved);
         return OBJECT;
+    }
+
+    private static boolean tryEmitIntRangeContains(WhenExpression.WhenBranch branch, int subjectVar, Label branchLabel, CodeContext ctx, MethodVisitor mv) {
+        WhenExpression.MatchType matchType = branch.getMatchType();
+        if (matchType != WhenExpression.MatchType.CONTAINS && matchType != WhenExpression.MatchType.NOT_CONTAINS) {
+            return false;
+        }
+        if (!(branch.getCondition() instanceof RangeExpression) || ctx.getTypeAnalyzer() == null) {
+            return false;
+        }
+        RangeExpression range = (RangeExpression) branch.getCondition();
+        Integer start = ctx.getTypeAnalyzer().inferIntConstant(range.getStart());
+        Integer end = ctx.getTypeAnalyzer().inferIntConstant(range.getEnd());
+        if (start == null || end == null) {
+            return false;
+        }
+        int actualEnd = range.isInclusive() ? end : end + (start <= end ? -1 : 1);
+        int lower = Math.min(start, actualEnd);
+        int upper = Math.max(start, actualEnd);
+        Label endLabel = new Label();
+        Label noMatch = new Label();
+        Label nonNumber = new Label();
+        int subjectInt = ctx.allocateLocalVar(Type.I);
+        mv.visitVarInsn(ALOAD, subjectVar);
+        mv.visitTypeInsn(INSTANCEOF, Type.NUMBER.getPath());
+        mv.visitJumpInsn(IFEQ, nonNumber);
+        mv.visitVarInsn(ALOAD, subjectVar);
+        mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+        mv.visitVarInsn(ISTORE, subjectInt);
+        // 常量 int range 的 contains 直接比较上下界，避免为 when 分支临时创建 IntRange。
+        mv.visitVarInsn(ILOAD, subjectInt);
+        mv.visitLdcInsn(lower);
+        mv.visitJumpInsn(IF_ICMPLT, noMatch);
+        mv.visitVarInsn(ILOAD, subjectInt);
+        mv.visitLdcInsn(upper);
+        mv.visitJumpInsn(IF_ICMPGT, noMatch);
+        if (matchType == WhenExpression.MatchType.CONTAINS) {
+            mv.visitJumpInsn(GOTO, branchLabel);
+        } else {
+            mv.visitJumpInsn(GOTO, endLabel);
+        }
+        mv.visitLabel(nonNumber);
+        if (matchType == WhenExpression.MatchType.NOT_CONTAINS) {
+            mv.visitJumpInsn(GOTO, branchLabel);
+        } else {
+            mv.visitJumpInsn(GOTO, endLabel);
+        }
+        mv.visitLabel(noMatch);
+        if (matchType == WhenExpression.MatchType.NOT_CONTAINS) {
+            mv.visitJumpInsn(GOTO, branchLabel);
+        }
+        mv.visitLabel(endLabel);
+        return true;
     }
 
     private static final Type MATCH_TYPE = new Type(WhenExpression.MatchType.class);

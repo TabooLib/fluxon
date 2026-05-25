@@ -417,6 +417,21 @@ public class ForExpressionTest {
     }
 
     @Test
+    public void testWhenConstantIntRangeSkipsRangeAllocation() {
+        String source = "LIMIT = 10\n" +
+                "sum = 5\n" +
+                "when &sum {\n" +
+                "  in 0..&LIMIT -> 'hit'\n" +
+                "  else -> 'miss'\n" +
+                "}";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual("hit", runResult);
+        CompileResult result = Fluxon.compile(source, "WhenConstantIntRangeShapeTest");
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "createRange"));
+        assertFalse(hasMethodInvocation(result, Intrinsics.TYPE.getPath(), "matchWhenBranch"));
+    }
+
+    @Test
     public void testCompiledRangeExpressionUsesPrimitiveCreation() {
         CompileResult result = Fluxon.compile(
                 "range = 1..5\n" +
