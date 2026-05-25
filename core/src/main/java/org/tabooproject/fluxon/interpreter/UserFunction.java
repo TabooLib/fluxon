@@ -107,8 +107,10 @@ public class UserFunction implements Function, Symbolic {
             callEnvFree(context, exec);
             return;
         }
+        // Lambda 的父环境来自定义时捕获，普通函数仍使用当前解释器环境。
+        Environment parentEnv = definition instanceof LambdaFunctionDefinition ? context.getEnvironment() : exec.getEnvironment();
         Environment functionEnv = Intrinsics.bindFunctionParameters(
-                exec.getEnvironment(),
+                parentEnv,
                 definition.getParameters(),
                 context,
                 localVarCount

@@ -307,6 +307,14 @@ public final class FunctionContext<Target> implements AutoCloseable {
         return environment;
     }
 
+    /**
+     * 临时替换调用环境。
+     * 捕获型 Lambda 通过包装函数把调用点环境切换为定义时环境，调用结束后恢复。
+     */
+    public void setEnvironment(@NotNull Environment environment) {
+        this.environment = environment;
+    }
+
     @NotNull
     public FunctionContextPool getPool() {
         return pool;

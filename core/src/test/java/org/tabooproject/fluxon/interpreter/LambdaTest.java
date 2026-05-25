@@ -1,6 +1,5 @@
 package org.tabooproject.fluxon.interpreter;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 
@@ -165,7 +164,6 @@ public class LambdaTest {
      * 这会压住 lambda 缓存复用时错误共享最后一次父环境的问题。
      */
     @Test
-    @Disabled("已知缺陷：捕获型 lambda 逃逸后还没有绑定定义时 Environment")
     public void testEscapedLambdaFactoryKeepsIndependentCapturedFrames() {
         String script = ""
                 + "def makeCombiner(prefix, offset) = {\n"
@@ -177,6 +175,47 @@ public class LambdaTest {
                 + "[call(&first, [10]), call(&second, [20]), call(&first, [30]), call(&second, [40])]";
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
         assertEquals(Arrays.asList("A:1:10", "B:2:20", "A:1:30", "B:2:40"), result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试逃逸后的捕获型 lambda 作为集合扩展回调时仍使用定义时环境。
+     */
+    @Test
+    public void testEscapedLambdaKeepsCaptureThroughIterableExtension() {
+        String script = ""
+                + "def greaterThan(base) = {\n"
+                + "  |it| &it > &base\n"
+                + "}\n"
+                + "predicate = greaterThan(2)\n"
+                + "numbers = [1, 2, 3, 4]\n"
+                + "&numbers::filter(&predicate)";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        assertEquals(Arrays.asList(3, 4), result.getInterpretResult());
+        assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
+    }
+
+    /**
+     * 测试二级逃逸 lambda 的捕获隔离。
+     * 外层和内层都复用同一段语法时，不能互相覆盖定义时环境。
+     */
+    @Test
+    public void testNestedEscapedLambdaKeepsIndependentCapturedFrames() {
+        String script = ""
+                + "def makeOuter(prefix) = {\n"
+                + "  |seed| {\n"
+                + "    local = &prefix + ':' + &seed\n"
+                + "    |value| &local + ':' + &value\n"
+                + "  }\n"
+                + "}\n"
+                + "outerA = makeOuter('A')\n"
+                + "outerB = makeOuter('B')\n"
+                + "innerA1 = call(&outerA, [1])\n"
+                + "innerA2 = call(&outerA, [2])\n"
+                + "innerB = call(&outerB, [3])\n"
+                + "[call(&innerA1, [10]), call(&innerA2, [20]), call(&innerB, [30]), call(&innerA1, [40])]";
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(script);
+        assertEquals(Arrays.asList("A:1:10", "A:2:20", "B:3:30", "A:1:40"), result.getInterpretResult());
         assertTrue(result.isMatch(), "Interpret: " + result.getInterpretResult() + ", Compile: " + result.getCompileResult());
     }
 }
