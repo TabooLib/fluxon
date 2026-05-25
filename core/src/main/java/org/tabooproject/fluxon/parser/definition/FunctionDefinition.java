@@ -25,6 +25,7 @@ public class FunctionDefinition implements Definition {
     private final Set<String> localVariables;
     private final boolean registerToRoot;
     private boolean variablesCapturedByChildren = false;
+    private Set<Integer> capturedLocalPositions = Collections.emptySet();
 
     public FunctionDefinition(
             String name,
@@ -121,11 +122,24 @@ public class FunctionDefinition implements Definition {
      * 是否可以把局部变量放到 FunctionContext/JVM 槽位，跳过函数 Environment 局部数组。
      */
     public boolean canUseEnvFreeLocals() {
-        return !variablesCapturedByChildren;
+        return true;
     }
 
     public void setVariablesCapturedByChildren(boolean v) {
         this.variablesCapturedByChildren = v;
+    }
+
+    public Set<Integer> getCapturedLocalPositions() {
+        return capturedLocalPositions;
+    }
+
+    public boolean isLocalCapturedByChild(int position) {
+        return capturedLocalPositions.contains(position);
+    }
+
+    public void setCapturedLocalPositions(Set<Integer> positions) {
+        this.capturedLocalPositions = positions != null ? positions : Collections.emptySet();
+        this.variablesCapturedByChildren = !this.capturedLocalPositions.isEmpty();
     }
 
     @Override

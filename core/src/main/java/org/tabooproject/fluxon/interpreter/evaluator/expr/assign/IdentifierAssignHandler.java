@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.runtime.CaptureCell;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
@@ -102,9 +103,32 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
      * Env-free 模式：读写 JVM 局部变量
      */
     private void generateEnvFreeLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, int position, TokenType op) {
+        if (ctx.isLocalCapturedByChild(position) && !ctx.hasCaptureCellSlot(position)) {
+            generateCapturedEnvFreeLocal(expr, valueEval, ctx, mv, position, op);
+            return;
+        }
         Type varType = ctx.getVariableType(position);
         int jvmSlot = ctx.getJvmSlot(position);
         generateJvmLocalAssignment(expr, valueEval, ctx, mv, varType, jvmSlot, op);
+    }
+
+    /**
+     * Env-free 捕获槽位：JVM local 保存 CaptureCell，赋值只更新 cell 内容。
+     */
+    private void generateCapturedEnvFreeLocal(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, int position, TokenType op) {
+        int jvmSlot = ctx.getJvmSlot(position);
+        mv.visitVarInsn(ALOAD, jvmSlot);
+        if (op == TokenType.ASSIGN) {
+            Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
+            if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
+            box(vt, mv);
+            mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "set", "(" + OBJECT + ")V", false);
+            return;
+        }
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "get", "()" + OBJECT, false);
+        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+        mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "set", "(" + OBJECT + ")V", false);
     }
 
     /**

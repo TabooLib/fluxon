@@ -209,8 +209,7 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (definition == null) return false;
         if (definition instanceof LambdaFunctionDefinition) return false;
         if (definition.isAsync() || definition.isPrimarySync()) return false;
-        if (definition.hasVariablesCapturedByChildren()) return false;
-        if (definition.getBody().getType() == ParseResult.ResultType.STATEMENT) return false;
+        if (!FunctionClassEmitter.canUseDirectReturnBody(definition.getBody())) return false;
         return FunctionClassEmitter.getDirectReturnType(definition) != Type.VOID;
     }
 

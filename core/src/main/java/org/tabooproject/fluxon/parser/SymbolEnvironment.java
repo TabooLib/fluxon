@@ -44,6 +44,7 @@ public class SymbolEnvironment {
     private boolean directContextCall = false;
     // 有局部变量被子 Lambda 捕获的函数名集合
     private final Set<String> functionsWithCapturedVars = new HashSet<>();
+    private final Map<String, Set<Integer>> capturedLocalPositions = new HashMap<>();
 
     /**
      * 标记指定函数的局部变量被子 Lambda 捕获
@@ -56,6 +57,12 @@ public class SymbolEnvironment {
         }
     }
 
+    public void markFunctionCapturedVars(String functionName, Set<Integer> positions) {
+        if (functionName == null || positions.isEmpty()) return;
+        functionsWithCapturedVars.add(functionName);
+        capturedLocalPositions.computeIfAbsent(functionName, i -> new LinkedHashSet<>()).addAll(positions);
+    }
+
     /**
      * 检查指定函数是否有局部变量被子 Lambda 捕获
      *
@@ -64,6 +71,11 @@ public class SymbolEnvironment {
      */
     public boolean hasFunctionCapturedVars(String functionName) {
         return functionsWithCapturedVars.contains(functionName);
+    }
+
+    public Set<Integer> getCapturedLocalPositions(String functionName) {
+        Set<Integer> positions = capturedLocalPositions.get(functionName);
+        return positions != null ? positions : Collections.emptySet();
     }
 
     /**

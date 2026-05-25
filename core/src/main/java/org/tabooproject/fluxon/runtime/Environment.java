@@ -52,6 +52,8 @@ public class Environment {
     // 捕获型 Lambda 包装缓存，同一个定义时环境内重复求值同一个函数时复用包装对象
     @Nullable
     protected Map<Function, CapturedFunction> capturedFunctionCache;
+    @Nullable
+    protected CaptureFrame captureFrame;
     // 上下文目标
     @Nullable
     protected Object target;
@@ -105,6 +107,15 @@ public class Environment {
         captured = new CapturedFunction(function, this);
         capturedFunctionCache.put(function, captured);
         return captured;
+    }
+
+    /**
+     * 绑定带捕获帧的 Lambda。
+     * 捕获帧随定义点变化，不进入 Environment 级缓存，避免不同调用帧串槽。
+     */
+    @NotNull
+    public Function captureFunction(@NotNull Function function, @NotNull CaptureFrame frame) {
+        return new CapturedFunction(function, this, frame);
     }
 
     /**
@@ -449,6 +460,12 @@ public class Environment {
      */
     @Nullable
     public Object getLocalRef(int index) {
+        if (index < captureOffset && isNamedLocalSlot(index)) {
+            return localRefs != null && index < localRefs.length ? localRefs[index] : null;
+        }
+        if (index < captureOffset && captureFrame != null) {
+            return captureFrame.get(index);
+        }
         if (index < captureOffset && parent != null) {
             return parent.getLocalRef(index);
         }
@@ -468,6 +485,16 @@ public class Environment {
      * @param value 变量值
      */
     public void setLocalRef(int index, @Nullable Object value) {
+        if (index < captureOffset && isNamedLocalSlot(index)) {
+            if (localRefs != null && index < localRefs.length) {
+                localRefs[index] = value;
+            }
+            return;
+        }
+        if (index < captureOffset && captureFrame != null) {
+            captureFrame.set(index, value);
+            return;
+        }
         if (index < captureOffset && parent != null) {
             parent.setLocalRef(index, value);
             return;
@@ -485,6 +512,16 @@ public class Environment {
      */
     public void setCaptureOffset(int captureOffset) {
         this.captureOffset = captureOffset;
+    }
+
+    public void setCaptureFrame(@Nullable CaptureFrame captureFrame) {
+        this.captureFrame = captureFrame;
+    }
+
+    private boolean isNamedLocalSlot(int index) {
+        return localVariableNames != null
+                && index < localVariableNames.length
+                && localVariableNames[index] != null;
     }
     // endregion
 

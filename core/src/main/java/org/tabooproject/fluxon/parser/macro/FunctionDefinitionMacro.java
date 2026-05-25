@@ -184,7 +184,7 @@ public class FunctionDefinitionMacro implements StatementMacro {
         // 检查是否有子 Lambda 捕获了此函数的局部变量
         FunctionDefinition funcDef = new FunctionDefinition(functionName, parameters, parameterTypes, body, isAsync, isPrimarySync, annotations, localVariables, true);
         if (parser.getSymbolEnvironment().hasFunctionCapturedVars(functionName)) {
-            funcDef.setVariablesCapturedByChildren(true);
+            funcDef.setCapturedLocalPositions(parser.getSymbolEnvironment().getCapturedLocalPositions(functionName));
         }
         return funcDef;
     }

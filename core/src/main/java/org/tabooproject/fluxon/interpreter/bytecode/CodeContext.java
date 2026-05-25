@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.definition.Definition;
+import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -39,6 +40,8 @@ public class CodeContext {
     private boolean envFreeMode = false;
     // 脚本变量位置 → JVM 局部变量槽位的映射
     private int[] varPosToJvmSlot;
+    // 只读捕获变量的 cell 槽位，父函数本地读仍走原始 JVM local。
+    private int[] varPosToCaptureCellSlot;
 
     // 方法期望的返回类型（用于匿名类方法等场景）
     private Class<?> expectedReturnType = null;
@@ -74,6 +77,7 @@ public class CodeContext {
 
     // 类型分析器（用于编译期优化局部变量存储）
     private TypeAnalyzer typeAnalyzer;
+    private FunctionDefinition currentFunction;
 
     // root 变量缓存作用域：只在已证明循环体不可外部观察时短暂启用
     private final Deque<Map<String, RootVariableCache>> rootVariableCacheScopes = new ArrayDeque<>();
@@ -519,6 +523,14 @@ public class CodeContext {
         return userFunctionOwners.get(name);
     }
 
+    public boolean isLocalCapturedByChild(int position) {
+        return currentFunction != null && currentFunction.isLocalCapturedByChild(position);
+    }
+
+    public void setCurrentFunction(FunctionDefinition currentFunction) {
+        this.currentFunction = currentFunction;
+    }
+
     /**
      * 启用 env-free 模式，局部变量存储在 JVM 局部变量而非 Environment
      *
@@ -527,6 +539,9 @@ public class CodeContext {
     public void enableEnvFreeMode(int localVarCount) {
         this.envFreeMode = true;
         this.varPosToJvmSlot = new int[localVarCount];
+        this.varPosToCaptureCellSlot = new int[localVarCount];
+        Arrays.fill(this.varPosToJvmSlot, -1);
+        Arrays.fill(this.varPosToCaptureCellSlot, -1);
     }
 
     public boolean isEnvFreeMode() {
@@ -545,6 +560,22 @@ public class CodeContext {
      */
     public int getJvmSlot(int varPosition) {
         return varPosToJvmSlot[varPosition];
+    }
+
+    public boolean hasJvmSlot(int varPosition) {
+        return varPosToJvmSlot != null && varPosition >= 0 && varPosition < varPosToJvmSlot.length && varPosToJvmSlot[varPosition] >= 0;
+    }
+
+    public void mapVarToCaptureCellSlot(int varPosition, int jvmSlot) {
+        varPosToCaptureCellSlot[varPosition] = jvmSlot;
+    }
+
+    public boolean hasCaptureCellSlot(int varPosition) {
+        return varPosToCaptureCellSlot != null && varPosition >= 0 && varPosition < varPosToCaptureCellSlot.length && varPosToCaptureCellSlot[varPosition] >= 0;
+    }
+
+    public int getCaptureCellSlot(int varPosition) {
+        return varPosToCaptureCellSlot[varPosition];
     }
 
     /**

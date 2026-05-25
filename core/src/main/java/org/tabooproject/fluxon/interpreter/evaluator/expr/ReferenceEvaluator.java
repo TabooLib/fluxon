@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
+import org.tabooproject.fluxon.runtime.CaptureCell;
 import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
@@ -76,6 +77,11 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             // Env-free 模式：从 JVM 局部变量读取
             if (ctx.isEnvFreeMode()) {
                 int jvmSlot = ctx.getJvmSlot(position);
+                if (ctx.isLocalCapturedByChild(position) && !ctx.hasCaptureCellSlot(position)) {
+                    mv.visitVarInsn(Opcodes.ALOAD, jvmSlot);
+                    mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "get", "()" + Type.OBJECT, false);
+                    return Type.OBJECT;
+                }
                 Type varType = ctx.getVariableType(position);
                 Instructions.emitLoadLocal(mv, varType, jvmSlot);
                 return varType;

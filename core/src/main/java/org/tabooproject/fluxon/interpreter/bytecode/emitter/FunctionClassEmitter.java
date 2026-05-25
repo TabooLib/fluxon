@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.ElvisExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
@@ -26,11 +27,16 @@ import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.TernaryExpression;
 import org.tabooproject.fluxon.parser.expression.UnaryExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.statement.Block;
+import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
+import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -53,6 +59,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     private final BytecodeGenerator generator;
     private final String fileName;
     private final String source;
+    private final Set<Integer> assignedLocalPositions;
 
     /**
      * 构造函数类生成器
@@ -71,6 +78,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         this.generator = generator;
         this.fileName = fileName;
         this.source = source;
+        this.assignedLocalPositions = collectAssignedLocalPositions(funcDef.getBody());
     }
 
     @Override
@@ -119,6 +127,7 @@ public class FunctionClassEmitter extends ClassEmitter {
 
     private CodeContext createFunctionCodeContext() {
         CodeContext funcCtx = new CodeContext(className, RuntimeScriptBase.TYPE.getPath());
+        funcCtx.setCurrentFunction(funcDef);
         // 传播定义列表和用户函数注册表，使函数体内可查询兄弟函数属性（如 async）并直接引用静态字段
         funcCtx.addDefinitions(generator.getDefinitions());
         for (Definition def : generator.getDefinitions()) {
@@ -139,7 +148,7 @@ public class FunctionClassEmitter extends ClassEmitter {
     private boolean canUseDirectCallMethod() {
         if (!canUseEnvFreeMode()) return false;
         if (funcDef.isAsync() || funcDef.isPrimarySync()) return false;
-        if (funcDef.getBody().getType() == ParseResult.ResultType.STATEMENT) return false;
+        if (!canUseDirectReturnBody(funcDef.getBody())) return false;
         return getDirectReturnType(funcDef) != Type.VOID;
     }
 
@@ -400,10 +409,35 @@ public class FunctionClassEmitter extends ClassEmitter {
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
             int varPosition = entry.getValue();
             Class<?> declaredType = parameterTypes.get(varPosition);
-            Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            boolean splitCaptureCell = canSplitCaptureCell(varPosition);
             Type directType = getDirectParameterType(funcDef, varPosition);
+            Type type = splitCaptureCell ? directType : funcCtx.isLocalCapturedByChild(varPosition) ? Type.OBJECT : declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
             int jvmSlot = funcCtx.allocateLocalVar(type);
             funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
+            if (splitCaptureCell) {
+                Instructions.emitLoadLocal(mv, directType, argSlot);
+                Instructions.emitStoreLocal(mv, type, jvmSlot);
+                int cellSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+                funcCtx.mapVarToCaptureCellSlot(varPosition, cellSlot);
+                Instructions.emitLoadLocal(mv, directType, argSlot);
+                if (directType.isPrimitive()) {
+                    Instructions.emitBoxing(mv, directType);
+                }
+                emitNewCaptureCell(mv);
+                mv.visitVarInsn(ASTORE, cellSlot);
+                argSlot += getJvmSlotSize(directType);
+                continue;
+            }
+            if (funcCtx.isLocalCapturedByChild(varPosition)) {
+                Instructions.emitLoadLocal(mv, directType, argSlot);
+                if (directType.isPrimitive()) {
+                    Instructions.emitBoxing(mv, directType);
+                }
+                emitNewCaptureCell(mv);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+                argSlot += getJvmSlotSize(directType);
+                continue;
+            }
             if (directType.isPrimitive()) {
                 Instructions.emitLoadLocal(mv, directType, argSlot);
                 Instructions.emitStoreLocal(mv, directType, jvmSlot);
@@ -439,15 +473,27 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     private void emitEnvFreeLocalDefaults(MethodVisitor mv, CodeContext funcCtx) {
+        Set<Integer> parameterSlots = new HashSet<>(funcDef.getParameters().values());
         // 为非参数的局部变量分配 JVM 槽位并生成默认值初始化
         // 必须在方法入口处初始化所有局部变量，否则当首次赋值出现在分支内部时，
         // 另一条分支路径上该槽位仍为 top，JVM 验证器会拒绝后续的 ALOAD/ILOAD
-        for (int pos = funcDef.getParameters().size(); pos < funcDef.getLocalVariables().size(); pos++) {
+        for (int pos = 0; pos < funcDef.getLocalVariables().size(); pos++) {
+            if (parameterSlots.contains(pos) || funcCtx.hasJvmSlot(pos)) {
+                continue;
+            }
             emitEnvFreeLocalDefault(mv, funcCtx, pos);
         }
     }
 
     private void emitEnvFreeLocalDefault(MethodVisitor mv, CodeContext funcCtx, int pos) {
+        if (funcCtx.isLocalCapturedByChild(pos)) {
+            int jvmSlot = funcCtx.allocateLocalVar(Type.OBJECT);
+            funcCtx.mapVarToJvmSlot(pos, jvmSlot);
+            mv.visitInsn(ACONST_NULL);
+            emitNewCaptureCell(mv);
+            mv.visitVarInsn(ASTORE, jvmSlot);
+            return;
+        }
         Type varType = funcCtx.getVariableType(pos);
         if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
         int jvmSlot = funcCtx.allocateLocalVar(varType);
@@ -466,6 +512,13 @@ public class FunctionClassEmitter extends ClassEmitter {
         Instructions.emitStoreLocal(mv, varType, jvmSlot);
     }
 
+    private void emitNewCaptureCell(MethodVisitor mv) {
+        mv.visitTypeInsn(NEW, CaptureCell.TYPE.getPath());
+        mv.visitInsn(DUP_X1);
+        mv.visitInsn(SWAP);
+        mv.visitMethodInsn(INVOKESPECIAL, CaptureCell.TYPE.getPath(), "<init>", "(" + OBJECT + ")V", false);
+    }
+
     private void emitDirectFunctionBody(MethodVisitor mv, CodeContext funcCtx) {
         Label start = new Label();
         Label end = new Label();
@@ -473,8 +526,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         Type directReturnType = getDirectReturnType(funcDef);
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
-        Instructions.emitLineNumber(funcDef.getBody(), mv);
-        Type returnType = generator.generateExpressionBytecode((Expression) funcDef.getBody(), funcCtx, mv);
+        Type returnType = emitDirectReturnValue(mv, funcCtx);
         if (directReturnType.isPrimitive()) {
             // primitive 表达式函数直接返回原始值，避免 callDirect 内装箱、调用点再拆箱。
             if (returnType.isPrimitive()) {
@@ -497,6 +549,26 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitRuntimeErrorHandler(mv, funcCtx);
     }
 
+    private Type emitDirectReturnValue(MethodVisitor mv, CodeContext funcCtx) {
+        ParseResult body = funcDef.getBody();
+        if (body instanceof Block) {
+            ParseResult[] statements = ((Block) body).getStatements();
+            for (int i = 0; i < statements.length - 1; i++) {
+                ParseResult statement = statements[i];
+                Instructions.emitLineNumber(statement, mv);
+                Type type = generator.generateStatementBytecode((Statement) statement, funcCtx, mv);
+                if (type != Type.VOID) {
+                    mv.visitInsn((type == Type.J || type == Type.D) ? POP2 : POP);
+                }
+            }
+            ExpressionStatement last = (ExpressionStatement) statements[statements.length - 1];
+            Instructions.emitLineNumber(last, mv);
+            return generator.generateExpressionBytecode((Expression) last.getExpression(), funcCtx, mv);
+        }
+        Instructions.emitLineNumber(body, mv);
+        return generator.generateExpressionBytecode((Expression) body, funcCtx, mv);
+    }
+
     public static String getDirectCallDescriptor(FunctionDefinition definition) {
         StringBuilder descriptor = new StringBuilder("(");
         descriptor.append(Environment.TYPE);
@@ -512,9 +584,87 @@ public class FunctionClassEmitter extends ClassEmitter {
         TypeAnalyzer analyzer = new TypeAnalyzer();
         analyzer.initFromParameterTypes(definition.getParameterTypes());
         analyzer.analyzeNode(definition.getBody());
-        Type returnType = analyzer.inferType(definition.getBody());
+        ParseResult returnNode = getDirectReturnNode(definition.getBody());
+        if (returnNode == null) return Type.VOID;
+        Type returnType = analyzer.inferType(returnNode);
         if (returnType.isPrimitive()) return returnType;
         return Type.OBJECT;
+    }
+
+    public static boolean canUseDirectReturnBody(ParseResult body) {
+        return getDirectReturnNode(body) != null && !containsReturnStatement(body);
+    }
+
+    public static ParseResult getDirectReturnNode(ParseResult body) {
+        if (body instanceof Expression) return body;
+        if (!(body instanceof Block)) return null;
+        ParseResult[] statements = ((Block) body).getStatements();
+        if (statements.length == 0) return null;
+        ParseResult last = statements[statements.length - 1];
+        if (!(last instanceof ExpressionStatement)) return null;
+        return ((ExpressionStatement) last).getExpression();
+    }
+
+    private static boolean containsReturnStatement(ParseResult node) {
+        if (node instanceof ReturnStatement) return true;
+        if (!(node instanceof Block)) return false;
+        for (ParseResult statement : ((Block) node).getStatements()) {
+            if (containsReturnStatement(statement)) return true;
+        }
+        return false;
+    }
+
+    private static Set<Integer> collectAssignedLocalPositions(ParseResult body) {
+        Set<Integer> positions = new HashSet<>();
+        collectAssignedLocalPositions(body, Collections.newSetFromMap(new IdentityHashMap<>()), positions);
+        return positions;
+    }
+
+    /**
+     * 只读捕获变量可以拆成本地热读槽和闭包 cell；出现赋值时必须保守回到单 cell。
+     */
+    private static void collectAssignedLocalPositions(Object value, Set<Object> visited, Set<Integer> positions) {
+        if (value == null || isLeafValue(value) || !visited.add(value)) return;
+        if (value instanceof AssignExpression) {
+            int position = ((AssignExpression) value).getPosition();
+            if (position >= 0) {
+                positions.add(position);
+            }
+        }
+        if (value instanceof Iterable<?>) {
+            for (Object item : (Iterable<?>) value) {
+                collectAssignedLocalPositions(item, visited, positions);
+            }
+            return;
+        }
+        if (value instanceof Map<?, ?>) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                collectAssignedLocalPositions(entry.getKey(), visited, positions);
+                collectAssignedLocalPositions(entry.getValue(), visited, positions);
+            }
+            return;
+        }
+        Class<?> clazz = value.getClass();
+        if (clazz.isArray()) {
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                collectAssignedLocalPositions(Array.get(value, i), visited, positions);
+            }
+            return;
+        }
+        if (!clazz.getName().startsWith("org.tabooproject.fluxon.")) return;
+        for (Field field : clazz.getDeclaredFields()) {
+            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+            try {
+                field.setAccessible(true);
+                collectAssignedLocalPositions(field.get(value), visited, positions);
+            } catch (IllegalAccessException ignored) {
+            }
+        }
+    }
+
+    private static boolean isLeafValue(Object value) {
+        return value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof Character || value instanceof Enum<?>;
     }
 
     public static Type getDirectParameterType(FunctionDefinition definition, int varPosition) {
@@ -571,6 +721,10 @@ public class FunctionClassEmitter extends ClassEmitter {
                 mv.visitVarInsn(ALOAD, envSlot);
                 mv.visitLdcInsn(captureOffset);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setCaptureOffset", "(" + I + ")V", false);
+                mv.visitVarInsn(ALOAD, envSlot);
+                mv.visitVarInsn(ALOAD, 1);
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getCaptureFrame", "()" + CaptureFrame.TYPE, false);
+                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setCaptureFrame", "(" + CaptureFrame.TYPE + ")V", false);
             }
         }
         // 内联绑定每个参数（编译时确定类型，无运行时分支）
@@ -611,6 +765,10 @@ public class FunctionClassEmitter extends ClassEmitter {
      * 资格条件由 FunctionDefinition 统一维护，保持解释执行和编译执行一致。
      */
     private boolean canUseEnvFreeMode() {
+        if (funcDef instanceof LambdaFunctionDefinition && ((LambdaFunctionDefinition) funcDef).getCaptureOffset() > 0) {
+            // 编译路径的嵌套捕获需要完整 cell 转发，未完成前不能让捕获型 Lambda 走半套 env-free。
+            return false;
+        }
         return funcDef.canUseEnvFreeLocals();
     }
 
@@ -631,11 +789,18 @@ public class FunctionClassEmitter extends ClassEmitter {
         for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
             int varPosition = entry.getValue();
             Class<?> declaredType = parameterTypes.get(argIndex);
-            Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            Type type = funcCtx.isLocalCapturedByChild(varPosition) ? Type.OBJECT : declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
             int jvmSlot = funcCtx.allocateLocalVar(type);
             funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(argIndex);
+            if (funcCtx.isLocalCapturedByChild(varPosition)) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
+                emitNewCaptureCell(mv);
+                mv.visitVarInsn(ASTORE, jvmSlot);
+                argIndex++;
+                continue;
+            }
             if (type == Type.I || type == Type.Z) {
                 mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
                 mv.visitVarInsn(ISTORE, jvmSlot);
@@ -655,6 +820,12 @@ public class FunctionClassEmitter extends ClassEmitter {
             argIndex++;
         }
         emitEnvFreeLocalDefaults(mv, funcCtx);
+    }
+
+    private boolean canSplitCaptureCell(int position) {
+        return funcDef.hasVariablesCapturedByChildren()
+                && funcDef.isLocalCapturedByChild(position)
+                && !assignedLocalPositions.contains(position);
     }
 
     private void emitFunctionBody(MethodVisitor mv, CodeContext funcCtx) {

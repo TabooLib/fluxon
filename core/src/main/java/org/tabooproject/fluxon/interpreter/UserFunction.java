@@ -116,6 +116,7 @@ public class UserFunction implements Function, Symbolic {
         );
         if (definition instanceof LambdaFunctionDefinition) {
             functionEnv.setCaptureOffset(((LambdaFunctionDefinition) definition).getCaptureOffset());
+            functionEnv.setCaptureFrame(context.getCaptureFrame());
         }
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
             exec.consumeCostStep();
@@ -146,8 +147,17 @@ public class UserFunction implements Function, Symbolic {
         if (localVarCount > paramCount) {
             context.ensureLocalCapacity(localVarCount);
         }
-        // 将原始类型参数统一装箱到 refs 数组，使 getLocal 可以跳过 argTypes 检查
-        context.normalizeArgsToRef(paramCount);
+        if (usesOffsetParameterSlots()) {
+            // 捕获型 Lambda 的参数 slot 会被父捕获槽整体后移，必须按解析期 slot 绑定。
+            context.normalizeArgsToParameterSlots(definition.getParameters());
+        } else {
+            // 普通 env-free 函数保持连续参数热路径，避免无意义装箱和 slot 重排。
+            context.normalizeArgsToRef(paramCount);
+        }
+        // 被子 Lambda 捕获的槽位转成共享 cell，父函数和逃逸 Lambda 后续读写同一个对象。
+        for (Integer position : definition.getCapturedLocalPositions()) {
+            context.ensureCaptureCell(position);
+        }
         if (definition.getBody().getType() != null && definition.getBody().getType() != ParseResult.ResultType.STATEMENT) {
             exec.consumeCostStep();
         }
@@ -166,6 +176,15 @@ public class UserFunction implements Function, Symbolic {
         } else {
             context.setReturnRef(exec.resultRef);
         }
+    }
+
+    private boolean usesOffsetParameterSlots() {
+        int index = 0;
+        for (Integer slot : definition.getParameters().values()) {
+            if (slot == null || slot != index) return true;
+            index++;
+        }
+        return false;
     }
 
     @Override

@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 
+import java.util.Map;
+
 /**
  * 函数调用上下文
  * 封装函数调用所需的所有信息：目标对象、参数列表和环境
@@ -29,6 +31,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
     private Function function;
     private Target target;
     private Environment environment;
+    private CaptureFrame captureFrame;
     private FunctionContextPool pool;
     private Interpreter interpreter;
     int stackIndex = -1;
@@ -92,6 +95,11 @@ public final class FunctionContext<Target> implements AutoCloseable {
 
     public Object getRef(int index) {
         return refs[index];
+    }
+
+    public CaptureCell getCaptureCell(int index) {
+        Object value = refs[index];
+        return value instanceof CaptureCell ? (CaptureCell) value : null;
     }
 
     public String getString(int index) {
@@ -307,12 +315,21 @@ public final class FunctionContext<Target> implements AutoCloseable {
         return environment;
     }
 
+    @Nullable
+    public CaptureFrame getCaptureFrame() {
+        return captureFrame;
+    }
+
     /**
      * 临时替换调用环境。
      * 捕获型 Lambda 通过包装函数把调用点环境切换为定义时环境，调用结束后恢复。
      */
     public void setEnvironment(@NotNull Environment environment) {
         this.environment = environment;
+    }
+
+    public void setCaptureFrame(@Nullable CaptureFrame captureFrame) {
+        this.captureFrame = captureFrame;
     }
 
     @NotNull
@@ -453,6 +470,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.argTypes = EMPTY_ARG_TYPES;
         this.capacity = 0;
         this.environment = environment;
+        this.captureFrame = null;
         this.returnRef = null;
         this.returnType = null;
         this.interpreter = null;
@@ -469,6 +487,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         ensureCapacity(argCount);
         this.argumentCount = argCount;
         this.environment = environment;
+        this.captureFrame = null;
         this.returnRef = null;
         this.returnType = null;
         this.interpreter = null;
@@ -481,6 +500,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         function = null;
         target = null;
         environment = null;
+        captureFrame = null;
         interpreter = null;
         returnRef = null;
         returnPrimitive = 0L;
@@ -521,13 +541,16 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param count 所需最小容量
      */
     public void ensureLocalCapacity(int count) {
-        if (capacity < count) {
+        if (capacity < count || refs.length < count || primitives.length < count || argTypes.length < count) {
             long[] newPrimitives = new long[count];
             Object[] newRefs = new Object[count];
             byte[] newArgTypes = new byte[count];
-            System.arraycopy(primitives, 0, newPrimitives, 0, capacity);
-            System.arraycopy(refs, 0, newRefs, 0, capacity);
-            System.arraycopy(argTypes, 0, newArgTypes, 0, capacity);
+            int primitiveCopy = Math.min(primitives.length, count);
+            int refCopy = Math.min(refs.length, count);
+            int typeCopy = Math.min(argTypes.length, count);
+            System.arraycopy(primitives, 0, newPrimitives, 0, primitiveCopy);
+            System.arraycopy(refs, 0, newRefs, 0, refCopy);
+            System.arraycopy(argTypes, 0, newArgTypes, 0, typeCopy);
             primitives = newPrimitives;
             refs = newRefs;
             argTypes = newArgTypes;
@@ -558,6 +581,35 @@ public final class FunctionContext<Target> implements AutoCloseable {
     }
 
     /**
+     * 将调用参数绑定到解析期分配的局部 slot。
+     * 捕获型 Lambda 的参数 slot 位于父捕获槽之后，不能假定参数从 0 连续开始。
+     */
+    public void normalizeArgsToParameterSlots(Map<String, Integer> parameters) {
+        if (parameters == null || parameters.isEmpty()) return;
+        Object[] values = new Object[parameters.size()];
+        int argIndex = 0;
+        int maxSlot = -1;
+        for (Integer slot : parameters.values()) {
+            values[argIndex] = getArgBoxed(argIndex);
+            if (slot != null && slot > maxSlot) {
+                maxSlot = slot;
+            }
+            argIndex++;
+        }
+        if (maxSlot >= 0) {
+            ensureLocalCapacity(maxSlot + 1);
+        }
+        argIndex = 0;
+        for (Integer slot : parameters.values()) {
+            if (slot != null) {
+                refs[slot] = values[argIndex];
+                argTypes[slot] = TYPE_REF;
+            }
+            argIndex++;
+        }
+    }
+
+    /**
      * 获取指定位置的值（env-free 解释器路径使用）
      * 调用 normalizeArgsToRef 后所有位置均为 TYPE_REF，直接读 refs
      *
@@ -565,7 +617,11 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @return 值
      */
     public Object getLocal(int index) {
-        return refs[index];
+        if (captureFrame != null && index < captureFrame.size()) {
+            return captureFrame.get(index);
+        }
+        Object value = refs[index];
+        return value instanceof CaptureCell ? ((CaptureCell) value).get() : value;
     }
 
     /**
@@ -575,7 +631,43 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param value 值
      */
     public void setLocal(int index, Object value) {
+        if (captureFrame != null && index < captureFrame.size()) {
+            captureFrame.set(index, value);
+            return;
+        }
+        Object current = refs[index];
+        if (current instanceof CaptureCell) {
+            ((CaptureCell) current).set(value);
+            return;
+        }
         refs[index] = value;
+    }
+
+    /**
+     * 将指定槽位转换为捕获 cell，供父函数和逃逸 Lambda 共享。
+     */
+    public void ensureCaptureCell(int index) {
+        Object value = refs[index];
+        if (!(value instanceof CaptureCell)) {
+            refs[index] = new CaptureCell(value);
+        }
+    }
+
+    /**
+     * 根据当前局部槽位构建 Lambda 捕获帧。
+     */
+    public CaptureFrame createCaptureFrame(int size) {
+        CaptureFrame frame = new CaptureFrame(size);
+        for (int i = 0; i < size; i++) {
+            CaptureCell captured = captureFrame != null ? captureFrame.getCell(i) : null;
+            if (captured != null) {
+                frame.setCell(i, captured);
+                continue;
+            }
+            ensureCaptureCell(i);
+            frame.setCell(i, (CaptureCell) refs[i]);
+        }
+        return frame;
     }
 
     private void ensureCapacity(int count) {

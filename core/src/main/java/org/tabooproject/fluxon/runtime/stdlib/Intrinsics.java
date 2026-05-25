@@ -533,7 +533,16 @@ public final class Intrinsics {
      */
     @NotNull
     public static Environment bindFunctionParameters(@NotNull Environment parentEnv, Map<String, Integer> parameters, @NotNull FunctionContext<?> context, int localVariables) {
-        Environment functionEnv = new Environment(parentEnv, localVariables);
+        int localSize = localVariables;
+        if (parameters != null) {
+            for (Integer slot : parameters.values()) {
+                if (slot != null && slot >= localSize) {
+                    localSize = slot + 1;
+                }
+            }
+        }
+        // Lambda 参数 slot 可能位于捕获变量之后，环境容量必须覆盖参数最大 slot。
+        Environment functionEnv = new Environment(parentEnv, localSize);
         if (parameters == null || parameters.isEmpty()) {
             return functionEnv;
         }
@@ -542,8 +551,8 @@ public final class Intrinsics {
         for (Map.Entry<String, Integer> entry : parameters.entrySet()) {
             final int slot = entry.getValue();
             final Object value = (argIndex < len) ? context.getArgBoxed(argIndex) : null;
-            functionEnv.setLocalRef(slot, value);
             functionEnv.getLocalVariableNames()[slot] = entry.getKey();
+            functionEnv.setLocalRef(slot, value);
             argIndex++;
         }
         return functionEnv;

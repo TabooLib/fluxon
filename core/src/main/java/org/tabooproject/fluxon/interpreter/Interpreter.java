@@ -111,11 +111,15 @@ public class Interpreter {
      */
     public Type executeWithEnvironment(ParseResult result, Environment env) {
         Environment previous = this.environment;
+        FunctionContext<?> previousContext = this.activeFunctionContext;
         this.environment = env;
+        // Environment 路径必须隔离调用方的 env-free 局部槽位，避免 Lambda 参数被外层 FunctionContext 串读。
+        this.activeFunctionContext = null;
         try {
             return evaluate(result);
         } finally {
             this.environment = previous;
+            this.activeFunctionContext = previousContext;
         }
     }
 

@@ -18,10 +18,17 @@ public final class CapturedFunction implements Function {
     private final Function delegate;
     @NotNull
     private final Environment capturedEnvironment;
+    @Nullable
+    private final CaptureFrame captureFrame;
 
     public CapturedFunction(@NotNull Function delegate, @NotNull Environment capturedEnvironment) {
+        this(delegate, capturedEnvironment, null);
+    }
+
+    public CapturedFunction(@NotNull Function delegate, @NotNull Environment capturedEnvironment, @Nullable CaptureFrame captureFrame) {
         this.delegate = delegate;
         this.capturedEnvironment = capturedEnvironment;
+        this.captureFrame = captureFrame;
     }
 
     @Nullable
@@ -66,11 +73,14 @@ public final class CapturedFunction implements Function {
     @Override
     public void call(@NotNull FunctionContext<?> context) {
         Environment previous = context.getEnvironment();
+        CaptureFrame previousCaptureFrame = context.getCaptureFrame();
         context.setEnvironment(capturedEnvironment);
+        context.setCaptureFrame(captureFrame);
         try {
             delegate.call(context);
         } finally {
             context.setEnvironment(previous);
+            context.setCaptureFrame(previousCaptureFrame);
         }
     }
 }

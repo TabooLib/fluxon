@@ -121,9 +121,10 @@ public class LambdaSyntaxMacro implements SyntaxMacro {
                 locals.addAll(defined);
             }
             // 候选捕获只服务解析期符号绑定，只有 body 实际访问父槽位时才污染父函数的 env-free 路径。
-            boolean hasActualCapture = LambdaCaptureAnalyzer.hasActualCapture(body, captureOffset);
+            Set<Integer> capturedPositions = LambdaCaptureAnalyzer.findCapturedPositions(body, captureOffset);
+            boolean hasActualCapture = !capturedPositions.isEmpty();
             if (hasActualCapture && previousFunction != null) {
-                parser.getSymbolEnvironment().markFunctionHasCapturedVars(previousFunction);
+                parser.getSymbolEnvironment().markFunctionCapturedVars(previousFunction, capturedPositions);
             }
             parser.getSymbolEnvironment().setCurrentFunction(previousFunction);
             parser.popCapture();

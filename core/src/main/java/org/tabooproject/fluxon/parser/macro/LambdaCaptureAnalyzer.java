@@ -13,6 +13,7 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,63 +26,72 @@ final class LambdaCaptureAnalyzer {
     private LambdaCaptureAnalyzer() {}
 
     static boolean hasActualCapture(ParseResult body, int captureOffset) {
-        if (captureOffset <= 0) return false;
-        return hasActualCapture(body, captureOffset, newSetFromIdentityMap());
+        return !findCapturedPositions(body, captureOffset).isEmpty();
     }
 
-    private static boolean hasActualCapture(Object value, int captureOffset, Set<Object> visited) {
-        if (value == null) return false;
+    static Set<Integer> findCapturedPositions(ParseResult body, int captureOffset) {
+        if (captureOffset <= 0) return Collections.emptySet();
+        Set<Integer> positions = new LinkedHashSet<>();
+        collectCapturedPositions(body, captureOffset, newSetFromIdentityMap(), positions);
+        return positions;
+    }
+
+    private static void collectCapturedPositions(Object value, int captureOffset, Set<Object> visited, Set<Integer> positions) {
+        if (value == null) return;
         if (value instanceof ParseResult) {
-            if (!visited.add(value)) return false;
+            if (!visited.add(value)) return;
             ParseResult node = (ParseResult) value;
-            if (hasCapturedSlot(node, captureOffset)) return true;
-            return scanFields(node, captureOffset, visited);
+            collectCapturedSlot(node, captureOffset, positions);
+            scanFields(node, captureOffset, visited, positions);
+            return;
         }
         if (value instanceof Collection) {
             for (Object item : (Collection<?>) value) {
-                if (hasActualCapture(item, captureOffset, visited)) return true;
+                collectCapturedPositions(item, captureOffset, visited, positions);
             }
-            return false;
+            return;
         }
         if (value instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
-                if (hasActualCapture(entry.getKey(), captureOffset, visited)) return true;
-                if (hasActualCapture(entry.getValue(), captureOffset, visited)) return true;
+                collectCapturedPositions(entry.getKey(), captureOffset, visited, positions);
+                collectCapturedPositions(entry.getValue(), captureOffset, visited, positions);
             }
-            return false;
+            return;
         }
         Class<?> type = value.getClass();
         if (type.isArray()) {
             int length = Array.getLength(value);
             for (int i = 0; i < length; i++) {
-                if (hasActualCapture(Array.get(value, i), captureOffset, visited)) return true;
+                collectCapturedPositions(Array.get(value, i), captureOffset, visited, positions);
             }
         }
-        return false;
     }
 
-    private static boolean hasCapturedSlot(ParseResult node, int captureOffset) {
+    private static void collectCapturedSlot(ParseResult node, int captureOffset, Set<Integer> positions) {
         if (node instanceof ReferenceExpression) {
-            return isCapturedPosition(((ReferenceExpression) node).getPosition(), captureOffset);
+            addCapturedPosition(((ReferenceExpression) node).getPosition(), captureOffset, positions);
+            return;
         }
         if (node instanceof AssignExpression) {
-            return isCapturedPosition(((AssignExpression) node).getPosition(), captureOffset);
+            addCapturedPosition(((AssignExpression) node).getPosition(), captureOffset, positions);
+            return;
         }
         if (node instanceof IndexAccessExpression) {
-            return isCapturedPosition(((IndexAccessExpression) node).getPosition(), captureOffset);
+            addCapturedPosition(((IndexAccessExpression) node).getPosition(), captureOffset, positions);
+            return;
         }
         if (node instanceof TryExpression) {
-            return isCapturedPosition(((TryExpression) node).getPosition(), captureOffset);
+            addCapturedPosition(((TryExpression) node).getPosition(), captureOffset, positions);
+            return;
         }
         if (node instanceof DestructuringAssignExpression) {
             for (int position : ((DestructuringAssignExpression) node).getVariables().values()) {
-                if (isCapturedPosition(position, captureOffset)) return true;
+                addCapturedPosition(position, captureOffset, positions);
             }
         }
-        return false;
     }
 
-    private static boolean scanFields(ParseResult node, int captureOffset, Set<Object> visited) {
+    private static void scanFields(ParseResult node, int captureOffset, Set<Object> visited, Set<Integer> positions) {
         Class<?> type = node.getClass();
         while (type != null && type != Object.class) {
             Field[] fields = type.getDeclaredFields();
@@ -89,18 +99,19 @@ final class LambdaCaptureAnalyzer {
                 if (Modifier.isStatic(field.getModifiers())) continue;
                 field.setAccessible(true);
                 try {
-                    if (hasActualCapture(field.get(node), captureOffset, visited)) return true;
+                    collectCapturedPositions(field.get(node), captureOffset, visited, positions);
                 } catch (IllegalAccessException ex) {
                     throw new IllegalStateException("Cannot scan lambda capture field: " + field.getName(), ex);
                 }
             }
             type = type.getSuperclass();
         }
-        return false;
     }
 
-    private static boolean isCapturedPosition(int position, int captureOffset) {
-        return position >= 0 && position < captureOffset;
+    private static void addCapturedPosition(int position, int captureOffset, Set<Integer> positions) {
+        if (position >= 0 && position < captureOffset) {
+            positions.add(position);
+        }
     }
 
     private static Set<Object> newSetFromIdentityMap() {
