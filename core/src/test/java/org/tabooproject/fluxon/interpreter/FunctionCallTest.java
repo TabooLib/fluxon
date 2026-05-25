@@ -226,6 +226,26 @@ public class FunctionCallTest {
     }
 
     @Test
+    public void testExpressionFunctionDirectCallUsesPrimitiveParameterDescriptor() {
+        CompileResult result = Fluxon.compile(
+                "def inc(x: int) = &x + 1\n" +
+                        "inc(5)",
+                "UserDirectPrimitiveParameterTest"
+        );
+        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;I)Ljava/lang/Object;"));
+    }
+
+    @Test
+    public void testExpressionFunctionDirectCallUsesWidePrimitiveParameterSlots() {
+        String source = "def mix(a: long, b: double) = &a + &b\n" +
+                "mix(2, 0.5)";
+        FluxonTestUtil.TestResult runResult = FluxonTestUtil.runSilent(source);
+        FluxonTestUtil.assertBothEqual(2.5, runResult);
+        CompileResult result = Fluxon.compile(source, "UserDirectWidePrimitiveParameterTest");
+        assertTrue(hasMethodInvocation(result, "callDirect", "(Lorg/tabooproject/fluxon/runtime/Environment;JD)Ljava/lang/Object;"));
+    }
+
+    @Test
     public void testFunctionWithContextCall() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "def getName = 'hello'; " +
@@ -499,6 +519,10 @@ public class FunctionCallTest {
     }
 
     private static boolean hasMethodInvocation(CompileResult result, String method) {
+        return hasMethodInvocation(result, method, null);
+    }
+
+    private static boolean hasMethodInvocation(CompileResult result, String method, String expectedDescriptor) {
         boolean[] matched = {false};
         ClassReader reader = new ClassReader(result.getMainClass());
         reader.accept(new ClassVisitor(Opcodes.ASM9) {
@@ -508,7 +532,7 @@ public class FunctionCallTest {
                 return new MethodVisitor(Opcodes.ASM9, visitor) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String actualName, String actualDescriptor, boolean isInterface) {
-                        if (method.equals(actualName)) {
+                        if (method.equals(actualName) && (expectedDescriptor == null || expectedDescriptor.equals(actualDescriptor))) {
                             matched[0] = true;
                         }
                         super.visitMethodInsn(opcode, owner, actualName, actualDescriptor, isInterface);

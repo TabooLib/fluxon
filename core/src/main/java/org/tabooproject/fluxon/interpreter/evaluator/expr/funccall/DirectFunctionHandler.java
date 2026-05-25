@@ -13,6 +13,8 @@ import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.runtime.*;
 
+import java.util.Map;
+
 import static org.objectweb.asm.Opcodes.*;
 
 /**
@@ -45,11 +47,21 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         String funcClass = ownerClass + expr.getFunctionName();
         mv.visitFieldInsn(GETSTATIC, ownerClass, expr.getFunctionName(), "L" + funcClass + ";");
         Instructions.loadEnvironment(mv, ctx);
-        for (ParseResult arg : args) {
+        int argIndex = 0;
+        for (Map.Entry<String, Integer> entry : definition.getParameters().entrySet()) {
+            ParseResult arg = args[argIndex];
+            Type expectedType = FunctionClassEmitter.getDirectParameterType(definition, entry.getValue());
             Type argType = FunctionCallHandlers.emitArgExpression(arg, ctx, mv);
-            if (argType.isPrimitive()) {
+            if (expectedType.isPrimitive()) {
+                if (argType.isPrimitive()) {
+                    FunctionCallHandlers.emitPrimitiveConversion(argType, expectedType, mv);
+                } else {
+                    FunctionCallHandlers.emitUnbox(expectedType, mv);
+                }
+            } else if (argType.isPrimitive()) {
                 FunctionCallHandlers.emitBox(argType, mv);
             }
+            argIndex++;
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, funcClass, "callDirect", FunctionClassEmitter.getDirectCallDescriptor(definition), false);
         Type returnType = inferDirectReturnType(definition);

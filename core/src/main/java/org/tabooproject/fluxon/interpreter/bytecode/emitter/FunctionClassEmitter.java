@@ -242,8 +242,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         }
         directCtx.allocateLocalVar(Type.OBJECT);
         directCtx.allocateLocalVar(Type.OBJECT);
-        for (int i = 0; i < funcDef.getParameters().size(); i++) {
-            directCtx.allocateLocalVar(Type.OBJECT);
+        for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
+            directCtx.allocateLocalVar(getDirectParameterType(funcDef, entry.getValue()));
         }
         TypeAnalyzer typeAnalyzer = new TypeAnalyzer();
         typeAnalyzer.initFromParameterTypes(funcDef.getParameterTypes());
@@ -283,8 +283,15 @@ public class FunctionClassEmitter extends ClassEmitter {
             int varPosition = entry.getValue();
             Class<?> declaredType = parameterTypes.get(varPosition);
             Type type = declaredType != null ? Type.fromClass(declaredType) : Type.OBJECT;
+            Type directType = getDirectParameterType(funcDef, varPosition);
             int jvmSlot = funcCtx.allocateLocalVar(type);
             funcCtx.mapVarToJvmSlot(varPosition, jvmSlot);
+            if (directType.isPrimitive()) {
+                emitLoadDirectParameter(mv, directType, argSlot);
+                emitStoreDirectParameter(mv, directType, jvmSlot);
+                argSlot += getJvmSlotSize(directType);
+                continue;
+            }
             mv.visitVarInsn(ALOAD, argSlot);
             if (type == Type.I) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
@@ -323,6 +330,30 @@ public class FunctionClassEmitter extends ClassEmitter {
             argSlot++;
         }
         emitEnvFreeLocalDefaults(mv, funcCtx);
+    }
+
+    private static void emitLoadDirectParameter(MethodVisitor mv, Type type, int slot) {
+        if (type == Type.J) {
+            mv.visitVarInsn(LLOAD, slot);
+        } else if (type == Type.D) {
+            mv.visitVarInsn(DLOAD, slot);
+        } else if (type == Type.F) {
+            mv.visitVarInsn(FLOAD, slot);
+        } else {
+            mv.visitVarInsn(ILOAD, slot);
+        }
+    }
+
+    private static void emitStoreDirectParameter(MethodVisitor mv, Type type, int slot) {
+        if (type == Type.J) {
+            mv.visitVarInsn(LSTORE, slot);
+        } else if (type == Type.D) {
+            mv.visitVarInsn(DSTORE, slot);
+        } else if (type == Type.F) {
+            mv.visitVarInsn(FSTORE, slot);
+        } else {
+            mv.visitVarInsn(ISTORE, slot);
+        }
     }
 
     private void emitEnvFreeLocalDefaults(MethodVisitor mv, CodeContext funcCtx) {
@@ -378,12 +409,31 @@ public class FunctionClassEmitter extends ClassEmitter {
     public static String getDirectCallDescriptor(FunctionDefinition definition) {
         StringBuilder descriptor = new StringBuilder("(");
         descriptor.append(Environment.TYPE);
-        for (int i = 0; i < definition.getParameters().size(); i++) {
-            descriptor.append(OBJECT);
+        for (Map.Entry<String, Integer> entry : definition.getParameters().entrySet()) {
+            descriptor.append(getDirectParameterType(definition, entry.getValue()));
         }
         descriptor.append(")");
         descriptor.append(OBJECT);
         return descriptor.toString();
+    }
+
+    public static Type getDirectParameterType(FunctionDefinition definition, int varPosition) {
+        Class<?> declaredType = definition.getParameterTypes().get(varPosition);
+        if (declaredType == null) {
+            return Type.OBJECT;
+        }
+        Type type = Type.fromClass(declaredType);
+        if (type.isPrimitive()) {
+            return type;
+        }
+        return Type.OBJECT;
+    }
+
+    public static int getJvmSlotSize(Type type) {
+        if (type == Type.J || type == Type.D) {
+            return 2;
+        }
+        return 1;
     }
 
     /**
