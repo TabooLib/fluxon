@@ -329,6 +329,14 @@ public class ContextCallTest {
     }
 
     @Test
+    public void testCollectionPlusAssignKeepsContextCallType() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "_list = [1, 2, 3]; &_list += 10; isArray(&_list::toArray()) && &_list::size() == 4");
+        assertEquals(true, result.getInterpretResult());
+        assertEquals(true, result.getCompileResult());
+    }
+
+    @Test
     public void testContextCallWithArithmetic() {
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
                 "list1 = [1, 2, 3]; list2 = [4, 5]; &list1::size() + &list2::size()");

@@ -17,7 +17,9 @@ import org.tabooproject.fluxon.parser.expression.ExpressionType;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.parser.expression.MemberAccessExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.runtime.DirectBinding;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.OperatorOverloadRegistry;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 import org.tabooproject.fluxon.runtime.error.EvaluatorNotFoundError;
@@ -73,7 +75,12 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             if (result.getOperator().getType() != TokenType.ASSIGN) {
                 Type currentType = analyzer.getVariableType(position);
                 Type rightType = analyzer.inferType(result.getValue());
-                valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+                // 原地运算符重载保留左值类型，避免 Collection += value 退化成 Object。
+                if (OperatorOverloadRegistry.has(result.getOperator().getType(), currentType, rightType)) {
+                    valueType = currentType;
+                } else {
+                    valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+                }
             } else {
                 valueType = analyzer.inferType(result.getValue());
             }
@@ -85,7 +92,12 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             if (result.getOperator().getType() != TokenType.ASSIGN) {
                 Type currentType = analyzer.getRootVariableType(target.getValue());
                 Type rightType = analyzer.inferType(result.getValue());
-                valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+                // root 变量同样保持原地重载的左值类型，后续上下文调用才能继续直连扩展函数。
+                if (OperatorOverloadRegistry.has(result.getOperator().getType(), currentType, rightType)) {
+                    valueType = currentType;
+                } else {
+                    valueType = analyzer.inferBinaryResultType(currentType, rightType, result.getOperator().getType());
+                }
             } else {
                 valueType = analyzer.inferType(result.getValue());
             }
@@ -122,11 +134,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     private static final Map<Class<?>, AssignmentTargetHandler<?>> HANDLERS = new HashMap<>();
 
     static {
-        OPERATORS.put(TokenType.PLUS_ASSIGN, "add");
-        OPERATORS.put(TokenType.MINUS_ASSIGN, "subtract");
-        OPERATORS.put(TokenType.MULTIPLY_ASSIGN, "multiply");
-        OPERATORS.put(TokenType.DIVIDE_ASSIGN, "divide");
-        OPERATORS.put(TokenType.MODULO_ASSIGN, "modulo");
+        OPERATORS.put(TokenType.PLUS_ASSIGN, "addAssign");
+        OPERATORS.put(TokenType.MINUS_ASSIGN, "subtractAssign");
+        OPERATORS.put(TokenType.MULTIPLY_ASSIGN, "multiplyAssign");
+        OPERATORS.put(TokenType.DIVIDE_ASSIGN, "divideAssign");
+        OPERATORS.put(TokenType.MODULO_ASSIGN, "moduloAssign");
         HANDLERS.put(Identifier.class, new IdentifierAssignHandler());
         HANDLERS.put(IndexAccessExpression.class, new IndexAccessAssignHandler());
         HANDLERS.put(MemberAccessExpression.class, new MemberAccessAssignHandler());
@@ -188,11 +200,11 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
 
     public static Object applyCompoundOperation(Object current, Object value, TokenType operator) {
         switch (operator) {
-            case PLUS_ASSIGN: return add(current, value);
-            case MINUS_ASSIGN: return subtract(current, value);
-            case MULTIPLY_ASSIGN: return multiply(current, value);
-            case DIVIDE_ASSIGN: return divide(current, value);
-            case MODULO_ASSIGN: return modulo(current, value);
+            case PLUS_ASSIGN: return addAssign(current, value);
+            case MINUS_ASSIGN: return subtractAssign(current, value);
+            case MULTIPLY_ASSIGN: return multiplyAssign(current, value);
+            case DIVIDE_ASSIGN: return divideAssign(current, value);
+            case MODULO_ASSIGN: return moduloAssign(current, value);
             default: throw new RuntimeException("Unknown compound assignment operator: " + operator);
         }
     }
@@ -218,12 +230,70 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
     }
 
     public static void generateCompoundOperation(AssignExpression result, Evaluator<ParseResult> valueEval, TokenType operatorType, CodeContext ctx, MethodVisitor mv) {
+        generateCompoundOperation(result, valueEval, operatorType, ctx, mv, Type.OBJECT);
+    }
+
+    public static void generateCompoundOperation(AssignExpression result, Evaluator<ParseResult> valueEval, TokenType operatorType, CodeContext ctx, MethodVisitor mv, Type currentType) {
+        Type rightType = ctx.getTypeAnalyzer() != null ? valueEval.inferResultType(result.getValue(), ctx.getTypeAnalyzer()) : Type.OBJECT;
+        OperatorOverloadRegistry.Entry overloaded = OperatorOverloadRegistry.resolve(operatorType, currentType, rightType);
+        if (overloaded != null) {
+            emitOperatorOverload(result, valueEval, ctx, mv, overloaded);
+            return;
+        }
         generateBoxedValue(valueEval, result.getValue(), ctx, mv);
         String operatorName = OPERATORS.get(operatorType);
         if (operatorName == null) {
             throw new RuntimeException("Unknown compound assignment operator: " + operatorType);
         }
         mv.visitMethodInsn(INVOKESTATIC, TYPE.getPath(), operatorName, "(" + OBJECT + OBJECT + ")" + OBJECT, false);
+    }
+
+    private static void emitOperatorOverload(AssignExpression result, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, OperatorOverloadRegistry.Entry overloaded) {
+        DirectBinding binding = overloaded.getBinding();
+        Class<?> targetClass = overloaded.getTarget();
+        if (targetClass != Object.class) {
+            mv.visitTypeInsn(CHECKCAST, targetClass.getName().replace('.', '/'));
+        }
+        Type actualRightType = valueEval.generateBytecode(result.getValue(), ctx, mv);
+        if (actualRightType == VOID) throw new VoidError("Void type is not allowed for assignment value");
+        Type expectedRightType = Type.fromClass(overloaded.getRight());
+        emitOperatorArgumentConversion(actualRightType, expectedRightType, mv);
+        if (!actualRightType.isPrimitive() && overloaded.getRight() != Object.class) {
+            mv.visitTypeInsn(CHECKCAST, overloaded.getRight().getName().replace('.', '/'));
+        }
+        mv.visitMethodInsn(INVOKESTATIC, binding.getOwner(), binding.getMethod(), binding.getDescriptor(), false);
+        Type returnType = Type.fromClass(getReturnClass(binding.getDescriptor()));
+        if (returnType == VOID) {
+            mv.visitInsn(ACONST_NULL);
+            return;
+        }
+        if (returnType.isPrimitive()) {
+            box(returnType, mv);
+        }
+    }
+
+    private static void emitOperatorArgumentConversion(Type actual, Type expected, MethodVisitor mv) {
+        if (actual == expected) return;
+        if (actual.isPrimitive() && expected.isPrimitive()) {
+            emitConvert(actual, expected, mv);
+        } else if (!actual.isPrimitive() && expected.isPrimitive()) {
+            unbox(expected, mv);
+        } else if (actual.isPrimitive()) {
+            box(actual, mv);
+        }
+    }
+
+    private static Class<?> getReturnClass(String descriptor) {
+        char returnType = descriptor.charAt(descriptor.indexOf(')') + 1);
+        switch (returnType) {
+            case 'V': return void.class;
+            case 'I': return int.class;
+            case 'J': return long.class;
+            case 'F': return float.class;
+            case 'D': return double.class;
+            case 'Z': return boolean.class;
+            default: return Object.class;
+        }
     }
 
     private static int typeIndex(Type t) {

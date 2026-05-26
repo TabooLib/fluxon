@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
+import org.tabooproject.fluxon.interpreter.bytecode.Primitives;
+
 import java.lang.invoke.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -8,6 +10,7 @@ import java.util.Arrays;
 /**
  * Fluxon 函数扫描器
  * 扫描类中 @FluxonFunction 标注的静态方法，自动注册为系统函数或扩展函数
+ * 同时扫描 @FluxonOperator，把扩展函数旁边声明的运算符重载注册到复合赋值路径。
  * 每个方法同时生成 NativeFunction（解释器桥接）和 DirectBinding（编译器 INVOKESTATIC）
  * 解释器桥接通过 LambdaMetafactory 生成直接调用，运行时零反射开销
  *
@@ -21,9 +24,14 @@ public class FluxonFunctionScanner {
     public static void register(FluxonRuntime runtime, Class<?> clazz) {
         for (Method method : clazz.getDeclaredMethods()) {
             FluxonFunction annotation = method.getAnnotation(FluxonFunction.class);
-            if (annotation == null) continue;
-            if (!Modifier.isStatic(method.getModifiers()) || !Modifier.isPublic(method.getModifiers())) {
-                throw new IllegalStateException("@FluxonFunction 方法必须为 public static: " + method);
+            FluxonOperator operator = method.getAnnotation(FluxonOperator.class);
+            if (annotation == null && operator == null) continue;
+            requirePublicStatic(method, annotation != null ? "@FluxonFunction" : "@FluxonOperator");
+            if (operator != null) {
+                registerOperator(method, operator);
+            }
+            if (annotation == null) {
+                continue;
             }
             Class<?> target = annotation.target();
             if (target == FluxonFunction.SystemFunction.class) {
@@ -32,6 +40,16 @@ public class FluxonFunctionScanner {
                 registerExtensionFunction(runtime, clazz, method, annotation, target);
             }
         }
+    }
+
+    static void requirePublicStatic(Method method, String annotationName) {
+        if (!Modifier.isStatic(method.getModifiers()) || !Modifier.isPublic(method.getModifiers())) {
+            throw new IllegalStateException(annotationName + " 方法必须为 public static: " + method);
+        }
+    }
+
+    static void registerOperator(Method method, FluxonOperator operator) {
+        OperatorOverloadRegistry.register(operator.value(), operator.target(), method, operator.returnsTarget());
     }
 
     /**
@@ -216,27 +234,15 @@ public class FluxonFunctionScanner {
     private static MethodType boxMethodType(MethodType type) {
         Class<?> returnType = type.returnType();
         if (returnType.isPrimitive() && returnType != void.class) {
-            returnType = boxClass(returnType);
+            returnType = Primitives.boxToClass(returnType);
         }
         Class<?>[] params = type.parameterArray();
         for (int i = 0; i < params.length; i++) {
             if (params[i].isPrimitive()) {
-                params[i] = boxClass(params[i]);
+                params[i] = Primitives.boxToClass(params[i]);
             }
         }
         return MethodType.methodType(returnType, params);
-    }
-
-    private static Class<?> boxClass(Class<?> primitive) {
-        if (primitive == boolean.class) return Boolean.class;
-        if (primitive == int.class) return Integer.class;
-        if (primitive == long.class) return Long.class;
-        if (primitive == double.class) return Double.class;
-        if (primitive == float.class) return Float.class;
-        if (primitive == byte.class) return Byte.class;
-        if (primitive == short.class) return Short.class;
-        if (primitive == char.class) return Character.class;
-        return primitive;
     }
 
     /**

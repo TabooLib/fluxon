@@ -127,7 +127,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         }
         mv.visitInsn(DUP);
         mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "get", "()" + OBJECT, false);
-        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+        generateCompoundOperation(expr, valueEval, op, ctx, mv, Type.OBJECT);
         mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "set", "(" + OBJECT + ")V", false);
     }
 
@@ -162,12 +162,12 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             }
             Instructions.emitLoadLocal(mv, varType, jvmSlot);
             box(varType, mv);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
             unbox(varType, mv);
             Instructions.emitStoreLocal(mv, varType, jvmSlot);
         } else {
             mv.visitVarInsn(ALOAD, jvmSlot);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
             mv.visitVarInsn(ASTORE, jvmSlot);
         }
     }
@@ -214,7 +214,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             mv.visitLdcInsn(position);
             ReferenceEvaluator.emitGetLocal(varType, mv);
             box(varType, mv);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
             unbox(varType, mv);
             ReferenceEvaluator.emitSetLocal(varType, mv);
         } else {
@@ -222,7 +222,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             mv.visitInsn(DUP);
             mv.visitLdcInsn(position);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getLocalRef", GET_LOCAL_REF, false);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
+            generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
             mv.visitLdcInsn(position);
             mv.visitInsn(SWAP);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
@@ -259,22 +259,24 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 emitPrimitiveCompound(op, varType, mv);
                 box(varType, mv);
             } else {
-                mv.visitInsn(DUP);
-                mv.visitLdcInsn(name);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
-                generateCompoundOperation(expr, valueEval, op, ctx, mv);
-                mv.visitLdcInsn(name);
-                mv.visitInsn(SWAP);
+                generateRootCompoundFallback(expr, valueEval, ctx, mv, op, name, varType);
             }
         } else {
-            mv.visitInsn(DUP);
-            mv.visitLdcInsn(name);
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
-            generateCompoundOperation(expr, valueEval, op, ctx, mv);
-            mv.visitLdcInsn(name);
-            mv.visitInsn(SWAP);
+            generateRootCompoundFallback(expr, valueEval, ctx, mv, op, name, varType);
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", SET_ROOT_VARIABLE, false);
+    }
+
+    /**
+     * root 变量复合赋值兜底路径：保留栈顶 Environment，生成 setRootVariable 所需的 name/value。
+     */
+    private void generateRootCompoundFallback(AssignExpression expr, Evaluator<ParseResult> valueEval, CodeContext ctx, MethodVisitor mv, TokenType op, String name, Type varType) {
+        mv.visitInsn(DUP);
+        mv.visitLdcInsn(name);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
+        generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
+        mv.visitLdcInsn(name);
+        mv.visitInsn(SWAP);
     }
 
     /**
@@ -303,7 +305,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         }
         Instructions.emitLoadLocal(mv, varType, cache.slot);
         box(varType, mv);
-        generateCompoundOperation(expr, valueEval, op, ctx, mv);
+        generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
         unbox(varType, mv);
         Instructions.emitStoreLocal(mv, varType, cache.slot);
     }

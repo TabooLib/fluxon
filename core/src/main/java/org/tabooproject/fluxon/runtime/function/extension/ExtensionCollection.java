@@ -1,7 +1,9 @@
 package org.tabooproject.fluxon.runtime.function.extension;
 
+import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.runtime.FluxonFunction;
 import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
+import org.tabooproject.fluxon.runtime.FluxonOperator;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.*;
@@ -44,10 +46,36 @@ public class ExtensionCollection {
         return ((Collection<Object>) Objects.requireNonNull(collection)).add(element);
     }
 
+    // Collection += value 必须返回原集合，不能沿用 add() 的 boolean 返回值。
+    @FluxonOperator(value = TokenType.PLUS_ASSIGN, target = Collection.class, returnsTarget = true)
+    @SuppressWarnings("unchecked")
+    public static Collection<?> plusAssign(Collection<?> collection, Object element) {
+        Collection<Object> col = (Collection<Object>) Objects.requireNonNull(collection);
+        if (element instanceof Collection) {
+            col.addAll((Collection<?>) element);
+        } else {
+            col.add(element);
+        }
+        return col;
+    }
+
     // 移除元素
     @FluxonFunction(value = "remove", target = Collection.class)
     public static boolean remove(Collection<?> collection, Object element) {
         return Objects.requireNonNull(collection).remove(element);
+    }
+
+    // Collection -= value 与内置减法保持一致，集合右值按批量移除处理。
+    @FluxonOperator(value = TokenType.MINUS_ASSIGN, target = Collection.class, returnsTarget = true)
+    @SuppressWarnings("unchecked")
+    public static Collection<?> minusAssign(Collection<?> collection, Object element) {
+        Collection<Object> col = (Collection<Object>) Objects.requireNonNull(collection);
+        if (element instanceof Collection) {
+            col.removeAll((Collection<?>) element);
+        } else {
+            col.remove(element);
+        }
+        return col;
     }
 
     // 添加所有元素

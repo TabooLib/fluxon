@@ -1,5 +1,7 @@
 package org.tabooproject.fluxon.runtime.stdlib;
 
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.runtime.OperatorOverloadRegistry;
 import org.tabooproject.fluxon.runtime.Type;
 
 import java.util.Collection;
@@ -105,6 +107,17 @@ public final class Operations {
     }
 
     /**
+     * 复合加法先走运算符重载，保持原地修改类型不被普通二元加法吞掉。
+     */
+    public static Object addAssign(Object a, Object b) {
+        OperatorOverloadRegistry.Result overloaded = OperatorOverloadRegistry.invoke(TokenType.PLUS_ASSIGN, a, b);
+        if (overloaded.found) {
+            return overloaded.value;
+        }
+        return add(a, b);
+    }
+
+    /**
      * 对两个数字进行加法运算
      * 根据操作数类型自动选择合适的数值类型进行计算
      * 当发生溢出时会进行溢出处理
@@ -160,6 +173,17 @@ public final class Operations {
     }
 
     /**
+     * 复合减法先走运算符重载，未注册时保持旧的集合和数字语义。
+     */
+    public static Object subtractAssign(Object a, Object b) {
+        OperatorOverloadRegistry.Result overloaded = OperatorOverloadRegistry.invoke(TokenType.MINUS_ASSIGN, a, b);
+        if (overloaded.found) {
+            return overloaded.value;
+        }
+        return subtract(a, b);
+    }
+
+    /**
      * 对两个数字进行减法运算
      * 根据操作数类型自动选择合适的数值类型进行计算
      * 当发生溢出时会进行溢出处理
@@ -196,6 +220,17 @@ public final class Operations {
     public static Object multiply(Object a, Object b) {
         checkNumberOperands(a, b);
         return multiplyNumbers((Number) a, (Number) b);
+    }
+
+    /**
+     * 复合乘法预留重载入口，未注册时保持旧的数字语义。
+     */
+    public static Object multiplyAssign(Object a, Object b) {
+        OperatorOverloadRegistry.Result overloaded = OperatorOverloadRegistry.invoke(TokenType.MULTIPLY_ASSIGN, a, b);
+        if (overloaded.found) {
+            return overloaded.value;
+        }
+        return multiply(a, b);
     }
 
     /**
@@ -238,6 +273,17 @@ public final class Operations {
         return divideNumbers((Number) a, (Number) b);
     }
 
+    /**
+     * 复合除法预留重载入口，未注册时保持旧的数字语义。
+     */
+    public static Object divideAssign(Object a, Object b) {
+        OperatorOverloadRegistry.Result overloaded = OperatorOverloadRegistry.invoke(TokenType.DIVIDE_ASSIGN, a, b);
+        if (overloaded.found) {
+            return overloaded.value;
+        }
+        return divide(a, b);
+    }
+
     public static Number divideNumbers(Number a, Number b) {
         double divisor = b.doubleValue();
         if (divisor == 0) throw new ArithmeticException("Division by zero");
@@ -269,6 +315,17 @@ public final class Operations {
     public static Object modulo(Object a, Object b) {
         checkNumberOperands(a, b);
         return moduloNumbers((Number) a, (Number) b);
+    }
+
+    /**
+     * 复合取模预留重载入口，未注册时保持旧的数字语义。
+     */
+    public static Object moduloAssign(Object a, Object b) {
+        OperatorOverloadRegistry.Result overloaded = OperatorOverloadRegistry.invoke(TokenType.MODULO_ASSIGN, a, b);
+        if (overloaded.found) {
+            return overloaded.value;
+        }
+        return modulo(a, b);
     }
 
     public static Number moduloNumbers(Number a, Number b) {
