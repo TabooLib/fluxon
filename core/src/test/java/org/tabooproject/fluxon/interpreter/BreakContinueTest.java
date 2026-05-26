@@ -3,6 +3,9 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BreakContinueTest {
@@ -142,6 +145,42 @@ public class BreakContinueTest {
         // null ?: return 应该提前返回 null，不应该返回 'next_line'
         assertEquals(null, r1.getInterpretResult(), "elvis+return should return null, not next line");
         assertEquals(null, r1.getCompileResult(), "elvis+return should return null, not next line (compile)");
+    }
+
+    @Test
+    public void testElvisReturnNullValueNextLine() {
+        // elvis + return null 应提前退出，复杂脚本里的空值兜底依赖这个分支形态。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("def foo(x) = {\n" +
+                "    a = &x ?: return null\n" +
+                "    'next_line'\n" +
+                "}\n" +
+                "foo(null)");
+        assertEquals(null, result.getInterpretResult(), "elvis+return null should return null");
+        assertEquals(null, result.getCompileResult(), "elvis+return null should return null (compile)");
+    }
+
+    @Test
+    public void testAsyncCallerWithElvisReturnNullHelper() throws Exception {
+        // 复现同步物品脚本形态：async run 调用含 `?: return null` 的普通函数。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("def update(id, count, quality) {\n" +
+                "    block = null ?: return null\n" +
+                "    &block.root['refresh'] = 47.2 * sqrt(&quality / (&count[0] + &count[1])) + 'h'\n" +
+                "}\n" +
+                "@except\n" +
+                "async def run {\n" +
+                "    count = [1, 2]\n" +
+                "    update('x', &count, 3)\n" +
+                "    'done'\n" +
+                "}\n" +
+                "run()");
+        assertEquals(resolveFuture(result.getInterpretResult()), resolveFuture(result.getCompileResult()));
+    }
+
+    private static Object resolveFuture(Object value) throws Exception {
+        if (value instanceof CompletableFuture) {
+            return ((CompletableFuture<?>) value).get(5, TimeUnit.SECONDS);
+        }
+        return value;
     }
 
     @Test

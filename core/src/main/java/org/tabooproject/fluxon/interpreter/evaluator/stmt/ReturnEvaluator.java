@@ -48,7 +48,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             if (expectedReturnType == null) {
                 // Fluxon 函数体：通过 context 写入返回值
                 if (valueType == Type.VOID) {
-                    mv.visitInsn(RETURN);
+                    emitFunctionReturn(ctx, mv);
                 } else if (valueType.isPrimitive()) {
                     mv.visitVarInsn(ALOAD, 1);
                     if (valueType == Type.D || valueType == Type.J) {
@@ -58,12 +58,12 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                         mv.visitInsn(SWAP);
                     }
                     Instructions.emitSetReturnPrimitive(mv, valueType);
-                    mv.visitInsn(RETURN);
+                    emitFunctionReturn(ctx, mv);
                 } else {
                     mv.visitVarInsn(ALOAD, 1);
                     mv.visitInsn(SWAP);
                     mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
-                    mv.visitInsn(RETURN);
+                    emitFunctionReturn(ctx, mv);
                 }
             } else {
                 if (valueType == Type.VOID) {
@@ -76,7 +76,9 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                 Instructions.emitReturn(mv, expectedReturnType, valueType);
             }
         } else {
-            if (expectedReturnType == null || expectedReturnType == void.class) {
+            if (expectedReturnType == null) {
+                emitFunctionReturn(ctx, mv);
+            } else if (expectedReturnType == void.class) {
                 mv.visitInsn(RETURN);
             } else {
                 mv.visitInsn(ACONST_NULL);
@@ -84,6 +86,15 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
             }
         }
         return Type.VOID;
+    }
+
+    private void emitFunctionReturn(CodeContext ctx, MethodVisitor mv) {
+        if (ctx.getFunctionExitLabel() == null) {
+            mv.visitInsn(RETURN);
+            return;
+        }
+        // 函数内 return 统一跳到 Function.call 出口，避免嵌套表达式分支直接返回导致 ASM 帧合并失败。
+        mv.visitJumpInsn(GOTO, ctx.getFunctionExitLabel());
     }
 
     @Override
