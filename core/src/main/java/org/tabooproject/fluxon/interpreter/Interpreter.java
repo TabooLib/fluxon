@@ -100,6 +100,10 @@ public class Interpreter {
         for (ParseResult result : parseResults) {
             if (!(result instanceof Definition)) {
                 Type t = evaluate(result);
+                // 顶层脚本也要响应 ? 传播产生的 return 信号，避免继续执行后续语句。
+                if (hasReturn) {
+                    return returnValue;
+                }
                 finalResult = getResultBoxed(t);
             }
         }

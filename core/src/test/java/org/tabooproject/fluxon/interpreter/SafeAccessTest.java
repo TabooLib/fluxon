@@ -3,6 +3,8 @@ package org.tabooproject.fluxon.interpreter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.java.Export;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -88,6 +90,21 @@ public class SafeAccessTest {
     public void testSafeContextCallOnNull() {
         // 当 target 为 null 时，?:: 应该返回 null 而不是执行上下文
         FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent("obj = null; &obj ?:: uppercase()");
+        assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
+    }
+
+    @Test
+    public void testErrorPropagationAfterOptionalContextCallStopsTopLevelScript() {
+        FluxonRuntime.getInstance().getExportRegistry().registerClass(MockTrigger.class);
+        FluxonRuntime.getInstance().getExportRegistry().registerClass(MockActiveEntity.class);
+        FluxonRuntime.getInstance().getExportRegistry().registerClass(MockExchange.class);
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "ae = &t::toActiveEntity()?::exchange()?\n" +
+                "!&ae::has('flag_a') && !&ae::has('flag_b') && !&ae::has('flag_c')",
+                ctx -> ctx.setForceLocalVariables(true),
+                env -> env.defineRootVariable("t", new MockTrigger())
+        );
         assertNull(result.getInterpretResult());
         assertNull(result.getCompileResult());
     }
@@ -311,5 +328,29 @@ public class SafeAccessTest {
         result = FluxonTestUtil.runSilent("map = [key: 'value']; &map?['key'] ?: 'default'");
         assertEquals("value", result.getInterpretResult());
         assertEquals("value", result.getCompileResult());
+    }
+
+    public static class MockTrigger {
+
+        @Export
+        public MockActiveEntity toActiveEntity() {
+            return null;
+        }
+    }
+
+    public static class MockActiveEntity {
+
+        @Export
+        public MockExchange exchange() {
+            return new MockExchange();
+        }
+    }
+
+    public static class MockExchange {
+
+        @Export
+        public boolean has(String key) {
+            return false;
+        }
     }
 }
