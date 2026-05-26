@@ -5,6 +5,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.Primitives;
 import java.lang.invoke.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 
 /**
@@ -116,7 +117,22 @@ public class FluxonFunctionScanner {
             paramTypes[i] = Type.fromClass(paramClasses[i + skipParams]);
         }
         Type returnType = Type.fromClass(method.getReturnType());
-        return FunctionSignature.returns(returnType).params(paramTypes);
+        return FunctionSignature.returns(returnType).paramsWithMin(requiredParameterCount(method, skipParams), paramTypes);
+    }
+
+    /**
+     * @Optional 只允许省略尾部参数，注册签名时同步暴露最少实参数。
+     */
+    private static int requiredParameterCount(Method method, int skipParams) {
+        Parameter[] parameters = method.getParameters();
+        int required = parameters.length - skipParams;
+        for (int i = parameters.length - 1; i >= skipParams; i--) {
+            if (!parameters[i].isAnnotationPresent(org.tabooproject.fluxon.runtime.java.Optional.class)) {
+                break;
+            }
+            required--;
+        }
+        return required;
     }
 
     /**

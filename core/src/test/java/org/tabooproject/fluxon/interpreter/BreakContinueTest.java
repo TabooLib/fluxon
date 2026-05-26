@@ -2,7 +2,17 @@ package org.tabooproject.fluxon.interpreter;
 
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.FluxonTestUtil;
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.FunctionSignature;
+import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.java.Optional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +47,89 @@ public class BreakContinueTest {
                 "&output");
         assertEquals("13579", testResult.getInterpretResult());
         assertEquals("13579", testResult.getCompileResult());
+    }
+
+    @Test
+    public void testAsyncFunctionContinueInsideIf() throws Exception {
+        // async 函数的 Function.call 包含 try-catch 包裹，continue 必须仍指向循环更新点。
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("async def run {\n" +
+                "    attrs = [[id: null], [id: 'a']]\n" +
+                "    count = 0\n" +
+                "    for i in &attrs {\n" +
+                "        id = &i['id']\n" +
+                "        if (&id == null) {\n" +
+                "            continue\n" +
+                "        }\n" +
+                "        count += 1\n" +
+                "    }\n" +
+                "    &count\n" +
+                "}\n" +
+                "run()");
+        assertEquals(1, resolveFuture(testResult.getInterpretResult()));
+        assertEquals(1, resolveFuture(testResult.getCompileResult()));
+    }
+
+    @Test
+    public void testExceptAsyncFunctionWithOptionalDirectExtensionCall() throws Exception {
+        // 目标扩展函数少传尾部 @Optional 参数时，DirectBinding 仍必须补齐 JVM descriptor 参数。
+        ensureServiceRegistered();
+        FluxonTestUtil.TestResult testResult = FluxonTestUtil.runSilent("OWNER = 'owner'\n" +
+                "GROUP = 'group'\n" +
+                "token = 'token'\n" +
+                "@except\n" +
+                "async def run {\n" +
+                "    result = service::fetch(\n" +
+                "        &OWNER,\n" +
+                "        &token,\n" +
+                "        &GROUP,\n" +
+                "        ['x', 'y']\n" +
+                "    )\n" +
+                "    &result[0]['filter']\n" +
+                "}\n" +
+                "run()", "AsyncCallOnly");
+        assertEquals(null, resolveFuture(testResult.getInterpretResult()));
+        assertEquals(null, resolveFuture(testResult.getCompileResult()));
+    }
+
+    private static boolean serviceRegistered = false;
+
+    public static class ServiceApi {
+
+        public static final ServiceApi INSTANCE = new ServiceApi();
+    }
+
+    public static class ServiceFunctions {
+
+        @FluxonFunction(value = "fetch", target = ServiceApi.class)
+        public static List<Map<String, Object>> fetch(
+                ServiceApi api,
+                String first,
+                String second,
+                String third,
+                List<String> fields,
+                @Optional Map<String, Object> filter) {
+            List<Map<String, Object>> rows = new ArrayList<>();
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("first", first);
+            row.put("second", second);
+            row.put("third", third);
+            row.put("fields", fields);
+            row.put("filter", filter);
+            rows.add(row);
+            return rows;
+        }
+    }
+
+    private static void ensureServiceRegistered() {
+        if (serviceRegistered) return;
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerFunction(
+                "service",
+                FunctionSignature.returns(Type.fromClass(ServiceApi.class)).noParams(),
+                context -> context.setReturnRef(ServiceApi.INSTANCE)
+        );
+        FluxonFunctionScanner.register(runtime, ServiceFunctions.class);
+        serviceRegistered = true;
     }
 
     @Test

@@ -51,7 +51,7 @@ public final class DirectBindingEmitter {
         Function function = overloadSet.resolve(argTypes != null ? argTypes : new Type[args.length]);
         if (function == null) return null;
         DirectBinding binding = function.getDirectBinding();
-        if (binding == null || !canDirectBind(function)) return null;
+        if (binding == null || !canDirectBind(function, args.length)) return null;
         return emitInvoke(function, binding, args, ctx, mv, 0);
     }
 
@@ -161,7 +161,7 @@ public final class DirectBindingEmitter {
      */
     private static Type tryEmitExtension(Function function, Class<?> targetClass, ParseResult[] args, CodeContext ctx, MethodVisitor mv) {
         DirectBinding binding = function.getDirectBinding();
-        if (binding == null || !canDirectBind(function)) return null;
+        if (binding == null || !canDirectBind(function, args.length)) return null;
         // 加载 target：environment.getTarget() + CHECKCAST
         Instructions.loadEnvironment(mv, ctx);
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
@@ -178,11 +178,17 @@ public final class DirectBindingEmitter {
     private static Type emitInvoke(Function function, DirectBinding binding, ParseResult[] args, CodeContext ctx, MethodVisitor mv, int skipDescriptorParams) {
         FunctionSignature signature = function.getSignature();
         Type[] jvmParamTypes = binding.reconcileParamTypes(signature.getParameterTypes(), skipDescriptorParams);
+        int parameterCount = jvmParamTypes.length;
         // descriptor 中期望具体引用类型的参数位置（如 String），栈上为 Object 时需要 CHECKCAST
-        String[] castTargets = binding.getDescriptorParamCastTargets(skipDescriptorParams, args.length);
-        for (int i = 0; i < args.length; i++) {
+        String[] castTargets = binding.getDescriptorParamCastTargets(skipDescriptorParams, parameterCount);
+        for (int i = 0; i < parameterCount; i++) {
+            Type expected = jvmParamTypes[i];
+            if (i >= args.length) {
+                // 省略的 @Optional 参数必须按 descriptor 补默认值，保持 INVOKESTATIC 栈形状完整。
+                emitDefaultArg(expected, mv);
+                continue;
+            }
             Type actual = FunctionCallHandlers.emitArgExpression(args[i], ctx, mv);
-            Type expected = i < jvmParamTypes.length ? jvmParamTypes[i] : Type.OBJECT;
             emitArgConversion(actual, expected, mv);
             // 栈上是 Object 但 descriptor 期望具体引用子类 → CHECKCAST
             if (castTargets != null && castTargets[i] != null && !actual.isPrimitive()) {
@@ -193,8 +199,23 @@ public final class DirectBindingEmitter {
         return binding.reconcileReturnType(signature.getReturnType());
     }
 
-    private static boolean canDirectBind(Function function) {
-        return function.getSignature() != null && !function.isAsync() && !function.isPrimarySync();
+    private static boolean canDirectBind(Function function, int argCount) {
+        FunctionSignature signature = function.getSignature();
+        return signature != null && signature.acceptsParameterCount(argCount) && !function.isAsync() && !function.isPrimarySync();
+    }
+
+    private static void emitDefaultArg(Type expected, MethodVisitor mv) {
+        if (expected == Type.J) {
+            mv.visitInsn(LCONST_0);
+        } else if (expected == Type.F) {
+            mv.visitInsn(FCONST_0);
+        } else if (expected == Type.D) {
+            mv.visitInsn(DCONST_0);
+        } else if (expected.isPrimitive()) {
+            mv.visitInsn(ICONST_0);
+        } else {
+            mv.visitInsn(ACONST_NULL);
+        }
     }
 
     /**
