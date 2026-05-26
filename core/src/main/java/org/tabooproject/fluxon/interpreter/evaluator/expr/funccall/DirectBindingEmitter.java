@@ -68,17 +68,17 @@ public final class DirectBindingEmitter {
         mv.visitVarInsn(ASTORE, valueSlot);
         Label runtimeException = new Label();
         mv.visitVarInsn(ALOAD, valueSlot);
-        mv.visitTypeInsn(INSTANCEOF, "java/lang/Error");
+        mv.visitTypeInsn(INSTANCEOF, Type.ERROR.getPath());
         mv.visitJumpInsn(IFEQ, runtimeException);
         mv.visitVarInsn(ALOAD, valueSlot);
-        mv.visitTypeInsn(CHECKCAST, "java/lang/Error");
+        mv.visitTypeInsn(CHECKCAST, Type.ERROR.getPath());
         mv.visitInsn(ATHROW);
         mv.visitLabel(runtimeException);
-        mv.visitTypeInsn(NEW, "java/lang/RuntimeException");
+        mv.visitTypeInsn(NEW, Type.RUNTIME_EXCEPTION.getPath());
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, valueSlot);
         mv.visitMethodInsn(INVOKEVIRTUAL, Type.OBJECT.getPath(), "toString", "()" + Type.STRING, false);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/RuntimeException", "<init>", "(" + Type.STRING + ")V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, Type.RUNTIME_EXCEPTION.getPath(), "<init>", "(" + Type.STRING + ")" + Type.VOID, false);
         mv.visitInsn(ATHROW);
         return Type.VOID;
     }
@@ -93,28 +93,23 @@ public final class DirectBindingEmitter {
         }
         // print/error 只依赖当前 Environment 的输出流，直接发出 PrintStream 调用可跳过 FunctionContext。
         Instructions.loadEnvironment(mv, ctx);
-        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "print".equals(functionName) ? "getOut" : "getErr", "()Ljava/io/PrintStream;", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "print".equals(functionName) ? "getOut" : "getErr", "()" + Type.PRINT_STREAM, false);
         if (args.length == 0) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "()V", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.PRINT_STREAM.getPath(), "println", "()" + Type.VOID, false);
             mv.visitInsn(ACONST_NULL);
             return Type.OBJECT;
         }
         Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         String descriptor = getPrintlnDescriptor(argType);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", descriptor, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.PRINT_STREAM.getPath(), "println", descriptor, false);
         // print/error 是普通函数语义，表达式位置仍需要产生 null 结果。
         mv.visitInsn(ACONST_NULL);
         return Type.OBJECT;
     }
 
     private static String getPrintlnDescriptor(Type type) {
-        if (type == Type.I) return "(" + Type.I + ")V";
-        if (type == Type.J) return "(" + Type.J + ")V";
-        if (type == Type.F) return "(" + Type.F + ")V";
-        if (type == Type.D) return "(" + Type.D + ")V";
-        if (type == Type.Z) return "(" + Type.Z + ")V";
-        if (type == Type.STRING) return "(" + Type.STRING + ")V";
-        return "(" + Type.OBJECT + ")V";
+        Type parameterType = type.isPrimitive() || type == Type.STRING ? type : Type.OBJECT;
+        return "(" + parameterType.getDescriptor() + ")" + Type.VOID;
     }
 
     private static Type tryEmitDynamicFunctionCall(FunctionCallExpression expr, ParseResult[] args, Type[] argTypes, CodeContext ctx, MethodVisitor mv) {
@@ -186,11 +181,11 @@ public final class DirectBindingEmitter {
             Type expected = jvmParamTypes[i];
             if (i >= args.length) {
                 // 省略的 @Optional 参数必须按 descriptor 补默认值，保持 INVOKESTATIC 栈形状完整。
-                emitDefaultArg(expected, mv);
+                Instructions.emitDefaultValue(mv, expected);
                 continue;
             }
             Type actual = FunctionCallHandlers.emitArgExpression(args[i], ctx, mv);
-            emitArgConversion(actual, expected, mv);
+            Instructions.emitArgumentConversion(actual, expected, mv);
             // 栈上是 Object 但 descriptor 期望具体引用子类 → CHECKCAST
             if (castTargets != null && castTargets[i] != null && !actual.isPrimitive()) {
                 mv.visitTypeInsn(CHECKCAST, castTargets[i]);
@@ -203,39 +198,6 @@ public final class DirectBindingEmitter {
     private static boolean canDirectBind(Function function, int argCount) {
         FunctionSignature signature = function.getSignature();
         return signature != null && signature.acceptsParameterCount(argCount) && !function.isAsync() && !function.isPrimarySync();
-    }
-
-    private static void emitDefaultArg(Type expected, MethodVisitor mv) {
-        if (expected == Type.J) {
-            mv.visitInsn(LCONST_0);
-        } else if (expected == Type.F) {
-            mv.visitInsn(FCONST_0);
-        } else if (expected == Type.D) {
-            mv.visitInsn(DCONST_0);
-        } else if (expected.isPrimitive()) {
-            mv.visitInsn(ICONST_0);
-        } else {
-            mv.visitInsn(ACONST_NULL);
-        }
-    }
-
-    /**
-     * 参数类型转换：actual → expected
-     */
-    private static void emitArgConversion(Type actual, Type expected, MethodVisitor mv) {
-        if (actual == expected) return;
-        if (!actual.isPrimitive() && !expected.isPrimitive() && expected.getSource().isEnum()) {
-            // DirectBinding 跳过 FunctionContext，enum 形参需要在 INVOKESTATIC 前完成字面量转换。
-            Instructions.emitValueConversion(mv, expected.getSource());
-            return;
-        }
-        if (actual.isPrimitive() && expected.isPrimitive()) {
-            Instructions.emitPrimitiveConversion(actual, expected, mv);
-        } else if (!actual.isPrimitive() && expected.isPrimitive()) {
-            Instructions.emitUnbox(mv, expected);
-        } else if (actual.isPrimitive()) {
-            Instructions.emitBox(mv, actual);
-        }
     }
 
     private static boolean hasUnknownType(Type[] types) {

@@ -68,15 +68,7 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             ParseResult arg = args[argIndex];
             Type expectedType = FunctionClassEmitter.getDirectParameterType(definition, entry.getValue());
             Type argType = FunctionCallHandlers.emitArgExpression(arg, ctx, mv);
-            if (expectedType.isPrimitive()) {
-                if (argType.isPrimitive()) {
-                    Instructions.emitPrimitiveConversion(argType, expectedType, mv);
-                } else {
-                    Instructions.emitUnbox(mv, expectedType);
-                }
-            } else if (argType.isPrimitive()) {
-                Instructions.emitBox(mv, argType);
-            }
+            Instructions.emitArgumentConversion(argType, expectedType, mv);
             argIndex++;
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, funcClass, "callDirect", FunctionClassEmitter.getDirectCallDescriptor(definition), false);
@@ -122,15 +114,7 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             Type expectedType = FunctionClassEmitter.getDirectParameterType(definition, position);
             Type argType = FunctionCallHandlers.emitArgExpression(args[argIndex], ctx, mv);
             Type localType = expectedType.isPrimitive() ? expectedType : Type.OBJECT;
-            if (localType.isPrimitive()) {
-                if (argType.isPrimitive()) {
-                    Instructions.emitPrimitiveConversion(argType, localType, mv);
-                } else {
-                    Instructions.emitUnbox(mv, localType);
-                }
-            } else if (argType.isPrimitive()) {
-                Instructions.emitBox(mv, argType);
-            }
+            Instructions.emitArgumentConversion(argType, localType, mv);
             int slot = ctx.allocateLocalVar(localType);
             Instructions.emitStoreLocal(mv, localType, slot);
             locals.put(position, new CodeContext.InlineLocalVariable(localType, slot));

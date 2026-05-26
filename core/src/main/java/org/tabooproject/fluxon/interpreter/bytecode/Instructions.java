@@ -20,6 +20,7 @@ import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,8 @@ public class Instructions {
 
     private static final Type MAP = new Type(Map.class);
     private static final Type STRING_BUILDER = new Type(StringBuilder.class);
+    private static final Type ILLEGAL_ARGUMENT_EXCEPTION = new Type(IllegalArgumentException.class);
+    private static final Type HASH_MAP = new Type(HashMap.class);
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
     private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
     private static final Type SINGLE_ENTRY_MAP = new Type(SingleEntryMap.class);
@@ -90,11 +93,11 @@ public class Instructions {
         mv.visitTypeInsn(INSTANCEOF, Type.BOOLEAN.getPath());
         mv.visitJumpInsn(IFEQ, numberLabel);
         mv.visitTypeInsn(CHECKCAST, Type.BOOLEAN.getPath());
-        mv.visitMethodInsn(INVOKEVIRTUAL, Type.BOOLEAN.getPath(), "booleanValue", "()Z", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.BOOLEAN.getPath(), "booleanValue", "()" + Type.Z, false);
         mv.visitJumpInsn(GOTO, endLabel);
         mv.visitLabel(numberLabel);
         mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-        mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+        emitNumberValue(mv, Type.I);
         mv.visitLabel(endLabel);
     }
 
@@ -193,6 +196,23 @@ public class Instructions {
     }
 
     /**
+     * 按 Fluxon 类型生成默认值，供 descriptor 已经落到 Type 的路径复用。
+     */
+    public static void emitDefaultValue(MethodVisitor mv, Type type) {
+        if (type == Type.J) {
+            mv.visitInsn(LCONST_0);
+        } else if (type == Type.F) {
+            mv.visitInsn(FCONST_0);
+        } else if (type == Type.D) {
+            mv.visitInsn(DCONST_0);
+        } else if (type.isPrimitive()) {
+            mv.visitInsn(ICONST_0);
+        } else {
+            mv.visitInsn(ACONST_NULL);
+        }
+    }
+
+    /**
      * 生成类型转换和拆箱代码
      */
     public static void emitTypeConversion(MethodVisitor mv, Class<?> targetType) {
@@ -209,7 +229,7 @@ public class Instructions {
             throw new IllegalArgumentException("Unknown primitive type: " + targetType);
         }
         String unboxingMethod = Primitives.getUnboxingMethodName(targetType);
-        String descriptor = "()" + org.objectweb.asm.Type.getDescriptor(targetType);
+        String descriptor = "()" + getDescriptor(targetType);
         // boolean 和 char 直接从包装类拆箱
         if (targetType == boolean.class || targetType == char.class) {
             mv.visitTypeInsn(CHECKCAST, wrapperClass);
@@ -244,7 +264,7 @@ public class Instructions {
             return; // 不是基本类型，无需装箱
         }
         // 获取基本类型的描述符
-        String primitiveDesc = org.objectweb.asm.Type.getDescriptor(primitiveType);
+        String primitiveDesc = getDescriptor(primitiveType);
         String wrapperDesc = "L" + wrapperClass + ";";
         mv.visitMethodInsn(INVOKESTATIC, wrapperClass, "valueOf", "(" + primitiveDesc + ")" + wrapperDesc, false);
     }
@@ -257,6 +277,120 @@ public class Instructions {
         if (fi < 0 || ti < 0) return;
         int opcode = CONV_MATRIX[fi][ti];
         if (opcode >= 0) mv.visitInsn(opcode);
+    }
+
+    /**
+     * 生成运行时值类型转换，统一处理 primitive 互转和对象拆箱。
+     */
+    public static void emitConvert(Type from, Type to, MethodVisitor mv) {
+        if (from.equals(to)) return;
+        if (!from.isPrimitive()) {
+            emitUnbox(mv, to);
+            return;
+        }
+        emitPrimitiveConversion(from, to, mv);
+    }
+
+    /**
+     * 生成函数实参适配代码，覆盖 direct-call 和 DirectBinding 的共同栈协议。
+     */
+    public static void emitArgumentConversion(Type actual, Type expected, MethodVisitor mv) {
+        if (actual == expected) return;
+        if (!actual.isPrimitive() && !expected.isPrimitive() && expected.getSource().isEnum()) {
+            emitValueConversion(mv, expected.getSource());
+            return;
+        }
+        if (actual.isPrimitive() && expected.isPrimitive()) {
+            emitPrimitiveConversion(actual, expected, mv);
+        } else if (!actual.isPrimitive() && expected.isPrimitive()) {
+            emitUnbox(mv, expected);
+        } else if (actual.isPrimitive()) {
+            emitBox(mv, actual);
+        }
+    }
+
+    /**
+     * 发射 Number.xxxValue 调用，供通用拆箱和已完成 CHECKCAST 的热路径共用。
+     */
+    public static void emitNumberValue(MethodVisitor mv, Type type) {
+        String method;
+        Type returnType;
+        if (type == Type.I || type == Type.Z) {
+            method = "intValue";
+            returnType = Type.I;
+        } else if (type == Type.J) {
+            method = "longValue";
+            returnType = Type.J;
+        } else if (type == Type.D) {
+            method = "doubleValue";
+            returnType = Type.D;
+        } else if (type == Type.F) {
+            method = "floatValue";
+            returnType = Type.F;
+        } else {
+            return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), method, "()" + returnType, false);
+    }
+
+    /**
+     * 从 FunctionContext 按 Fluxon 类型读取参数。
+     * 栈输入：[context, index]
+     * 栈输出：[value]
+     */
+    public static void emitFunctionContextGetArgument(MethodVisitor mv, Type type) {
+        Class<?> source = type.getSource();
+        String method;
+        String desc;
+        if (type == Type.Z) {
+            method = "getAsBoolean";
+            desc = "(" + Type.I + ")" + Type.Z;
+        } else if (type == Type.I || source == byte.class || source == short.class || source == char.class) {
+            method = "getAsInt";
+            desc = "(" + Type.I + ")" + Type.I;
+        } else if (type == Type.J) {
+            method = "getAsLong";
+            desc = "(" + Type.I + ")" + Type.J;
+        } else if (type == Type.D) {
+            method = "getAsDouble";
+            desc = "(" + Type.I + ")" + Type.D;
+        } else if (type == Type.F) {
+            method = "getAsFloat";
+            desc = "(" + Type.I + ")" + Type.F;
+        } else {
+            method = "getArgBoxed";
+            desc = "(" + Type.I + ")" + Type.OBJECT;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), method, desc, false);
+    }
+
+    /**
+     * 按 Fluxon primitive 类型写入 FunctionContext 参数槽。
+     * 栈输入：[context, index, value]
+     * 栈输出：[]
+     */
+    public static void emitFunctionContextSetArgument(MethodVisitor mv, Type type) {
+        String method;
+        String desc;
+        if (type == Type.I) {
+            method = "setInt";
+            desc = "(" + Type.I + Type.I + ")" + Type.VOID;
+        } else if (type == Type.Z) {
+            method = "setBool";
+            desc = "(" + Type.I + Type.Z + ")" + Type.VOID;
+        } else if (type == Type.J) {
+            method = "setLong";
+            desc = "(" + Type.I + Type.J + ")" + Type.VOID;
+        } else if (type == Type.F) {
+            method = "setFloat";
+            desc = "(" + Type.I + Type.F + ")" + Type.VOID;
+        } else if (type == Type.D) {
+            method = "setDouble";
+            desc = "(" + Type.I + Type.D + ")" + Type.VOID;
+        } else {
+            return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), method, desc, false);
     }
 
     /**
@@ -285,15 +419,7 @@ public class Instructions {
             return;
         }
         mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-        if (target == Type.I) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
-        } else if (target == Type.J) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
-        } else if (target == Type.D) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
-        } else if (target == Type.F) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
-        }
+        emitNumberValue(mv, target);
     }
 
     private static int typeIndex(Type t) {
@@ -457,9 +583,9 @@ public class Instructions {
             mv.visitMethodInsn(INVOKESPECIAL, Annotation.TYPE.getPath(), "<init>", "(" + STRING + ")V", false);
         } else {
             // 有属性，创建属性 Map
-            mv.visitTypeInsn(NEW, "java/util/HashMap");
+            mv.visitTypeInsn(NEW, HASH_MAP.getPath());
             mv.visitInsn(DUP);
-            mv.visitMethodInsn(INVOKESPECIAL, "java/util/HashMap", "<init>", "()V", false);
+            mv.visitMethodInsn(INVOKESPECIAL, HASH_MAP.getPath(), "<init>", "()" + Type.VOID, false);
             // 填充属性
             for (Map.Entry<String, Object> entry : attributes.entrySet()) {
                 mv.visitInsn(DUP);               // 复制 Map 引用
@@ -525,7 +651,7 @@ public class Instructions {
      * @param dynamicSlot 动态部分所在的局部变量槽位
      */
     public static void emitThrowIllegalArgument(MethodVisitor mv, String prefix, int dynamicSlot) {
-        mv.visitTypeInsn(NEW, "java/lang/IllegalArgumentException");
+        mv.visitTypeInsn(NEW, ILLEGAL_ARGUMENT_EXCEPTION.getPath());
         mv.visitInsn(DUP);
         mv.visitTypeInsn(NEW, STRING_BUILDER.getPath());
         mv.visitInsn(DUP);
@@ -534,7 +660,7 @@ public class Instructions {
         mv.visitVarInsn(ALOAD, dynamicSlot);
         mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "append", "(" + STRING + ")" + STRING_BUILDER, false);
         mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "toString", "()" + STRING, false);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/IllegalArgumentException", "<init>", "(" + STRING + ")V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, ILLEGAL_ARGUMENT_EXCEPTION.getPath(), "<init>", "(" + STRING + ")V", false);
         mv.visitInsn(ATHROW);
     }
 
@@ -719,19 +845,19 @@ public class Instructions {
         String desc;
         if (type == Type.I) {
             method = "setReturnInt";
-            desc = "(I)V";
+            desc = "(" + Type.I + ")" + Type.VOID;
         } else if (type == Type.Z) {
             method = "setReturnBool";
-            desc = "(Z)V";
+            desc = "(" + Type.Z + ")" + Type.VOID;
         } else if (type == Type.J) {
             method = "setReturnLong";
-            desc = "(J)V";
+            desc = "(" + Type.J + ")" + Type.VOID;
         } else if (type == Type.D) {
             method = "setReturnDouble";
-            desc = "(D)V";
+            desc = "(" + Type.D + ")" + Type.VOID;
         } else if (type == Type.F) {
             method = "setReturnFloat";
-            desc = "(F)V";
+            desc = "(" + Type.F + ")" + Type.VOID;
         } else {
             return;
         }

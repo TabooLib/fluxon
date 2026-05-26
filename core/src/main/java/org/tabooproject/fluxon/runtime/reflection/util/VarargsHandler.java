@@ -27,8 +27,10 @@ public final class VarargsHandler {
         Class<?> varargArrayType = paramTypes[fixedParamCount];
         // 构建新的参数数组
         Object[] newArgs = new Object[paramTypes.length];
-        // 复制固定参数
-        System.arraycopy(args, 0, newArgs, 0, fixedParamCount);
+        // 固定参数同样走转换入口，避免 varargs 方法和普通方法的 enum 处理漂移。
+        for (int i = 0; i < fixedParamCount; i++) {
+            newArgs[i] = TypeCompatibility.convertValue(args[i], paramTypes[i]);
+        }
         // 检查是否传入了单个匹配的数组参数（如 varargs(getArray()) 的情况）
         int varargCount = args.length - fixedParamCount;
         if (varargCount == 1) {
@@ -43,7 +45,7 @@ public final class VarargsHandler {
         Class<?> varargType = varargArrayType.getComponentType();
         Object varargArray = newInstance(varargType, varargCount);
         for (int i = 0; i < varargCount; i++) {
-            set(varargArray, i, args[fixedParamCount + i]);
+            set(varargArray, i, TypeCompatibility.convertValue(args[fixedParamCount + i], varargType));
         }
         newArgs[fixedParamCount] = varargArray;
         return newArgs;

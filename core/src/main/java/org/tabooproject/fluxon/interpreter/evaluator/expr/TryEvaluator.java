@@ -115,7 +115,7 @@ public class TryEvaluator extends ExpressionEvaluator<TryExpression> {
         mv.visitInsn(ACONST_NULL);
         mv.visitVarInsn(ASTORE, valueVar);
         // 设置异常表 - 必须在代码生成前设置
-        mv.visitTryCatchBlock(tryStart, tryEnd, catchStart, "java/lang/Throwable");
+        mv.visitTryCatchBlock(tryStart, tryEnd, catchStart, Type.THROWABLE.getPath());
         // Try 块开始
         mv.visitLabel(tryStart);
         // 执行 try body

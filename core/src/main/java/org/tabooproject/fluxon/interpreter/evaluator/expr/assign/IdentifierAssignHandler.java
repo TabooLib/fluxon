@@ -45,19 +45,19 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Type varType = env.getVariableType(position);
             if (op != TokenType.ASSIGN) {
                 Object value = interpreter.getResultBoxed(vt);
-                Object current = getLocalBoxed(env, position, varType);
+                Object current = env.getLocalBoxed(position, varType);
                 Object newValue = applyCompoundOperation(current, value, op);
-                setLocalFromBoxed(env, position, varType, newValue);
+                env.setLocalFromObject(position, varType, newValue);
             } else if (vt == varType && vt.isPrimitive()) {
-                setLocalFromBits(env, position, vt, interpreter.resultPrimitive);
+                env.setLocalFromBits(position, vt, vt, interpreter.resultPrimitive);
             } else if (vt.isPrimitive()) {
                 if (varType.isPrimitive()) {
-                    setLocalPrimitiveConverted(env, position, varType, vt, interpreter.resultPrimitive);
+                    env.setLocalFromBits(position, varType, vt, interpreter.resultPrimitive);
                 } else {
                     env.setLocalRef(position, Type.box(interpreter.resultPrimitive, vt));
                 }
             } else if (varType.isPrimitive()) {
-                setLocalFromBoxed(env, position, varType, interpreter.resultRef);
+                env.setLocalFromObject(position, varType, interpreter.resultRef);
             } else {
                 env.setLocalRef(position, interpreter.resultRef);
             }
@@ -138,7 +138,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
             if (varType.isPrimitive()) {
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 Instructions.emitStoreLocal(mv, varType, jvmSlot);
             } else {
                 Instructions.emitBox(mv, vt);
@@ -154,7 +154,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 Instructions.emitLoadLocal(mv, varType, jvmSlot);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
                 Instructions.emitStoreLocal(mv, varType, jvmSlot);
                 return;
@@ -182,7 +182,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
             if (varType.isPrimitive()) {
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 Instructions.emitEnvironmentSetLocal(mv, varType);
             } else {
                 Instructions.emitBox(mv, vt);
@@ -202,7 +202,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 Instructions.emitEnvironmentGetLocal(mv, varType);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
                 Instructions.emitEnvironmentSetLocal(mv, varType);
                 return;
@@ -254,7 +254,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 Instructions.emitUnbox(mv, varType);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
                 Instructions.emitBox(mv, varType);
             } else {
@@ -286,7 +286,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         if (op == TokenType.ASSIGN) {
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-            emitConvert(vt, varType, mv);
+            Instructions.emitConvert(vt, varType, mv);
             Instructions.emitStoreLocal(mv, varType, cache.slot);
             return;
         }
@@ -296,7 +296,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 Instructions.emitLoadLocal(mv, varType, cache.slot);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-                emitConvert(vt, varType, mv);
+                Instructions.emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
                 Instructions.emitStoreLocal(mv, varType, cache.slot);
                 return;

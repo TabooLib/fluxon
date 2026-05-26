@@ -65,7 +65,7 @@ public final class TypeCompatibility {
         if (param.isPrimitive() || arg.isPrimitive()) {
             return isPrimitiveCompatible(param, arg);
         }
-        if (param.isEnum() && arg == String.class) {
+        if (canConvertValue(param, arg)) {
             return true;
         }
         return param.isAssignableFrom(arg);
@@ -80,6 +80,13 @@ public final class TypeCompatibility {
             return Enum.valueOf((Class<? extends Enum>) expected, (String) value);
         }
         return value;
+    }
+
+    /**
+     * 判断脚本值类型是否能在调用前转换成 Java 形参类型。
+     */
+    public static boolean canConvertValue(Class<?> expected, Class<?> actual) {
+        return expected.isEnum() && actual == String.class;
     }
 
     /**
@@ -107,7 +114,7 @@ public final class TypeCompatibility {
     public static boolean needsValueConversion(Class<?>[] expectedTypes, Class<?>[] argTypes) {
         int len = Math.min(expectedTypes.length, argTypes.length);
         for (int i = 0; i < len; i++) {
-            if (expectedTypes[i].isEnum() && argTypes[i] == String.class) {
+            if (canConvertValue(expectedTypes[i], argTypes[i])) {
                 return true;
             }
         }
@@ -135,39 +142,6 @@ public final class TypeCompatibility {
             return fromRank <= toRank;
         }
         return paramBoxed.isAssignableFrom(argBoxed);
-    }
-
-    /**
-     * 检查类型是否兼容（考虑自动装箱和数值拓宽）- 用于 Bootstrap
-     */
-    public static boolean isAssignableFrom(Class<?> param, Class<?> arg) {
-        if (param.isAssignableFrom(arg)) return true;
-        if (param.isEnum() && arg == String.class) return true;
-        // 委托给 isPrimitiveCompatible 处理装箱和数值拓宽
-        if (param.isPrimitive() || arg.isPrimitive()) {
-            return isPrimitiveCompatible(param, arg);
-        }
-        return false;
-    }
-
-    /**
-     * 检查参数类型是否兼容（用于方法/构造函数匹配）
-     */
-    public static boolean isParametersCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
-        if (paramTypes.length != argTypes.length) {
-            return false;
-        }
-        for (int i = 0; i < paramTypes.length; i++) {
-            // null 只能赋给非原始类型
-            if (argTypes[i] == null) {
-                if (paramTypes[i].isPrimitive()) {
-                    return false;
-                }
-            } else if (!isAssignableFrom(paramTypes[i], argTypes[i])) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
@@ -232,6 +206,10 @@ public final class TypeCompatibility {
             }
         }
         // 检查 varargs 参数
+        Class<?> varargArrayType = paramTypes[fixedParamCount];
+        if (argTypes.length == paramTypes.length && argTypes[fixedParamCount] != null && varargArrayType.isAssignableFrom(argTypes[fixedParamCount])) {
+            return true;
+        }
         Class<?> varargType = paramTypes[fixedParamCount].getComponentType();
         for (int i = fixedParamCount; i < argTypes.length; i++) {
             if (!isTypeCompatible(varargType, argTypes[i])) {
@@ -251,7 +229,7 @@ public final class TypeCompatibility {
      * @return 匹配的 Executable，如果没有匹配则返回 null
      */
     public static <T extends Executable> T findBestMatch(List<T> candidates, Class<?>[] argTypes) {
-        T varargsFallback = null;
+        List<T> varargsCandidates = null;
         List<T> compatibleCandidates = null; // 延迟初始化
         for (T executable : candidates) {
             Class<?>[] paramTypes = executable.getParameterTypes();
@@ -267,8 +245,11 @@ public final class TypeCompatibility {
                 compatibleCandidates.add(executable);
             }
             // 优先级 3: varargs 备选
-            if (executable.isVarArgs() && varargsFallback == null && isVarargsCompatible(paramTypes, argTypes)) {
-                varargsFallback = executable;
+            if (executable.isVarArgs() && isVarargsCompatible(paramTypes, argTypes)) {
+                if (varargsCandidates == null) {
+                    varargsCandidates = new ArrayList<>(4);
+                }
+                varargsCandidates.add(executable);
             }
         }
         // 从兼容候选中选择最具体的
@@ -279,7 +260,13 @@ public final class TypeCompatibility {
             return selectMostSpecific(compatibleCandidates);
         }
         // 优先级 3: varargs 匹配
-        return varargsFallback;
+        if (varargsCandidates == null) {
+            return null;
+        }
+        if (varargsCandidates.size() == 1) {
+            return varargsCandidates.get(0);
+        }
+        return selectMostSpecific(varargsCandidates);
     }
 
     /**

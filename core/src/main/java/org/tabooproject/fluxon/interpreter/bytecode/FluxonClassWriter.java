@@ -2,10 +2,14 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.objectweb.asm.ClassWriter;
 
+import static org.objectweb.asm.Type.getInternalName;
+
 /**
  * 自定义 ClassWriter，使用提供的 ClassLoader 来加载类
  */
 public class FluxonClassWriter extends ClassWriter {
+    private static final String OBJECT_INTERNAL_NAME = getInternalName(Object.class);
+
     private final ClassLoader classLoader;
 
     public FluxonClassWriter(int flags, ClassLoader classLoader) {
@@ -31,7 +35,7 @@ public class FluxonClassWriter extends ClassWriter {
                     return type2;
                 }
                 if (c1.isInterface() || c2.isInterface()) {
-                    return "java/lang/Object";
+                    return OBJECT_INTERNAL_NAME;
                 }
 
                 // 查找公共父类
@@ -39,15 +43,15 @@ public class FluxonClassWriter extends ClassWriter {
                 do {
                     current = current.getSuperclass();
                     if (current == null) {
-                        return "java/lang/Object";
+                        return OBJECT_INTERNAL_NAME;
                     }
                 } while (!current.isAssignableFrom(c2));
 
-                return current.getName().replace('.', '/');
+                return getInternalName(current);
 
             } catch (Exception ex) {
                 // 如果还是失败，返回 Object
-                return "java/lang/Object";
+                return OBJECT_INTERNAL_NAME;
             }
         }
     }

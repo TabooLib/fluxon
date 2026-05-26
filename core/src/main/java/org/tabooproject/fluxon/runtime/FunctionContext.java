@@ -105,6 +105,14 @@ public final class FunctionContext<Target> implements AutoCloseable {
         arguments.setRef(index, v);
     }
 
+    public void setArgumentFromBits(int index, Type target, Type source, long bits) {
+        arguments.setFromBits(index, target, source, bits);
+    }
+
+    public void setArgumentFromObject(int index, Type target, Object value) {
+        arguments.setFromObject(index, target, value);
+    }
+
     public boolean isArgPrimitive(int index) {
         return arguments.isArgPrimitive(index);
     }

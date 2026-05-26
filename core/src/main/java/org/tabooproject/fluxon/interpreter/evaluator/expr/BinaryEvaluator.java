@@ -25,6 +25,8 @@ import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 @SuppressWarnings("DuplicatedCode")
 public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
 
+    private static final Type STRING_BUILDER = new Type(StringBuilder.class);
+
     @Override
     public ExpressionType getType() {
         return ExpressionType.BINARY;
@@ -250,7 +252,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 Instructions.emitLoadLocal(mv, rt, rightSlot);
                 emitWidening(rt, Type.D, mv);
                 ctx.restoreLocalVarIndex(saved);
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "pow", "(DD)D", false);
+                mv.visitMethodInsn(INVOKESTATIC, Type.MATH.getPath(), "pow", "(" + Type.D + Type.D + ")" + Type.D, false);
                 return Type.D;
             }
             Type common = promoteType(lt, rt);
@@ -309,26 +311,26 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
         Instructions.emitStoreLocal(mv, rightType, rightSlot);
         int leftSlot = ctx.allocateLocalVar(leftType);
         Instructions.emitStoreLocal(mv, leftType, leftSlot);
-        mv.visitTypeInsn(NEW, "java/lang/StringBuilder");
+        mv.visitTypeInsn(NEW, STRING_BUILDER.getPath());
         mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, STRING_BUILDER.getPath(), "<init>", "()" + Type.VOID, false);
         Instructions.emitLoadLocal(mv, leftType, leftSlot);
         emitStringBuilderAppend(leftType, mv);
         Instructions.emitLoadLocal(mv, rightType, rightSlot);
         emitStringBuilderAppend(rightType, mv);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()" + Type.STRING, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "toString", "()" + Type.STRING, false);
         ctx.restoreLocalVarIndex(saved);
     }
 
     private static void emitStringBuilderAppend(Type type, MethodVisitor mv) {
         String descriptor;
-        if (type == Type.I) descriptor = "(" + Type.I + ")Ljava/lang/StringBuilder;";
-        else if (type == Type.J) descriptor = "(" + Type.J + ")Ljava/lang/StringBuilder;";
-        else if (type == Type.F) descriptor = "(" + Type.F + ")Ljava/lang/StringBuilder;";
-        else if (type == Type.D) descriptor = "(" + Type.D + ")Ljava/lang/StringBuilder;";
-        else if (type == Type.Z) descriptor = "(" + Type.Z + ")Ljava/lang/StringBuilder;";
-        else descriptor = "(" + Type.OBJECT + ")Ljava/lang/StringBuilder;";
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "append", descriptor, false);
+        if (type == Type.I) descriptor = "(" + Type.I + ")" + STRING_BUILDER;
+        else if (type == Type.J) descriptor = "(" + Type.J + ")" + STRING_BUILDER;
+        else if (type == Type.F) descriptor = "(" + Type.F + ")" + STRING_BUILDER;
+        else if (type == Type.D) descriptor = "(" + Type.D + ")" + STRING_BUILDER;
+        else if (type == Type.Z) descriptor = "(" + Type.Z + ")" + STRING_BUILDER;
+        else descriptor = "(" + Type.OBJECT + ")" + STRING_BUILDER;
+        mv.visitMethodInsn(INVOKEVIRTUAL, STRING_BUILDER.getPath(), "append", descriptor, false);
     }
 
     /**
@@ -369,7 +371,7 @@ public class BinaryEvaluator extends ExpressionEvaluator<BinaryExpression> {
                 return emitArithmetic(common, opType, mv);
             case POWER:
                 // 调用方已保证两个操作数都是 double
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Math", "pow", "(DD)D", false);
+                mv.visitMethodInsn(INVOKESTATIC, Type.MATH.getPath(), "pow", "(" + Type.D + Type.D + ")" + Type.D, false);
                 return Type.D;
             default:
                 return emitComparison(common, opType, mv);

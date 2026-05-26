@@ -72,7 +72,7 @@ public class StaticAccessEvaluator extends ExpressionEvaluator<StaticAccessExpre
     @Override
     public Type generateBytecode(StaticAccessExpression expression, CodeContext ctx, MethodVisitor mv) {
         // 1. 加载类对象
-        mv.visitLdcInsn(org.objectweb.asm.Type.getType("L" + expression.getClassName().replace('.', '/') + ";"));
+        mv.visitLdcInsn(Type.asmObjectType(expression.getClassName()));
         // 如果是方法调用
         if (expression.isMethodCall()) {
             // 静态方法调用：生成参数数组

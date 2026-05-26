@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -9,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.objectweb.asm.Type.getInternalName;
+import static org.objectweb.asm.Type.getObjectType;
+
 public class Type {
 
     public static final Type SELF = new Type(Type.class);
@@ -16,6 +20,12 @@ public class Type {
     public static final Type OBJECT = new Type(Object.class);
     public static final Type NUMBER = new Type(Number.class);
     public static final Type STRING = new Type(String.class);
+    public static final Type MATH = new Type(Math.class);
+    public static final Type ERROR = new Type(Error.class);
+    public static final Type RUNTIME_EXCEPTION = new Type(RuntimeException.class);
+    public static final Type ILLEGAL_ARGUMENT_EXCEPTION = new Type(IllegalArgumentException.class);
+    public static final Type THROWABLE = new Type(Throwable.class);
+    public static final Type PRINT_STREAM = new Type(PrintStream.class);
     public static final Type INT = new Type(Integer.class);
     public static final Type LONG = new Type(Long.class);
     public static final Type FLOAT = new Type(Float.class);
@@ -55,6 +65,12 @@ public class Type {
         TYPE_MAP.put(Object.class, OBJECT);
         TYPE_MAP.put(Number.class, NUMBER);
         TYPE_MAP.put(String.class, STRING);
+        TYPE_MAP.put(Math.class, MATH);
+        TYPE_MAP.put(Error.class, ERROR);
+        TYPE_MAP.put(RuntimeException.class, RUNTIME_EXCEPTION);
+        TYPE_MAP.put(IllegalArgumentException.class, ILLEGAL_ARGUMENT_EXCEPTION);
+        TYPE_MAP.put(Throwable.class, THROWABLE);
+        TYPE_MAP.put(PrintStream.class, PRINT_STREAM);
         TYPE_MAP.put(int.class, I);
         TYPE_MAP.put(Integer.class, I);
         TYPE_MAP.put(long.class, J);
@@ -90,7 +106,7 @@ public class Type {
         this.dimension = dimension;
         this.elementType = elementType;
         // 获取类路径
-        this.path = source.getName().replace('.', '/');
+        this.path = getInternalName(source);
         // 获取类签名
         StringBuilder descriptor = new StringBuilder(org.objectweb.asm.Type.getDescriptor(source));
         for (int i = 0; i < dimension; i++) {
@@ -161,6 +177,48 @@ public class Type {
         if (type == F) return Float.intBitsToFloat((int) bits);
         if (type == Z) return bits != 0;
         throw new IllegalArgumentException("Cannot box type: " + type);
+    }
+
+    public static int readAsInt(long bits, Type type) {
+        if (type == I || type == Z || type == J) return (int) bits;
+        if (type == F) return (int) Float.intBitsToFloat((int) bits);
+        if (type == D) return (int) Double.longBitsToDouble(bits);
+        throw new IllegalArgumentException("Cannot read as int: " + type);
+    }
+
+    public static long readAsLong(long bits, Type type) {
+        if (type == I || type == Z) return (int) bits;
+        if (type == J) return bits;
+        if (type == F) return (long) Float.intBitsToFloat((int) bits);
+        if (type == D) return (long) Double.longBitsToDouble(bits);
+        throw new IllegalArgumentException("Cannot read as long: " + type);
+    }
+
+    public static float readAsFloat(long bits, Type type) {
+        if (type == F) return Float.intBitsToFloat((int) bits);
+        return (float) readAsDouble(bits, type);
+    }
+
+    public static double readAsDouble(long bits, Type type) {
+        if (type == D) return Double.longBitsToDouble(bits);
+        if (type == F) return Float.intBitsToFloat((int) bits);
+        if (type == I || type == Z) return (int) bits;
+        if (type == J) return bits;
+        throw new IllegalArgumentException("Cannot read as double: " + type);
+    }
+
+    public static boolean readAsBoolean(long bits, Type type) {
+        if (type == D) return Double.longBitsToDouble(bits) != 0D;
+        if (type == F) return Float.intBitsToFloat((int) bits) != 0F;
+        if (type == I || type == Z || type == J) return bits != 0L;
+        throw new IllegalArgumentException("Cannot read as boolean: " + type);
+    }
+
+    /**
+     * 脚本里的 Java 类名是点分形式，生成 Class 常量前统一转换成 ASM object type。
+     */
+    public static Object asmObjectType(String className) {
+        return getObjectType(className.replace('.', '/'));
     }
 
     /**

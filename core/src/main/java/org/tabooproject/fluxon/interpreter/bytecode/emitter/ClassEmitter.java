@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.tabooproject.fluxon.runtime.Type.CLASS;
+import static org.tabooproject.fluxon.runtime.Type.MAP;
+import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 import static org.tabooproject.fluxon.runtime.Type.STRING;
 
 /**
@@ -283,9 +286,9 @@ public abstract class ClassEmitter {
             mv.visitLdcInsn(i);
             // FluxonRuntime.getInstance().getSystemFunctions().get(name)
             mv.visitMethodInsn(INVOKESTATIC, FluxonRuntime.TYPE.getPath(), "getInstance", "()" + FluxonRuntime.TYPE, false);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FluxonRuntime.TYPE.getPath(), "getSystemFunctions", "()Ljava/util/Map;", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, FluxonRuntime.TYPE.getPath(), "getSystemFunctions", "()" + MAP, false);
             mv.visitLdcInsn(set.getName());
-            mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get", "(Ljava/lang/Object;)Ljava/lang/Object;", true);
+            mv.visitMethodInsn(INVOKEINTERFACE, MAP.getPath(), "get", "(" + OBJECT + ")" + OBJECT, true);
             mv.visitTypeInsn(CHECKCAST, OverloadSet.TYPE.getPath());
             mv.visitInsn(AASTORE);
         }
@@ -343,7 +346,7 @@ public abstract class ClassEmitter {
         mv.visitInsn(AALOAD);
         mv.visitLdcInsn(org.objectweb.asm.Type.getType(info.targetClass));
         mv.visitLdcInsn(info.overloadIndex);
-        mv.visitMethodInsn(INVOKEVIRTUAL, ExtensionDispatchTable.TYPE.getPath(), "resolveByIndex", "(Ljava/lang/Class;I)" + Function.TYPE, false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, ExtensionDispatchTable.TYPE.getPath(), "resolveByIndex", "(" + CLASS + "I)" + Function.TYPE, false);
     }
 
     /**

@@ -188,7 +188,7 @@ public class WhenEvaluator extends ExpressionEvaluator<WhenExpression> {
         mv.visitJumpInsn(IFEQ, nonNumber);
         mv.visitVarInsn(ALOAD, subjectVar);
         mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-        mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+        Instructions.emitNumberValue(mv, Type.I);
         mv.visitVarInsn(ISTORE, subjectInt);
         // 常量 int range 的 contains 直接比较上下界，避免为 when 分支临时创建 IntRange。
         mv.visitVarInsn(ILOAD, subjectInt);

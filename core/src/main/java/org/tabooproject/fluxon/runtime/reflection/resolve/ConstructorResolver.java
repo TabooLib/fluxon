@@ -44,13 +44,7 @@ public final class ConstructorResolver {
      * 查找最佳匹配的构造函数
      */
     public static Constructor<?> findBestConstructor(Class<?> clazz, Class<?>[] argTypes) {
-        // 首先尝试精确匹配
-        try {
-            return clazz.getConstructor(argTypes);
-        } catch (NoSuchMethodException ignored) {
-        }
-        // 使用 TypeCompatibility.findBestMatch 选择最具体的兼容构造函数
-        List<Constructor<?>> candidates = Arrays.asList(clazz.getConstructors());
+        List<Constructor<?>> candidates = ConstructorCache.getConstructors(clazz);
         return TypeCompatibility.findBestMatch(candidates, argTypes);
     }
 

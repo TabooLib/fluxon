@@ -2,9 +2,9 @@ package org.tabooproject.fluxon.interpreter.bytecode.emitter;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.java.ClassBridge;
 import org.tabooproject.fluxon.runtime.java.Optional;
 import org.tabooproject.fluxon.util.StringUtils;
@@ -14,6 +14,7 @@ import java.lang.reflect.Parameter;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getInternalName;
 import static org.tabooproject.fluxon.runtime.Type.*;
 
 /**
@@ -23,6 +24,7 @@ import static org.tabooproject.fluxon.runtime.Type.*;
 public class BridgeClassEmitter extends ClassEmitter {
 
     private static final AtomicLong classCounter = new AtomicLong(0);
+    private static final String[] THROWS_EXCEPTION = {getInternalName(Exception.class)};
 
     private final DispatchStrategy dispatchStrategy;
     private final Method[] exportMethods;
@@ -74,10 +76,10 @@ public class BridgeClassEmitter extends ClassEmitter {
      * 生成 invoke 方法
      */
     private void emitInvokeMethod() {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "invoke", "(" + STRING + OBJECT + "[" + OBJECT + ")" + OBJECT, null, new String[]{"java/lang/Exception"});
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "invoke", "(" + STRING + OBJECT + "[" + OBJECT + ")" + OBJECT, null, THROWS_EXCEPTION);
         mv.visitCode();
         if (!dispatchStrategy.hasExportMethods()) {
-            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
+            Instructions.emitThrowException(mv, Type.ILLEGAL_ARGUMENT_EXCEPTION.getPath(), "No exported methods available");
         } else {
             dispatchStrategy.emit(mv, this::emitSingleMethodCall);
         }
@@ -92,7 +94,7 @@ public class BridgeClassEmitter extends ClassEmitter {
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(I" + FunctionContext.TYPE + ")V", null, null);
         mv.visitCode();
         if (exportMethods.length == 0) {
-            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
+            Instructions.emitThrowException(mv, Type.ILLEGAL_ARGUMENT_EXCEPTION.getPath(), "No exported methods available");
         } else {
             Label defaultLabel = new Label();
             Label endLabel = new Label();
@@ -108,7 +110,7 @@ public class BridgeClassEmitter extends ClassEmitter {
                 mv.visitJumpInsn(GOTO, endLabel);
             }
             mv.visitLabel(defaultLabel);
-            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "Unknown export method index");
+            Instructions.emitThrowException(mv, Type.ILLEGAL_ARGUMENT_EXCEPTION.getPath(), "Unknown export method index");
             mv.visitLabel(endLabel);
             mv.visitInsn(RETURN);
         }
@@ -120,10 +122,10 @@ public class BridgeClassEmitter extends ClassEmitter {
      * 生成 getParameterTypes 方法
      */
     private void emitGetParameterTypesMethod() {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getParameterTypes", "(" + STRING + OBJECT + "[" + OBJECT + ")[" + CLASS, null, new String[]{"java/lang/Exception"});
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "getParameterTypes", "(" + STRING + OBJECT + "[" + OBJECT + ")[" + CLASS, null, THROWS_EXCEPTION);
         mv.visitCode();
         if (!dispatchStrategy.hasExportMethods()) {
-            Instructions.emitThrowException(mv, "java/lang/IllegalArgumentException", "No exported methods available");
+            Instructions.emitThrowException(mv, Type.ILLEGAL_ARGUMENT_EXCEPTION.getPath(), "No exported methods available");
         } else {
             dispatchStrategy.emit(mv, this::emitSingleMethodParameterTypes);
         }
@@ -139,7 +141,7 @@ public class BridgeClassEmitter extends ClassEmitter {
         Parameter[] parameters = method.getParameters();
         // 加载实例对象并进行类型转换
         mv.visitVarInsn(ALOAD, 2);
-        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(method.getDeclaringClass()));
+        mv.visitTypeInsn(CHECKCAST, getInternalName(method.getDeclaringClass()));
         // 为每个参数安全获取值
         for (int i = 0; i < paramTypes.length; i++) {
             Instructions.emitSafeParameterAccess(mv, i, paramTypes[i], parameters[i]);
@@ -157,7 +159,7 @@ public class BridgeClassEmitter extends ClassEmitter {
         Parameter[] parameters = method.getParameters();
         mv.visitVarInsn(ALOAD, 2);
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getTarget", "()" + OBJECT, false);
-        mv.visitTypeInsn(CHECKCAST, Type.getInternalName(method.getDeclaringClass()));
+        mv.visitTypeInsn(CHECKCAST, getInternalName(method.getDeclaringClass()));
         for (int i = 0; i < paramTypes.length; i++) {
             emitContextParameterAccess(mv, i, paramTypes[i], parameters[i]);
         }
@@ -173,7 +175,7 @@ public class BridgeClassEmitter extends ClassEmitter {
             Label hasParam = new Label();
             Label endLabel = new Label();
             mv.visitVarInsn(ALOAD, 2);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgumentCount", "()I", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgumentCount", "()" + Type.I, false);
             mv.visitLdcInsn(paramIndex + 1);
             mv.visitJumpInsn(IF_ICMPGE, hasParam);
             Instructions.emitDefaultValue(mv, paramType);
@@ -193,23 +195,14 @@ public class BridgeClassEmitter extends ClassEmitter {
         mv.visitVarInsn(ALOAD, 2);
         mv.visitLdcInsn(paramIndex);
         Instructions.emitLoadClass(mv, paramType);
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "checkArgumentType", "(ILjava/lang/Class;)V", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "checkArgumentType", "(I" + CLASS + ")V", false);
         mv.visitVarInsn(ALOAD, 2);
         mv.visitLdcInsn(paramIndex);
-        if (paramType == int.class || paramType == byte.class || paramType == short.class || paramType == char.class) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(I)I", false);
-        } else if (paramType == boolean.class) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsBoolean", "(I)Z", false);
-        } else if (paramType == long.class) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(I)J", false);
-        } else if (paramType == float.class) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(I)F", false);
-        } else if (paramType == double.class) {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(I)D", false);
-        } else {
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(I)" + OBJECT, false);
+        Type argumentType = paramType.isPrimitive() ? Type.fromClass(paramType) : Type.OBJECT;
+        Instructions.emitFunctionContextGetArgument(mv, argumentType);
+        if (!paramType.isPrimitive()) {
             if (paramType != Object.class) {
-                mv.visitTypeInsn(CHECKCAST, Type.getInternalName(paramType));
+                mv.visitTypeInsn(CHECKCAST, getInternalName(paramType));
             }
         }
     }
@@ -226,27 +219,27 @@ public class BridgeClassEmitter extends ClassEmitter {
             mv.visitVarInsn(ISTORE, 3);
             mv.visitVarInsn(ALOAD, 2);
             mv.visitVarInsn(ILOAD, 3);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnInt", "(I)V", false);
+            Instructions.emitSetReturnPrimitive(mv, Type.I);
         } else if (returnType == boolean.class) {
             mv.visitVarInsn(ISTORE, 3);
             mv.visitVarInsn(ALOAD, 2);
             mv.visitVarInsn(ILOAD, 3);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnBool", "(Z)V", false);
+            Instructions.emitSetReturnPrimitive(mv, Type.Z);
         } else if (returnType == long.class) {
             mv.visitVarInsn(LSTORE, 3);
             mv.visitVarInsn(ALOAD, 2);
             mv.visitVarInsn(LLOAD, 3);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnLong", "(J)V", false);
+            Instructions.emitSetReturnPrimitive(mv, Type.J);
         } else if (returnType == float.class) {
             mv.visitVarInsn(FSTORE, 3);
             mv.visitVarInsn(ALOAD, 2);
             mv.visitVarInsn(FLOAD, 3);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnFloat", "(F)V", false);
+            Instructions.emitSetReturnPrimitive(mv, Type.F);
         } else if (returnType == double.class) {
             mv.visitVarInsn(DSTORE, 3);
             mv.visitVarInsn(ALOAD, 2);
             mv.visitVarInsn(DLOAD, 3);
-            mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnDouble", "(D)V", false);
+            Instructions.emitSetReturnPrimitive(mv, Type.D);
         } else {
             if (returnType.isPrimitive()) {
                 Instructions.emitBox(mv, returnType);

@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.interpreter.bytecode;
 
 import org.jetbrains.annotations.Nullable;
 
+import static org.objectweb.asm.Type.getInternalName;
+
 public class Primitives {
 
     /**
@@ -21,6 +23,7 @@ public class Primitives {
         if (type == byte.class) return Byte.class;
         if (type == short.class) return Short.class;
         if (type == char.class) return Character.class;
+        if (type == void.class) return Void.class;
         return type;
     }
 
@@ -29,16 +32,8 @@ public class Primitives {
      */
     @Nullable
     public static String getWrapperClassName(Class<?> primitiveType) {
-        if (primitiveType == int.class) return "java/lang/Integer";
-        if (primitiveType == long.class) return "java/lang/Long";
-        if (primitiveType == double.class) return "java/lang/Double";
-        if (primitiveType == float.class) return "java/lang/Float";
-        if (primitiveType == boolean.class) return "java/lang/Boolean";
-        if (primitiveType == byte.class) return "java/lang/Byte";
-        if (primitiveType == short.class) return "java/lang/Short";
-        if (primitiveType == char.class) return "java/lang/Character";
-        if (primitiveType == void.class) return "java/lang/Void";
-        return null;
+        if (!primitiveType.isPrimitive()) return null;
+        return getInternalName(boxToClass(primitiveType));
     }
 
     /**

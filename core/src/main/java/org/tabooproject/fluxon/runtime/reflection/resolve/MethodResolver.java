@@ -46,30 +46,11 @@ public final class MethodResolver {
 
     /**
      * 查找最佳匹配的方法（用于 Bootstrap）
-     * 单次遍历同时检查精确匹配和收集兼容匹配，最后选择最具体的
      */
     public static Method findBestMethod(Class<?> targetClass, String methodName, Class<?>[] argTypes) {
-        List<Method> compatibleCandidates = null;
-        for (Method method : targetClass.getMethods()) {
-            if (!method.getName().equals(methodName)) continue;
-            Class<?>[] paramTypes = method.getParameterTypes();
-            // 精确匹配直接返回
-            if (Arrays.equals(paramTypes, argTypes)) {
-                return method;
-            }
-            // 收集所有兼容匹配
-            if (TypeCompatibility.isParametersCompatible(paramTypes, argTypes)) {
-                if (compatibleCandidates == null) {
-                    compatibleCandidates = new ArrayList<>(4);
-                }
-                compatibleCandidates.add(method);
-            }
-        }
-        // 从兼容候选中选择最具体的
-        if (compatibleCandidates != null) {
-            return TypeCompatibility.findBestMatch(compatibleCandidates, argTypes);
-        }
-        return null;
+        List<Method> candidates = MethodCache.getMethods(targetClass, methodName);
+        if (candidates.isEmpty()) return null;
+        return TypeCompatibility.findBestMatch(candidates, argTypes);
     }
 
     /**

@@ -155,7 +155,8 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 int jvmSlot = ctx.getJvmSlot(varPos);
                 if (varType.isPrimitive()) {
                     mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                    emitUnboxAndStoreJvm(varType, jvmSlot, mv);
+                    Instructions.emitNumberValue(mv, varType);
+                    Instructions.emitStoreLocal(mv, varType, jvmSlot);
                 } else {
                     mv.visitVarInsn(ASTORE, jvmSlot);
                 }
@@ -167,7 +168,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                 if (varType.isPrimitive()) {
                     // 拆箱并存入原始槽位
                     mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                    emitUnboxNumber(varType, mv);
+                    Instructions.emitNumberValue(mv, varType);
                     Instructions.emitEnvironmentSetLocal(mv, varType);
                 } else {
                     // 存入引用槽位
@@ -439,16 +440,10 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         }
         if (!type.isPrimitive()) {
             mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+            Instructions.emitNumberValue(mv, Type.I);
             return;
         }
-        if (type == Type.J) {
-            mv.visitInsn(L2I);
-        } else if (type == Type.F) {
-            mv.visitInsn(F2I);
-        } else if (type == Type.D) {
-            mv.visitInsn(D2I);
-        }
+        Instructions.emitPrimitiveConversion(type, Type.I, mv);
     }
 
     private static void emitStoreRangeLoopVariable(int varPos, Type varType, int loopVar, CodeContext ctx, MethodVisitor mv) {
@@ -470,45 +465,11 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
 
     private static void emitLoadRangeLoopValue(Type varType, int loopVar, MethodVisitor mv) {
         mv.visitVarInsn(ILOAD, loopVar);
-        if (varType == Type.J) {
-            mv.visitInsn(I2L);
-        } else if (varType == Type.F) {
-            mv.visitInsn(I2F);
-        } else if (varType == Type.D) {
-            mv.visitInsn(I2D);
-        } else if (!varType.isPrimitive()) {
-            boxing(Type.I, mv);
+        if (varType.isPrimitive()) {
+            Instructions.emitPrimitiveConversion(Type.I, varType, mv);
+        } else {
+            Instructions.emitBox(mv, Type.I);
         }
-    }
-
-    private static void emitUnboxNumber(Type type, MethodVisitor mv) {
-        switch (type.getDescriptor()) {
-            case "I":
-            case "Z":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
-                break;
-            case "J":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
-                break;
-            case "D":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
-                break;
-            case "F":
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
-                break;
-            default:
-                break;
-        }
-    }
-
-    /**
-     * Env-free 模式：拆箱 Number 并存入 JVM 局部变量
-     * 栈输入: [Number]
-     * 栈输出: []
-     */
-    private void emitUnboxAndStoreJvm(Type type, int jvmSlot, MethodVisitor mv) {
-        emitUnboxNumber(type, mv);
-        Instructions.emitStoreLocal(mv, type, jvmSlot);
     }
 
     @Override

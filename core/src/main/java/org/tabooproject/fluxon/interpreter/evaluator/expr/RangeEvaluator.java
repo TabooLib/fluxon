@@ -4,6 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -97,16 +98,10 @@ public class RangeEvaluator extends ExpressionEvaluator<RangeExpression> {
         }
         if (!type.isPrimitive()) {
             mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+            Instructions.emitNumberValue(mv, Type.I);
             return;
         }
-        if (type == Type.J) {
-            mv.visitInsn(L2I);
-        } else if (type == Type.F) {
-            mv.visitInsn(F2I);
-        } else if (type == Type.D) {
-            mv.visitInsn(D2I);
-        }
+        Instructions.emitPrimitiveConversion(type, Type.I, mv);
     }
 
     @Override

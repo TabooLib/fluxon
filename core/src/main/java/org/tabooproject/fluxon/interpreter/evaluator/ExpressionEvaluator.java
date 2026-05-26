@@ -123,23 +123,11 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     }
 
     /**
-     * 原始类型转换
-     */
-    public static void emitConvertPrimitive(Type from, Type to, MethodVisitor mv) {
-        if (from.equals(to)) return;
-        if (!from.isPrimitive()) {
-            Instructions.emitUnbox(mv, to);
-            return;
-        }
-        Instructions.emitPrimitiveConversion(from, to, mv);
-    }
-
-    /**
      * 存储分支结果到局部变量
      */
     public static void storeBranchResult(Type branchType, Type unifiedType, int storeId, MethodVisitor mv) {
         if (unifiedType.isPrimitive()) {
-            emitConvertPrimitive(branchType, unifiedType, mv);
+            Instructions.emitConvert(branchType, unifiedType, mv);
             mv.visitVarInsn(storeOpcode(unifiedType), storeId);
         } else {
             if (branchType == Type.VOID) {

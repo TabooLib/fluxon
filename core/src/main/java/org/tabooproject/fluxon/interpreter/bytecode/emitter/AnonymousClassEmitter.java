@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getDescriptor;
+import static org.objectweb.asm.Type.getInternalName;
+import static org.objectweb.asm.Type.getMethodDescriptor;
 import static org.tabooproject.fluxon.runtime.Type.OBJECT;
 
 /**
@@ -89,7 +92,7 @@ public class AnonymousClassEmitter extends ClassEmitter {
             Class<?> superClass,
             List<Class<?>> interfaces
     ) {
-        super(parentClassName + "$" + anonymousIndex, superClass.getName().replace('.', '/'), toInternalNames(interfaces), classLoader);
+        super(parentClassName + "$" + anonymousIndex, getInternalName(superClass), toInternalNames(interfaces), classLoader);
         this.expression = expression;
         this.generator = generator;
         this.superClass = superClass;
@@ -144,7 +147,7 @@ public class AnonymousClassEmitter extends ClassEmitter {
             if (paramTypes[i].isPrimitive()) {
                 Instructions.emitTypeConversion(mv, paramTypes[i]);
             } else if (paramTypes[i] != Object.class) {
-                mv.visitTypeInsn(CHECKCAST, paramTypes[i].getName().replace('.', '/'));
+                mv.visitTypeInsn(CHECKCAST, getInternalName(paramTypes[i]));
             }
         }
     }
@@ -154,7 +157,7 @@ public class AnonymousClassEmitter extends ClassEmitter {
         if (target == null) {
             throw new RuntimeException("Cannot find method to override: " + methodDef.getName());
         }
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, methodDef.getName(), org.objectweb.asm.Type.getMethodDescriptor(target), null, null);
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, methodDef.getName(), getMethodDescriptor(target), null, null);
         mv.visitCode();
         // 初始化上下文
         CodeContext ctx = new CodeContext(className, superClassName);
@@ -228,7 +231,7 @@ public class AnonymousClassEmitter extends ClassEmitter {
         if (classes.isEmpty()) return null;
         String[] names = new String[classes.size()];
         for (int i = 0; i < classes.size(); i++) {
-            names[i] = classes.get(i).getName().replace('.', '/');
+            names[i] = getInternalName(classes.get(i));
         }
         return names;
     }
@@ -236,7 +239,7 @@ public class AnonymousClassEmitter extends ClassEmitter {
     private static String toMethodDescriptor(Constructor<?> ctor) {
         StringBuilder sb = new StringBuilder("(");
         for (Class<?> t : ctor.getParameterTypes()) {
-            sb.append(org.objectweb.asm.Type.getDescriptor(t));
+            sb.append(getDescriptor(t));
         }
         return sb.append(")V").toString();
     }

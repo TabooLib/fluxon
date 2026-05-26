@@ -163,36 +163,10 @@ public final class ExtensionDispatchTable {
         }
         // 小候选数组路径：单趟扫描，精确优先 + 可赋值回退
         if (exactMatches == null) {
-            return resolveSmallCandidates(targetClass);
+            return resolveAssignableCandidate(targetClass);
         }
         // 大候选 Map 路径
         return resolveLargeCandidates(targetClass);
-    }
-
-    /**
-     * 小候选数组路径：单趟扫描
-     * 同时处理精确匹配和最具体可赋值回退，避免两次遍历
-     */
-    @Nullable
-    private OverloadSet resolveSmallCandidates(@NotNull Class<?> targetClass) {
-        OverloadSet assignable = null;
-        Class<?> assignableClass = null;
-        if (candidateClasses != null && candidateOverloadSets != null) {
-            for (int i = 0; i < candidateClasses.length; i++) {
-                Class<?> c = candidateClasses[i];
-                if (c == targetClass) {
-                    return candidateOverloadSets[i];
-                }
-                // 选择最具体的可赋值类型：新候选是当前最佳的子类型时替换
-                if (c.isAssignableFrom(targetClass)) {
-                    if (assignable == null || assignableClass.isAssignableFrom(c)) {
-                        assignable = candidateOverloadSets[i];
-                        assignableClass = c;
-                    }
-                }
-            }
-        }
-        return assignable;
     }
 
     /**
@@ -217,16 +191,25 @@ public final class ExtensionDispatchTable {
             return cached == NOT_FOUND_SENTINEL ? null : cached;
         }
         // 缓存未命中，执行单趟扫描（选择最具体的可赋值类型）
+        OverloadSet assignable = resolveAssignableCandidate(targetClass);
+        // 缓存结果
+        if (assignableCache != null) {
+            assignableCache.put(targetClass, assignable != null ? assignable : NOT_FOUND_SENTINEL);
+        }
+        return assignable;
+    }
+
+    /**
+     * 从候选类型中选择最具体的可赋值目标。
+     */
+    @Nullable
+    private OverloadSet resolveAssignableCandidate(@NotNull Class<?> targetClass) {
         OverloadSet assignable = null;
         Class<?> assignableClass = null;
         if (candidateClasses != null && candidateOverloadSets != null) {
             for (int i = 0; i < candidateClasses.length; i++) {
                 Class<?> c = candidateClasses[i];
                 if (c == targetClass) {
-                    // 精确匹配（理论上不应该到这里，因为 exactMatches 已经查过）
-                    if (assignableCache != null) {
-                        assignableCache.put(targetClass, candidateOverloadSets[i]);
-                    }
                     return candidateOverloadSets[i];
                 }
                 if (c.isAssignableFrom(targetClass)) {
@@ -236,10 +219,6 @@ public final class ExtensionDispatchTable {
                     }
                 }
             }
-        }
-        // 缓存结果
-        if (assignableCache != null) {
-            assignableCache.put(targetClass, assignable != null ? assignable : NOT_FOUND_SENTINEL);
         }
         return assignable;
     }

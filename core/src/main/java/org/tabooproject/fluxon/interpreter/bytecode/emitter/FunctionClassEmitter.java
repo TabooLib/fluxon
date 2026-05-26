@@ -25,6 +25,7 @@ import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getInternalName;
 import static org.tabooproject.fluxon.runtime.Type.*;
 
 /**
@@ -272,19 +273,7 @@ public class FunctionClassEmitter extends ClassEmitter {
             Type type = getDirectParameterType(funcDef, entry.getValue());
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(argIndex);
-            if (type == Type.I) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
-            } else if (type == Type.Z) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsBoolean", "(" + I + ")" + Z, false);
-            } else if (type == Type.J) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
-            } else if (type == Type.D) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
-            } else if (type == Type.F) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
-            } else {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
-            }
+            Instructions.emitFunctionContextGetArgument(mv, type);
             argIndex++;
         }
     }
@@ -439,22 +428,22 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitVarInsn(ALOAD, argSlot);
             if (type == Type.I) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+                Instructions.emitNumberValue(mv, type);
                 mv.visitVarInsn(ISTORE, jvmSlot);
             } else if (type == Type.Z) {
                 Instructions.emitUnboxBooleanCompatible(mv);
                 mv.visitVarInsn(ISTORE, jvmSlot);
             } else if (type == Type.J) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
+                Instructions.emitNumberValue(mv, type);
                 mv.visitVarInsn(LSTORE, jvmSlot);
             } else if (type == Type.D) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
+                Instructions.emitNumberValue(mv, type);
                 mv.visitVarInsn(DSTORE, jvmSlot);
             } else if (type == Type.F) {
                 mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
-                mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
+                Instructions.emitNumberValue(mv, type);
                 mv.visitVarInsn(FSTORE, jvmSlot);
             } else {
                 mv.visitVarInsn(ASTORE, jvmSlot);
@@ -490,17 +479,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         if (varType == null || !varType.isPrimitive()) varType = Type.OBJECT;
         int jvmSlot = funcCtx.allocateLocalVar(varType);
         funcCtx.mapVarToJvmSlot(pos, jvmSlot);
-        if (varType == Type.I || varType == Type.Z) {
-            mv.visitInsn(ICONST_0);
-        } else if (varType == Type.J) {
-            mv.visitInsn(LCONST_0);
-        } else if (varType == Type.D) {
-            mv.visitInsn(DCONST_0);
-        } else if (varType == Type.F) {
-            mv.visitInsn(FCONST_0);
-        } else {
-            mv.visitInsn(ACONST_NULL);
-        }
+        Instructions.emitDefaultValue(mv, varType);
         Instructions.emitStoreLocal(mv, varType, jvmSlot);
     }
 
@@ -516,7 +495,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         Label end = new Label();
         Label handler = new Label();
         Type directReturnType = getDirectReturnType(funcDef);
-        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitTryCatchBlock(start, end, handler, getInternalName(FluxonRuntimeError.class));
         mv.visitLabel(start);
         Type returnType = emitDirectReturnValue(mv, funcCtx);
         if (directReturnType.isPrimitive()) {
@@ -699,21 +678,10 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitLdcInsn(slot);
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(argIndex);
-            if (type == Type.I || type == Type.Z) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalInt", "(" + I + I + ")V", false);
-            } else if (type == Type.J) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalLong", "(" + I + J + ")V", false);
-            } else if (type == Type.D) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalDouble", "(" + I + D + ")V", false);
-            } else if (type == Type.F) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
-                mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalFloat", "(" + I + F + ")V", false);
+            Instructions.emitFunctionContextGetArgument(mv, type);
+            if (type.isPrimitive()) {
+                Instructions.emitEnvironmentSetLocal(mv, type);
             } else {
-                // 无类型声明时使用 getArgBoxed，根据 argTypes 自动选择 refs 或 primitives
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(" + I + OBJECT + ")V", false);
             }
             argIndex++;
@@ -755,28 +723,14 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(argIndex);
             if (funcCtx.isLocalCapturedByChild(varPosition)) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
+                Instructions.emitFunctionContextGetArgument(mv, Type.OBJECT);
                 emitNewCaptureCell(mv);
                 mv.visitVarInsn(ASTORE, jvmSlot);
                 argIndex++;
                 continue;
             }
-            if (type == Type.I || type == Type.Z) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
-                mv.visitVarInsn(ISTORE, jvmSlot);
-            } else if (type == Type.J) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
-                mv.visitVarInsn(LSTORE, jvmSlot);
-            } else if (type == Type.D) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
-                mv.visitVarInsn(DSTORE, jvmSlot);
-            } else if (type == Type.F) {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
-                mv.visitVarInsn(FSTORE, jvmSlot);
-            } else {
-                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
-                mv.visitVarInsn(ASTORE, jvmSlot);
-            }
+            Instructions.emitFunctionContextGetArgument(mv, type);
+            Instructions.emitStoreLocal(mv, type, jvmSlot);
             argIndex++;
         }
         emitEnvFreeLocalDefaults(mv, funcCtx);
@@ -795,7 +749,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         Label handler = new Label();
         Label functionExit = new Label();
         funcCtx.setFunctionExitLabel(functionExit);
-        mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitTryCatchBlock(start, end, handler, getInternalName(FluxonRuntimeError.class));
         mv.visitLabel(start);
         // 空函数体不会生成实际指令，保留一条 no-op 避免异常表出现空区间。
         mv.visitInsn(NOP);

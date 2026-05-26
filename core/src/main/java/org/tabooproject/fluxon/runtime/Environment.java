@@ -575,6 +575,48 @@ public class Environment {
         localPrimitives[index] = bits;
     }
 
+    public Object getLocalBoxed(int index, Type type) {
+        if (type == Type.I) return getLocalInt(index);
+        if (type == Type.Z) return getLocalInt(index) != 0;
+        if (type == Type.J) return getLocalLong(index);
+        if (type == Type.F) return getLocalFloat(index);
+        if (type == Type.D) return getLocalDouble(index);
+        return getLocalRef(index);
+    }
+
+    /**
+     * primitive 结果以 long 位模式传递，写入局部槽前在 Environment 边界统一还原目标类型。
+     */
+    public void setLocalFromBits(int index, Type target, Type source, long bits) {
+        if (target == Type.I) {
+            setLocalInt(index, Type.readAsInt(bits, source));
+        } else if (target == Type.Z) {
+            setLocalInt(index, Type.readAsBoolean(bits, source) ? 1 : 0);
+        } else if (target == Type.J) {
+            setLocalLong(index, Type.readAsLong(bits, source));
+        } else if (target == Type.F) {
+            setLocalFloat(index, Type.readAsFloat(bits, source));
+        } else if (target == Type.D) {
+            setLocalDouble(index, Type.readAsDouble(bits, source));
+        }
+    }
+
+    public void setLocalFromObject(int index, Type target, Object value) {
+        if (target == Type.I) {
+            setLocalInt(index, ((Number) value).intValue());
+        } else if (target == Type.Z) {
+            setLocalInt(index, Type.unbox(value, Type.Z) != 0L ? 1 : 0);
+        } else if (target == Type.J) {
+            setLocalLong(index, ((Number) value).longValue());
+        } else if (target == Type.F) {
+            setLocalFloat(index, ((Number) value).floatValue());
+        } else if (target == Type.D) {
+            setLocalDouble(index, ((Number) value).doubleValue());
+        } else {
+            setLocalRef(index, value);
+        }
+    }
+
     // endregion
 
     /**

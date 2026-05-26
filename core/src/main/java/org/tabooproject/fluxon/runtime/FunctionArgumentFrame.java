@@ -116,6 +116,39 @@ final class FunctionArgumentFrame {
         argTypes[index] = TYPE_REF;
     }
 
+    /**
+     * primitive 参数槽以 long 位模式传递，写入前统一按实际来源类型还原数值。
+     */
+    void setFromBits(int index, Type target, Type source, long bits) {
+        if (target == Type.I) {
+            setInt(index, Type.readAsInt(bits, source));
+        } else if (target == Type.Z) {
+            setBool(index, Type.readAsBoolean(bits, source));
+        } else if (target == Type.J) {
+            setLong(index, Type.readAsLong(bits, source));
+        } else if (target == Type.F) {
+            setFloat(index, Type.readAsFloat(bits, source));
+        } else if (target == Type.D) {
+            setDouble(index, Type.readAsDouble(bits, source));
+        }
+    }
+
+    void setFromObject(int index, Type target, Object value) {
+        if (!target.isPrimitive()) {
+            setRef(index, value);
+            return;
+        }
+        if (value instanceof Boolean) {
+            setFromBoolean(index, target, (Boolean) value);
+            return;
+        }
+        if (value instanceof Number) {
+            setFromNumber(index, target, (Number) value);
+            return;
+        }
+        throw new ClassCastException("Cannot convert " + (value == null ? "null" : value.getClass().getName()) + " to " + target);
+    }
+
     boolean isArgPrimitive(int index) {
         return index < argTypes.length && argTypes[index] != TYPE_REF;
     }
@@ -452,59 +485,42 @@ final class FunctionArgumentFrame {
     }
 
     private void convertPrimitiveArgType(int index, Type expected) {
-        convertDoubleArgType(index, getAsDouble(index), expected);
+        setFromBits(index, expected, primitiveByteToType(getArgType(index)), primitives[index]);
     }
 
     private void convertBooleanArgType(int index, boolean value, Type expected) {
-        switch (expected.getDescriptor().charAt(0)) {
-            case 'Z':
-                setBool(index, value);
-                return;
-            case 'I':
-                setInt(index, value ? 1 : 0);
-                return;
-            case 'J':
-                setLong(index, value ? 1L : 0L);
-                return;
-            case 'F':
-                setFloat(index, value ? 1F : 0F);
-                return;
-            case 'D':
-                setDouble(index, value ? 1D : 0D);
-        }
+        setFromBoolean(index, expected, value);
     }
 
     private void convertNumberArgType(int index, Number value, Type expected) {
-        switch (expected.getDescriptor().charAt(0)) {
-            case 'I':
-            case 'Z':
-                setInt(index, value.intValue());
-                return;
-            case 'J':
-                setLong(index, value.longValue());
-                return;
-            case 'F':
-                setFloat(index, value.floatValue());
-                return;
-            case 'D':
-                setDouble(index, value.doubleValue());
+        setFromNumber(index, expected, value);
+    }
+
+    private void setFromBoolean(int index, Type target, boolean value) {
+        if (target == Type.Z) {
+            setBool(index, value);
+        } else if (target == Type.I) {
+            setInt(index, value ? 1 : 0);
+        } else if (target == Type.J) {
+            setLong(index, value ? 1L : 0L);
+        } else if (target == Type.F) {
+            setFloat(index, value ? 1F : 0F);
+        } else if (target == Type.D) {
+            setDouble(index, value ? 1D : 0D);
         }
     }
 
-    private void convertDoubleArgType(int index, double value, Type expected) {
-        switch (expected.getDescriptor().charAt(0)) {
-            case 'I':
-            case 'Z':
-                setInt(index, (int) value);
-                return;
-            case 'J':
-                setLong(index, (long) value);
-                return;
-            case 'F':
-                setFloat(index, (float) value);
-                return;
-            case 'D':
-                setDouble(index, value);
+    private void setFromNumber(int index, Type target, Number value) {
+        if (target == Type.I) {
+            setInt(index, value.intValue());
+        } else if (target == Type.Z) {
+            setBool(index, value.doubleValue() != 0D);
+        } else if (target == Type.J) {
+            setLong(index, value.longValue());
+        } else if (target == Type.F) {
+            setFloat(index, value.floatValue());
+        } else if (target == Type.D) {
+            setDouble(index, value.doubleValue());
         }
     }
 

@@ -19,7 +19,6 @@ import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.parser.expression.MemberAccessExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.runtime.DirectBinding;
-import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.OperatorOverloadRegistry;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
@@ -31,6 +30,7 @@ import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.getInternalName;
+import static org.objectweb.asm.Type.getReturnType;
 import static org.tabooproject.fluxon.runtime.Type.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
@@ -146,51 +146,6 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         HANDLERS.put(MemberAccessExpression.class, new MemberAccessAssignHandler());
     }
 
-    public static Object getLocalBoxed(Environment env, int position, Type varType) {
-        switch (varType.getDescriptor().charAt(0)) {
-            case 'I': case 'Z': return env.getLocalInt(position);
-            case 'J': return env.getLocalLong(position);
-            case 'F': return env.getLocalFloat(position);
-            case 'D': return env.getLocalDouble(position);
-            default: return env.getLocalRef(position);
-        }
-    }
-
-    public static void setLocalFromBits(Environment env, int position, Type type, long bits) {
-        switch (type.getDescriptor().charAt(0)) {
-            case 'I': case 'Z': env.setLocalInt(position, (int) bits); break;
-            case 'J': env.setLocalLong(position, bits); break;
-            case 'F': env.setLocalFloat(position, Float.intBitsToFloat((int) bits)); break;
-            case 'D': env.setLocalDouble(position, Double.longBitsToDouble(bits)); break;
-        }
-    }
-
-    public static void setLocalFromBoxed(Environment env, int position, Type varType, Object value) {
-        switch (varType.getDescriptor().charAt(0)) {
-            case 'I': case 'Z': env.setLocalInt(position, ((Number) value).intValue()); break;
-            case 'J': env.setLocalLong(position, ((Number) value).longValue()); break;
-            case 'F': env.setLocalFloat(position, ((Number) value).floatValue()); break;
-            case 'D': env.setLocalDouble(position, ((Number) value).doubleValue()); break;
-            default: env.setLocalRef(position, value); break;
-        }
-    }
-
-    /**
-     * primitive → 不同 primitive 的直接转换，避免装箱
-     */
-    public static void setLocalPrimitiveConverted(Environment env, int pos, Type target, Type source, long bits) {
-        double v;
-        if (source == Type.I || source == Type.Z) v = (int) bits;
-        else if (source == Type.J) v = (double) bits;
-        else if (source == Type.F) v = Float.intBitsToFloat((int) bits);
-        else if (source == Type.D) v = Double.longBitsToDouble(bits);
-        else return;
-        if (target == Type.I || target == Type.Z) env.setLocalInt(pos, (int) v);
-        else if (target == Type.J) env.setLocalLong(pos, (long) v);
-        else if (target == Type.F) env.setLocalFloat(pos, (float) v);
-        else if (target == Type.D) env.setLocalDouble(pos, v);
-    }
-
     public static Object applyCompoundOperation(Object current, Object value, TokenType operator) {
         switch (operator) {
             case PLUS_ASSIGN: return addAssign(current, value);
@@ -242,7 +197,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         Type actualRightType = valueEval.generateBytecode(result.getValue(), ctx, mv);
         if (actualRightType == VOID) throw new VoidError("Void type is not allowed for assignment value");
         Type expectedRightType = Type.fromClass(overloaded.getRight());
-        emitOperatorArgumentConversion(actualRightType, expectedRightType, mv);
+        Instructions.emitArgumentConversion(actualRightType, expectedRightType, mv);
         if (!actualRightType.isPrimitive() && overloaded.getRight() != Object.class) {
             mv.visitTypeInsn(CHECKCAST, getInternalName(overloaded.getRight()));
         }
@@ -257,36 +212,17 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         }
     }
 
-    private static void emitOperatorArgumentConversion(Type actual, Type expected, MethodVisitor mv) {
-        if (actual == expected) return;
-        if (actual.isPrimitive() && expected.isPrimitive()) {
-            emitConvert(actual, expected, mv);
-        } else if (!actual.isPrimitive() && expected.isPrimitive()) {
-            Instructions.emitUnbox(mv, expected);
-        } else if (actual.isPrimitive()) {
-            Instructions.emitBox(mv, actual);
-        }
-    }
-
     private static Class<?> getReturnClass(String descriptor) {
-        char returnType = descriptor.charAt(descriptor.indexOf(')') + 1);
-        switch (returnType) {
-            case 'V': return void.class;
-            case 'I': return int.class;
-            case 'J': return long.class;
-            case 'F': return float.class;
-            case 'D': return double.class;
-            case 'Z': return boolean.class;
+        org.objectweb.asm.Type returnType = getReturnType(descriptor);
+        switch (returnType.getSort()) {
+            case org.objectweb.asm.Type.VOID: return void.class;
+            case org.objectweb.asm.Type.INT: return int.class;
+            case org.objectweb.asm.Type.LONG: return long.class;
+            case org.objectweb.asm.Type.FLOAT: return float.class;
+            case org.objectweb.asm.Type.DOUBLE: return double.class;
+            case org.objectweb.asm.Type.BOOLEAN: return boolean.class;
             default: return Object.class;
         }
     }
 
-    public static void emitConvert(Type from, Type to, MethodVisitor mv) {
-        if (from.equals(to)) return;
-        if (!from.isPrimitive()) {
-            Instructions.emitUnbox(mv, to);
-            return;
-        }
-        Instructions.emitPrimitiveConversion(from, to, mv);
-    }
 }

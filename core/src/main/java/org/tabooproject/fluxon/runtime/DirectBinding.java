@@ -2,6 +2,11 @@ package org.tabooproject.fluxon.runtime;
 
 import java.lang.reflect.Method;
 
+import static org.objectweb.asm.Type.getArgumentTypes;
+import static org.objectweb.asm.Type.getInternalName;
+import static org.objectweb.asm.Type.getMethodDescriptor;
+import static org.objectweb.asm.Type.getReturnType;
+
 /**
  * 直接绑定信息
  * 将 Fluxon 函数映射到 JVM 静态方法，编译器可直接生成 INVOKESTATIC 跳过函数调用框架
@@ -24,7 +29,7 @@ public final class DirectBinding {
      * 从 Class 和方法名自动生成绑定，根据函数签名推导 JVM descriptor
      */
     public static DirectBinding of(Class<?> clazz, String methodName, FunctionSignature signature) {
-        String owner = clazz.getName().replace('.', '/');
+        String owner = getInternalName(clazz);
         String descriptor = buildDescriptor(signature);
         return new DirectBinding(owner, methodName, descriptor);
     }
@@ -34,8 +39,8 @@ public final class DirectBinding {
      * descriptor 精确匹配 Java 方法签名（包括 boolean/int 的区分）
      */
     public static DirectBinding ofMethod(Class<?> clazz, Method method) {
-        String owner = clazz.getName().replace('.', '/');
-        String descriptor = org.objectweb.asm.Type.getMethodDescriptor(method);
+        String owner = getInternalName(clazz);
+        String descriptor = getMethodDescriptor(method);
         return new DirectBinding(owner, method.getName(), descriptor);
     }
 
@@ -59,10 +64,9 @@ public final class DirectBinding {
      */
     public Type reconcileReturnType(Type signatureReturn) {
         if (!signatureReturn.isPrimitive()) return signatureReturn;
-        // 从 descriptor 提取 JVM 返回类型：取 ')' 之后的部分
-        char jvmReturn = descriptor.charAt(descriptor.indexOf(')') + 1);
-        // JVM 返回引用类型（L...;）或数组（[）但 Fluxon 签名说 primitive → 栈上实际是 boxed 对象
-        if (jvmReturn == 'L' || jvmReturn == '[') {
+        org.objectweb.asm.Type jvmReturn = getReturnType(descriptor);
+        int sort = jvmReturn.getSort();
+        if (sort == org.objectweb.asm.Type.OBJECT || sort == org.objectweb.asm.Type.ARRAY) {
             return Type.OBJECT;
         }
         return signatureReturn;
@@ -84,16 +88,15 @@ public final class DirectBinding {
             if (t.isPrimitive()) { hasPrimitive = true; break; }
         }
         if (!hasPrimitive) return signatureTypes;
-        // 解析 descriptor 中的参数类型字符
-        char[] jvmParamChars = parseDescriptorParamChars();
-        if (jvmParamChars.length <= skipParams) return signatureTypes;
+        org.objectweb.asm.Type[] jvmParamTypes = getArgumentTypes(descriptor);
+        if (jvmParamTypes.length <= skipParams) return signatureTypes;
         Type[] result = null;
         for (int i = 0; i < signatureTypes.length; i++) {
             int descIdx = i + skipParams;
-            if (descIdx >= jvmParamChars.length) break;
+            if (descIdx >= jvmParamTypes.length) break;
             if (signatureTypes[i].isPrimitive()) {
-                char jvmChar = jvmParamChars[descIdx];
-                if (jvmChar == 'L' || jvmChar == '[') {
+                int sort = jvmParamTypes[descIdx].getSort();
+                if (sort == org.objectweb.asm.Type.OBJECT || sort == org.objectweb.asm.Type.ARRAY) {
                     // JVM 期望引用类型但签名说 primitive → 修正为 OBJECT
                     if (result == null) {
                         result = signatureTypes.clone();
@@ -103,28 +106,6 @@ public final class DirectBinding {
             }
         }
         return result != null ? result : signatureTypes;
-    }
-
-    /**
-     * 解析 JVM 方法 descriptor 的参数类型首字符
-     * 返回每个参数类型的首字符数组（如 'I'=int, 'L'=object, '['=array）
-     */
-    private char[] parseDescriptorParamChars() {
-        char[] chars = new char[16];
-        int count = 0;
-        int i = 1; // 跳过 '('
-        while (i < descriptor.length() && descriptor.charAt(i) != ')') {
-            if (count >= chars.length) {
-                char[] newChars = new char[chars.length * 2];
-                System.arraycopy(chars, 0, newChars, 0, chars.length);
-                chars = newChars;
-            }
-            chars[count++] = descriptor.charAt(i);
-            i = skipDescriptorType(i);
-        }
-        char[] result = new char[count];
-        System.arraycopy(chars, 0, result, 0, count);
-        return result;
     }
 
     /**
@@ -139,60 +120,31 @@ public final class DirectBinding {
     public String[] getDescriptorParamCastTargets(int skipParams, int paramCount) {
         String[] targets = null;
         int paramIdx = 0;
-        int descIdx = 0;
-        int i = 1; // 跳过 '('
-        while (i < descriptor.length() && descriptor.charAt(i) != ')') {
-            char c = descriptor.charAt(i);
-            if (c == 'L' && descIdx >= skipParams && paramIdx < paramCount) {
-                int semi = descriptor.indexOf(';', i);
-                String internalName = descriptor.substring(i + 1, semi);
+        org.objectweb.asm.Type[] jvmParamTypes = getArgumentTypes(descriptor);
+        for (int descIdx = 0; descIdx < jvmParamTypes.length; descIdx++) {
+            org.objectweb.asm.Type jvmType = jvmParamTypes[descIdx];
+            int sort = jvmType.getSort();
+            if ((sort == org.objectweb.asm.Type.OBJECT || sort == org.objectweb.asm.Type.ARRAY) && descIdx >= skipParams && paramIdx < paramCount) {
+                String internalName = sort == org.objectweb.asm.Type.ARRAY ? jvmType.getDescriptor() : jvmType.getInternalName();
                 // java/lang/Object 不需要 CHECKCAST
-                if (!internalName.equals("java/lang/Object")) {
+                if (!internalName.equals(Type.OBJECT.getPath())) {
                     if (targets == null) targets = new String[paramCount];
                     targets[paramIdx] = internalName;
                 }
             }
-            i = skipDescriptorType(i);
             if (descIdx >= skipParams) paramIdx++;
-            descIdx++;
         }
         return targets;
-    }
-
-    /**
-     * 跳过 descriptor 中位置 i 处的一个完整类型描述符，返回下一个类型的起始位置
-     */
-    private int skipDescriptorType(int i) {
-        char c = descriptor.charAt(i);
-        if (c == 'L') {
-            return descriptor.indexOf(';', i) + 1;
-        } else if (c == '[') {
-            while (i < descriptor.length() && descriptor.charAt(i) == '[') i++;
-            if (i < descriptor.length() && descriptor.charAt(i) == 'L') {
-                return descriptor.indexOf(';', i) + 1;
-            }
-            return i + 1;
-        }
-        return i + 1;
     }
 
     private static String buildDescriptor(FunctionSignature signature) {
         StringBuilder sb = new StringBuilder("(");
         for (Type paramType : signature.getParameterTypes()) {
-            sb.append(toJvmType(paramType));
+            sb.append(paramType.getDescriptor());
         }
         sb.append(")");
-        sb.append(toJvmType(signature.getReturnType()));
+        sb.append(signature.getReturnType().getDescriptor());
         return sb.toString();
-    }
-
-    private static String toJvmType(Type type) {
-        if (type == Type.I || type == Type.Z) return "I";
-        if (type == Type.J) return "J";
-        if (type == Type.D) return "D";
-        if (type == Type.F) return "F";
-        if (type == Type.VOID) return "V";
-        return "Ljava/lang/Object;";
     }
 
     @Override

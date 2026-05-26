@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getInternalName;
 import static org.tabooproject.fluxon.runtime.Type.*;
 
 /**
@@ -117,7 +118,7 @@ public class MainClassEmitter extends ClassEmitter {
         if (rootLocalVariableCount > 0) {
             mv.visitVarInsn(ALOAD, 1);
             mv.visitLdcInsn(rootLocalVariableCount);
-            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "initializeRootLocalVariables", "(I)V", false);
+            mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "initializeRootLocalVariables", "(" + Type.I + ")" + Type.VOID, false);
         }
         // 设置 CodeContext
         ctx.allocateLocalVar(Type.OBJECT);
@@ -180,7 +181,7 @@ public class MainClassEmitter extends ClassEmitter {
         }
         mv.visitLabel(end);
         // 入口清理 handler 必须晚于脚本内部 try/catch 注册，避免抢先吞掉用户 try 块异常。
-        mv.visitTryCatchBlock(cleanupStart, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
+        mv.visitTryCatchBlock(cleanupStart, end, handler, getInternalName(FluxonRuntimeError.class));
         mv.visitTryCatchBlock(cleanupStart, cleanup, cleanup, null);
         emitClearIdleContexts(mv, poolSlot);
         mv.visitInsn(ARETURN);

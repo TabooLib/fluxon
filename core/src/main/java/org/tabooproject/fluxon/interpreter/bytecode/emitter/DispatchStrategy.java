@@ -157,7 +157,7 @@ public class DispatchStrategy {
         }
         // 生成 switch 语句
         mv.visitVarInsn(ALOAD, 1);
-        mv.visitMethodInsn(INVOKEVIRTUAL, STRING.getPath(), "hashCode", "()I", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, STRING.getPath(), "hashCode", "()" + I, false);
         // 确保键值按升序排列
         List<Integer> sortedHashes = new ArrayList<>(hashGroups.keySet());
         sortedHashes.sort(Integer::compareTo);
