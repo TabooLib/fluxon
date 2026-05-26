@@ -598,8 +598,8 @@ public class FluxonRuntime {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         try (FunctionContext<?> ctx = pool.borrow(function, null, args, env)) {
             function.call(ctx);
-            if (ctx.returnType != null && ctx.returnType.isPrimitive()) {
-                return boxReturnPrimitive(ctx);
+            if (ctx.hasPrimitiveReturn()) {
+                return ctx.boxReturnPrimitive();
             }
             return ctx.getReturnRef();
         }
@@ -613,21 +613,11 @@ public class FluxonRuntime {
         Environment env = FluxonRuntime.getInstance().newEnvironment();
         try (FunctionContext<?> ctx = pool.borrow(function, target, args, env)) {
             function.call(ctx);
-            if (ctx.returnType != null && ctx.returnType.isPrimitive()) {
-                return boxReturnPrimitive(ctx);
+            if (ctx.hasPrimitiveReturn()) {
+                return ctx.boxReturnPrimitive();
             }
             return ctx.getReturnRef();
         }
-    }
-
-    private static Object boxReturnPrimitive(FunctionContext<?> ctx) {
-        Type rt = ctx.returnType;
-        long bits = ctx.returnPrimitive;
-        if (rt == Type.I || rt == Type.Z) return (int) bits;
-        if (rt == Type.J) return bits;
-        if (rt == Type.D) return Double.longBitsToDouble(bits);
-        if (rt == Type.F) return Float.intBitsToFloat((int) bits);
-        return null;
     }
 
     // endregion

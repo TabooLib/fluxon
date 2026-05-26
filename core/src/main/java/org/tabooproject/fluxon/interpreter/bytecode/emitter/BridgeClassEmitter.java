@@ -192,6 +192,10 @@ public class BridgeClassEmitter extends ClassEmitter {
     private void emitContextArgumentValue(MethodVisitor mv, int paramIndex, Class<?> paramType) {
         mv.visitVarInsn(ALOAD, 2);
         mv.visitLdcInsn(paramIndex);
+        Instructions.emitLoadClass(mv, paramType);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "checkArgumentType", "(ILjava/lang/Class;)V", false);
+        mv.visitVarInsn(ALOAD, 2);
+        mv.visitLdcInsn(paramIndex);
         if (paramType == int.class || paramType == byte.class || paramType == short.class || paramType == char.class) {
             mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(I)I", false);
         } else if (paramType == boolean.class) {

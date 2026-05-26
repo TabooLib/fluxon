@@ -5,7 +5,6 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
-import org.tabooproject.fluxon.interpreter.evaluator.expr.ReferenceEvaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
@@ -184,7 +183,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
             if (varType.isPrimitive()) {
                 emitConvert(vt, varType, mv);
-                ReferenceEvaluator.emitSetLocal(varType, mv);
+                Instructions.emitEnvironmentSetLocal(mv, varType);
             } else {
                 box(vt, mv);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
@@ -200,23 +199,23 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 mv.visitLdcInsn(position);
                 Instructions.loadEnvironment(mv, ctx);
                 mv.visitLdcInsn(position);
-                ReferenceEvaluator.emitGetLocal(varType, mv);
+                Instructions.emitEnvironmentGetLocal(mv, varType);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
                 emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
-                ReferenceEvaluator.emitSetLocal(varType, mv);
+                Instructions.emitEnvironmentSetLocal(mv, varType);
                 return;
             }
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(position);
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(position);
-            ReferenceEvaluator.emitGetLocal(varType, mv);
+            Instructions.emitEnvironmentGetLocal(mv, varType);
             box(varType, mv);
             generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
             unbox(varType, mv);
-            ReferenceEvaluator.emitSetLocal(varType, mv);
+            Instructions.emitEnvironmentSetLocal(mv, varType);
         } else {
             Instructions.loadEnvironment(mv, ctx);
             mv.visitInsn(DUP);

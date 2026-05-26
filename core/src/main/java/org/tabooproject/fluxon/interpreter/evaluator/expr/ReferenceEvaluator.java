@@ -90,8 +90,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
             Type varType = ctx.getVariableType(position);
             mv.visitLdcInsn(position);
             if (varType.isPrimitive()) {
-                emitGetLocal(varType, mv);
-                return varType;
+                Instructions.emitEnvironmentGetLocal(mv, varType);
             } else {
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
                         Environment.TYPE.getPath(),
@@ -100,8 +99,8 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                         false
                 );
                 emitReferenceCast(varType, mv);
-                return varType;
             }
+            return varType;
         }
         // root 变量：先获取 Object，再根据类型拆箱
         String name = result.getIdentifier().getValue();
@@ -165,54 +164,6 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
         } else {
             return analyzer.getRootVariableType(result.getIdentifier().getValue());
         }
-    }
-
-    /**
-     * 根据类型调用对应的 getter 方法
-     * 栈输入：[env, index]
-     * 栈输出：[value]
-     */
-    public static void emitGetLocal(Type type, MethodVisitor mv) {
-        String name;
-        String desc;
-        if (type == Type.I || type == Type.Z) {
-            name = "getLocalInt";
-            desc = "(" + Type.I + ")" + Type.I;
-        } else if (type == Type.J) {
-            name = "getLocalLong";
-            desc = "(" + Type.I + ")" + Type.J;
-        } else if (type == Type.F) {
-            name = "getLocalFloat";
-            desc = "(" + Type.I + ")" + Type.F;
-        } else {
-            name = "getLocalDouble";
-            desc = "(" + Type.I + ")" + Type.D;
-        }
-        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
-    }
-
-    /**
-     * 根据类型调用对应的 setter 方法
-     * 栈输入：[env, index, value]
-     * 栈输出：[]
-     */
-    public static void emitSetLocal(Type type, MethodVisitor mv) {
-        String name;
-        String desc;
-        if (type == Type.I || type == Type.Z) {
-            name = "setLocalInt";
-            desc = "(" + Type.I + Type.I + ")" + Type.VOID;
-        } else if (type == Type.J) {
-            name = "setLocalLong";
-            desc = "(" + Type.I + Type.J + ")" + Type.VOID;
-        } else if (type == Type.F) {
-            name = "setLocalFloat";
-            desc = "(" + Type.I + Type.F + ")" + Type.VOID;
-        } else {
-            name = "setLocalDouble";
-            desc = "(" + Type.I + Type.D + ")" + Type.VOID;
-        }
-        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
     }
 
 }

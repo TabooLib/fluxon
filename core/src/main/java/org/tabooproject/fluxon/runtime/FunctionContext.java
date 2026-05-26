@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * 函数调用上下文
- * 封装函数调用所需的所有信息：目标对象、参数列表和环境
+ * 只保留调用状态和对外协议，参数槽与返回槽由专门对象维护。
  *
  * @author sky
  */
@@ -16,18 +16,8 @@ public final class FunctionContext<Target> implements AutoCloseable {
 
     public static final Type TYPE = new Type(FunctionContext.class);
 
-    private static final Object[] EMPTY_REFS = new Object[0];
-    private static final long[] EMPTY_PRIMITIVES = new long[0];
-    private static final byte[] EMPTY_ARG_TYPES = new byte[0];
-
-    // 参数类型标记常量
-    static final byte TYPE_REF = 0;
-    static final byte TYPE_INT = 'I';
-    static final byte TYPE_LONG = 'J';
-    static final byte TYPE_FLOAT = 'F';
-    static final byte TYPE_DOUBLE = 'D';
-    static final byte TYPE_BOOL = 'Z';
-
+    private final FunctionArgumentFrame arguments;
+    private final FunctionReturnSlot returns = new FunctionReturnSlot();
     private Function function;
     private Target target;
     private Environment environment;
@@ -38,25 +28,12 @@ public final class FunctionContext<Target> implements AutoCloseable {
     // 普通 env-free 函数没有捕获槽，局部变量读写可跳过 CaptureCell 分支。
     private boolean hasCapturedLocals;
 
-    private long[] primitives;
-    private Object[] refs;
-    private byte[] argTypes;
-    private int capacity;
-    private int argumentCount;
-
-    public long returnPrimitive;
-    public Object returnRef;
-    public Type returnType;
-
     /**
      * 池专用构造函数，字段在 reset 时初始化
      */
     FunctionContext(@NotNull FunctionContextPool pool) {
         this.pool = pool;
-        this.refs = EMPTY_REFS;
-        this.primitives = EMPTY_PRIMITIVES;
-        this.argTypes = EMPTY_ARG_TYPES;
-        this.capacity = 0;
+        this.arguments = new FunctionArgumentFrame();
     }
 
     /**
@@ -64,242 +41,159 @@ public final class FunctionContext<Target> implements AutoCloseable {
      */
     FunctionContext(@NotNull FunctionContextPool pool, int capacity, int stackIndex) {
         this.pool = pool;
-        this.primitives = new long[capacity];
-        this.refs = new Object[capacity];
-        this.argTypes = new byte[capacity];
-        this.capacity = capacity;
+        this.arguments = new FunctionArgumentFrame(capacity);
         this.stackIndex = stackIndex;
     }
 
     public int getInt(int index) {
-        return (int) primitives[index];
+        return arguments.getInt(index);
     }
 
     public long getLong(int index) {
-        return primitives[index];
+        return arguments.getLong(index);
     }
 
     public double getDouble(int index) {
-        return Double.longBitsToDouble(primitives[index]);
+        return arguments.getDouble(index);
     }
 
     public float getFloat(int index) {
-        return Float.intBitsToFloat((int) primitives[index]);
+        return arguments.getFloat(index);
     }
 
     public boolean getBool(int index) {
-        return primitives[index] != 0;
+        return arguments.getBool(index);
     }
 
     public long getPrimitive(int index) {
-        return primitives[index];
+        return arguments.getPrimitive(index);
     }
 
     public Object getRef(int index) {
-        return refs[index];
+        return arguments.getRef(index);
     }
 
     public CaptureCell getCaptureCell(int index) {
-        Object value = refs[index];
-        return value instanceof CaptureCell ? (CaptureCell) value : null;
+        return arguments.getCaptureCell(index);
     }
 
     public String getString(int index) {
-        return (String) refs[index];
+        return arguments.getString(index);
     }
 
     public void setInt(int index, int v) {
-        primitives[index] = v;
-        argTypes[index] = TYPE_INT;
+        arguments.setInt(index, v);
     }
 
     public void setLong(int index, long v) {
-        primitives[index] = v;
-        argTypes[index] = TYPE_LONG;
+        arguments.setLong(index, v);
     }
 
     public void setDouble(int index, double v) {
-        primitives[index] = Double.doubleToRawLongBits(v);
-        argTypes[index] = TYPE_DOUBLE;
+        arguments.setDouble(index, v);
     }
 
     public void setFloat(int index, float v) {
-        primitives[index] = Float.floatToRawIntBits(v);
-        argTypes[index] = TYPE_FLOAT;
+        arguments.setFloat(index, v);
     }
 
     public void setBool(int index, boolean v) {
-        primitives[index] = v ? 1 : 0;
-        argTypes[index] = TYPE_BOOL;
+        arguments.setBool(index, v);
     }
 
     public void setRef(int index, Object v) {
-        refs[index] = v;
-        argTypes[index] = TYPE_REF;
+        arguments.setRef(index, v);
     }
 
     public boolean isArgPrimitive(int index) {
-        return index < argTypes.length && argTypes[index] != TYPE_REF;
+        return arguments.isArgPrimitive(index);
     }
 
     public byte getArgType(int index) {
-        return index < argTypes.length ? argTypes[index] : TYPE_REF;
+        return arguments.getArgType(index);
     }
 
     public double getAsDouble(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) return ((Number) refs[index]).doubleValue();
-        switch (t) {
-            case TYPE_LONG:
-                return (double) primitives[index];
-            case TYPE_FLOAT:
-                return Float.intBitsToFloat((int) primitives[index]);
-            case TYPE_DOUBLE:
-                return Double.longBitsToDouble(primitives[index]);
-            default:
-                return (int) primitives[index]; // I, Z
-        }
+        return arguments.getAsDouble(index);
     }
 
     public int getAsInt(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) return ((Number) refs[index]).intValue();
-        switch (t) {
-            case TYPE_LONG:
-                return (int) primitives[index];
-            case TYPE_FLOAT:
-                return (int) Float.intBitsToFloat((int) primitives[index]);
-            case TYPE_DOUBLE:
-                return (int) Double.longBitsToDouble(primitives[index]);
-            default:
-                return (int) primitives[index]; // I, Z
-        }
+        return arguments.getAsInt(index);
     }
 
     public long getAsLong(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) return ((Number) refs[index]).longValue();
-        switch (t) {
-            case TYPE_INT:
-                return (int) primitives[index]; // sign-extend
-            case TYPE_FLOAT:
-                return (long) Float.intBitsToFloat((int) primitives[index]);
-            case TYPE_DOUBLE:
-                return (long) Double.longBitsToDouble(primitives[index]);
-            default:
-                return primitives[index]; // J, Z
-        }
+        return arguments.getAsLong(index);
     }
 
     public float getAsFloat(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) return ((Number) refs[index]).floatValue();
-        switch (t) {
-            case TYPE_LONG:
-                return (float) primitives[index];
-            case TYPE_DOUBLE:
-                return (float) Double.longBitsToDouble(primitives[index]);
-            case TYPE_FLOAT:
-                return Float.intBitsToFloat((int) primitives[index]);
-            default:
-                return (int) primitives[index]; // I, Z
-        }
+        return arguments.getAsFloat(index);
     }
 
     public boolean getAsBoolean(int index) {
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) {
-            Object ref = refs[index];
-            if (ref instanceof Boolean) return (Boolean) ref;
-            if (ref instanceof Number) return ((Number) ref).doubleValue() != 0;
-            return ref != null;
-        }
-        switch (t) {
-            case TYPE_DOUBLE:
-                return Double.longBitsToDouble(primitives[index]) != 0;
-            case TYPE_FLOAT:
-                return Float.intBitsToFloat((int) primitives[index]) != 0;
-            default:
-                return primitives[index] != 0; // I, J, Z
-        }
+        return arguments.getAsBoolean(index);
     }
 
     public Object getArgBoxed(int index) {
-        if (index >= argumentCount) return null;
-        byte t = index < argTypes.length ? argTypes[index] : TYPE_REF;
-        if (t == TYPE_REF) return refs[index];
-        switch (t) {
-            case TYPE_INT:
-                return (int) primitives[index];
-            case TYPE_LONG:
-                return primitives[index];
-            case TYPE_FLOAT:
-                return Float.intBitsToFloat((int) primitives[index]);
-            case TYPE_DOUBLE:
-                return Double.longBitsToDouble(primitives[index]);
-            case TYPE_BOOL:
-                return primitives[index] != 0;
-            default:
-                return refs[index];
-        }
+        return arguments.getArgBoxed(index);
+    }
+
+    public void checkArgumentType(int index, Class<?> expect) {
+        arguments.checkArgumentType(this, index, expect);
     }
 
     public void setReturnInt(int v) {
-        returnPrimitive = v;
-        returnType = Type.I;
+        returns.setInt(v);
     }
 
     public void setReturnLong(long v) {
-        returnPrimitive = v;
-        returnType = Type.J;
+        returns.setLong(v);
     }
 
     public void setReturnDouble(double v) {
-        returnPrimitive = Double.doubleToRawLongBits(v);
-        returnType = Type.D;
+        returns.setDouble(v);
     }
 
     public void setReturnFloat(float v) {
-        returnPrimitive = Float.floatToRawIntBits(v);
-        returnType = Type.F;
+        returns.setFloat(v);
     }
 
     public void setReturnBool(boolean v) {
-        returnPrimitive = v ? 1 : 0;
-        returnType = Type.Z;
+        returns.setBool(v);
     }
 
     public void setReturnRef(Object v) {
-        returnRef = v;
-        returnType = Type.OBJECT;
+        returns.setRef(v);
     }
 
     public long getReturnPrimitive() {
-        return returnPrimitive;
+        return returns.getPrimitive();
     }
 
     public Object getReturnRef() {
-        // 当返回值是原始类型时按需装箱，保证所有直接调用 getReturnRef() 的调用方正确
-        if (returnType != null && returnType.isPrimitive()) {
-            return Type.box(returnPrimitive, returnType);
-        }
-        return returnRef;
+        return returns.getRef();
     }
 
     public Type getReturnType() {
-        return returnType;
+        return returns.getType();
+    }
+
+    public boolean hasPrimitiveReturn() {
+        return returns.isPrimitive();
+    }
+
+    public Object boxReturnPrimitive() {
+        return returns.boxPrimitive();
     }
 
     public int getArgumentCount() {
-        return argumentCount;
+        return arguments.getArgumentCount();
     }
 
     /**
      * 热循环复用 context，更新引用参数
      */
     public void updateRefs(Object... args) {
-        this.refs = args;
-        this.argumentCount = args.length;
+        arguments.updateRefs(args);
     }
 
     @NotNull
@@ -367,10 +261,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         this.function = resolved;
         FunctionSignature sig = resolved.getSignature();
         if (sig != null) {
-            Type[] expectedTypes = sig.getParameterTypes();
-            for (int i = 0; i < argumentCount && i < expectedTypes.length; i++) {
-                convertArgType(i, actualTypes[i], expectedTypes[i]);
-            }
+            arguments.convertArgs(sig, actualTypes);
         }
     }
 
@@ -378,88 +269,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * 收集实际参数类型
      */
     public Type[] collectArgTypes() {
-        Type[] types = new Type[argumentCount];
-        for (int i = 0; i < argumentCount; i++) {
-            byte t = argTypes[i];
-            if (t == TYPE_REF) {
-                Object ref = refs[i];
-                types[i] = ref != null ? Type.fromClass(ref.getClass()) : Type.OBJECT;
-            } else {
-                types[i] = primitiveByteToType(t);
-            }
-        }
-        return types;
-    }
-
-    /**
-     * 转换参数类型以匹配期望类型
-     */
-    private void convertArgType(int index, Type actual, Type expected) {
-        byte t = argTypes[index];
-        // 即使类型相等，如果存储方式不匹配也要转换（例如 Double 对象存在 refs 但期望 primitive）
-        if (t == TYPE_REF) {
-            if (expected.isPrimitive()) {
-                Object ref = refs[index];
-                if (ref instanceof Boolean) {
-                    boolean value = (Boolean) ref;
-                    String desc = expected.getDescriptor();
-                    if ("Z".equals(desc)) {
-                        setBool(index, value);
-                    } else if ("I".equals(desc)) {
-                        setInt(index, value ? 1 : 0);
-                    } else if ("J".equals(desc)) {
-                        setLong(index, value ? 1L : 0L);
-                    } else if ("F".equals(desc)) {
-                        setFloat(index, value ? 1F : 0F);
-                    } else if ("D".equals(desc)) {
-                        setDouble(index, value ? 1D : 0D);
-                    }
-                } else if (ref instanceof Number) {
-                    Number num = (Number) ref;
-                    String desc = expected.getDescriptor();
-                    if ("I".equals(desc)) {
-                        setInt(index, num.intValue());
-                    } else if ("Z".equals(desc)) {
-                        setInt(index, num.intValue());
-                    } else if ("J".equals(desc)) {
-                        setLong(index, num.longValue());
-                    } else if ("F".equals(desc)) {
-                        setFloat(index, num.floatValue());
-                    } else if ("D".equals(desc)) {
-                        setDouble(index, num.doubleValue());
-                    }
-                }
-            }
-        } else if (expected.isPrimitive() && !actual.equals(expected)) {
-            // 原始类型之间的转换
-            double value = getAsDouble(index);
-            String desc = expected.getDescriptor();
-            if ("I".equals(desc)) {
-                setInt(index, (int) value);
-            } else if ("Z".equals(desc)) {
-                setInt(index, (int) value);
-            } else if ("J".equals(desc)) {
-                setLong(index, (long) value);
-            } else if ("F".equals(desc)) {
-                setFloat(index, (float) value);
-            } else if ("D".equals(desc)) {
-                setDouble(index, value);
-            }
-        }
-    }
-
-    /**
-     * 将参数类型字节转换为 Type
-     */
-    private static Type primitiveByteToType(byte t) {
-        switch (t) {
-            case TYPE_INT: return Type.I;
-            case TYPE_LONG: return Type.J;
-            case TYPE_FLOAT: return Type.F;
-            case TYPE_DOUBLE: return Type.D;
-            case TYPE_BOOL: return Type.Z;
-            default: return Type.OBJECT;
-        }
+        return arguments.collectArgTypes();
     }
 
     @SuppressWarnings("unchecked")
@@ -470,16 +280,12 @@ public final class FunctionContext<Target> implements AutoCloseable {
             @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
-        this.refs = refs;
-        this.argumentCount = refs.length;
-        this.argTypes = EMPTY_ARG_TYPES;
-        this.capacity = 0;
         this.environment = environment;
         this.captureFrame = null;
         this.hasCapturedLocals = false;
-        this.returnRef = null;
-        this.returnType = null;
         this.interpreter = null;
+        this.returns.clear();
+        this.arguments.resetRefs(refs);
     }
 
     @SuppressWarnings("unchecked")
@@ -490,14 +296,12 @@ public final class FunctionContext<Target> implements AutoCloseable {
             @NotNull Environment environment) {
         this.function = function;
         this.target = (Target) target;
-        ensureCapacity(argCount);
-        this.argumentCount = argCount;
         this.environment = environment;
         this.captureFrame = null;
         this.hasCapturedLocals = false;
-        this.returnRef = null;
-        this.returnType = null;
         this.interpreter = null;
+        this.returns.clear();
+        this.arguments.resetCapacity(argCount);
     }
 
     /**
@@ -510,19 +314,8 @@ public final class FunctionContext<Target> implements AutoCloseable {
         captureFrame = null;
         hasCapturedLocals = false;
         interpreter = null;
-        returnRef = null;
-        returnPrimitive = 0L;
-        returnType = null;
-        if (capacity == 0) {
-            refs = EMPTY_REFS;
-            primitives = EMPTY_PRIMITIVES;
-            argTypes = EMPTY_ARG_TYPES;
-        } else {
-            for (int i = 0; i < argumentCount && i < refs.length; i++) {
-                refs[i] = null;
-            }
-        }
-        argumentCount = 0;
+        returns.clear();
+        arguments.clearIdleReferences();
     }
 
     /**
@@ -549,21 +342,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param count 所需最小容量
      */
     public void ensureLocalCapacity(int count) {
-        if (capacity < count || refs.length < count || primitives.length < count || argTypes.length < count) {
-            long[] newPrimitives = new long[count];
-            Object[] newRefs = new Object[count];
-            byte[] newArgTypes = new byte[count];
-            int primitiveCopy = Math.min(primitives.length, count);
-            int refCopy = Math.min(refs.length, count);
-            int typeCopy = Math.min(argTypes.length, count);
-            System.arraycopy(primitives, 0, newPrimitives, 0, primitiveCopy);
-            System.arraycopy(refs, 0, newRefs, 0, refCopy);
-            System.arraycopy(argTypes, 0, newArgTypes, 0, typeCopy);
-            primitives = newPrimitives;
-            refs = newRefs;
-            argTypes = newArgTypes;
-            capacity = count;
-        }
+        arguments.ensureLocalCapacity(count);
     }
 
     /**
@@ -573,19 +352,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param paramCount 参数数量
      */
     public void normalizeArgsToRef(int paramCount) {
-        for (int i = 0; i < paramCount && i < argTypes.length; i++) {
-            byte t = argTypes[i];
-            if (t != TYPE_REF) {
-                switch (t) {
-                    case TYPE_INT: refs[i] = (int) primitives[i]; break;
-                    case TYPE_LONG: refs[i] = primitives[i]; break;
-                    case TYPE_FLOAT: refs[i] = Float.intBitsToFloat((int) primitives[i]); break;
-                    case TYPE_DOUBLE: refs[i] = Double.longBitsToDouble(primitives[i]); break;
-                    case TYPE_BOOL: refs[i] = primitives[i] != 0; break;
-                }
-                argTypes[i] = TYPE_REF;
-            }
-        }
+        arguments.normalizeArgsToRef(paramCount);
     }
 
     /**
@@ -593,28 +360,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * 捕获型 Lambda 的参数 slot 位于父捕获槽之后，不能假定参数从 0 连续开始。
      */
     public void normalizeArgsToParameterSlots(Map<String, Integer> parameters) {
-        if (parameters == null || parameters.isEmpty()) return;
-        Object[] values = new Object[parameters.size()];
-        int argIndex = 0;
-        int maxSlot = -1;
-        for (Integer slot : parameters.values()) {
-            values[argIndex] = getArgBoxed(argIndex);
-            if (slot != null && slot > maxSlot) {
-                maxSlot = slot;
-            }
-            argIndex++;
-        }
-        if (maxSlot >= 0) {
-            ensureLocalCapacity(maxSlot + 1);
-        }
-        argIndex = 0;
-        for (Integer slot : parameters.values()) {
-            if (slot != null) {
-                refs[slot] = values[argIndex];
-                argTypes[slot] = TYPE_REF;
-            }
-            argIndex++;
-        }
+        arguments.normalizeArgsToParameterSlots(parameters);
     }
 
     /**
@@ -625,14 +371,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @return 值
      */
     public Object getLocal(int index) {
-        if (!hasCapturedLocals) {
-            return refs[index];
-        }
-        if (captureFrame != null && index < captureFrame.size()) {
-            return captureFrame.get(index);
-        }
-        Object value = refs[index];
-        return value instanceof CaptureCell ? ((CaptureCell) value).get() : value;
+        return arguments.getLocal(captureFrame, hasCapturedLocals, index);
     }
 
     /**
@@ -642,20 +381,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
      * @param value 值
      */
     public void setLocal(int index, Object value) {
-        if (!hasCapturedLocals) {
-            refs[index] = value;
-            return;
-        }
-        if (captureFrame != null && index < captureFrame.size()) {
-            captureFrame.set(index, value);
-            return;
-        }
-        Object current = refs[index];
-        if (current instanceof CaptureCell) {
-            ((CaptureCell) current).set(value);
-            return;
-        }
-        refs[index] = value;
+        arguments.setLocal(captureFrame, hasCapturedLocals, index, value);
     }
 
     /**
@@ -663,41 +389,15 @@ public final class FunctionContext<Target> implements AutoCloseable {
      */
     public void ensureCaptureCell(int index) {
         hasCapturedLocals = true;
-        Object value = refs[index];
-        if (!(value instanceof CaptureCell)) {
-            refs[index] = new CaptureCell(value);
-        }
+        arguments.ensureCaptureCell(index);
     }
 
     /**
      * 根据当前局部槽位构建 Lambda 捕获帧。
      */
     public CaptureFrame createCaptureFrame(int size) {
-        CaptureFrame frame = new CaptureFrame(size);
-        for (int i = 0; i < size; i++) {
-            CaptureCell captured = captureFrame != null ? captureFrame.getCell(i) : null;
-            if (captured != null) {
-                frame.setCell(i, captured);
-                continue;
-            }
-            ensureCaptureCell(i);
-            frame.setCell(i, (CaptureCell) refs[i]);
-        }
-        return frame;
-    }
-
-    private void ensureCapacity(int count) {
-        if (capacity < count) {
-            primitives = new long[count];
-            refs = new Object[count];
-            argTypes = new byte[count];
-            capacity = count;
-        } else if (capacity > count) {
-            // 清除 count 之后的旧引用防止 GC 泄漏
-            for (int i = count; i < capacity; i++) {
-                refs[i] = null;
-            }
-        }
+        hasCapturedLocals = true;
+        return arguments.createCaptureFrame(captureFrame, size);
     }
 
     @Override
@@ -705,7 +405,7 @@ public final class FunctionContext<Target> implements AutoCloseable {
         return "FunctionContext{" +
                 "function=" + function.getName() +
                 ", target=" + target +
-                ", arguments=" + argumentCount +
+                ", arguments=" + arguments.getArgumentCount() +
                 '}';
     }
 

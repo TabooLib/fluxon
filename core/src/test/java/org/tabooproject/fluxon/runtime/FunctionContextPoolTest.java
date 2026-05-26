@@ -211,8 +211,15 @@ public class FunctionContextPoolTest {
         return field.get(context);
     }
 
+    private static Object frameField(FunctionContext<?> context, String name) throws Exception {
+        Object arguments = field(context, "arguments");
+        Field field = FunctionArgumentFrame.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(arguments);
+    }
+
     private static boolean refsContain(FunctionContext<?> context, Object value) throws Exception {
-        Object[] refs = (Object[]) field(context, "refs");
+        Object[] refs = (Object[]) frameField(context, "refs");
         for (Object ref : refs) {
             if (ref == value) {
                 return true;

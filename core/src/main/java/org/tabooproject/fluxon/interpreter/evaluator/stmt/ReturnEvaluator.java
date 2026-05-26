@@ -6,7 +6,6 @@ import org.tabooproject.fluxon.interpreter.Interpreter;
 
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
 import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
-import org.tabooproject.fluxon.interpreter.bytecode.emitter.FunctionClassEmitter;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.StatementEvaluator;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -58,7 +57,7 @@ public class ReturnEvaluator extends StatementEvaluator<ReturnStatement> {
                     } else {
                         mv.visitInsn(SWAP);
                     }
-                    FunctionClassEmitter.emitSetReturnPrimitive(valueType, mv);
+                    Instructions.emitSetReturnPrimitive(mv, valueType);
                     mv.visitInsn(RETURN);
                 } else {
                     mv.visitVarInsn(ALOAD, 1);

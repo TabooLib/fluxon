@@ -168,7 +168,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
                     // 拆箱并存入原始槽位
                     mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
                     emitUnboxNumber(varType, mv);
-                    ReferenceEvaluator.emitSetLocal(varType, mv);
+                    Instructions.emitEnvironmentSetLocal(mv, varType);
                 } else {
                     // 存入引用槽位
                     mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
@@ -462,7 +462,7 @@ public class ForEvaluator extends ExpressionEvaluator<ForExpression> {
         mv.visitLdcInsn(varPos);
         emitLoadRangeLoopValue(varType, loopVar, mv);
         if (varType.isPrimitive()) {
-            ReferenceEvaluator.emitSetLocal(varType, mv);
+            Instructions.emitEnvironmentSetLocal(mv, varType);
         } else {
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", "(I" + Type.OBJECT + ")V", false);
         }

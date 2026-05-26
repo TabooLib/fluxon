@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
@@ -620,6 +621,83 @@ public class Instructions {
      */
     public static void emitStoreLocal(MethodVisitor mv, Type type, int slot) {
         mv.visitVarInsn(localOpcode(type, true), slot);
+    }
+
+    /**
+     * 按 Fluxon primitive 类型读取 Environment 局部槽位。
+     * 栈输入：[env, index]
+     * 栈输出：[value]
+     */
+    public static void emitEnvironmentGetLocal(MethodVisitor mv, Type type) {
+        String name;
+        String desc;
+        if (type == Type.I || type == Type.Z) {
+            name = "getLocalInt";
+            desc = "(" + Type.I + ")" + Type.I;
+        } else if (type == Type.J) {
+            name = "getLocalLong";
+            desc = "(" + Type.I + ")" + Type.J;
+        } else if (type == Type.F) {
+            name = "getLocalFloat";
+            desc = "(" + Type.I + ")" + Type.F;
+        } else {
+            name = "getLocalDouble";
+            desc = "(" + Type.I + ")" + Type.D;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
+    }
+
+    /**
+     * 按 Fluxon primitive 类型写入 Environment 局部槽位。
+     * 栈输入：[env, index, value]
+     * 栈输出：[]
+     */
+    public static void emitEnvironmentSetLocal(MethodVisitor mv, Type type) {
+        String name;
+        String desc;
+        if (type == Type.I || type == Type.Z) {
+            name = "setLocalInt";
+            desc = "(" + Type.I + Type.I + ")" + Type.VOID;
+        } else if (type == Type.J) {
+            name = "setLocalLong";
+            desc = "(" + Type.I + Type.J + ")" + Type.VOID;
+        } else if (type == Type.F) {
+            name = "setLocalFloat";
+            desc = "(" + Type.I + Type.F + ")" + Type.VOID;
+        } else {
+            name = "setLocalDouble";
+            desc = "(" + Type.I + Type.D + ")" + Type.VOID;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), name, desc, false);
+    }
+
+    /**
+     * 生成类型化的 setReturnXxx 调用，避免 primitive 返回值装箱。
+     * 栈输入：[context, value]
+     * 栈输出：[]
+     */
+    public static void emitSetReturnPrimitive(MethodVisitor mv, Type type) {
+        String method;
+        String desc;
+        if (type == Type.I) {
+            method = "setReturnInt";
+            desc = "(I)V";
+        } else if (type == Type.Z) {
+            method = "setReturnBool";
+            desc = "(Z)V";
+        } else if (type == Type.J) {
+            method = "setReturnLong";
+            desc = "(J)V";
+        } else if (type == Type.D) {
+            method = "setReturnDouble";
+            desc = "(D)V";
+        } else if (type == Type.F) {
+            method = "setReturnFloat";
+            desc = "(F)V";
+        } else {
+            return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), method, desc, false);
     }
 
     private static int localOpcode(Type type, boolean store) {
