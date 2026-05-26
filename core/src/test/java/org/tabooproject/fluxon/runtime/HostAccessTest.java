@@ -22,6 +22,11 @@ import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
  */
 public class HostAccessTest {
 
+    public enum TestReason {
+        MECH,
+        SCRIPT
+    }
+
     public static class ClassToAccess {
 
         public static final ClassToAccess INSTANCE = new ClassToAccess();
@@ -154,6 +159,19 @@ public class HostAccessTest {
         public String last() {
             return last;
         }
+
+        @Export
+        public String reason(TestReason reason) {
+            return reason.name();
+        }
+    }
+
+    public static class EnumFunctionClass {
+
+        @FluxonFunction(value = "enumReason", namespace = "test:access")
+        public static String enumReason(TestReason reason) {
+            return reason.name();
+        }
     }
 
     @BeforeAll
@@ -171,6 +189,7 @@ public class HostAccessTest {
         // 注册非重载导出类，覆盖 ClassBridge 按索引直连的热路径。
         runtime.registerFunction("test:access", "fastAccess", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(FastPathClass.INSTANCE));
         runtime.getExportRegistry().registerClass(FastPathClass.class, "test:access");
+        FluxonFunctionScanner.register(runtime, EnumFunctionClass.class);
 
         // 自动导入
         FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT.add("test:access");
@@ -204,6 +223,16 @@ public class HostAccessTest {
         );
         assertEquals("[5, 10.0, true, v:7:false, x:0, ready]", String.valueOf(result.getInterpretResult()));
         assertEquals("[5, 10.0, true, v:7:false, x:0, ready]", String.valueOf(result.getCompileResult()));
+    }
+
+    @Test
+    public void testStringLiteralConvertsToEnumParameter() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "[fastAccess :: reason(MECH), enumReason(SCRIPT)]",
+                "TestStringLiteralConvertsToEnumParameter"
+        );
+        assertEquals("[MECH, SCRIPT]", String.valueOf(result.getInterpretResult()));
+        assertEquals("[MECH, SCRIPT]", String.valueOf(result.getCompileResult()));
     }
 
     @Test

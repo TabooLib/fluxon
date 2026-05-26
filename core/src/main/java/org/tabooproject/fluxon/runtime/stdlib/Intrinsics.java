@@ -643,6 +643,7 @@ public final class Intrinsics {
             if (!isCompatibleType(expect[i], args[i])) {
                 throw new ArgumentTypeMismatchError(context, i, expect[i], args[i]);
             }
+            args[i] = TypeCompatibility.convertValue(args[i], expect[i]);
         }
     }
 

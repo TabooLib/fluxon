@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.reflection.util;
 
 import org.tabooproject.fluxon.interpreter.bytecode.Primitives;
+import org.tabooproject.fluxon.runtime.Type;
 
 import java.lang.reflect.Executable;
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.List;
  * 提供原始类型装箱、数值类型拓宽转换等类型兼容性检查
  */
 public final class TypeCompatibility {
+
+    public static final Type TYPE = new Type(TypeCompatibility.class);
 
     private TypeCompatibility() {}
 
@@ -62,7 +65,53 @@ public final class TypeCompatibility {
         if (param.isPrimitive() || arg.isPrimitive()) {
             return isPrimitiveCompatible(param, arg);
         }
+        if (param.isEnum() && arg == String.class) {
+            return true;
+        }
         return param.isAssignableFrom(arg);
+    }
+
+    /**
+     * 将脚本侧常用字面量转换为 Java 形参需要的强类型值。
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Object convertValue(Object value, Class<?> expected) {
+        if (value instanceof String && expected.isEnum()) {
+            return Enum.valueOf((Class<? extends Enum>) expected, (String) value);
+        }
+        return value;
+    }
+
+    /**
+     * 批量转换参数数组，供反射和桥接调用在真实 Java 调用前修正实参。
+     *
+     * @return 是否发生了会改变运行时类型的转换
+     */
+    public static boolean convertValues(Object[] values, Class<?>[] expectedTypes) {
+        boolean converted = false;
+        int len = Math.min(values.length, expectedTypes.length);
+        for (int i = 0; i < len; i++) {
+            Object value = values[i];
+            Object newValue = convertValue(value, expectedTypes[i]);
+            if (newValue != value) {
+                values[i] = newValue;
+                converted = true;
+            }
+        }
+        return converted;
+    }
+
+    /**
+     * 检查当前调用是否需要脚本值转换，避免把不带转换能力的 MethodHandle 缓存到热路径。
+     */
+    public static boolean needsValueConversion(Class<?>[] expectedTypes, Class<?>[] argTypes) {
+        int len = Math.min(expectedTypes.length, argTypes.length);
+        for (int i = 0; i < len; i++) {
+            if (expectedTypes[i].isEnum() && argTypes[i] == String.class) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -93,6 +142,7 @@ public final class TypeCompatibility {
      */
     public static boolean isAssignableFrom(Class<?> param, Class<?> arg) {
         if (param.isAssignableFrom(arg)) return true;
+        if (param.isEnum() && arg == String.class) return true;
         // 委托给 isPrimitiveCompatible 处理装箱和数值拓宽
         if (param.isPrimitive() || arg.isPrimitive()) {
             return isPrimitiveCompatible(param, arg);

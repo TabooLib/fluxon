@@ -233,6 +233,9 @@ public class OverloadSet {
         if (isNumeric(actual) && expected == Type.NUMBER) {
             return 1;
         }
+        if (actual == Type.STRING && expectedClass.isEnum()) {
+            return 2;
+        }
         // 引用类型继承
         if (!actual.isPrimitive() && !expected.isPrimitive()) {
             if (expectedClass.isAssignableFrom(actualClass)) {

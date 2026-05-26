@@ -14,6 +14,7 @@ import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.collection.ImmutableMap;
 import org.tabooproject.fluxon.runtime.collection.SingleEntryMap;
 import org.tabooproject.fluxon.runtime.java.Optional;
+import org.tabooproject.fluxon.runtime.reflection.util.TypeCompatibility;
 import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.lang.reflect.Method;
@@ -36,6 +37,14 @@ public class Instructions {
     private static final Type LINKED_HASH_MAP = new Type(LinkedHashMap.class);
     private static final Type IMMUTABLE_MAP = new Type(ImmutableMap.class);
     private static final Type SINGLE_ENTRY_MAP = new Type(SingleEntryMap.class);
+    // 类型转换指令矩阵: [from][to], -1 表示无需转换
+    // 索引: I/Z=0, J=1, F=2, D=3
+    private static final int[][] CONV_MATRIX = {
+            {-1, I2L, I2F, I2D},
+            {L2I, -1, L2F, L2D},
+            {F2I, F2L, -1, F2D},
+            {D2I, D2L, D2F, -1}
+    };
 
     // region 类型工具
 
@@ -78,10 +87,10 @@ public class Instructions {
         Label numberLabel = new Label();
         Label endLabel = new Label();
         mv.visitInsn(DUP);
-        mv.visitTypeInsn(INSTANCEOF, "java/lang/Boolean");
+        mv.visitTypeInsn(INSTANCEOF, Type.BOOLEAN.getPath());
         mv.visitJumpInsn(IFEQ, numberLabel);
-        mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+        mv.visitTypeInsn(CHECKCAST, Type.BOOLEAN.getPath());
+        mv.visitMethodInsn(INVOKEVIRTUAL, Type.BOOLEAN.getPath(), "booleanValue", "()Z", false);
         mv.visitJumpInsn(GOTO, endLabel);
         mv.visitLabel(numberLabel);
         mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
@@ -189,6 +198,9 @@ public class Instructions {
     public static void emitTypeConversion(MethodVisitor mv, Class<?> targetType) {
         // 对象类型，直接类型转换
         if (!targetType.isPrimitive()) {
+            if (targetType.isEnum()) {
+                emitValueConversion(mv, targetType);
+            }
             mv.visitTypeInsn(CHECKCAST, getInternalName(targetType));
             return;
         }
@@ -204,28 +216,29 @@ public class Instructions {
             mv.visitMethodInsn(INVOKEVIRTUAL, wrapperClass, unboxingMethod, descriptor, false);
         } else {
             // 其他数字类型通过 Number 拆箱
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", unboxingMethod, descriptor, false);
+            mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), unboxingMethod, descriptor, false);
         }
     }
 
     /**
-     * 生成基本类型装箱代码（按 Type 描述符）
+     * 发射脚本值到 Java 形参值的转换调用。
      */
-    public static void emitBoxing(MethodVisitor mv, Type type) {
-        switch (type.getDescriptor()) {
-            case "I": emitBoxing(mv, int.class); break;
-            case "J": emitBoxing(mv, long.class); break;
-            case "F": emitBoxing(mv, float.class); break;
-            case "D": emitBoxing(mv, double.class); break;
-            case "Z": emitBoxing(mv, boolean.class); break;
-        }
+    public static void emitValueConversion(MethodVisitor mv, Class<?> targetType) {
+        emitLoadClass(mv, targetType);
+        mv.visitMethodInsn(
+                INVOKESTATIC,
+                TypeCompatibility.TYPE.getPath(),
+                "convertValue",
+                "(" + Type.OBJECT + Type.CLASS + ")" + Type.OBJECT,
+                false
+        );
     }
 
     /**
      * 生成基本类型装箱代码
      */
-    public static void emitBoxing(MethodVisitor mv, Class<?> primitiveType) {
+    public static void emitBox(MethodVisitor mv, Class<?> primitiveType) {
         String wrapperClass = Primitives.getWrapperClassName(primitiveType);
         if (wrapperClass == null) {
             return; // 不是基本类型，无需装箱
@@ -237,33 +250,58 @@ public class Instructions {
     }
 
     /**
-     * 生成基本类型拆箱代码（按 Type）
-     * 栈输入：[Object]
-     * 栈输出：[primitive]
+     * 生成原始类型之间的转换指令。
      */
-    public static void unbox(MethodVisitor mv, Type type) {
-        switch (type.getDescriptor()) {
-            case "I":
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
-                break;
-            case "J":
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
-                break;
-            case "F":
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
-                break;
-            case "D":
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
-                break;
-            case "Z":
-                mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-                mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
-                break;
+    public static void emitPrimitiveConversion(Type from, Type to, MethodVisitor mv) {
+        int fi = typeIndex(from), ti = typeIndex(to);
+        if (fi < 0 || ti < 0) return;
+        int opcode = CONV_MATRIX[fi][ti];
+        if (opcode >= 0) mv.visitInsn(opcode);
+    }
+
+    /**
+     * 生成原始类型到 Object 的装箱指令。
+     */
+    public static void emitBox(MethodVisitor mv, Type source) {
+        if (source == Type.Z) {
+            emitBox(mv, boolean.class);
+        } else if (source == Type.I) {
+            emitBox(mv, int.class);
+        } else if (source == Type.J) {
+            emitBox(mv, long.class);
+        } else if (source == Type.D) {
+            emitBox(mv, double.class);
+        } else if (source == Type.F) {
+            emitBox(mv, float.class);
         }
+    }
+
+    /**
+     * 生成 Object 到原始类型的拆箱指令。
+     */
+    public static void emitUnbox(MethodVisitor mv, Type target) {
+        if (target == Type.Z) {
+            emitUnboxBooleanCompatible(mv);
+            return;
+        }
+        mv.visitTypeInsn(CHECKCAST, Type.NUMBER.getPath());
+        if (target == Type.I) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "intValue", "()I", false);
+        } else if (target == Type.J) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "longValue", "()J", false);
+        } else if (target == Type.D) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "doubleValue", "()D", false);
+        } else if (target == Type.F) {
+            mv.visitMethodInsn(INVOKEVIRTUAL, Type.NUMBER.getPath(), "floatValue", "()F", false);
+        }
+    }
+
+    private static int typeIndex(Type t) {
+        if (t == Type.I || t == Type.Z) return 0;
+        if (t == Type.J) return 1;
+        if (t == Type.F) return 2;
+        if (t == Type.D) return 3;
+        return -1;
     }
 
     // endregion
@@ -446,7 +484,7 @@ public class Instructions {
             mv.visitLdcInsn(value);
         } else if (value instanceof Boolean) {
             mv.visitInsn((Boolean) value ? ICONST_1 : ICONST_0);
-            emitBoxing(mv, boolean.class);
+            emitBox(mv, boolean.class);
         } else if (value instanceof Integer) {
             int intValue = (Integer) value;
             if (intValue >= -1 && intValue <= 5) {
@@ -458,16 +496,16 @@ public class Instructions {
             } else {
                 mv.visitLdcInsn(intValue);
             }
-            emitBoxing(mv, int.class);
+            emitBox(mv, int.class);
         } else if (value instanceof Long) {
             mv.visitLdcInsn(value);
-            emitBoxing(mv, long.class);
+            emitBox(mv, long.class);
         } else if (value instanceof Double) {
             mv.visitLdcInsn(value);
-            emitBoxing(mv, double.class);
+            emitBox(mv, double.class);
         } else if (value instanceof Float) {
             mv.visitLdcInsn(value);
-            emitBoxing(mv, float.class);
+            emitBox(mv, float.class);
         } else {
             // 其他类型直接使用 LDC
             mv.visitLdcInsn(value);
@@ -548,7 +586,7 @@ public class Instructions {
         if (returnType == void.class) {
             mv.visitInsn(ACONST_NULL);
         } else if (returnType.isPrimitive()) {
-            emitBoxing(mv, returnType);
+            emitBox(mv, returnType);
         }
     }
 
@@ -603,7 +641,7 @@ public class Instructions {
     public static void loadAndBoxParameter(MethodVisitor mv, int slot, Class<?> paramType) {
         if (paramType.isPrimitive()) {
             emitLoadLocal(mv, Type.fromClass(paramType), slot);
-            emitBoxing(mv, paramType);
+            emitBox(mv, paramType);
         } else {
             mv.visitVarInsn(ALOAD, slot);
         }

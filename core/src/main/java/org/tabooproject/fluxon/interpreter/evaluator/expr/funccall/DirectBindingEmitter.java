@@ -61,7 +61,7 @@ public final class DirectBindingEmitter {
         }
         Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         if (argType.isPrimitive()) {
-            FunctionCallHandlers.emitBox(argType, mv);
+            Instructions.emitBox(argType, mv);
         }
         int valueSlot = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, valueSlot);
@@ -130,7 +130,7 @@ public final class DirectBindingEmitter {
         int argCount = arguments != null ? arguments.getElements().size() : 0;
         Type functionType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         if (functionType.isPrimitive()) {
-            FunctionCallHandlers.emitBox(functionType, mv);
+            Instructions.emitBox(functionType, mv);
         }
         mv.visitTypeInsn(CHECKCAST, Function.TYPE.getPath());
         int functionSlot = ctx.allocateLocalVar(Function.TYPE);
@@ -223,12 +223,17 @@ public final class DirectBindingEmitter {
      */
     private static void emitArgConversion(Type actual, Type expected, MethodVisitor mv) {
         if (actual == expected) return;
+        if (!actual.isPrimitive() && !expected.isPrimitive() && expected.getSource().isEnum()) {
+            // DirectBinding 跳过 FunctionContext，enum 形参需要在 INVOKESTATIC 前完成字面量转换。
+            Instructions.emitValueConversion(mv, expected.getSource());
+            return;
+        }
         if (actual.isPrimitive() && expected.isPrimitive()) {
-            FunctionCallHandlers.emitPrimitiveConversion(actual, expected, mv);
+            Instructions.emitPrimitiveConversion(actual, expected, mv);
         } else if (!actual.isPrimitive() && expected.isPrimitive()) {
-            FunctionCallHandlers.emitUnbox(expected, mv);
+            Instructions.emitUnbox(expected, mv);
         } else if (actual.isPrimitive()) {
-            FunctionCallHandlers.emitBox(actual, mv);
+            Instructions.emitBox(actual, mv);
         }
     }
 

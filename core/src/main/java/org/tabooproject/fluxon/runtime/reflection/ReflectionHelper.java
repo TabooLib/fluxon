@@ -217,6 +217,8 @@ public class ReflectionHelper {
         if (method.isVarArgs()) {
             return VarargsHandler.invokeVarargsMethod(method, null, args);
         }
+        // 反射调用已按 String 匹配 enum 时，调用前必须修正实参数组。
+        TypeCompatibility.convertValues(args, method.getParameterTypes());
         // 创建优化的 MethodHandle
         try {
             MethodHandle mh = LOOKUP.unreflect(method);
@@ -300,6 +302,8 @@ public class ReflectionHelper {
         if (best.isVarArgs()) {
             return VarargsHandler.invokeVarargsMethod(best, target, args);
         }
+        // 发生脚本字面量转换时不缓存该 Object[] spreader，避免后续 String 实参绕过转换直接进入 enum 形参。
+        boolean converted = TypeCompatibility.convertValues(args, best.getParameterTypes());
         // 创建优化的 MethodHandle
         try {
             MethodHandle mh;
@@ -330,8 +334,9 @@ public class ReflectionHelper {
                 adapted = adapted.asType(genericType);
                 adapted = adapted.asSpreader(Object[].class, argCount);
             }
-            // 缓存
-            MethodCache.put(clazz, methodName, argCount, argTypes, adapted);
+            if (!converted) {
+                MethodCache.put(clazz, methodName, argCount, argTypes, adapted);
+            }
             return invokeSpread(adapted, target, args);
         } catch (IllegalAccessException e) {
             throw new MemberAccessError("Cannot access method: " + methodName, e);
@@ -359,6 +364,8 @@ public class ReflectionHelper {
         if (best.isVarArgs()) {
             return VarargsHandler.invokeVarargsConstructor(best, args);
         }
+        // 构造函数与方法调用保持一致，String 匹配 enum 后在真实调用前转换。
+        boolean converted = TypeCompatibility.convertValues(args, best.getParameterTypes());
         // 创建优化的 MethodHandle
         try {
             MethodHandle mh = LOOKUP.unreflectConstructor(best);
@@ -370,8 +377,9 @@ public class ReflectionHelper {
             } else {
                 adapted = mh.asType(MethodType.methodType(Object.class));
             }
-            // 缓存
-            ConstructorCache.put(clazz, argCount, argTypes, adapted);
+            if (!converted) {
+                ConstructorCache.put(clazz, argCount, argTypes, adapted);
+            }
             return invokeConstructorSpread(adapted, args);
         } catch (IllegalAccessException e) {
             throw new MemberAccessError("Cannot access constructor of class: " + clazz.getName(), e);

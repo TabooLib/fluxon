@@ -73,6 +73,9 @@ public final class ConstructorResolver {
             if (constructor == null || constructor.isVarArgs()) {
                 return null;
             }
+            if (TypeCompatibility.needsValueConversion(constructor.getParameterTypes(), argTypes)) {
+                return null;
+            }
             MethodHandle mh = LOOKUP.unreflectConstructor(constructor);
             mh = mh.asSpreader(Object[].class, args.length);
             mh = MethodHandles.dropArguments(mh, 0, String.class);

@@ -75,6 +75,8 @@ public class StaticMethodBootstrap {
         if (method.isVarArgs()) {
             return VarargsHandler.invokeVarargsMethod(method, null, args);
         }
+        // 静态 invokedynamic 路径同样会按 String 匹配 enum，调用前补齐实参转换。
+        TypeCompatibility.convertValues(args, method.getParameterTypes());
         try {
             MethodHandle mh = LOOKUP.unreflect(method);
             int argCount = args.length;

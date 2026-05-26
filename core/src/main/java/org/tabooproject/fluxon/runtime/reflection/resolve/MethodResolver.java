@@ -91,6 +91,9 @@ public final class MethodResolver {
             if (method == null || method.isVarArgs()) {
                 return null;
             }
+            if (TypeCompatibility.needsValueConversion(method.getParameterTypes(), argTypes)) {
+                return null;
+            }
             MethodHandle mh;
             try {
                 mh = LOOKUP.unreflect(method);

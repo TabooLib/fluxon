@@ -230,7 +230,12 @@ final class FunctionArgumentFrame {
         byte type = getArgType(index);
         if (type == TYPE_REF) {
             Object value = refs[index];
-            if (value == null || isContextArgumentCompatible(expect, value.getClass())) return;
+            if (value == null) return;
+            if (isContextArgumentCompatible(expect, value.getClass())) {
+                // ClassBridge 后续会按目标类型 CHECKCAST，兼容成功时必须同步写回转换后的值。
+                refs[index] = TypeCompatibility.convertValue(value, expect);
+                return;
+            }
             throw new ArgumentTypeMismatchError(context, index, expect, value);
         }
         if (isContextArgumentCompatible(expect, primitiveWrapperClass(type))) return;
@@ -430,7 +435,12 @@ final class FunctionArgumentFrame {
     }
 
     private void convertRefArgType(int index, Type expected) {
-        if (!expected.isPrimitive()) return;
+        if (!expected.isPrimitive()) {
+            Object ref = refs[index];
+            // 延迟重载解析确定 Java 签名后，引用参数需要补上脚本字面量到 enum 的转换。
+            refs[index] = TypeCompatibility.convertValue(ref, expected.getSource());
+            return;
+        }
         Object ref = refs[index];
         if (ref instanceof Boolean) {
             convertBooleanArgType(index, (Boolean) ref, expected);
