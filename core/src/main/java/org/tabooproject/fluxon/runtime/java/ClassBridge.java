@@ -1,6 +1,7 @@
 package org.tabooproject.fluxon.runtime.java;
 
 import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 
 /**
  * 类桥接器抽象类
@@ -26,6 +27,15 @@ public abstract class ClassBridge {
      * @return 方法返回值
      */
     public abstract Object invoke(String methodName, Object instance, Object... args);
+
+    /**
+     * 通过注册期固定索引调用导出方法。
+     * 函数热路径已经由 OverloadSet 选中具体方法，直接按索引调用可避免再次按名称分发和构造 Object[]。
+     *
+     * @param methodIndex 导出方法索引
+     * @param context     函数调用上下文
+     */
+    public abstract void call(int methodIndex, FunctionContext<?> context);
 
     /**
      * 获取指定方法的参数类型列表

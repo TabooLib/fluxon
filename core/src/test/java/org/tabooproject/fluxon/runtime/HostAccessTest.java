@@ -3,8 +3,10 @@ package org.tabooproject.fluxon.runtime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.FluxonTestUtil;
 import org.tabooproject.fluxon.compiler.FluxonFeatures;
 import org.tabooproject.fluxon.runtime.java.Export;
+import org.tabooproject.fluxon.runtime.java.Optional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -112,6 +114,48 @@ public class HostAccessTest {
         }
     }
 
+    public static class FastPathClass {
+
+        public static final FastPathClass INSTANCE = new FastPathClass();
+
+        public String last = "";
+
+        @Export
+        public int add(int left, int right) {
+            return left + right;
+        }
+
+        @Export
+        public double scale(double value, float factor) {
+            return value * factor;
+        }
+
+        @Export
+        public boolean flag(boolean value) {
+            return value;
+        }
+
+        @Export
+        public String join(String prefix, int count, boolean enabled) {
+            return prefix + ":" + count + ":" + enabled;
+        }
+
+        @Export
+        public String optional(String prefix, @Optional int count) {
+            return prefix + ":" + count;
+        }
+
+        @Export
+        public void mark(String value) {
+            last = value;
+        }
+
+        @Export
+        public String last() {
+            return last;
+        }
+    }
+
     @BeforeAll
     public static void setup() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
@@ -123,6 +167,10 @@ public class HostAccessTest {
         // 注册类型继承测试类
         runtime.registerFunction("test:access", "typeTest", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(TypeInheritanceClass.INSTANCE));
         runtime.getExportRegistry().registerClass(TypeInheritanceClass.class, "test:access");
+
+        // 注册非重载导出类，覆盖 ClassBridge 按索引直连的热路径。
+        runtime.registerFunction("test:access", "fastAccess", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(FastPathClass.INSTANCE));
+        runtime.getExportRegistry().registerClass(FastPathClass.class, "test:access");
 
         // 自动导入
         FluxonFeatures.DEFAULT_PACKAGE_AUTO_IMPORT.add("test:access");
@@ -145,6 +193,17 @@ public class HostAccessTest {
         assertEquals("Boolean argument method called with arg: true", trueResult);
         Object falseResult = Fluxon.eval("access :: boolArg(false)");
         assertEquals("Boolean argument method called with arg: false", falseResult);
+    }
+
+    @Test
+    public void testNonOverloadedExportFastPath() {
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "fastAccess :: mark('ready')\n" +
+                        "[fastAccess :: add(2, 3), fastAccess :: scale(2.5, 4.0), fastAccess :: flag(true), fastAccess :: join('v', 7, false), fastAccess :: optional('x'), fastAccess :: last()]",
+                "TestNonOverloadedExportFastPath"
+        );
+        assertEquals("[5, 10.0, true, v:7:false, x:0, ready]", String.valueOf(result.getInterpretResult()));
+        assertEquals("[5, 10.0, true, v:7:false, x:0, ready]", String.valueOf(result.getCompileResult()));
     }
 
     @Test

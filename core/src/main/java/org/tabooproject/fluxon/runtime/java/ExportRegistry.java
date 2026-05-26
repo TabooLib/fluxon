@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.BridgeClassEmitter;
 import org.tabooproject.fluxon.interpreter.bytecode.emitter.EmitResult;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.FunctionSignature;
 import org.tabooproject.fluxon.runtime.NativeFunction;
 import org.tabooproject.fluxon.runtime.Type;
@@ -18,6 +19,7 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -70,33 +72,20 @@ public class ExportRegistry {
     }
 
     private <T> void registerClassMethods(Class<T> clazz, String namespace, ExportMethod[] exportMethods, ClassBridge bridge) {
-        for (ExportMethod exportMethod : exportMethods) {
+        Map<String, Long> overloadCounts = Arrays.stream(exportMethods).collect(Collectors.groupingBy(ExportMethod::getTransformedName, Collectors.counting()));
+        for (int methodIndex = 0; methodIndex < exportMethods.length; methodIndex++) {
+            ExportMethod exportMethod = exportMethods[methodIndex];
             Method method = exportMethod.getMethod();
             String methodName = exportMethod.getTransformedName();
             Class<?> returnClass = method.getReturnType();
-            NativeFunction.NativeCallable<T> callable = context -> {
-                int argCount = context.getArgumentCount();
-                Object[] args = new Object[argCount];
-                for (int i = 0; i < argCount; i++) args[i] = context.getArgBoxed(i);
-                Object target = context.getTarget();
-                Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
-                Object result = bridge.invoke(methodName, target, args);
-                // 原始类型返回值必须使用对应的 primitive setter，
-                // 否则编译模式下 finishCallLong/Int 等直接读取 returnPrimitive 字段会得到错误值
-                if (returnClass == long.class) {
-                    context.setReturnLong((Long) result);
-                } else if (returnClass == int.class) {
-                    context.setReturnInt((Integer) result);
-                } else if (returnClass == double.class) {
-                    context.setReturnDouble((Double) result);
-                } else if (returnClass == float.class) {
-                    context.setReturnFloat((Float) result);
-                } else if (returnClass == boolean.class) {
-                    context.setReturnBool((Boolean) result);
-                } else {
-                    context.setReturnRef(result);
-                }
-            };
+            int bridgeMethodIndex = methodIndex;
+            boolean overloaded = overloadCounts.getOrDefault(methodName, 0L) > 1L;
+            NativeFunction.NativeCallable<T> callable = overloaded
+                    ? context -> callOverloadedExport(context, bridge, methodName, returnClass)
+                    : context -> {
+                        // OverloadSet 已经根据签名选中具体方法，非重载热路径直接使用注册索引进入桥接类。
+                        bridge.call(bridgeMethodIndex, context);
+                    };
             Class<?>[] parameterTypes = method.getParameterTypes();
             Type[] paramTypes = new Type[parameterTypes.length];
             for (int i = 0; i < parameterTypes.length; i++) {
@@ -115,6 +104,29 @@ public class ExportRegistry {
                     throw new RuntimeException("Failed to export shared method: " + methodName, e);
                 }
             }
+        }
+    }
+
+    private void callOverloadedExport(FunctionContext<?> context, ClassBridge bridge, String methodName, Class<?> returnClass) {
+        int argCount = context.getArgumentCount();
+        Object[] args = new Object[argCount];
+        for (int i = 0; i < argCount; i++) args[i] = context.getArgBoxed(i);
+        Object target = context.getTarget();
+        Intrinsics.checkArgumentTypes(context, bridge.getParameterTypes(methodName, target, args), args);
+        Object result = bridge.invoke(methodName, target, args);
+        // 重载路径保留 ClassBridge 的运行时特异性分发，同时保持 primitive 返回值写回协议。
+        if (returnClass == long.class) {
+            context.setReturnLong((Long) result);
+        } else if (returnClass == int.class) {
+            context.setReturnInt((Integer) result);
+        } else if (returnClass == double.class) {
+            context.setReturnDouble((Double) result);
+        } else if (returnClass == float.class) {
+            context.setReturnFloat((Float) result);
+        } else if (returnClass == boolean.class) {
+            context.setReturnBool((Boolean) result);
+        } else {
+            context.setReturnRef(result);
         }
     }
 
