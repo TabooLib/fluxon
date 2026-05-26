@@ -12,6 +12,7 @@ import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
 import org.tabooproject.fluxon.parser.type.ExpressionParser;
 import org.tabooproject.fluxon.parser.type.ImportParser;
 import org.tabooproject.fluxon.parser.type.StatementParser;
+import org.tabooproject.fluxon.parser.type.TypeAliasParser;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Function;
 import org.tabooproject.fluxon.runtime.OverloadSet;
@@ -86,9 +87,15 @@ public class Parser implements CompilationPhase<List<ParseResult>> {
         // 设置强制局部变量模式
         symbolEnvironment.setForceLocalVariables(context.isForceLocalVariables());
 
-        // 解析导入
+        // 解析文件头声明
         try {
-            ImportParser.parse(this);
+            while (check(TokenType.IMPORT) || check(TokenType.TYPEALIAS)) {
+                if (check(TokenType.IMPORT)) {
+                    ImportParser.parseOne(this);
+                } else {
+                    TypeAliasParser.parseOne(this);
+                }
+            }
         } catch (ParseException ex) {
             recordError(ex);
             synchronize();

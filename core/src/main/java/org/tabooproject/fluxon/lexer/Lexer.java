@@ -65,6 +65,7 @@ public class Lexer implements CompilationPhase<List<Token>> {
         // 初始化关键字映射
         KEYWORDS = new HashMap<>(32);
         KEYWORDS.put("import", TokenType.IMPORT);
+        KEYWORDS.put("typealias", TokenType.TYPEALIAS);
         KEYWORDS.put("def", TokenType.DEF);
         KEYWORDS.put("if", TokenType.IF);
         KEYWORDS.put("then", TokenType.THEN);

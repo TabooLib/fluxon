@@ -1,4 +1,4 @@
-_list = [1,2,3]!!
+_list = [1,2,3]
 print(&_list)
 _sum = 0
 for i in 1..10 {
@@ -17,3 +17,6 @@ def func() {
     sum2 += (1..10)::sumOf(|| &it)
     print(&sum2)
 }
+
+&_list += 10
+&_list::toArray()

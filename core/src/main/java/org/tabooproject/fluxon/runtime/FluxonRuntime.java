@@ -44,6 +44,8 @@ public class FluxonRuntime {
     private final Map<String, Object> systemVariables = new HashMap<>();
     // 扩展函数（支持重载）
     private final Map<String, Map<Class<?>, OverloadSet>> extensionFunctions = new LinkedHashMap<>();
+    // 全局类型短名，供所有脚本共享默认 Java 类型别名。
+    private final Map<String, Class<?>> typeAliases = new LinkedHashMap<>();
 
     // 缓存的系统函数数组（避免每次创建环境时都转换）
     private volatile Function[] cachedSystemFunctions;
@@ -403,6 +405,48 @@ public class FluxonRuntime {
      */
     public ExportRegistry getExportRegistry() {
         return exportRegistry;
+    }
+
+    /**
+     * 注册全局 Java 类型短名。
+     * 单脚本 CompilationContext 中的同名别名优先级更高，可用于覆盖全局默认。
+     *
+     * @param alias 类型短名
+     * @param type  目标 Java 类型
+     * @return this
+     */
+    public synchronized FluxonRuntime registerTypeAlias(@NotNull String alias, @NotNull Class<?> type) {
+        checkRegistrationLock();
+        typeAliases.put(alias, type);
+        return this;
+    }
+
+    /**
+     * 移除全局 Java 类型短名。
+     *
+     * @param alias 类型短名
+     * @return 被移除的类型，未注册时返回 null
+     */
+    public synchronized Class<?> unregisterTypeAlias(@NotNull String alias) {
+        checkRegistrationLock();
+        return typeAliases.remove(alias);
+    }
+
+    /**
+     * 获取全局 Java 类型短名。
+     *
+     * @param alias 类型短名
+     * @return 注册的 Java 类型，未注册时返回 null
+     */
+    public synchronized Class<?> getTypeAlias(@NotNull String alias) {
+        return typeAliases.get(alias);
+    }
+
+    /**
+     * 获取全局 Java 类型短名快照。
+     */
+    public synchronized Map<String, Class<?>> getTypeAliases() {
+        return new LinkedHashMap<>(typeAliases);
     }
 
     /**

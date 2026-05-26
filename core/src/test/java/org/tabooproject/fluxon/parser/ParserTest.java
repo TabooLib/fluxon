@@ -18,6 +18,7 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,6 +42,10 @@ public class ParserTest {
     private List<ParseResult> parseSource(String source) {
         // 创建编译上下文
         CompilationContext context = new CompilationContext(source);
+        return parseContext(context);
+    }
+
+    private List<ParseResult> parseContext(CompilationContext context) {
         Lexer lexer = new Lexer();
         List<Token> tokens = lexer.process(context);
         context.setAttribute("tokens", tokens);
@@ -108,6 +113,60 @@ public class ParserTest {
         assertEquals(1, func.getParameters().size());
         assertNotNull(func.getParameters().get("id"));
         assertTrue(func.getBody() instanceof AwaitExpression);
+    }
+
+    @Test
+    public void testTypeAliasFunctionParameter() {
+        String source = "typealias ArrayList = java.util.ArrayList\n" +
+                "async def main(ctx: ArrayList) = &ctx";
+        List<ParseResult> results = parseSource(source);
+        FunctionDefinition func = (FunctionDefinition) results.get(0);
+        Map<Integer, Class<?>> types = func.getParameterTypes();
+        int ctxIndex = func.getParameters().get("ctx");
+        assertEquals(java.util.ArrayList.class, types.get(ctxIndex));
+    }
+
+    @Test
+    public void testContextTypeAliasFunctionParameter() {
+        CompilationContext context = new CompilationContext("def main(ctx: FlowCtx) = &ctx");
+        context.defineTypeAlias("FlowCtx", java.util.HashMap.class);
+        List<ParseResult> results = parseContext(context);
+        FunctionDefinition func = (FunctionDefinition) results.get(0);
+        Map<Integer, Class<?>> types = func.getParameterTypes();
+        int ctxIndex = func.getParameters().get("ctx");
+        assertEquals(java.util.HashMap.class, types.get(ctxIndex));
+    }
+
+    @Test
+    public void testRuntimeTypeAliasFunctionParameter() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerTypeAlias("RuntimeFlowCtx", java.util.LinkedHashMap.class);
+        try {
+            List<ParseResult> results = parseSource("def main(ctx: RuntimeFlowCtx) = &ctx");
+            FunctionDefinition func = (FunctionDefinition) results.get(0);
+            Map<Integer, Class<?>> types = func.getParameterTypes();
+            int ctxIndex = func.getParameters().get("ctx");
+            assertEquals(java.util.LinkedHashMap.class, types.get(ctxIndex));
+        } finally {
+            runtime.unregisterTypeAlias("RuntimeFlowCtx");
+        }
+    }
+
+    @Test
+    public void testContextTypeAliasOverridesRuntimeTypeAlias() {
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerTypeAlias("OverrideFlowCtx", java.util.LinkedHashMap.class);
+        try {
+            CompilationContext context = new CompilationContext("def main(ctx: OverrideFlowCtx) = &ctx");
+            context.defineTypeAlias("OverrideFlowCtx", java.util.HashMap.class);
+            List<ParseResult> results = parseContext(context);
+            FunctionDefinition func = (FunctionDefinition) results.get(0);
+            Map<Integer, Class<?>> types = func.getParameterTypes();
+            int ctxIndex = func.getParameters().get("ctx");
+            assertEquals(java.util.HashMap.class, types.get(ctxIndex));
+        } finally {
+            runtime.unregisterTypeAlias("OverrideFlowCtx");
+        }
     }
 
     /**

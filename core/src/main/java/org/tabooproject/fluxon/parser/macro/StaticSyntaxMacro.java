@@ -44,7 +44,7 @@ public class StaticSyntaxMacro implements SyntaxMacro {
         String memberName;
         if (nameResult.parenthesized) {
             // 括号模式：类名已确定，需要消费 .member
-            className = nameResult.name;
+            className = resolveClassName(nameResult.name, parser);
             parser.consume(TokenType.DOT, "Expected '.' after (ClassName)");
             Token memberToken = parser.consume(TokenType.IDENTIFIER, "Expected member name");
             memberName = memberToken.getLexeme();
@@ -55,7 +55,7 @@ public class StaticSyntaxMacro implements SyntaxMacro {
             if (lastDot == -1) {
                 parser.error("Expected 'static ClassName.memberName', but got 'static " + fullPath + "'");
             }
-            className = fullPath.substring(0, lastDot);
+            className = resolveClassName(fullPath.substring(0, lastDot), parser);
             memberName = fullPath.substring(lastDot + 1);
         }
         // 检查是方法调用还是字段访问

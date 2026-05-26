@@ -7,6 +7,7 @@ package org.tabooproject.fluxon.lexer;
 public enum TokenType {
     // 关键字
     IMPORT("import"),
+    TYPEALIAS("typealias"),
     DEF("def"),
     VAL("val"),
     IF("if"),
@@ -175,6 +176,7 @@ public enum TokenType {
         switch (this) {
             case DEF:
             case IMPORT:
+            case TYPEALIAS:
             case SYNC:
             case ASYNC:
             case EOF:

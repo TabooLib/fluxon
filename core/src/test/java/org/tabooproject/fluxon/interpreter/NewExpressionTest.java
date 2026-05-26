@@ -105,6 +105,12 @@ public class NewExpressionTest {
     }
 
     @Test
+    public void testConstructionWithTypeAlias() {
+        TestResult result = runWithJavaConstruction("typealias ArrayList = java.util.ArrayList\nnew ArrayList()");
+        result.assertBothInstanceOf(ArrayList.class);
+    }
+
+    @Test
     public void testConstructionWithInitialCapacity() {
         // 测试带参数的 ArrayList 构造
         // 使用 Fluxon 内置的 size() 方法验证对象被正确创建

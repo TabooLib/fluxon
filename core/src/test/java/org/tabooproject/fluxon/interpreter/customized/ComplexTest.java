@@ -26,8 +26,8 @@ public class ComplexTest {
 
     public static void main(String[] args) throws Exception {
         ComplexTest test = new ComplexTest();
-        test.benchmarkInterpret();
-        // test.benchmarkCompile();
+//        test.benchmarkInterpret();
+         test.benchmarkCompile();
     }
 
     private String loadEffectSource() throws Exception {

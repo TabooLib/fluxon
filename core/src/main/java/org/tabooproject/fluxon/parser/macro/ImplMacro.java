@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.tabooproject.fluxon.parser.macro.FunctionDefinitionMacro.parseParameters;
-import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseQualifiedName;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseAndResolveTypeName;
 
 /**
  * impl 表达式语法宏
@@ -44,7 +44,7 @@ public class ImplMacro implements SyntaxMacro {
         List<ParseResult> superArgs = null;
         List<String> interfaces = new ArrayList<>();
         do {
-            String typeName = parseQualifiedName(parser, "Expected type name").name;
+            String typeName = parseAndResolveTypeName(parser, "Expected type name");
             if (parser.check(TokenType.LEFT_PAREN)) {
                 parser.advance();
                 superClass = typeName;

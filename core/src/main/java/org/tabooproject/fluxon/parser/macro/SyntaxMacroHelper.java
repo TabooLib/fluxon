@@ -4,6 +4,7 @@ import org.tabooproject.fluxon.lexer.Token;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
 
 import java.util.*;
 
@@ -123,6 +124,11 @@ public final class SyntaxMacroHelper {
         return resolveTypeName(typeName, parser);
     }
 
+    public static String parseAndResolveTypeName(Parser parser, String errorMessage) {
+        String typeName = parseQualifiedName(parser, errorMessage).name;
+        return resolveTypeName(typeName, parser).getName();
+    }
+
     /**
      * 将类型名称解析为 Class 对象
      * <p>
@@ -138,11 +144,38 @@ public final class SyntaxMacroHelper {
         if (aliased != null) {
             return aliased;
         }
+        Class<?> registered = parser.getContext().getTypeAliases().get(typeName);
+        if (registered != null) {
+            return registered;
+        }
+        Class<?> global = FluxonRuntime.getInstance().getTypeAlias(typeName);
+        if (global != null) {
+            return global;
+        }
         // 尝试作为完全限定类名解析
         try {
-            return Class.forName(typeName);
+            return resolveClass(typeName, parser);
         } catch (ClassNotFoundException e) {
             throw parser.createParseException("Unknown type: " + typeName + ". Check spelling or use fully-qualified name.", parser.peek());
         }
+    }
+
+    public static String resolveClassName(String typeName, Parser parser) {
+        return resolveTypeName(typeName, parser).getName();
+    }
+
+    /**
+     * 按脚本宿主的类加载器解析 Java 类型。
+     * 插件环境中的类型通常不在 Fluxon 自身 ClassLoader 下，必须先走线程上下文加载器。
+     */
+    public static Class<?> resolveClass(String typeName, Parser parser) throws ClassNotFoundException {
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        if (contextLoader != null) {
+            try {
+                return Class.forName(typeName, false, contextLoader);
+            } catch (ClassNotFoundException ignored) {
+            }
+        }
+        return Class.forName(typeName);
     }
 }

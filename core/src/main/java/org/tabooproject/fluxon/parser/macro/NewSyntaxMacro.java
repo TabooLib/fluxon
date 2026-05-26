@@ -10,7 +10,7 @@ import org.tabooproject.fluxon.parser.expression.NewExpression;
 import org.tabooproject.fluxon.parser.type.PostfixParser;
 
 import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseArgumentList;
-import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseQualifiedName;
+import static org.tabooproject.fluxon.parser.macro.SyntaxMacroHelper.parseAndResolveTypeName;
 
 /**
  * new 表达式语法宏
@@ -39,8 +39,8 @@ public class NewSyntaxMacro implements SyntaxMacro {
         if (!parser.getContext().isAllowJavaConstruction()) {
             parser.error("Java object construction is not enabled. Use ctx.setAllowJavaConstruction(true) to enable the 'new' keyword.");
         }
-        // 解析全限定类名
-        String className = parseQualifiedName(parser, "Expected class name after 'new'").name;
+        // 解析类名，支持 typealias 注册的短名。
+        String className = parseAndResolveTypeName(parser, "Expected class name after 'new'");
         // 解析参数列表
         parser.consume(TokenType.LEFT_PAREN, "Expected '(' after class name");
         // 创建表达式并附加源信息

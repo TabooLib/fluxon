@@ -39,6 +39,8 @@ public class CompilationContext {
 
     // root 变量类型
     private final Map<String, Type> rootVariableTypes = new LinkedHashMap<>();
+    // 类型短名映射
+    private final Map<String, Class<?>> typeAliases = new LinkedHashMap<>();
     // 强制所有根层级变量使用 localVariables 存储
     private boolean forceLocalVariables = false;
     // 参数变量（使用数组访问，而非 HashMap）
@@ -207,6 +209,25 @@ public class CompilationContext {
      */
     public Map<String, Type> getRootVariableTypes() {
         return rootVariableTypes;
+    }
+
+    /**
+     * 注册脚本可直接使用的 Java 类型短名。
+     *
+     * @param alias 类型短名
+     * @param type  目标 Java 类型
+     * @return this
+     */
+    public CompilationContext defineTypeAlias(String alias, Class<?> type) {
+        typeAliases.put(alias, type);
+        return this;
+    }
+
+    /**
+     * 获取已注册的类型短名映射。
+     */
+    public Map<String, Class<?>> getTypeAliases() {
+        return typeAliases;
     }
 
     /**
