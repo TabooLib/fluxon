@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * If 表达式
  */
-public class IfExpression extends Expression {
+public class IfExpression extends Expression implements TransparentExpression, LoopCacheTransparentExpression {
     private final ParseResult condition;
     private final ParseResult thenBranch;
     private final ParseResult elseBranch;

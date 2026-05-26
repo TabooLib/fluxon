@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * Await 表达式
  */
-public class AwaitExpression extends Expression {
+public class AwaitExpression extends Expression implements EnvironmentBoundaryExpression {
     private final ParseResult expression;
 
     public AwaitExpression(ParseResult expression) {

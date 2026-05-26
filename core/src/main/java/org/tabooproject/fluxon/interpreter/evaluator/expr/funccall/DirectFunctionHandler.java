@@ -11,20 +11,14 @@ import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
-import org.tabooproject.fluxon.parser.expression.ElvisExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
-import org.tabooproject.fluxon.parser.expression.GroupingExpression;
-import org.tabooproject.fluxon.parser.expression.IfExpression;
 import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
-import org.tabooproject.fluxon.parser.expression.ListExpression;
-import org.tabooproject.fluxon.parser.expression.LogicalExpression;
-import org.tabooproject.fluxon.parser.expression.MapExpression;
 import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
-import org.tabooproject.fluxon.parser.expression.TernaryExpression;
-import org.tabooproject.fluxon.parser.expression.UnaryExpression;
+import org.tabooproject.fluxon.parser.expression.TransparentExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.runtime.*;
 
 import java.util.LinkedHashMap;
@@ -218,60 +212,15 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (node instanceof BinaryExpression) {
             BinaryExpression binary = (BinaryExpression) node;
             if (mode == InlineMode.CACHE_SAFE && isMayThrowArithmetic(binary.getOperator().getType())) return false;
-            return canInlineExpression(binary.getLeft(), mode) && canInlineExpression(binary.getRight(), mode);
-        }
-        if (node instanceof LogicalExpression) {
-            LogicalExpression logical = (LogicalExpression) node;
-            return canInlineExpression(logical.getLeft(), mode) && canInlineExpression(logical.getRight(), mode);
-        }
-        if (node instanceof UnaryExpression) {
-            return canInlineExpression(((UnaryExpression) node).getRight(), mode);
-        }
-        if (node instanceof GroupingExpression) {
-            return canInlineExpression(((GroupingExpression) node).getExpression(), mode);
-        }
-        if (node instanceof IfExpression) {
-            IfExpression ifExpression = (IfExpression) node;
-            return canInlineExpression(ifExpression.getCondition(), mode)
-                    && canInlineExpression(ifExpression.getThenBranch(), mode)
-                    && canInlineExpression(ifExpression.getElseBranch(), mode);
-        }
-        if (node instanceof TernaryExpression) {
-            TernaryExpression ternary = (TernaryExpression) node;
-            return canInlineExpression(ternary.getCondition(), mode)
-                    && canInlineExpression(ternary.getTrueExpr(), mode)
-                    && canInlineExpression(ternary.getFalseExpr(), mode);
-        }
-        if (node instanceof ElvisExpression) {
-            ElvisExpression elvis = (ElvisExpression) node;
-            return canInlineExpression(elvis.getCondition(), mode) && canInlineExpression(elvis.getAlternative(), mode);
-        }
-        if (node instanceof ListExpression) {
-            for (ParseResult element : ((ListExpression) node).getElements()) {
-                if (!canInlineExpression(element, mode)) return false;
-            }
-            return true;
-        }
-        if (node instanceof MapExpression) {
-            for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
-                if (!canInlineExpression(entry.getKey(), mode)) return false;
-                if (!canInlineExpression(entry.getValue(), mode)) return false;
-            }
-            return true;
+            return canInlineChildren(node, mode);
         }
         if (node instanceof RangeExpression) {
             if (mode == InlineMode.CACHE_SAFE) return false;
-            RangeExpression range = (RangeExpression) node;
-            return canInlineExpression(range.getStart(), mode) && canInlineExpression(range.getEnd(), mode);
+            return canInlineChildren(node, mode);
         }
         if (node instanceof IndexAccessExpression) {
             if (mode == InlineMode.CACHE_SAFE) return false;
-            IndexAccessExpression index = (IndexAccessExpression) node;
-            if (!canInlineExpression(index.getTarget(), mode)) return false;
-            for (ParseResult item : index.getIndices()) {
-                if (!canInlineExpression(item, mode)) return false;
-            }
-            return true;
+            return canInlineChildren(node, mode);
         }
         if (node instanceof ReferenceExpression || node instanceof Identifier) {
             return true;
@@ -279,7 +228,19 @@ public class DirectFunctionHandler implements FunctionCallHandler {
         if (!(node instanceof Expression)) {
             return false;
         }
-        return node.getClass().getSimpleName().endsWith("Literal");
+        if (node instanceof Literal) return true;
+        if (!(node instanceof TransparentExpression)) return false;
+        return canInlineChildren(node, mode);
+    }
+
+    private static boolean canInlineChildren(ParseResult node, InlineMode mode) {
+        final boolean[] allowed = {true};
+        node.forEachChild(child -> {
+            if (allowed[0] && !canInlineExpression(child, mode)) {
+                allowed[0] = false;
+            }
+        });
+        return allowed[0];
     }
 
     private static boolean isMayThrowArithmetic(TokenType type) {

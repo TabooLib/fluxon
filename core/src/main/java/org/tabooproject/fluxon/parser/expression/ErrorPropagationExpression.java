@@ -8,7 +8,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  *
  * @author sky
  */
-public class ErrorPropagationExpression extends Expression {
+public class ErrorPropagationExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final ParseResult operand;
 

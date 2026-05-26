@@ -10,12 +10,11 @@ import org.tabooproject.fluxon.parser.expression.AssignExpression;
 import org.tabooproject.fluxon.parser.expression.BinaryExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
-import org.tabooproject.fluxon.parser.expression.GroupingExpression;
 import org.tabooproject.fluxon.parser.expression.IfExpression;
-import org.tabooproject.fluxon.parser.expression.LogicalExpression;
+import org.tabooproject.fluxon.parser.expression.LoopCacheTransparentExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
-import org.tabooproject.fluxon.parser.expression.UnaryExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.BreakStatement;
 import org.tabooproject.fluxon.parser.statement.ContinueStatement;
@@ -134,7 +133,7 @@ final class LoopRootCachePlanner {
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(entry.getKey());
             CodeContext.InlineLocalVariable cache = entry.getValue();
-            ReferenceEvaluator.emitGetLocal(cache.type, mv);
+            Instructions.emitEnvironmentGetLocal(mv, cache.type);
             mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
         }
     }
@@ -148,7 +147,7 @@ final class LoopRootCachePlanner {
             mv.visitLdcInsn(entry.getKey());
             CodeContext.InlineLocalVariable cache = entry.getValue();
             mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
-            ReferenceEvaluator.emitSetLocal(cache.type, mv);
+            Instructions.emitEnvironmentSetLocal(mv, cache.type);
         }
         mv.visitLabel(skipWriteBack);
     }
@@ -290,17 +289,7 @@ final class LoopRootCachePlanner {
             if (node instanceof BinaryExpression) {
                 BinaryExpression binary = (BinaryExpression) node;
                 if (isMayThrowArithmetic(binary.getOperator().getType())) return false;
-                return scan(binary.getLeft(), allowRootAssignment) && scan(binary.getRight(), allowRootAssignment);
-            }
-            if (node instanceof LogicalExpression) {
-                LogicalExpression logical = (LogicalExpression) node;
-                return scan(logical.getLeft(), allowRootAssignment) && scan(logical.getRight(), allowRootAssignment);
-            }
-            if (node instanceof UnaryExpression) {
-                return scan(((UnaryExpression) node).getRight(), allowRootAssignment);
-            }
-            if (node instanceof GroupingExpression) {
-                return scan(((GroupingExpression) node).getExpression(), allowRootAssignment);
+                return scanChildren(node, allowRootAssignment);
             }
             if (node instanceof IfExpression) {
                 IfExpression ifExpression = (IfExpression) node;
@@ -326,7 +315,19 @@ final class LoopRootCachePlanner {
             if (node instanceof Identifier) {
                 return true;
             }
-            return isSimpleLiteral(node);
+            if (node instanceof Literal) return true;
+            if (!(node instanceof LoopCacheTransparentExpression)) return false;
+            return scanChildren(node, allowRootAssignment);
+        }
+
+        private boolean scanChildren(ParseResult node, boolean allowRootAssignment) {
+            final boolean[] allowed = {true};
+            node.forEachChild(child -> {
+                if (allowed[0] && !scan(child, allowRootAssignment)) {
+                    allowed[0] = false;
+                }
+            });
+            return allowed[0];
         }
 
         private boolean scanAssign(AssignExpression assign, boolean allowRootAssignment) {
@@ -350,9 +351,5 @@ final class LoopRootCachePlanner {
             return false;
         }
 
-        private boolean isSimpleLiteral(ParseResult node) {
-            String name = node.getClass().getSimpleName();
-            return name.endsWith("Literal");
-        }
     }
 }

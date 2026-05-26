@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 逻辑表达式
  */
-public class LogicalExpression extends Expression {
+public class LogicalExpression extends Expression implements TransparentExpression, LoopCacheTransparentExpression {
     private final ParseResult left;
     private final Token operator;
     private final ParseResult right;

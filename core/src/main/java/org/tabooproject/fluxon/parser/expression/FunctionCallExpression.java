@@ -15,7 +15,7 @@ import java.util.Arrays;
 /**
  * 函数调用
  */
-public class FunctionCallExpression extends Expression {
+public class FunctionCallExpression extends Expression implements EnvironmentBoundaryExpression {
 
     /**
      * 运行时函数解析缓存（不可变记录）

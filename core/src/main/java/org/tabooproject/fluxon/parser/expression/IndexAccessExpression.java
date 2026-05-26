@@ -9,7 +9,7 @@ import java.util.List;
  *
  * @author sky
  */
-public class IndexAccessExpression extends Expression {
+public class IndexAccessExpression extends Expression implements TransparentExpression {
 
     private final ParseResult target;
     private final List<ParseResult> indices;

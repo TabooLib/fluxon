@@ -1,13 +1,15 @@
 package org.tabooproject.fluxon.parser.expression;
 
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParseResultContainer;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 字典字面量
  */
-public class MapExpression extends Expression {
+public class MapExpression extends Expression implements TransparentExpression {
     private final List<MapEntry> entries;
     private final boolean immutable;
 
@@ -65,7 +67,7 @@ public class MapExpression extends Expression {
     /**
      * 字典条目
      */
-    public static class MapEntry {
+    public static class MapEntry implements ParseResultContainer {
         private final ParseResult key;
         private final ParseResult value;
 
@@ -89,6 +91,12 @@ public class MapExpression extends Expression {
 
         public String toPseudoCode() {
             return key.toPseudoCode() + ": " + value.toPseudoCode();
+        }
+
+        @Override
+        public void forEachChild(Consumer<ParseResult> consumer) {
+            consumer.accept(key);
+            consumer.accept(value);
         }
     }
 }

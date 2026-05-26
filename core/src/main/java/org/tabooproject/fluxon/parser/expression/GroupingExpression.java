@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 分组表达式
  */
-public class GroupingExpression extends Expression {
+public class GroupingExpression extends Expression implements TransparentExpression, LoopCacheTransparentExpression {
     private final ParseResult expression;
 
     public GroupingExpression(ParseResult expression) {

@@ -7,7 +7,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 表示形如 "text" :: replace("a", "b") 或 "text" :: { replace("a", "b"); length } 的表达式
  * 支持安全上下文调用操作符 ?:: 用于 null 短路
  */
-public class ContextCallExpression extends Expression {
+public class ContextCallExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final ParseResult target;
     private final ParseResult context;

@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * Lambda 表达式
  */
-public class LambdaExpression extends Expression {
+public class LambdaExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final String name;
     private final LinkedHashMap<String, Integer> parameters;

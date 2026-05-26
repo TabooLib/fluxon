@@ -12,20 +12,9 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
-import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
-import org.tabooproject.fluxon.parser.expression.AwaitExpression;
-import org.tabooproject.fluxon.parser.expression.CommandExpression;
-import org.tabooproject.fluxon.parser.expression.ContextCallExpression;
-import org.tabooproject.fluxon.parser.expression.DomainExpression;
-import org.tabooproject.fluxon.parser.expression.ErrorPropagationExpression;
+import org.tabooproject.fluxon.parser.expression.EnvironmentBoundaryExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
-import org.tabooproject.fluxon.parser.expression.ForExpression;
-import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
-import org.tabooproject.fluxon.parser.expression.LambdaExpression;
-import org.tabooproject.fluxon.parser.expression.NewExpression;
-import org.tabooproject.fluxon.parser.expression.TryExpression;
-import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
@@ -33,9 +22,6 @@ import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -310,7 +296,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitVarInsn(ALOAD, 1);
         Instructions.emitLoadLocal(mv, returnType, returnSlot);
         if (returnType.isPrimitive()) {
-            emitSetReturnPrimitive(returnType, mv);
+            Instructions.emitSetReturnPrimitive(mv, returnType);
             return;
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);
@@ -366,56 +352,16 @@ public class FunctionClassEmitter extends ClassEmitter {
         return requiresIsolatedEnvironment(node, Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
-    private boolean requiresIsolatedEnvironment(Object value, Set<Object> visited) {
-        if (value == null || isLeafValue(value) || !visited.add(value)) return false;
-        if (isEnvironmentBoundaryNode(value)) return true;
-        if (value instanceof Iterable<?>) {
-            for (Object item : (Iterable<?>) value) {
-                if (requiresIsolatedEnvironment(item, visited)) return true;
+    private boolean requiresIsolatedEnvironment(ParseResult node, Set<Object> visited) {
+        if (node == null || !visited.add(node)) return false;
+        if (node instanceof EnvironmentBoundaryExpression) return true;
+        final boolean[] isolated = {false};
+        node.forEachChild(child -> {
+            if (!isolated[0] && requiresIsolatedEnvironment(child, visited)) {
+                isolated[0] = true;
             }
-            return false;
-        }
-        if (value instanceof Map<?, ?>) {
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
-                if (requiresIsolatedEnvironment(entry.getKey(), visited)) return true;
-                if (requiresIsolatedEnvironment(entry.getValue(), visited)) return true;
-            }
-            return false;
-        }
-        Class<?> clazz = value.getClass();
-        if (clazz.isArray()) {
-            int length = Array.getLength(value);
-            for (int i = 0; i < length; i++) {
-                if (requiresIsolatedEnvironment(Array.get(value, i), visited)) return true;
-            }
-            return false;
-        }
-        if (!(value instanceof ParseResult)) return false;
-        // 只展开 AST 节点自身的字段，Token、Type、Class 等运行时对象不是表达式结构的一部分。
-        for (Field field : clazz.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) continue;
-            try {
-                field.setAccessible(true);
-                if (requiresIsolatedEnvironment(field.get(value), visited)) return true;
-            } catch (IllegalAccessException ignored) {
-            }
-        }
-        return false;
-    }
-
-    private boolean isEnvironmentBoundaryNode(Object value) {
-        return value instanceof FunctionCallExpression
-                || value instanceof ContextCallExpression
-                || value instanceof CommandExpression
-                || value instanceof AwaitExpression
-                || value instanceof TryExpression
-                || value instanceof LambdaExpression
-                || value instanceof AnonymousClassExpression
-                || value instanceof NewExpression
-                || value instanceof DomainExpression
-                || value instanceof ErrorPropagationExpression
-                || value instanceof ForExpression
-                || value instanceof WhileExpression;
+        });
+        return isolated[0];
     }
 
     private void emitDirectChildEnvironment(MethodVisitor mv, CodeContext funcCtx) {
@@ -670,47 +616,15 @@ public class FunctionClassEmitter extends ClassEmitter {
      * 只读捕获变量可以拆成本地热读槽和闭包 cell；出现赋值时必须保守回到单 cell。
      */
     private static void collectAssignedLocalPositions(Object value, Set<Object> visited, Set<Integer> positions) {
-        if (value == null || isLeafValue(value) || !visited.add(value)) return;
-        if (value instanceof AssignExpression) {
-            int position = ((AssignExpression) value).getPosition();
+        if (!(value instanceof ParseResult) || !visited.add(value)) return;
+        ParseResult node = (ParseResult) value;
+        if (node instanceof AssignExpression) {
+            int position = ((AssignExpression) node).getPosition();
             if (position >= 0) {
                 positions.add(position);
             }
         }
-        if (value instanceof Iterable<?>) {
-            for (Object item : (Iterable<?>) value) {
-                collectAssignedLocalPositions(item, visited, positions);
-            }
-            return;
-        }
-        if (value instanceof Map<?, ?>) {
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
-                collectAssignedLocalPositions(entry.getKey(), visited, positions);
-                collectAssignedLocalPositions(entry.getValue(), visited, positions);
-            }
-            return;
-        }
-        Class<?> clazz = value.getClass();
-        if (clazz.isArray()) {
-            int length = Array.getLength(value);
-            for (int i = 0; i < length; i++) {
-                collectAssignedLocalPositions(Array.get(value, i), visited, positions);
-            }
-            return;
-        }
-        if (!(value instanceof ParseResult)) return;
-        for (Field field : clazz.getDeclaredFields()) {
-            if (Modifier.isStatic(field.getModifiers())) continue;
-            try {
-                field.setAccessible(true);
-                collectAssignedLocalPositions(field.get(value), visited, positions);
-            } catch (IllegalAccessException ignored) {
-            }
-        }
-    }
-
-    private static boolean isLeafValue(Object value) {
-        return value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof Character || value instanceof Enum<?>;
+        node.forEachChild(child -> collectAssignedLocalPositions(child, visited, positions));
     }
 
     public static Type getDirectParameterType(FunctionDefinition definition, int varPosition) {
@@ -904,7 +818,7 @@ public class FunctionClassEmitter extends ClassEmitter {
                 } else {
                     mv.visitInsn(SWAP);
                 }
-                emitSetReturnPrimitive(returnType, mv);
+                Instructions.emitSetReturnPrimitive(mv, returnType);
             } else {
                 mv.visitVarInsn(ALOAD, 1);
                 mv.visitInsn(SWAP);
@@ -968,33 +882,6 @@ public class FunctionClassEmitter extends ClassEmitter {
             mv.visitMethodInsn(INVOKESTATIC, ARRAYS.getPath(), "asList", "([" + OBJECT + ")" + LIST, false);
         }
         mv.visitFieldInsn(PUTSTATIC, className, "annotations", LIST.getDescriptor());
-    }
-
-    /**
-     * 生成类型化的 setReturnXxx 调用，避免原始类型装箱
-     */
-    public static void emitSetReturnPrimitive(Type type, MethodVisitor mv) {
-        String method;
-        String desc;
-        if (type == Type.I) {
-            method = "setReturnInt";
-            desc = "(I)V";
-        } else if (type == Type.Z) {
-            method = "setReturnBool";
-            desc = "(Z)V";
-        } else if (type == Type.J) {
-            method = "setReturnLong";
-            desc = "(J)V";
-        } else if (type == Type.D) {
-            method = "setReturnDouble";
-            desc = "(D)V";
-        } else if (type == Type.F) {
-            method = "setReturnFloat";
-            desc = "(F)V";
-        } else {
-            return;
-        }
-        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), method, desc, false);
     }
 
     public String getParentClassName() {

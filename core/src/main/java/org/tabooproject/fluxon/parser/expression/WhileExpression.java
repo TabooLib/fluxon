@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * While表达式
  */
-public class WhileExpression extends Expression {
+public class WhileExpression extends Expression implements EnvironmentBoundaryExpression {
     private final ParseResult condition;
     private final ParseResult body;
 

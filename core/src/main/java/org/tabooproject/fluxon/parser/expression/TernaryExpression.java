@@ -6,7 +6,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 三元运算符表达式
  * condition ? true_expr : false_expr
  */
-public class TernaryExpression extends Expression {
+public class TernaryExpression extends Expression implements TransparentExpression {
 
     private final ParseResult condition;
     private final ParseResult trueExpr;

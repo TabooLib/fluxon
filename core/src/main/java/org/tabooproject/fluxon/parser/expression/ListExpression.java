@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 列表表达式
  */
-public class ListExpression extends Expression {
+public class ListExpression extends Expression implements TransparentExpression {
     private final List<ParseResult> elements;
     private final boolean immutable;
 

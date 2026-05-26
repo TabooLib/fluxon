@@ -13,7 +13,7 @@ import java.util.List;
  *
  * @author sky
  */
-public class AnonymousClassExpression extends Expression {
+public class AnonymousClassExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final String superClass;           // 父类全限定名（可为 null，默认 Object）
     private final List<ParseResult> superArgs; // 父类构造参数

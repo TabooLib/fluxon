@@ -9,7 +9,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * 用于运行时类型检查，类似 Java 的 instanceof。
  * 右侧的类型在解析期就被解析并缓存为 Class<?> 对象。
  */
-public class IsExpression extends Expression {
+public class IsExpression extends Expression implements TransparentExpression {
     private final ParseResult left;
     private final Token operator;
     private final String typeLiteral;

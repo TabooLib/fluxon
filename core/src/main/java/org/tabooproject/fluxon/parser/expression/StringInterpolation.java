@@ -13,7 +13,7 @@ import java.util.List;
  * - 字符串片段用 StringPart 包装
  * - 嵌入的表达式直接存储为 ParseResult
  */
-public class StringInterpolation extends Expression {
+public class StringInterpolation extends Expression implements TransparentExpression {
 
     private final List<ParseResult> parts;
 

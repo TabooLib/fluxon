@@ -3,13 +3,15 @@ package org.tabooproject.fluxon.parser.expression;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.ParseResultContainer;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * When 表达式
  */
-public class WhenExpression extends Expression {
+public class WhenExpression extends Expression implements TransparentExpression {
     private final ParseResult subject;
     private final List<WhenBranch> branches;
 
@@ -86,7 +88,7 @@ public class WhenExpression extends Expression {
     /**
      * When 表达式分支
      */
-    public static class WhenBranch {
+    public static class WhenBranch implements ParseResultContainer {
 
         private final MatchType matchType;
         private final ParseResult condition;
@@ -132,6 +134,14 @@ public class WhenExpression extends Expression {
         public String toPseudoCode() {
             String condStr = condition != null ? condition.toPseudoCode() : "else";
             return matchType + condStr + " -> " + result.toPseudoCode();
+        }
+
+        @Override
+        public void forEachChild(Consumer<ParseResult> consumer) {
+            if (condition != null) {
+                consumer.accept(condition);
+            }
+            consumer.accept(result);
         }
     }
 }

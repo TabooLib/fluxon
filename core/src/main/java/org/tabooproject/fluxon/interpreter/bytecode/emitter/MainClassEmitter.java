@@ -13,20 +13,11 @@ import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
-import org.tabooproject.fluxon.parser.expression.BinaryExpression;
-import org.tabooproject.fluxon.parser.expression.ElvisExpression;
-import org.tabooproject.fluxon.parser.expression.GroupingExpression;
-import org.tabooproject.fluxon.parser.expression.IfExpression;
-import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
-import org.tabooproject.fluxon.parser.expression.ListExpression;
-import org.tabooproject.fluxon.parser.expression.LogicalExpression;
-import org.tabooproject.fluxon.parser.expression.MapExpression;
-import org.tabooproject.fluxon.parser.expression.RangeExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
-import org.tabooproject.fluxon.parser.expression.TernaryExpression;
-import org.tabooproject.fluxon.parser.expression.UnaryExpression;
+import org.tabooproject.fluxon.parser.expression.TransparentExpression;
 import org.tabooproject.fluxon.parser.expression.literal.Identifier;
 import org.tabooproject.fluxon.parser.expression.literal.IntLiteral;
+import org.tabooproject.fluxon.parser.expression.literal.Literal;
 import org.tabooproject.fluxon.parser.expression.literal.LongLiteral;
 import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
@@ -274,65 +265,21 @@ public class MainClassEmitter extends ClassEmitter {
             }
             return true;
         }
-        if (node instanceof BinaryExpression) {
-            BinaryExpression binary = (BinaryExpression) node;
-            return canUseRootConstantReads(binary.getLeft(), false) && canUseRootConstantReads(binary.getRight(), false);
-        }
-        if (node instanceof LogicalExpression) {
-            LogicalExpression logical = (LogicalExpression) node;
-            return canUseRootConstantReads(logical.getLeft(), false) && canUseRootConstantReads(logical.getRight(), false);
-        }
-        if (node instanceof UnaryExpression) {
-            return canUseRootConstantReads(((UnaryExpression) node).getRight(), false);
-        }
-        if (node instanceof GroupingExpression) {
-            return canUseRootConstantReads(((GroupingExpression) node).getExpression(), false);
-        }
-        if (node instanceof IfExpression) {
-            IfExpression ifExpression = (IfExpression) node;
-            return canUseRootConstantReads(ifExpression.getCondition(), false)
-                    && canUseRootConstantReads(ifExpression.getThenBranch(), false)
-                    && canUseRootConstantReads(ifExpression.getElseBranch(), false);
-        }
-        if (node instanceof TernaryExpression) {
-            TernaryExpression ternary = (TernaryExpression) node;
-            return canUseRootConstantReads(ternary.getCondition(), false)
-                    && canUseRootConstantReads(ternary.getTrueExpr(), false)
-                    && canUseRootConstantReads(ternary.getFalseExpr(), false);
-        }
-        if (node instanceof ElvisExpression) {
-            ElvisExpression elvis = (ElvisExpression) node;
-            return canUseRootConstantReads(elvis.getCondition(), false)
-                    && canUseRootConstantReads(elvis.getAlternative(), false);
-        }
-        if (node instanceof ListExpression) {
-            for (ParseResult element : ((ListExpression) node).getElements()) {
-                if (!canUseRootConstantReads(element, false)) return false;
-            }
-            return true;
-        }
-        if (node instanceof MapExpression) {
-            for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
-                if (!canUseRootConstantReads(entry.getKey(), false)) return false;
-                if (!canUseRootConstantReads(entry.getValue(), false)) return false;
-            }
-            return true;
-        }
-        if (node instanceof RangeExpression) {
-            RangeExpression range = (RangeExpression) node;
-            return canUseRootConstantReads(range.getStart(), false)
-                    && canUseRootConstantReads(range.getEnd(), false);
-        }
-        if (node instanceof IndexAccessExpression) {
-            IndexAccessExpression index = (IndexAccessExpression) node;
-            if (!canUseRootConstantReads(index.getTarget(), false)) return false;
-            for (ParseResult item : index.getIndices()) {
-                if (!canUseRootConstantReads(item, false)) return false;
-            }
-            return true;
+        if (node instanceof TransparentExpression) {
+            return canUseRootConstantReadChildren(node);
         }
         if (node instanceof ReferenceExpression || node instanceof Identifier) return true;
-        return node.getClass().getSimpleName().endsWith("Literal");
+        return node instanceof Literal;
+    }
+
+    private boolean canUseRootConstantReadChildren(ParseResult node) {
+        final boolean[] allowed = {true};
+        node.forEachChild(child -> {
+            if (allowed[0] && !canUseRootConstantReads(child, false)) {
+                allowed[0] = false;
+            }
+        });
+        return allowed[0];
     }
 
     private void emitClearIdleContexts(MethodVisitor mv, int poolSlot) {

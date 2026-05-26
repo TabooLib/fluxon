@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * Elvis操作符表达式
  */
-public class ElvisExpression extends Expression {
+public class ElvisExpression extends Expression implements TransparentExpression {
     private final ParseResult condition;
     private final ParseResult alternative;
 

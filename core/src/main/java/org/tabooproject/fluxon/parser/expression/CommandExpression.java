@@ -24,7 +24,7 @@ import org.tabooproject.fluxon.parser.CommandExecutor;
  * @see org.tabooproject.fluxon.parser.CommandExecutor
  * @see org.tabooproject.fluxon.parser.CommandRegistry
  */
-public class CommandExpression extends Expression {
+public class CommandExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final String commandName;
     private final Object parsedData;

@@ -8,7 +8,7 @@ import java.util.Arrays;
  * Java 对象构造表达式
  * 语法: new fully.qualified.ClassName(args)
  */
-public class NewExpression extends Expression {
+public class NewExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final String className;
     private final ParseResult[] arguments;

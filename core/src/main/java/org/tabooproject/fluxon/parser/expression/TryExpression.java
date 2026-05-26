@@ -7,7 +7,7 @@ import org.tabooproject.fluxon.parser.statement.Block;
 /**
  * try 表达式
  */
-public class TryExpression extends Expression {
+public class TryExpression extends Expression implements EnvironmentBoundaryExpression {
     private final ParseResult body;
     @Nullable
     private final String catchName;

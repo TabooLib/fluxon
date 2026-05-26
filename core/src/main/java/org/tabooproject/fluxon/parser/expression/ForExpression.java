@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * For 表达式
  */
-public class ForExpression extends Expression {
+public class ForExpression extends Expression implements EnvironmentBoundaryExpression {
     private final Map<String, Integer> variables;
     private final ParseResult collection;
     private final ParseResult body;

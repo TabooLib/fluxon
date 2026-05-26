@@ -7,14 +7,9 @@ import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
 import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
 import org.tabooproject.fluxon.parser.expression.TryExpression;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,35 +31,10 @@ final class LambdaCaptureAnalyzer {
         return positions;
     }
 
-    private static void collectCapturedPositions(Object value, int captureOffset, Set<Object> visited, Set<Integer> positions) {
-        if (value == null) return;
-        if (value instanceof ParseResult) {
-            if (!visited.add(value)) return;
-            ParseResult node = (ParseResult) value;
-            collectCapturedSlot(node, captureOffset, positions);
-            scanFields(node, captureOffset, visited, positions);
-            return;
-        }
-        if (value instanceof Collection) {
-            for (Object item : (Collection<?>) value) {
-                collectCapturedPositions(item, captureOffset, visited, positions);
-            }
-            return;
-        }
-        if (value instanceof Map) {
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
-                collectCapturedPositions(entry.getKey(), captureOffset, visited, positions);
-                collectCapturedPositions(entry.getValue(), captureOffset, visited, positions);
-            }
-            return;
-        }
-        Class<?> type = value.getClass();
-        if (type.isArray()) {
-            int length = Array.getLength(value);
-            for (int i = 0; i < length; i++) {
-                collectCapturedPositions(Array.get(value, i), captureOffset, visited, positions);
-            }
-        }
+    private static void collectCapturedPositions(ParseResult node, int captureOffset, Set<Object> visited, Set<Integer> positions) {
+        if (node == null || !visited.add(node)) return;
+        collectCapturedSlot(node, captureOffset, positions);
+        node.forEachChild(child -> collectCapturedPositions(child, captureOffset, visited, positions));
     }
 
     private static void collectCapturedSlot(ParseResult node, int captureOffset, Set<Integer> positions) {
@@ -88,23 +58,6 @@ final class LambdaCaptureAnalyzer {
             for (int position : ((DestructuringAssignExpression) node).getVariables().values()) {
                 addCapturedPosition(position, captureOffset, positions);
             }
-        }
-    }
-
-    private static void scanFields(ParseResult node, int captureOffset, Set<Object> visited, Set<Integer> positions) {
-        Class<?> type = node.getClass();
-        while (type != null && type != Object.class) {
-            Field[] fields = type.getDeclaredFields();
-            for (Field field : fields) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                field.setAccessible(true);
-                try {
-                    collectCapturedPositions(field.get(node), captureOffset, visited, positions);
-                } catch (IllegalAccessException ex) {
-                    throw new IllegalStateException("Cannot scan lambda capture field: " + field.getName(), ex);
-                }
-            }
-            type = type.getSuperclass();
         }
     }
 

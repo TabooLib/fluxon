@@ -5,7 +5,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
 /**
  * 范围表达式
  */
-public class RangeExpression extends Expression {
+public class RangeExpression extends Expression implements TransparentExpression {
     private final ParseResult start;
     private final ParseResult end;
     private final boolean inclusive; // true表示包含上界，false表示不包含上界

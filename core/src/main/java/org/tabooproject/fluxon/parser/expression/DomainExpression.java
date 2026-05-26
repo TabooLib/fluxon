@@ -36,7 +36,7 @@ import org.tabooproject.fluxon.parser.ParseResult;
  * @see org.tabooproject.fluxon.parser.DomainRegistry
  * @see org.tabooproject.fluxon.parser.DomainExecutor
  */
-public class DomainExpression extends Expression {
+public class DomainExpression extends Expression implements EnvironmentBoundaryExpression {
 
     private final String domainName;
     private final ParseResult body;
