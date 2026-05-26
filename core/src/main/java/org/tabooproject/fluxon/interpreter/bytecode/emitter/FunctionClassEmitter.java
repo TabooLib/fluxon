@@ -12,31 +12,30 @@ import org.tabooproject.fluxon.parser.definition.Annotation;
 import org.tabooproject.fluxon.parser.definition.Definition;
 import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import org.tabooproject.fluxon.parser.definition.LambdaFunctionDefinition;
+import org.tabooproject.fluxon.parser.expression.AnonymousClassExpression;
 import org.tabooproject.fluxon.parser.expression.AssignExpression;
-import org.tabooproject.fluxon.parser.expression.BinaryExpression;
-import org.tabooproject.fluxon.parser.expression.ElvisExpression;
+import org.tabooproject.fluxon.parser.expression.AwaitExpression;
+import org.tabooproject.fluxon.parser.expression.CommandExpression;
+import org.tabooproject.fluxon.parser.expression.ContextCallExpression;
+import org.tabooproject.fluxon.parser.expression.DomainExpression;
+import org.tabooproject.fluxon.parser.expression.ErrorPropagationExpression;
 import org.tabooproject.fluxon.parser.expression.Expression;
-import org.tabooproject.fluxon.parser.expression.GroupingExpression;
-import org.tabooproject.fluxon.parser.expression.IfExpression;
-import org.tabooproject.fluxon.parser.expression.IndexAccessExpression;
-import org.tabooproject.fluxon.parser.expression.ListExpression;
-import org.tabooproject.fluxon.parser.expression.LogicalExpression;
-import org.tabooproject.fluxon.parser.expression.MapExpression;
-import org.tabooproject.fluxon.parser.expression.RangeExpression;
-import org.tabooproject.fluxon.parser.expression.ReferenceExpression;
-import org.tabooproject.fluxon.parser.expression.TernaryExpression;
-import org.tabooproject.fluxon.parser.expression.UnaryExpression;
-import org.tabooproject.fluxon.parser.expression.literal.Identifier;
+import org.tabooproject.fluxon.parser.expression.ForExpression;
+import org.tabooproject.fluxon.parser.expression.FunctionCallExpression;
+import org.tabooproject.fluxon.parser.expression.LambdaExpression;
+import org.tabooproject.fluxon.parser.expression.NewExpression;
+import org.tabooproject.fluxon.parser.expression.TryExpression;
+import org.tabooproject.fluxon.parser.expression.WhileExpression;
 import org.tabooproject.fluxon.parser.statement.Block;
 import org.tabooproject.fluxon.parser.statement.ExpressionStatement;
 import org.tabooproject.fluxon.parser.statement.ReturnStatement;
 import org.tabooproject.fluxon.parser.statement.Statement;
 import org.tabooproject.fluxon.runtime.*;
 import org.tabooproject.fluxon.runtime.error.FluxonRuntimeError;
-import org.tabooproject.fluxon.runtime.stdlib.Intrinsics;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.*;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -85,6 +84,8 @@ public class FunctionClassEmitter extends ClassEmitter {
     public EmitResult emit() {
         List<LambdaFunctionDefinition> lambdaDefinitions = new ArrayList<>();
         CodeContext funcCtx = createFunctionCodeContext();
+        CodeContext compiledCtx = funcCtx;
+        boolean directCallMethod = canUseDirectCallMethod();
         // 类声明
         beginClass(ACC_PUBLIC, fileName);
         emitSourceMetadataFields(source, fileName);
@@ -97,9 +98,10 @@ public class FunctionClassEmitter extends ClassEmitter {
         // 生成构造函数
         emitDefaultConstructor();
         // 实现 Function 接口方法
-        emitFunctionInterfaceMethods(lambdaDefinitions, funcCtx);
-        if (canUseDirectCallMethod()) {
-            emitDirectCallMethod();
+        emitFunctionInterfaceMethods(lambdaDefinitions, funcCtx, directCallMethod);
+        if (directCallMethod) {
+            compiledCtx = emitDirectCallMethod();
+            lambdaDefinitions.addAll(compiledCtx.getLambdaDefinitions());
         }
         // 为此函数类的 lambda 创建静态字段
         List<LambdaFunctionDefinition> ownedLambdas = getOwnedLambdas(className, lambdaDefinitions);
@@ -107,22 +109,22 @@ public class FunctionClassEmitter extends ClassEmitter {
             emitLambdaFieldDeclaration(lambdaDef);
         }
         // 声明编译期优化相关的静态字段
-        emitCompiledFunctionFields(funcCtx);
+        emitCompiledFunctionFields(compiledCtx);
         // 生成静态初始化块
-        emitStaticInit(ownedLambdas, funcCtx);
+        emitStaticInit(ownedLambdas, compiledCtx);
         // 生成 clone 方法
         emitCloneMethod();
         return new EmitResult(endClass(), lambdaDefinitions);
     }
 
-    private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx) {
+    private void emitFunctionInterfaceMethods(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx, boolean directCallMethod) {
         emitGetNameMethod();
         emitGetNamespaceMethod();
         emitGetSignatureMethod();
         emitIsAsyncMethod();
         emitIsPrimarySyncMethod();
         emitGetAnnotationsMethod();
-        emitCallMethod(lambdaDefinitions, funcCtx);
+        emitCallMethod(lambdaDefinitions, funcCtx, directCallMethod);
     }
 
     private CodeContext createFunctionCodeContext() {
@@ -211,10 +213,16 @@ public class FunctionClassEmitter extends ClassEmitter {
         mv.visitEnd();
     }
 
-    private void emitCallMethod(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx) {
+    private void emitCallMethod(List<LambdaFunctionDefinition> lambdaDefinitions, CodeContext funcCtx, boolean directCallMethod) {
         // 生成 Function.call(FunctionContext) 方法（void 返回）
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "call", "(" + FunctionContext.TYPE + ")V", null, null);
         mv.visitCode();
+        if (directCallMethod) {
+            emitCallDirectBridge(mv, funcCtx);
+            mv.visitMaxs(0, funcCtx.getLocalVarIndex() + 1);
+            mv.visitEnd();
+            return;
+        }
         // 初始化代码上下文，预留 slot 0 (this) 和 slot 1 (FunctionContext 参数)
         reserveReceiverAndArgumentSlots(funcCtx);
         funcCtx.setTypeAnalyzer(createFunctionTypeAnalyzer());
@@ -235,7 +243,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         lambdaDefinitions.addAll(funcCtx.getLambdaDefinitions());
     }
 
-    private void emitDirectCallMethod() {
+    private CodeContext emitDirectCallMethod() {
         String descriptor = getDirectCallDescriptor(funcDef);
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "callDirect", descriptor, null, null);
         mv.visitCode();
@@ -248,7 +256,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         directCtx.enableEnvFreeMode(funcDef.getLocalVariables().size());
         directCtx.setExpectedReturnType(Object.class);
         emitLocalPoolLocal(mv, directCtx);
-        if (canReuseCallerEnvironment(funcDef.getBody())) {
+        if (!requiresIsolatedEnvironment(funcDef.getBody())) {
             directCtx.setEnvironmentLocalSlot(1);
         } else {
             emitDirectChildEnvironment(mv, directCtx);
@@ -257,6 +265,55 @@ public class FunctionClassEmitter extends ClassEmitter {
         emitDirectFunctionBody(mv, directCtx);
         mv.visitMaxs(0, directCtx.getLocalVarIndex() + 1);
         mv.visitEnd();
+        return directCtx;
+    }
+
+    private void emitCallDirectBridge(MethodVisitor mv, CodeContext funcCtx) {
+        // 直连函数的通用入口只负责协议转换，函数体统一落在 callDirect，避免生成两份业务字节码。
+        reserveReceiverAndArgumentSlots(funcCtx);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getEnvironment", "()" + Environment.TYPE.getDescriptor(), false);
+        emitDirectBridgeArguments(mv);
+        mv.visitMethodInsn(INVOKEVIRTUAL, className, "callDirect", getDirectCallDescriptor(funcDef), false);
+        emitDirectBridgeReturn(mv, funcCtx);
+        mv.visitInsn(RETURN);
+    }
+
+    private void emitDirectBridgeArguments(MethodVisitor mv) {
+        int argIndex = 0;
+        for (Map.Entry<String, Integer> entry : funcDef.getParameters().entrySet()) {
+            Type type = getDirectParameterType(funcDef, entry.getValue());
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitLdcInsn(argIndex);
+            if (type == Type.I) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsInt", "(" + I + ")" + I, false);
+            } else if (type == Type.Z) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsBoolean", "(" + I + ")" + Z, false);
+            } else if (type == Type.J) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsLong", "(" + I + ")" + J, false);
+            } else if (type == Type.D) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsDouble", "(" + I + ")" + D, false);
+            } else if (type == Type.F) {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getAsFloat", "(" + I + ")" + F, false);
+            } else {
+                mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "getArgBoxed", "(" + I + ")" + OBJECT, false);
+            }
+            argIndex++;
+        }
+    }
+
+    private void emitDirectBridgeReturn(MethodVisitor mv, CodeContext funcCtx) {
+        Type returnType = getDirectReturnType(funcDef);
+        int returnSlot = funcCtx.allocateLocalVar(returnType);
+        Instructions.emitStoreLocal(mv, returnType, returnSlot);
+        mv.visitVarInsn(ALOAD, 1);
+        Instructions.emitLoadLocal(mv, returnType, returnSlot);
+        if (returnType.isPrimitive()) {
+            emitSetReturnPrimitive(returnType, mv);
+            return;
+        }
+        mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + OBJECT + ")V", false);
     }
 
     private void reserveReceiverAndArgumentSlots(CodeContext funcCtx) {
@@ -302,74 +359,63 @@ public class FunctionClassEmitter extends ClassEmitter {
     }
 
     /**
-     * 纯表达式函数复用调用方 Environment，避免每次调用创建子 Environment。
-     * 出现函数调用、上下文调用等可观察 Environment 身份或 target 的节点时保留隔离环境。
+     * 判断函数体是否必须拥有独立 Environment。
+     * 只有会观察 Environment 身份、切换 target 或延后执行的节点需要隔离；普通表达式递归检查子节点。
      */
-    private boolean canReuseCallerEnvironment(ParseResult node) {
-        if (node == null) return true;
-        if (node instanceof BinaryExpression) {
-            BinaryExpression binary = (BinaryExpression) node;
-            return canReuseCallerEnvironment(binary.getLeft())
-                    && canReuseCallerEnvironment(binary.getRight());
-        }
-        if (node instanceof LogicalExpression) {
-            LogicalExpression logical = (LogicalExpression) node;
-            return canReuseCallerEnvironment(logical.getLeft())
-                    && canReuseCallerEnvironment(logical.getRight());
-        }
-        if (node instanceof UnaryExpression) {
-            return canReuseCallerEnvironment(((UnaryExpression) node).getRight());
-        }
-        if (node instanceof GroupingExpression) {
-            return canReuseCallerEnvironment(((GroupingExpression) node).getExpression());
-        }
-        if (node instanceof IfExpression) {
-            IfExpression ifExpression = (IfExpression) node;
-            return canReuseCallerEnvironment(ifExpression.getCondition())
-                    && canReuseCallerEnvironment(ifExpression.getThenBranch())
-                    && canReuseCallerEnvironment(ifExpression.getElseBranch());
-        }
-        if (node instanceof TernaryExpression) {
-            TernaryExpression ternary = (TernaryExpression) node;
-            return canReuseCallerEnvironment(ternary.getCondition())
-                    && canReuseCallerEnvironment(ternary.getTrueExpr())
-                    && canReuseCallerEnvironment(ternary.getFalseExpr());
-        }
-        if (node instanceof ElvisExpression) {
-            ElvisExpression elvis = (ElvisExpression) node;
-            return canReuseCallerEnvironment(elvis.getCondition())
-                    && canReuseCallerEnvironment(elvis.getAlternative());
-        }
-        if (node instanceof ListExpression) {
-            for (ParseResult element : ((ListExpression) node).getElements()) {
-                if (!canReuseCallerEnvironment(element)) return false;
+    private boolean requiresIsolatedEnvironment(ParseResult node) {
+        return requiresIsolatedEnvironment(node, Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private boolean requiresIsolatedEnvironment(Object value, Set<Object> visited) {
+        if (value == null || isLeafValue(value) || !visited.add(value)) return false;
+        if (isEnvironmentBoundaryNode(value)) return true;
+        if (value instanceof Iterable<?>) {
+            for (Object item : (Iterable<?>) value) {
+                if (requiresIsolatedEnvironment(item, visited)) return true;
             }
-            return true;
+            return false;
         }
-        if (node instanceof MapExpression) {
-            for (MapExpression.MapEntry entry : ((MapExpression) node).getEntries()) {
-                if (!canReuseCallerEnvironment(entry.getKey())) return false;
-                if (!canReuseCallerEnvironment(entry.getValue())) return false;
+        if (value instanceof Map<?, ?>) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                if (requiresIsolatedEnvironment(entry.getKey(), visited)) return true;
+                if (requiresIsolatedEnvironment(entry.getValue(), visited)) return true;
             }
-            return true;
+            return false;
         }
-        if (node instanceof RangeExpression) {
-            RangeExpression range = (RangeExpression) node;
-            return canReuseCallerEnvironment(range.getStart())
-                    && canReuseCallerEnvironment(range.getEnd());
-        }
-        if (node instanceof IndexAccessExpression) {
-            IndexAccessExpression index = (IndexAccessExpression) node;
-            if (!canReuseCallerEnvironment(index.getTarget())) return false;
-            for (ParseResult item : index.getIndices()) {
-                if (!canReuseCallerEnvironment(item)) return false;
+        Class<?> clazz = value.getClass();
+        if (clazz.isArray()) {
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                if (requiresIsolatedEnvironment(Array.get(value, i), visited)) return true;
             }
-            return true;
+            return false;
         }
-        if (node instanceof ReferenceExpression || node instanceof Identifier) {
-            return true;
+        if (!(value instanceof ParseResult)) return false;
+        // 只展开 AST 节点自身的字段，Token、Type、Class 等运行时对象不是表达式结构的一部分。
+        for (Field field : clazz.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) continue;
+            try {
+                field.setAccessible(true);
+                if (requiresIsolatedEnvironment(field.get(value), visited)) return true;
+            } catch (IllegalAccessException ignored) {
+            }
         }
-        return node.getClass().getSimpleName().endsWith("Literal");
+        return false;
+    }
+
+    private boolean isEnvironmentBoundaryNode(Object value) {
+        return value instanceof FunctionCallExpression
+                || value instanceof ContextCallExpression
+                || value instanceof CommandExpression
+                || value instanceof AwaitExpression
+                || value instanceof TryExpression
+                || value instanceof LambdaExpression
+                || value instanceof AnonymousClassExpression
+                || value instanceof NewExpression
+                || value instanceof DomainExpression
+                || value instanceof ErrorPropagationExpression
+                || value instanceof ForExpression
+                || value instanceof WhileExpression;
     }
 
     private void emitDirectChildEnvironment(MethodVisitor mv, CodeContext funcCtx) {
@@ -652,9 +698,9 @@ public class FunctionClassEmitter extends ClassEmitter {
             }
             return;
         }
-        if (!clazz.getName().startsWith("org.tabooproject.fluxon.")) return;
+        if (!(value instanceof ParseResult)) return;
         for (Field field : clazz.getDeclaredFields()) {
-            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+            if (Modifier.isStatic(field.getModifiers())) continue;
             try {
                 field.setAccessible(true);
                 collectAssignedLocalPositions(field.get(value), visited, positions);
@@ -778,7 +824,7 @@ public class FunctionClassEmitter extends ClassEmitter {
      */
     private void emitParameterBindingEnvFree(MethodVisitor mv, CodeContext funcCtx) {
         Map<Integer, Class<?>> parameterTypes = funcDef.getParameterTypes();
-        if (canReuseCallerEnvironment(funcDef.getBody())) {
+        if (!requiresIsolatedEnvironment(funcDef.getBody())) {
             // 纯表达式 env-free 调用没有 target 隔离需求，复用调用方环境可省掉每次回调的子 Environment 分配。
             emitCallerEnvironment(mv, funcCtx);
         } else {
