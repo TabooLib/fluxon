@@ -36,6 +36,9 @@ public class CodeContext {
     // FunctionContextPool 局部变量槽位索引（用于避免重复 ThreadLocal.get()）
     private int poolLocalSlot = -1;
 
+    // 函数体统一退出标签，表达式级提前返回通过它回到 Function.call 的统一出口。
+    private Label functionExitLabel;
+
     // Environment-free 模式：局部变量存储在 JVM local vars 而非 Environment
     private boolean envFreeMode = false;
     // 脚本变量位置 → JVM 局部变量槽位的映射
@@ -258,6 +261,22 @@ public class CodeContext {
      */
     public boolean useLocalEnvironment() {
         return environmentLocalSlot >= 0;
+    }
+
+    /**
+     * 设置函数统一退出标签
+     * @param label 函数退出标签
+     */
+    public void setFunctionExitLabel(Label label) {
+        this.functionExitLabel = label;
+    }
+
+    /**
+     * 获取函数统一退出标签
+     * @return 函数退出标签，null 表示当前不在 Function.call 内
+     */
+    public Label getFunctionExitLabel() {
+        return functionExitLabel;
     }
 
     /**

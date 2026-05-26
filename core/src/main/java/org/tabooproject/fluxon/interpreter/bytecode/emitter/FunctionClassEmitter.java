@@ -793,6 +793,8 @@ public class FunctionClassEmitter extends ClassEmitter {
         Label start = new Label();
         Label end = new Label();
         Label handler = new Label();
+        Label functionExit = new Label();
+        funcCtx.setFunctionExitLabel(functionExit);
         mv.visitTryCatchBlock(start, end, handler, FluxonRuntimeError.class.getName().replace('.', '/'));
         mv.visitLabel(start);
         // 空函数体不会生成实际指令，保留一条 no-op 避免异常表出现空区间。
@@ -827,6 +829,7 @@ public class FunctionClassEmitter extends ClassEmitter {
         }
         // 正常返回路径
         mv.visitLabel(end);
+        mv.visitLabel(functionExit);
         mv.visitInsn(RETURN);
         // 异常处理：附加源码位置信息后重新抛出
         mv.visitLabel(handler);

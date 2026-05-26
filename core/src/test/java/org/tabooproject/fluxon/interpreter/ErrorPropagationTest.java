@@ -23,6 +23,7 @@ public class ErrorPropagationTest {
                 "}\n" +
                 "foo()");
         assertNull(result.getInterpretResult());
+        assertNull(result.getCompileResult());
     }
 
     @Test

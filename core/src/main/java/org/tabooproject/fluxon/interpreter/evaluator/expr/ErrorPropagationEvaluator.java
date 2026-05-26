@@ -65,7 +65,7 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
         boolean isTopLevel = ctx.getExpectedReturnType() != null;
         if (operandType == Type.VOID) {
             // void 视为 null → return null
-            emitReturnNull(isTopLevel, mv);
+            emitReturnNull(ctx, isTopLevel, mv);
             return Type.OBJECT; // 不可达但需要返回类型
         }
         // 引用类型：检查 null
@@ -74,7 +74,7 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
         mv.visitJumpInsn(IFNONNULL, notNull);
         // null → return null
         mv.visitInsn(POP);
-        emitReturnNull(isTopLevel, mv);
+        emitReturnNull(ctx, isTopLevel, mv);
         // 非 null → 继续
         mv.visitLabel(notNull);
         return Type.OBJECT;
@@ -84,7 +84,7 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
      * 生成 return null 的字节码
      * 顶层脚本直接 ARETURN null，函数体内通过 FunctionContext.setReturnRef 设置返回值
      */
-    private static void emitReturnNull(boolean isTopLevel, MethodVisitor mv) {
+    private static void emitReturnNull(CodeContext ctx, boolean isTopLevel, MethodVisitor mv) {
         if (isTopLevel) {
             mv.visitInsn(ACONST_NULL);
             mv.visitInsn(ARETURN);
@@ -92,6 +92,11 @@ public class ErrorPropagationEvaluator extends ExpressionEvaluator<ErrorPropagat
             mv.visitVarInsn(ALOAD, 1); // FunctionContext
             mv.visitInsn(ACONST_NULL);
             mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnRef", "(" + Type.OBJECT + ")V", false);
+            if (ctx.getFunctionExitLabel() != null) {
+                // 函数体内的表达式提前返回跳到统一出口，避免 ASM 在表达式局部控制流里合并 RETURN 帧。
+                mv.visitJumpInsn(GOTO, ctx.getFunctionExitLabel());
+                return;
+            }
             mv.visitInsn(RETURN);
         }
     }
