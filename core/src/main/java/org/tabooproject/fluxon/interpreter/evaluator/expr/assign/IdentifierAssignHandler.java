@@ -120,7 +120,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
         if (op == TokenType.ASSIGN) {
             Type vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
             if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
-            box(vt, mv);
+            Instructions.emitBox(mv, vt);
             mv.visitMethodInsn(INVOKEVIRTUAL, CaptureCell.TYPE.getPath(), "set", "(" + OBJECT + ")V", false);
             return;
         }
@@ -141,7 +141,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 emitConvert(vt, varType, mv);
                 Instructions.emitStoreLocal(mv, varType, jvmSlot);
             } else {
-                box(vt, mv);
+                Instructions.emitBox(mv, vt);
                 mv.visitVarInsn(ASTORE, jvmSlot);
             }
             return;
@@ -160,9 +160,9 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 return;
             }
             Instructions.emitLoadLocal(mv, varType, jvmSlot);
-            box(varType, mv);
+            Instructions.emitBox(mv, varType);
             generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
-            unbox(varType, mv);
+            Instructions.emitUnbox(mv, varType);
             Instructions.emitStoreLocal(mv, varType, jvmSlot);
         } else {
             mv.visitVarInsn(ALOAD, jvmSlot);
@@ -185,7 +185,7 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 emitConvert(vt, varType, mv);
                 Instructions.emitEnvironmentSetLocal(mv, varType);
             } else {
-                box(vt, mv);
+                Instructions.emitBox(mv, vt);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setLocalRef", SET_LOCAL_REF, false);
             }
             return;
@@ -212,9 +212,9 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(position);
             Instructions.emitEnvironmentGetLocal(mv, varType);
-            box(varType, mv);
+            Instructions.emitBox(mv, varType);
             generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
-            unbox(varType, mv);
+            Instructions.emitUnbox(mv, varType);
             Instructions.emitEnvironmentSetLocal(mv, varType);
         } else {
             Instructions.loadEnvironment(mv, ctx);
@@ -251,12 +251,12 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
                 Instructions.loadEnvironment(mv, ctx);
                 mv.visitLdcInsn(name);
                 mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", GET_ROOT_VARIABLE, false);
-                unbox(varType, mv);
+                Instructions.emitUnbox(mv, varType);
                 vt = valueEval.generateBytecode(expr.getValue(), ctx, mv);
                 if (vt == VOID) throw new VoidError("Void type is not allowed for assignment value");
                 emitConvert(vt, varType, mv);
                 emitPrimitiveCompound(op, varType, mv);
-                box(varType, mv);
+                Instructions.emitBox(mv, varType);
             } else {
                 generateRootCompoundFallback(expr, valueEval, ctx, mv, op, name, varType);
             }
@@ -303,9 +303,9 @@ public class IdentifierAssignHandler implements AssignmentTargetHandler<Identifi
             }
         }
         Instructions.emitLoadLocal(mv, varType, cache.slot);
-        box(varType, mv);
+        Instructions.emitBox(mv, varType);
         generateCompoundOperation(expr, valueEval, op, ctx, mv, varType);
-        unbox(varType, mv);
+        Instructions.emitUnbox(mv, varType);
         Instructions.emitStoreLocal(mv, varType, cache.slot);
     }
 

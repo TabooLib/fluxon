@@ -176,7 +176,7 @@ public class MainClassEmitter extends ClassEmitter {
         if (last == null || last == VOID) {
             mv.visitInsn(ACONST_NULL);
         } else if (last.isPrimitive()) {
-            Instructions.emitBoxing(mv, last);
+            Instructions.emitBox(mv, last);
         }
         mv.visitLabel(end);
         // 入口清理 handler 必须晚于脚本内部 try/catch 注册，避免抢先吞掉用户 try 块异常。

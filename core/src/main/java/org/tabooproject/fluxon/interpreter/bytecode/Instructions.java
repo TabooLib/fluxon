@@ -625,7 +625,7 @@ public class Instructions {
                 mv.visitInsn(ACONST_NULL);
             } else if (expectedReturnType != Object.class) {
                 // 栈上是 Object，需要转换为期望的引用类型
-                mv.visitTypeInsn(CHECKCAST, expectedReturnType.getName().replace('.', '/'));
+                mv.visitTypeInsn(CHECKCAST, getInternalName(expectedReturnType));
             }
             mv.visitInsn(ARETURN);
         }

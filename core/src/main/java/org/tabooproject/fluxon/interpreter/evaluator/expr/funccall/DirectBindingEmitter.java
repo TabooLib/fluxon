@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.parser.expression.ListExpression;
 import org.tabooproject.fluxon.runtime.*;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getInternalName;
 
 /**
  * DirectBinding 字节码生成器
@@ -61,7 +62,7 @@ public final class DirectBindingEmitter {
         }
         Type argType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         if (argType.isPrimitive()) {
-            Instructions.emitBox(argType, mv);
+            Instructions.emitBox(mv, argType);
         }
         int valueSlot = ctx.allocateLocalVar(Type.OBJECT);
         mv.visitVarInsn(ASTORE, valueSlot);
@@ -130,7 +131,7 @@ public final class DirectBindingEmitter {
         int argCount = arguments != null ? arguments.getElements().size() : 0;
         Type functionType = FunctionCallHandlers.emitArgExpression(args[0], ctx, mv);
         if (functionType.isPrimitive()) {
-            Instructions.emitBox(functionType, mv);
+            Instructions.emitBox(mv, functionType);
         }
         mv.visitTypeInsn(CHECKCAST, Function.TYPE.getPath());
         int functionSlot = ctx.allocateLocalVar(Function.TYPE);
@@ -165,7 +166,7 @@ public final class DirectBindingEmitter {
         // 加载 target：environment.getTarget() + CHECKCAST
         Instructions.loadEnvironment(mv, ctx);
         mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getTarget", "()" + Type.OBJECT, false);
-        mv.visitTypeInsn(CHECKCAST, targetClass.getName().replace('.', '/'));
+        mv.visitTypeInsn(CHECKCAST, getInternalName(targetClass));
         // descriptor 第一个参数是 target，用户参数从第二个开始
         return emitInvoke(function, binding, args, ctx, mv, 1);
     }
@@ -231,9 +232,9 @@ public final class DirectBindingEmitter {
         if (actual.isPrimitive() && expected.isPrimitive()) {
             Instructions.emitPrimitiveConversion(actual, expected, mv);
         } else if (!actual.isPrimitive() && expected.isPrimitive()) {
-            Instructions.emitUnbox(expected, mv);
+            Instructions.emitUnbox(mv, expected);
         } else if (actual.isPrimitive()) {
-            Instructions.emitBox(actual, mv);
+            Instructions.emitBox(mv, actual);
         }
     }
 

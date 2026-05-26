@@ -413,7 +413,7 @@ public class FunctionClassEmitter extends ClassEmitter {
                 funcCtx.mapVarToCaptureCellSlot(varPosition, cellSlot);
                 Instructions.emitLoadLocal(mv, directType, argSlot);
                 if (directType.isPrimitive()) {
-                    Instructions.emitBoxing(mv, directType);
+                    Instructions.emitBox(mv, directType);
                 }
                 emitNewCaptureCell(mv);
                 mv.visitVarInsn(ASTORE, cellSlot);
@@ -423,7 +423,7 @@ public class FunctionClassEmitter extends ClassEmitter {
             if (funcCtx.isLocalCapturedByChild(varPosition)) {
                 Instructions.emitLoadLocal(mv, directType, argSlot);
                 if (directType.isPrimitive()) {
-                    Instructions.emitBoxing(mv, directType);
+                    Instructions.emitBox(mv, directType);
                 }
                 emitNewCaptureCell(mv);
                 mv.visitVarInsn(ASTORE, jvmSlot);
@@ -522,9 +522,9 @@ public class FunctionClassEmitter extends ClassEmitter {
         if (directReturnType.isPrimitive()) {
             // primitive 表达式函数直接返回原始值，避免 callDirect 内装箱、调用点再拆箱。
             if (returnType.isPrimitive()) {
-                FunctionCallHandlers.emitPrimitiveConversion(returnType, directReturnType, mv);
+                Instructions.emitPrimitiveConversion(returnType, directReturnType, mv);
             } else {
-                FunctionCallHandlers.emitUnbox(directReturnType, mv);
+                Instructions.emitUnbox(mv, directReturnType);
             }
             mv.visitLabel(end);
             mv.visitInsn(returnOpcode(directReturnType));
@@ -532,7 +532,7 @@ public class FunctionClassEmitter extends ClassEmitter {
             if (returnType == Type.VOID) {
                 mv.visitInsn(ACONST_NULL);
             } else if (returnType.isPrimitive()) {
-                Instructions.emitBoxing(mv, returnType);
+                Instructions.emitBox(mv, returnType);
             }
             mv.visitLabel(end);
             mv.visitInsn(ARETURN);

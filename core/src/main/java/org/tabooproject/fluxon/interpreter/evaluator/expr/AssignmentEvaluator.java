@@ -4,6 +4,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.ExpressionEvaluator;
 import org.tabooproject.fluxon.interpreter.evaluator.expr.assign.AssignmentTargetHandler;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.getInternalName;
 import static org.tabooproject.fluxon.runtime.Type.*;
 import static org.tabooproject.fluxon.runtime.stdlib.Operations.*;
 
@@ -144,15 +146,6 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         HANDLERS.put(MemberAccessExpression.class, new MemberAccessAssignHandler());
     }
 
-    // 基本类型转换指令查表 [from][to]: I=0, J=1, F=2, D=3
-    private static final int[][] CONVERT_INSNS = {
-            //     I    J    F    D
-            /* I */ {0, I2L, I2F, I2D},
-            /* J */ {L2I, 0, L2F, L2D},
-            /* F */ {F2I, F2L, 0, F2D},
-            /* D */ {D2I, D2L, D2F, 0},
-    };
-
     public static Object getLocalBoxed(Environment env, int position, Type varType) {
         switch (varType.getDescriptor().charAt(0)) {
             case 'I': case 'Z': return env.getLocalInt(position);
@@ -215,18 +208,10 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         return eval;
     }
 
-    public static void box(Type type, MethodVisitor mv) {
-        boxing(type, mv);
-    }
-
-    public static void unbox(Type type, MethodVisitor mv) {
-        ExpressionEvaluator.emitUnbox(type, mv);
-    }
-
     public static void generateBoxedValue(Evaluator<ParseResult> eval, ParseResult expr, CodeContext ctx, MethodVisitor mv) {
         Type t = eval.generateBytecode(expr, ctx, mv);
         if (t == VOID) throw new VoidError("Void type is not allowed for assignment value");
-        boxing(t, mv);
+        Instructions.emitBox(mv, t);
     }
 
     public static void generateCompoundOperation(AssignExpression result, Evaluator<ParseResult> valueEval, TokenType operatorType, CodeContext ctx, MethodVisitor mv) {
@@ -252,14 +237,14 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         DirectBinding binding = overloaded.getBinding();
         Class<?> targetClass = overloaded.getTarget();
         if (targetClass != Object.class) {
-            mv.visitTypeInsn(CHECKCAST, targetClass.getName().replace('.', '/'));
+            mv.visitTypeInsn(CHECKCAST, getInternalName(targetClass));
         }
         Type actualRightType = valueEval.generateBytecode(result.getValue(), ctx, mv);
         if (actualRightType == VOID) throw new VoidError("Void type is not allowed for assignment value");
         Type expectedRightType = Type.fromClass(overloaded.getRight());
         emitOperatorArgumentConversion(actualRightType, expectedRightType, mv);
         if (!actualRightType.isPrimitive() && overloaded.getRight() != Object.class) {
-            mv.visitTypeInsn(CHECKCAST, overloaded.getRight().getName().replace('.', '/'));
+            mv.visitTypeInsn(CHECKCAST, getInternalName(overloaded.getRight()));
         }
         mv.visitMethodInsn(INVOKESTATIC, binding.getOwner(), binding.getMethod(), binding.getDescriptor(), false);
         Type returnType = Type.fromClass(getReturnClass(binding.getDescriptor()));
@@ -268,7 +253,7 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
             return;
         }
         if (returnType.isPrimitive()) {
-            box(returnType, mv);
+            Instructions.emitBox(mv, returnType);
         }
     }
 
@@ -277,9 +262,9 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         if (actual.isPrimitive() && expected.isPrimitive()) {
             emitConvert(actual, expected, mv);
         } else if (!actual.isPrimitive() && expected.isPrimitive()) {
-            unbox(expected, mv);
+            Instructions.emitUnbox(mv, expected);
         } else if (actual.isPrimitive()) {
-            box(actual, mv);
+            Instructions.emitBox(mv, actual);
         }
     }
 
@@ -296,26 +281,12 @@ public class AssignmentEvaluator extends ExpressionEvaluator<AssignExpression> {
         }
     }
 
-    private static int typeIndex(Type t) {
-        switch (t.getDescriptor().charAt(0)) {
-            case 'I': case 'Z': return 0;
-            case 'J': return 1;
-            case 'F': return 2;
-            case 'D': return 3;
-            default: return -1;
-        }
-    }
-
     public static void emitConvert(Type from, Type to, MethodVisitor mv) {
         if (from.equals(to)) return;
         if (!from.isPrimitive()) {
-            ExpressionEvaluator.emitUnbox(to, mv);
+            Instructions.emitUnbox(mv, to);
             return;
         }
-        int fi = typeIndex(from), ti = typeIndex(to);
-        if (fi >= 0 && ti >= 0) {
-            int insn = CONVERT_INSNS[fi][ti];
-            if (insn != 0) mv.visitInsn(insn);
-        }
+        Instructions.emitPrimitiveConversion(from, to, mv);
     }
 }

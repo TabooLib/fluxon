@@ -70,12 +70,12 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             Type argType = FunctionCallHandlers.emitArgExpression(arg, ctx, mv);
             if (expectedType.isPrimitive()) {
                 if (argType.isPrimitive()) {
-                    FunctionCallHandlers.emitPrimitiveConversion(argType, expectedType, mv);
+                    Instructions.emitPrimitiveConversion(argType, expectedType, mv);
                 } else {
-                    FunctionCallHandlers.emitUnbox(expectedType, mv);
+                    Instructions.emitUnbox(mv, expectedType);
                 }
             } else if (argType.isPrimitive()) {
-                FunctionCallHandlers.emitBox(argType, mv);
+                Instructions.emitBox(mv, argType);
             }
             argIndex++;
         }
@@ -124,12 +124,12 @@ public class DirectFunctionHandler implements FunctionCallHandler {
             Type localType = expectedType.isPrimitive() ? expectedType : Type.OBJECT;
             if (localType.isPrimitive()) {
                 if (argType.isPrimitive()) {
-                    FunctionCallHandlers.emitPrimitiveConversion(argType, localType, mv);
+                    Instructions.emitPrimitiveConversion(argType, localType, mv);
                 } else {
-                    FunctionCallHandlers.emitUnbox(localType, mv);
+                    Instructions.emitUnbox(mv, localType);
                 }
             } else if (argType.isPrimitive()) {
-                FunctionCallHandlers.emitBox(argType, mv);
+                Instructions.emitBox(mv, argType);
             }
             int slot = ctx.allocateLocalVar(localType);
             Instructions.emitStoreLocal(mv, localType, slot);

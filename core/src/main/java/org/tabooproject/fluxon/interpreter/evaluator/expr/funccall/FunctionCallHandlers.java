@@ -205,7 +205,7 @@ public final class FunctionCallHandlers {
             mv.visitMethodInsn(INVOKEVIRTUAL, ctxPath, "setRef", "(I" + Type.OBJECT + ")V", false);
             return;
         }
-        Instructions.emitUnbox(expected, mv);
+        Instructions.emitUnbox(mv, expected);
         emitSetPrimitive(expected, ctxPath, mv);
     }
 

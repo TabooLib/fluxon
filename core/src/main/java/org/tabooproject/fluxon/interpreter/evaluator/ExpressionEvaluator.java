@@ -9,6 +9,7 @@ import org.tabooproject.fluxon.interpreter.BreakException;
 import org.tabooproject.fluxon.interpreter.ContinueException;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.parser.expression.Expression;
 import org.tabooproject.fluxon.parser.expression.ExpressionType;
@@ -127,45 +128,10 @@ public abstract class ExpressionEvaluator<T extends Expression> extends Evaluato
     public static void emitConvertPrimitive(Type from, Type to, MethodVisitor mv) {
         if (from.equals(to)) return;
         if (!from.isPrimitive()) {
-            emitUnbox(to, mv);
+            Instructions.emitUnbox(mv, to);
             return;
         }
-        if (from == Type.I) {
-            if (to == Type.J) mv.visitInsn(I2L);
-            else if (to == Type.F) mv.visitInsn(I2F);
-            else if (to == Type.D) mv.visitInsn(I2D);
-        } else if (from == Type.J) {
-            if (to == Type.I) mv.visitInsn(L2I);
-            else if (to == Type.F) mv.visitInsn(L2F);
-            else if (to == Type.D) mv.visitInsn(L2D);
-        } else if (from == Type.F) {
-            if (to == Type.I) mv.visitInsn(F2I);
-            else if (to == Type.J) mv.visitInsn(F2L);
-            else if (to == Type.D) mv.visitInsn(F2D);
-        } else if (from == Type.D) {
-            if (to == Type.I) mv.visitInsn(D2I);
-            else if (to == Type.J) mv.visitInsn(D2L);
-            else if (to == Type.F) mv.visitInsn(D2F);
-        }
-    }
-
-    public static void emitUnbox(Type type, MethodVisitor mv) {
-        if (type == Type.I) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
-        } else if (type == Type.J) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
-        } else if (type == Type.F) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
-        } else if (type == Type.D) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
-        } else if (type == Type.Z) {
-            mv.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
-        }
+        Instructions.emitPrimitiveConversion(from, to, mv);
     }
 
     /**

@@ -4,10 +4,9 @@ import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.compiler.TypeAnalyzer;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.parser.ParseResult;
 import org.tabooproject.fluxon.runtime.Type;
-
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 
 public abstract class Evaluator<T extends ParseResult> {
 
@@ -49,23 +48,12 @@ public abstract class Evaluator<T extends ParseResult> {
      * @return 装箱后的类型
      */
     protected static Type boxing(Type type, MethodVisitor mv) {
-        switch (type.getDescriptor()) {
-            case "I":
-                mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
-                return Type.INT;
-            case "J":
-                mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
-                return Type.LONG;
-            case "F":
-                mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
-                return Type.FLOAT;
-            case "D":
-                mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
-                return Type.DOUBLE;
-            case "Z":
-                mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
-                return Type.BOOLEAN;
-        }
+        Instructions.emitBox(mv, type);
+        if (type == Type.I) return Type.INT;
+        if (type == Type.J) return Type.LONG;
+        if (type == Type.F) return Type.FLOAT;
+        if (type == Type.D) return Type.DOUBLE;
+        if (type == Type.Z) return Type.BOOLEAN;
         return type;
     }
 }

@@ -249,7 +249,7 @@ public class BridgeClassEmitter extends ClassEmitter {
             mv.visitMethodInsn(INVOKEVIRTUAL, FunctionContext.TYPE.getPath(), "setReturnDouble", "(D)V", false);
         } else {
             if (returnType.isPrimitive()) {
-                Instructions.emitBoxing(mv, returnType);
+                Instructions.emitBox(mv, returnType);
             }
             mv.visitVarInsn(ASTORE, 3);
             mv.visitVarInsn(ALOAD, 2);

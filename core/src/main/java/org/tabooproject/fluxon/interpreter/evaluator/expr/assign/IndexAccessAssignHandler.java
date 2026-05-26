@@ -3,6 +3,7 @@ package org.tabooproject.fluxon.interpreter.evaluator.expr.assign;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -50,7 +51,7 @@ public class IndexAccessAssignHandler implements AssignmentTargetHandler<IndexAc
         Evaluator<ParseResult> targetEval = requireEvaluator(ctx, target.getTarget(), "index access target");
         Type tt = targetEval.generateBytecode(target.getTarget(), ctx, mv);
         if (tt == VOID) throw new VoidError("Void type is not allowed for index access target");
-        box(tt, mv);
+        Instructions.emitBox(mv, tt);
         // 处理多索引：前 n-1 个索引用于导航到目标容器
         for (int i = 0; i < indices.size() - 1; i++) {
             generateBoxedValue(requireEvaluator(ctx, indices.get(i), "index expression"), indices.get(i), ctx, mv);

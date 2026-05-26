@@ -126,7 +126,7 @@ public class ReferenceEvaluator extends ExpressionEvaluator<ReferenceExpression>
                 false
         );
         if (rootType.isPrimitive()) {
-            Instructions.unbox(mv, rootType);
+            Instructions.emitUnbox(mv, rootType);
         } else {
             emitReferenceCast(rootType, mv);
         }

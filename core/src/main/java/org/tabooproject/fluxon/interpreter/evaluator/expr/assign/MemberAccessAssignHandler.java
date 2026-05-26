@@ -4,6 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 import org.tabooproject.fluxon.interpreter.bytecode.CodeContext;
+import org.tabooproject.fluxon.interpreter.bytecode.Instructions;
 import org.tabooproject.fluxon.interpreter.evaluator.Evaluator;
 import org.tabooproject.fluxon.lexer.TokenType;
 import org.tabooproject.fluxon.parser.ParseResult;
@@ -56,7 +57,7 @@ public class MemberAccessAssignHandler implements AssignmentTargetHandler<Member
         Evaluator<ParseResult> targetEval = requireEvaluator(ctx, target.getTarget(), "member access target");
         Type tt = targetEval.generateBytecode(target.getTarget(), ctx, mv);
         if (tt == VOID) throw new VoidError("Void type is not allowed for member access target");
-        box(tt, mv);
+        Instructions.emitBox(mv, tt);
         Label skipLabel = null;
         Label endLabel = null;
         if (safe) {

@@ -88,7 +88,7 @@ final class LoopRootCachePlanner {
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(cache.name);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "getRootVariable", "(" + Type.STRING + ")" + Type.OBJECT, false);
-            Instructions.unbox(mv, cache.type);
+            Instructions.emitUnbox(mv, cache.type);
             mv.visitVarInsn(storeOpcode(cache.type), cache.slot);
         }
     }
@@ -123,7 +123,7 @@ final class LoopRootCachePlanner {
             Instructions.loadEnvironment(mv, ctx);
             mv.visitLdcInsn(cache.name);
             mv.visitVarInsn(loadOpcode(cache.type), cache.slot);
-            emitBox(cache.type, mv);
+            Instructions.emitBox(mv, cache.type);
             mv.visitMethodInsn(INVOKEVIRTUAL, Environment.TYPE.getPath(), "setRootVariable", "(" + Type.STRING + Type.OBJECT + ")V", false);
         }
     }
@@ -150,26 +150,6 @@ final class LoopRootCachePlanner {
             Instructions.emitEnvironmentSetLocal(mv, cache.type);
         }
         mv.visitLabel(skipWriteBack);
-    }
-
-    private static void emitBox(Type type, MethodVisitor mv) {
-        switch (type.getDescriptor()) {
-            case "I":
-                mv.visitMethodInsn(INVOKESTATIC, Type.INT.getPath(), "valueOf", "(I)" + Type.INT, false);
-                break;
-            case "J":
-                mv.visitMethodInsn(INVOKESTATIC, Type.LONG.getPath(), "valueOf", "(J)" + Type.LONG, false);
-                break;
-            case "F":
-                mv.visitMethodInsn(INVOKESTATIC, Type.FLOAT.getPath(), "valueOf", "(F)" + Type.FLOAT, false);
-                break;
-            case "D":
-                mv.visitMethodInsn(INVOKESTATIC, Type.DOUBLE.getPath(), "valueOf", "(D)" + Type.DOUBLE, false);
-                break;
-            case "Z":
-                mv.visitMethodInsn(INVOKESTATIC, Type.BOOLEAN.getPath(), "valueOf", "(Z)" + Type.BOOLEAN, false);
-                break;
-        }
     }
 
     private static Plan createPlan(LinkedHashMap<String, Boolean> assignedRootNames, CodeContext ctx, Set<String> conditionRootNames) {
