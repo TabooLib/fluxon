@@ -2,12 +2,16 @@ package org.tabooproject.fluxon.compiler;
 
 import org.jetbrains.annotations.NotNull;
 import org.tabooproject.fluxon.parser.*;
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysis;
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysisKeys;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 编译上下文
@@ -45,6 +49,8 @@ public class CompilationContext {
     private boolean forceLocalVariables = false;
     // 参数变量（使用数组访问，而非 HashMap）
     private final LinkedHashMap<String, ParameterInfo> parameters = new LinkedHashMap<>();
+    // 解析后静态分析（根变量引用、函数调用等）
+    private ScriptAnalysis scriptAnalysis;
 
     public CompilationContext(String source) {
         this.source = source;
@@ -209,6 +215,35 @@ public class CompilationContext {
      */
     public Map<String, Type> getRootVariableTypes() {
         return rootVariableTypes;
+    }
+
+    /**
+     * 解析阶段完成的脚本静态分析；未解析时为 null。
+     */
+    public ScriptAnalysis getScriptAnalysis() {
+        return scriptAnalysis;
+    }
+
+    public void setScriptAnalysis(ScriptAnalysis scriptAnalysis) {
+        this.scriptAnalysis = scriptAnalysis;
+    }
+
+    /**
+     * 脚本体内实际读取的根变量名。
+     */
+    public Set<String> getReferencedRootVariableNames() {
+        return scriptAnalysis != null
+                ? scriptAnalysis.getStringSet(ScriptAnalysisKeys.REFERENCED_ROOT_VARIABLES)
+                : Collections.emptySet();
+    }
+
+    /**
+     * 脚本体内出现的函数调用名。
+     */
+    public Set<String> getReferencedFunctionNames() {
+        return scriptAnalysis != null
+                ? scriptAnalysis.getStringSet(ScriptAnalysisKeys.REFERENCED_FUNCTIONS)
+                : Collections.emptySet();
     }
 
     /**

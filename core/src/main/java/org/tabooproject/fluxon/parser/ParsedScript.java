@@ -2,6 +2,8 @@ package org.tabooproject.fluxon.parser;
 
 import org.tabooproject.fluxon.compiler.CompilationContext;
 import org.tabooproject.fluxon.compiler.ParameterInfo;
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysis;
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysisKeys;
 import org.tabooproject.fluxon.interpreter.Interpreter;
 
 
@@ -9,9 +11,11 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -23,11 +27,17 @@ public class ParsedScript {
     private final List<ParseResult> results;
     private final int rootLocalVariableCount;
     private final CompilationContext context;
+    private final ScriptAnalysis scriptAnalysis;
 
     public ParsedScript(List<ParseResult> results, int rootLocalVariableCount, CompilationContext context) {
+        this(results, rootLocalVariableCount, context, context != null ? context.getScriptAnalysis() : null);
+    }
+
+    public ParsedScript(List<ParseResult> results, int rootLocalVariableCount, CompilationContext context, ScriptAnalysis scriptAnalysis) {
         this.results = results;
         this.rootLocalVariableCount = rootLocalVariableCount;
         this.context = context;
+        this.scriptAnalysis = scriptAnalysis;
     }
 
     /**
@@ -49,6 +59,22 @@ public class ParsedScript {
      */
     public CompilationContext getContext() {
         return context;
+    }
+
+    /**
+     * 脚本体内实际读取的根变量名（编译期收集）。
+     *
+     * @return 根变量名集合
+     */
+    public ScriptAnalysis getScriptAnalysis() {
+        return scriptAnalysis;
+    }
+
+    public Set<String> getReferencedRootVariableNames() {
+        if (scriptAnalysis != null) {
+            return scriptAnalysis.getStringSet(ScriptAnalysisKeys.REFERENCED_ROOT_VARIABLES);
+        }
+        return context != null ? context.getReferencedRootVariableNames() : Collections.emptySet();
     }
 
     /**

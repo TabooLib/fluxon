@@ -17,6 +17,8 @@ import org.tabooproject.fluxon.runtime.Environment;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
 import org.tabooproject.fluxon.runtime.Type;
 
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysis;
+
 import java.util.List;
 import java.util.Map;
 
@@ -72,8 +74,10 @@ public class Fluxon {
         analyzer.setParameterTypes(context.getParameters());
         analyzer.analyze(results);
         context.setAttribute("variableTypes", analyzer.getVariableTypes());
+        ScriptAnalysis scriptAnalysis = ScriptAnalysis.analyze(results);
+        context.setScriptAnalysis(scriptAnalysis);
         Integer rootLocalVarCount = context.getAttribute("rootLocalVariableCount");
-        return new ParsedScript(results, rootLocalVarCount != null ? rootLocalVarCount : 0, context);
+        return new ParsedScript(results, rootLocalVarCount != null ? rootLocalVarCount : 0, context, scriptAnalysis);
     }
 
     /**
