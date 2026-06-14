@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 可注册的脚本分析管线；默认包含根变量与函数引用 Pass，可追加自定义 Pass。
+ * 默认 Pass 顺序：根变量读取名 → 函数调用引用（被调名 + 调用点实参静态值，见 {@link FunctionReferencePass}）。
  */
 public final class ScriptAnalysisPipeline {
 

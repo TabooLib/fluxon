@@ -1,5 +1,6 @@
 package org.tabooproject.fluxon.compiler;
 
+import org.tabooproject.fluxon.compiler.analysis.ScriptAnalysis;
 import org.tabooproject.fluxon.interpreter.bytecode.BytecodeGenerator;
 import org.tabooproject.fluxon.interpreter.bytecode.FluxonClassLoader;
 import org.tabooproject.fluxon.parser.definition.Definition;
@@ -20,13 +21,25 @@ public class CompileResult {
     private final BytecodeGenerator generator;
     private final byte[] mainClass;
     private final List<byte[]> innerClasses;
+    private final CompilationContext compilationContext;
 
     public CompileResult(String source, String className, BytecodeGenerator generator, List<byte[]> bytecode) {
+        this(source, className, generator, bytecode, null);
+    }
+
+    public CompileResult(
+            String source,
+            String className,
+            BytecodeGenerator generator,
+            List<byte[]> bytecode,
+            CompilationContext compilationContext
+    ) {
         this.source = source;
         this.className = className;
         this.generator = generator;
         this.mainClass = bytecode.get(0);
         this.innerClasses = bytecode.subList(1, bytecode.size());
+        this.compilationContext = compilationContext;
     }
 
     /**
@@ -149,6 +162,20 @@ public class CompileResult {
     public Object[] getCommandDataArray() {
         List<Object> list = getCommandDataList();
         return list.isEmpty() ? null : list.toArray();
+    }
+
+    /**
+     * 编译期上下文；{@link Fluxon#compile} 路径下包含 {@link ScriptAnalysis}。
+     */
+    public CompilationContext getCompilationContext() {
+        return compilationContext;
+    }
+
+    /**
+     * 与 {@link #getCompilationContext()} 绑定的静态分析；未执行分析时返回 null。
+     */
+    public ScriptAnalysis getScriptAnalysis() {
+        return compilationContext != null ? compilationContext.getScriptAnalysis() : null;
     }
 }
 

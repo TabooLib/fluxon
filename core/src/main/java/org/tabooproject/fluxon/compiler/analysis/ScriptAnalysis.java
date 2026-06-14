@@ -2,6 +2,7 @@ package org.tabooproject.fluxon.compiler.analysis;
 
 import org.tabooproject.fluxon.parser.ParseResult;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -57,6 +58,24 @@ public final class ScriptAnalysis {
             return Collections.unmodifiableSet((Set<String>) value);
         }
         return Collections.emptySet();
+    }
+
+    /**
+     * 读取 {@link ScriptAnalysisKeys#RESOLVED_FUNCTION_CALLS}；缺失或类型不符时返回空列表。
+     */
+    public List<ResolvedCallSite> getResolvedCallSites() {
+        Object value = facts.get(ScriptAnalysisKeys.RESOLVED_FUNCTION_CALLS);
+        if (value instanceof List) {
+            List<?> raw = (List<?>) value;
+            List<ResolvedCallSite> sites = new ArrayList<>(raw.size());
+            for (Object item : raw) {
+                if (item instanceof ResolvedCallSite) {
+                    sites.add((ResolvedCallSite) item);
+                }
+            }
+            return Collections.unmodifiableList(sites);
+        }
+        return Collections.emptyList();
     }
 
     Map<String, Object> factsView() {

@@ -190,6 +190,9 @@ public class Fluxon {
         typeAnalyzer.setParameterTypes(context.getParameters());
         typeAnalyzer.analyze(results);
         generator.setTypeAnalyzer(typeAnalyzer);
+        context.setAttribute("variableTypes", typeAnalyzer.getVariableTypes());
+        ScriptAnalysis scriptAnalysis = ScriptAnalysis.analyze(results);
+        context.setScriptAnalysis(scriptAnalysis);
         // 分离语句和定义
         for (ParseResult result : results) {
             if (result instanceof Statement) {
@@ -203,6 +206,6 @@ public class Fluxon {
             generator.setRootLocalVariableCount(rootLocalVarCount);
         }
         List<byte[]> bytecode = generator.generateClassBytecode(className, classLoader);
-        return new CompileResult(context.getSource(), className, generator, bytecode);
+        return new CompileResult(context.getSource(), className, generator, bytecode, context);
     }
 }
