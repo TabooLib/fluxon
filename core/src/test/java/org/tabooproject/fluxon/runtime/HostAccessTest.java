@@ -10,6 +10,7 @@ import org.tabooproject.fluxon.runtime.java.Optional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
@@ -174,6 +175,53 @@ public class HostAccessTest {
         }
     }
 
+    /**
+     * 验证 @Export 方法能否接收脚本传入的 Fluxon lambda（Function 参数）
+     */
+    public static class ExportFunctionParamClass {
+
+        public static final ExportFunctionParamClass INSTANCE = new ExportFunctionParamClass();
+
+        @Export
+        public int applyWithLambda(Function fn) {
+            Objects.requireNonNull(fn);
+            FunctionContextPool pool = FunctionContextPool.local();
+            Environment env = FluxonRuntime.getInstance().newEnvironment();
+            NativeFunction<?> host = new NativeFunction<>("exportFnHost", FunctionSignature.returns(Type.OBJECT).noParams(), c -> {});
+            FunctionContext<?> seed = pool.borrow(host, null, 0, env);
+            try (FunctionContext<?> ctx = pool.borrowCopy(seed, null)) {
+                ctx.updateRefs(5);
+                fn.call(ctx);
+                Object result = ctx.getReturnRef();
+                if (result instanceof Number) {
+                    return ((Number) result).intValue();
+                }
+                return 0;
+            }
+        }
+
+        @Export
+        public List<Object> mapWithLambda(List<?> items, Function fn) {
+            Objects.requireNonNull(items);
+            Objects.requireNonNull(fn);
+            List<Object> out = new ArrayList<>();
+            FunctionContextPool pool = FunctionContextPool.local();
+            Environment env = FluxonRuntime.getInstance().newEnvironment();
+            NativeFunction<?> host = new NativeFunction<>("exportMapHost", FunctionSignature.returns(Type.OBJECT).noParams(), c -> {});
+            FunctionContext<?> seed = pool.borrow(host, null, 0, env);
+            try (FunctionContext<?> ctx = pool.borrowCopy(seed, null)) {
+                int index = 0;
+                for (Object item : items) {
+                    ctx.updateRefs(item, index);
+                    fn.call(ctx);
+                    out.add(ctx.getReturnRef());
+                    index++;
+                }
+            }
+            return out;
+        }
+    }
+
     @BeforeAll
     public static void setup() {
         FluxonRuntime runtime = FluxonRuntime.getInstance();
@@ -189,6 +237,8 @@ public class HostAccessTest {
         // 注册非重载导出类，覆盖 ClassBridge 按索引直连的热路径。
         runtime.registerFunction("test:access", "fastAccess", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(FastPathClass.INSTANCE));
         runtime.getExportRegistry().registerClass(FastPathClass.class, "test:access");
+        runtime.registerFunction("test:access", "lambdaAccess", returns(Type.OBJECT).noParams(), (context) -> context.setReturnRef(ExportFunctionParamClass.INSTANCE));
+        runtime.getExportRegistry().registerClass(ExportFunctionParamClass.class, "test:access");
         FluxonFunctionScanner.register(runtime, EnumFunctionClass.class);
 
         // 自动导入
@@ -263,6 +313,19 @@ public class HostAccessTest {
         Object result = Fluxon.eval("typeTest :: acceptNull(null)");
         // null 可以匹配 String 或 Object，根据特异性排序 String 更具体
         assertEquals("null String received", result);
+    }
+
+    @Test
+    public void testExportAcceptsFluxonFunctionParameter() {
+        // @Export 可声明 Function 参数并由桥接传入；宿主侧 call 前须用 updateRefs 绑定 || 的 it（与 ExtensionBuilder.forEachElement 一致）
+        Object squared = Fluxon.eval("lambdaAccess :: applyWithLambda(|| &it * &it)");
+        assertEquals(25, squared);
+        FluxonTestUtil.TestResult mapped = FluxonTestUtil.runSilent(
+                "lambdaAccess :: mapWithLambda([1, 2, 3], || &it + 10)",
+                "TestExportAcceptsFluxonFunctionParameter"
+        );
+        assertEquals("[11, 12, 13]", String.valueOf(mapped.getInterpretResult()));
+        assertEquals("[11, 12, 13]", String.valueOf(mapped.getCompileResult()));
     }
 
 }

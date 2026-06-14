@@ -8,198 +8,230 @@ import org.tabooproject.fluxon.util.CollectionUtils;
 import java.util.*;
 
 import static org.tabooproject.fluxon.runtime.ExtensionBuilder.*;
-import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 @SuppressWarnings("unchecked")
 public class ExtensionIterable {
 
     public static void init(FluxonRuntime runtime) {
         FluxonFunctionScanner.register(runtime, ExtensionIterable.class);
-        initHigherOrder(runtime);
-        initQuerying(runtime);
-        initOrdering(runtime);
     }
 
-    // 高阶变换：遍历、映射、过滤、关联
-    private static void initHigherOrder(FluxonRuntime runtime) {
-        runtime.registerExtension(Iterable.class)
-                // 直接遍历
-                .function("each", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    forEachElement(context, null);
-                    context.setReturnRef(context.getTarget());
-                })
-                // 对每个元素应用函数
-                .function("map", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    List<Object> result = new ArrayList<>();
-                    forEachElement(context, (element, callResult) -> result.add(callResult));
-                    context.setReturnRef(result);
-                })
-                // 对每个元素应用函数并展平结果
-                .function("flatMap", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    List<Object> result = new ArrayList<>();
-                    forEachElement(context, (element, callResult) -> {
-                        if (callResult instanceof Collection) {
-                            result.addAll((Collection<?>) callResult);
-                        } else if (callResult instanceof Iterable) {
-                            for (Object item : (Iterable<?>) callResult) result.add(item);
-                        } else {
-                            result.add(callResult);
-                        }
-                    });
-                    context.setReturnRef(result);
-                })
-                // 过滤元素
-                .function("filter", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    List<Object> result = new ArrayList<>();
-                    forEachElement(context, (element, callResult) -> {
-                        if (Operations.isTrue(callResult)) result.add(element);
-                    });
-                    context.setReturnRef(result);
-                })
-                // 根据键函数创建映射，元素作为值
-                .function("associateBy", returns(Type.MAP).params(Function.TYPE), (context) -> {
-                    Map<Object, Object> result = new HashMap<>();
-                    forEachElement(context, (element, callResult) -> result.put(callResult, element));
-                    context.setReturnRef(result);
-                })
-                // 根据值函数创建映射，元素作为键
-                .function("associateWith", returns(Type.MAP).params(Function.TYPE), (context) -> {
-                    Map<Object, Object> result = new HashMap<>();
-                    forEachElement(context, result::put);
-                    context.setReturnRef(result);
-                })
-                // 分组元素
-                .function("groupBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    Map<Object, List<Object>> result = new HashMap<>();
-                    forEachElement(context, (element, callResult) -> {
-                        result.computeIfAbsent(callResult, k -> new ArrayList<>()).add(element);
-                    });
-                    context.setReturnRef(result);
-                })
-                // 根据断言将元素分为两组
-                .function("partition", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    List<Object> matched = new ArrayList<>();
-                    List<Object> unmatched = new ArrayList<>();
-                    forEachElement(context, (element, callResult) -> {
-                        if (Operations.isTrue(callResult)) {
-                            matched.add(element);
-                        } else {
-                            unmatched.add(element);
-                        }
-                    });
-                    context.setReturnRef(ImmutableMap.of(true, matched, false, unmatched));
-                })
-                // 根据选择器函数去重
-                .function("distinctBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    Iterable<Object> iterable = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
-                    Function selector = (Function) context.getRef(0);
-                    Set<Object> seenKeys = new LinkedHashSet<>();
-                    List<Object> result = new ArrayList<>();
-                    FunctionContextPool pool = context.getPool();
-                    try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
-                        for (Object item : iterable) {
-                            ctx.updateRefs(item);
-                            selector.call(ctx);
-                            Object key = ctx.getReturnRef();
-                            if (seenKeys.add(key)) {
-                                result.add(item);
-                            }
-                        }
-                        context.setReturnRef(result);
-                    }
-                });
+    // 直接遍历并对每个元素应用 Fluxon 函数
+    @FluxonFunction(value = "each", target = Iterable.class)
+    public static Object each(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        forEachElement(context, null);
+        return context.getTarget();
     }
 
-    // 查询与聚合：条件检查、查找、统计、极值
-    private static void initQuerying(FluxonRuntime runtime) {
-        runtime.registerExtension(Iterable.class)
-                // 检查是否有任意元素满足条件
-                .function("any", returns(Type.Z).params(Function.TYPE), (context) -> {
-                    context.setReturnBool(!testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
-                })
-                // 检查是否所有元素都满足条件
-                .function("all", returns(Type.Z).params(Function.TYPE), (context) -> {
-                    context.setReturnBool(testElements(context, (element, callResult) -> Operations.isTrue(callResult)));
-                })
-                // 检查是否没有元素满足条件
-                .function("none", returns(Type.Z).params(Function.TYPE), (context) -> {
-                    context.setReturnBool(testElements(context, (element, callResult) -> !Operations.isTrue(callResult)));
-                })
-                // 查找第一个满足条件的元素
-                .function("find", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    Object[] found = new Object[1];
-                    testElements(context, (element, callResult) -> {
-                        if (Operations.isTrue(callResult)) {
-                            found[0] = element;
-                            return false; // 找到后中断
-                        }
-                        return true; // 继续查找
-                    });
-                    context.setReturnRef(found[0]);
-                })
-                // 统计满足条件的元素数量
-                .function("countOf", returns(Type.I).params(Function.TYPE), (context) -> {
-                    int[] count = new int[1];
-                    forEachElement(context, (element, callResult) -> {
-                        if (Operations.isTrue(callResult)) count[0]++;
-                    });
-                    context.setReturnInt(count[0]);
-                })
-                // 对每个元素应用函数并求和
-                .function("sumOf", returns(Type.D).params(Function.TYPE), (context) -> {
-                    double[] sum = new double[1];
-                    forEachElement(context, (element, callResult) -> {
-                        if (callResult instanceof Number) {
-                            sum[0] += ((Number) callResult).doubleValue();
-                        }
-                    });
-                    context.setReturnDouble(sum[0]);
-                })
-                // 对每个元素应用函数并求最小值
-                .function("minOf", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(compareElements(context, (current, candidate) ->
-                            ((Comparable<Object>) candidate).compareTo(current) < 0
-                    ));
-                })
-                // 对每个元素应用函数并求最大值
-                .function("maxOf", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(compareElements(context, (current, candidate) ->
-                            ((Comparable<Object>) candidate).compareTo(current) > 0
-                    ));
-                })
-                // 根据选择器函数找到最小值对应的元素
-                .function("minBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(compareElementsBy(context, (current, candidate) ->
-                            ((Comparable<Object>) candidate).compareTo(current) < 0
-                    ));
-                })
-                // 根据选择器函数找到最大值对应的元素
-                .function("maxBy", returns(Type.OBJECT).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(compareElementsBy(context, (current, candidate) ->
-                            ((Comparable<Object>) candidate).compareTo(current) > 0
-                    ));
-                });
+    // 对每个元素应用 Fluxon 函数并收集返回值
+    @FluxonFunction(value = "map", target = Iterable.class)
+    public static List<Object> map(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        List<Object> result = new ArrayList<>();
+        forEachElement(context, (element, callResult) -> result.add(callResult));
+        return result;
     }
 
-    // 排序
-    private static void initOrdering(FluxonRuntime runtime) {
-        runtime.registerExtension(Iterable.class)
-                // 自然顺序升序排序
-                .function("sorted", returns(Type.LIST).noParams(), (context) -> {
-                    context.setReturnRef(sortElements(context, false, false));
-                })
-                // 自然顺序降序排序
-                .function("sortedDescending", returns(Type.LIST).noParams(), (context) -> {
-                    context.setReturnRef(sortElements(context, true, false));
-                })
-                // 根据选择器函数升序排序
-                .function("sortedBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(sortElements(context, false, true));
-                })
-                // 根据选择器函数降序排序
-                .function("sortedDescendingBy", returns(Type.LIST).params(Function.TYPE), (context) -> {
-                    context.setReturnRef(sortElements(context, true, true));
-                });
+    // 对每个元素应用函数并将结果展平为列表
+    @FluxonFunction(value = "flatMap", target = Iterable.class)
+    public static List<Object> flatMap(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        List<Object> result = new ArrayList<>();
+        forEachElement(context, (element, callResult) -> {
+            if (callResult instanceof Collection) {
+                result.addAll((Collection<?>) callResult);
+            } else if (callResult instanceof Iterable) {
+                for (Object item : (Iterable<?>) callResult) {
+                    result.add(item);
+                }
+            } else {
+                result.add(callResult);
+            }
+        });
+        return result;
+    }
+
+    // 保留谓词为真的元素
+    @FluxonFunction(value = "filter", target = Iterable.class)
+    public static List<Object> filter(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        List<Object> result = new ArrayList<>();
+        forEachElement(context, (element, callResult) -> {
+            if (Operations.isTrue(callResult)) {
+                result.add(element);
+            }
+        });
+        return result;
+    }
+
+    // 以选择器返回值为键、元素为值构建映射
+    @FluxonFunction(value = "associateBy", target = Iterable.class)
+    public static Map<Object, Object> associateBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        Map<Object, Object> result = new HashMap<>();
+        forEachElement(context, (element, callResult) -> result.put(callResult, element));
+        return result;
+    }
+
+    // 以元素为键、选择器返回值为值构建映射
+    @FluxonFunction(value = "associateWith", target = Iterable.class)
+    public static Map<Object, Object> associateWith(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        Map<Object, Object> result = new HashMap<>();
+        forEachElement(context, result::put);
+        return result;
+    }
+
+    // 按选择器返回值分组
+    @FluxonFunction(value = "groupBy", target = Iterable.class)
+    public static Map<Object, List<Object>> groupBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        Map<Object, List<Object>> result = new HashMap<>();
+        forEachElement(context, (element, callResult) -> {
+            result.computeIfAbsent(callResult, k -> new ArrayList<>()).add(element);
+        });
+        return result;
+    }
+
+    // 按谓词将元素分为 true / false 两组
+    @FluxonFunction(value = "partition", target = Iterable.class)
+    public static Object partition(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        List<Object> matched = new ArrayList<>();
+        List<Object> unmatched = new ArrayList<>();
+        forEachElement(context, (element, callResult) -> {
+            if (Operations.isTrue(callResult)) {
+                matched.add(element);
+            } else {
+                unmatched.add(element);
+            }
+        });
+        return ImmutableMap.of(true, matched, false, unmatched);
+    }
+
+    // 按选择器返回值去重，保留首次出现的元素
+    @FluxonFunction(value = "distinctBy", target = Iterable.class)
+    public static List<Object> distinctBy(Iterable<?> iterable, FunctionContext<?> context, Function selector) {
+        Iterable<Object> target = (Iterable<Object>) Objects.requireNonNull(context.getTarget());
+        Set<Object> seenKeys = new LinkedHashSet<>();
+        List<Object> result = new ArrayList<>();
+        FunctionContextPool pool = context.getPool();
+        try (FunctionContext<?> ctx = pool.borrowCopy(context, null)) {
+            for (Object item : target) {
+                ctx.updateRefs(item);
+                selector.call(ctx);
+                Object key = ctx.getReturnRef();
+                if (seenKeys.add(key)) {
+                    result.add(item);
+                }
+            }
+        }
+        return result;
+    }
+
+    // 是否存在任意元素使谓词为真
+    @FluxonFunction(value = "any", target = Iterable.class)
+    public static boolean any(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return !testElements(context, (element, callResult) -> !Operations.isTrue(callResult));
+    }
+
+    // 是否所有元素均使谓词为真
+    @FluxonFunction(value = "all", target = Iterable.class)
+    public static boolean all(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return testElements(context, (element, callResult) -> Operations.isTrue(callResult));
+    }
+
+    // 是否没有元素使谓词为真
+    @FluxonFunction(value = "none", target = Iterable.class)
+    public static boolean none(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return testElements(context, (element, callResult) -> !Operations.isTrue(callResult));
+    }
+
+    // 返回第一个使谓词为真的元素
+    @FluxonFunction(value = "find", target = Iterable.class)
+    public static Object find(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        Object[] found = new Object[1];
+        testElements(context, (element, callResult) -> {
+            if (Operations.isTrue(callResult)) {
+                found[0] = element;
+                return false;
+            }
+            return true;
+        });
+        return found[0];
+    }
+
+    // 统计使谓词为真的元素个数
+    @FluxonFunction(value = "countOf", target = Iterable.class)
+    public static int countOf(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        int[] count = new int[1];
+        forEachElement(context, (element, callResult) -> {
+            if (Operations.isTrue(callResult)) {
+                count[0]++;
+            }
+        });
+        return count[0];
+    }
+
+    // 对每个元素应用函数并将数值结果求和
+    @FluxonFunction(value = "sumOf", target = Iterable.class)
+    public static double sumOf(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        double[] sum = new double[1];
+        forEachElement(context, (element, callResult) -> {
+            if (callResult instanceof Number) {
+                sum[0] += ((Number) callResult).doubleValue();
+            }
+        });
+        return sum[0];
+    }
+
+    // 对每个元素应用函数后取可比最小值
+    @FluxonFunction(value = "minOf", target = Iterable.class)
+    public static Object minOf(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return compareElements(context, (current, candidate) ->
+                ((Comparable<Object>) candidate).compareTo(current) < 0
+        );
+    }
+
+    // 对每个元素应用函数后取可比最大值
+    @FluxonFunction(value = "maxOf", target = Iterable.class)
+    public static Object maxOf(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return compareElements(context, (current, candidate) ->
+                ((Comparable<Object>) candidate).compareTo(current) > 0
+        );
+    }
+
+    // 按选择器返回值取最小值对应的原始元素
+    @FluxonFunction(value = "minBy", target = Iterable.class)
+    public static Object minBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return compareElementsBy(context, (current, candidate) ->
+                ((Comparable<Object>) candidate).compareTo(current) < 0
+        );
+    }
+
+    // 按选择器返回值取最大值对应的原始元素
+    @FluxonFunction(value = "maxBy", target = Iterable.class)
+    public static Object maxBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return compareElementsBy(context, (current, candidate) ->
+                ((Comparable<Object>) candidate).compareTo(current) > 0
+        );
+    }
+
+    // 按元素自然顺序升序排序
+    @FluxonFunction(value = "sorted", target = Iterable.class)
+    public static List<Object> sorted(Iterable<?> iterable, FunctionContext<?> context) {
+        return sortElements(context, false, false);
+    }
+
+    // 按元素自然顺序降序排序
+    @FluxonFunction(value = "sortedDescending", target = Iterable.class)
+    public static List<Object> sortedDescending(Iterable<?> iterable, FunctionContext<?> context) {
+        return sortElements(context, true, false);
+    }
+
+    // 按选择器返回值升序排序
+    @FluxonFunction(value = "sortedBy", target = Iterable.class)
+    public static List<Object> sortedBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return sortElements(context, false, true);
+    }
+
+    // 按选择器返回值降序排序
+    @FluxonFunction(value = "sortedDescendingBy", target = Iterable.class)
+    public static List<Object> sortedDescendingBy(Iterable<?> iterable, FunctionContext<?> context, Function closure) {
+        return sortElements(context, true, true);
     }
 
     // 取第一个元素
