@@ -228,6 +228,151 @@ public class ExtensionDispatchTableTest {
         assertSame(collectionSet, resolved, "Should resolve to Collection regardless of registration order");
     }
 
+    /**
+     * 复现同名扩展挂在两个 target 上（接口 0 参 + 基类 1 参谓词），
+     * 子类实例调用无参形式时 resolve 失败。
+     * <p>
+     * OverloadSet 是按「注册 target 类型」分桶的，不是把接口 target 与基类 target 的重载合成一个集合；
+     * resolveOverloadSet 只选「最贴」的一个 target 的 OverloadSet，再在该集合内按 argCount 解析。
+     * 该回归用 FluxonRuntime 注册扩展，验证 bake 后的派发表会把父类型桶合入更具体的 target 桶。
+     */
+    @Test
+    void reproduceSameNameOnInterfaceAndBaseZeroArgMissesOnSubclass() {
+        String name = "same_name_extension_regression";
+        Function interfaceFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.VOID).noParams(),
+                ctx -> {}
+        );
+        Function baseFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.Z).params(Function.TYPE),
+                ctx -> ctx.setReturnBool(true)
+        );
+        try {
+            runtime.registerExtensionFunction(InterfaceExtensionTargetStub.class, interfaceFunction);
+            runtime.registerExtensionFunction(BaseExtensionTargetStub.class, baseFunction);
+
+            Environment env = runtime.newEnvironment();
+            int index = getExtensionIndex(name);
+
+            assertSame(baseFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 1), "1 参谓词应仍在基类 target 桶内解析");
+            assertSame(interfaceFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 0), "期望子类上同名扩展能命中接口 target 的 0 参；当前只查基类 target 桶会返回 null");
+        } finally {
+            runtime.unregisterExtensionFunction(InterfaceExtensionTargetStub.class, name, interfaceFunction);
+            runtime.unregisterExtensionFunction(BaseExtensionTargetStub.class, name, baseFunction);
+        }
+    }
+
+    /**
+     * 验证 bake 合并父类型桶不依赖注册顺序。
+     * 基类 target 先注册时，子类仍应能从接口 target 合入 0 参重载。
+     */
+    @Test
+    void bakeMergesParentInterfaceBucketWhenBaseRegisteredFirst() {
+        String name = "same_name_extension_reverse_order_regression";
+        Function baseFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.Z).params(Function.TYPE),
+                ctx -> ctx.setReturnBool(true)
+        );
+        Function interfaceFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.VOID).noParams(),
+                ctx -> {}
+        );
+        try {
+            runtime.registerExtensionFunction(BaseExtensionTargetStub.class, baseFunction);
+            runtime.registerExtensionFunction(InterfaceExtensionTargetStub.class, interfaceFunction);
+
+            Environment env = runtime.newEnvironment();
+            int index = getExtensionIndex(name);
+
+            assertSame(baseFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 1), "基类 target 先注册时，1 参谓词仍应命中基类桶");
+            assertSame(interfaceFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 0), "基类 target 先注册时，0 参重载仍应从接口桶合入");
+        } finally {
+            runtime.unregisterExtensionFunction(BaseExtensionTargetStub.class, name, baseFunction);
+            runtime.unregisterExtensionFunction(InterfaceExtensionTargetStub.class, name, interfaceFunction);
+        }
+    }
+
+    /**
+     * 验证更具体 target 自身的重载优先于合入的父类型重载。
+     * 合并只补全漏查的父类型重载，不能覆盖子类实际应命中的基类 target 重载。
+     */
+    @Test
+    void bakeKeepsSpecificBucketOverParentBucketForSameArgCount() {
+        String name = "same_arg_count_extension_regression";
+        Function interfaceFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.I).noParams(),
+                ctx -> ctx.setReturnInt(-1)
+        );
+        Function baseFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.I).noParams(),
+                ctx -> ctx.setReturnInt(1)
+        );
+        try {
+            runtime.registerExtensionFunction(InterfaceExtensionTargetStub.class, interfaceFunction);
+            runtime.registerExtensionFunction(BaseExtensionTargetStub.class, baseFunction);
+
+            Environment env = runtime.newEnvironment();
+            int index = getExtensionIndex(name);
+
+            assertSame(baseFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 0), "同参数数量时，更具体的基类 target 重载应优先于接口 target 重载");
+            assertSame(interfaceFunction, env.getExtensionFunctionOrNull(InterfaceExtensionTargetStub.class, index, 0), "接口 target 本身仍应命中接口桶重载");
+        } finally {
+            runtime.unregisterExtensionFunction(InterfaceExtensionTargetStub.class, name, interfaceFunction);
+            runtime.unregisterExtensionFunction(BaseExtensionTargetStub.class, name, baseFunction);
+        }
+    }
+
+    /**
+     * 验证 bake 只合并可赋值的父类型桶。
+     * 不相关 target 的同名重载不能被合入子类可见的派发桶。
+     */
+    @Test
+    void bakeDoesNotMergeUnrelatedTargetBucket() {
+        String name = "unrelated_target_extension_regression";
+        Function interfaceFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.VOID).noParams(),
+                ctx -> {}
+        );
+        Function unrelatedFunction = new NativeFunction<>(
+                name,
+                FunctionSignature.returns(Type.Z).params(Function.TYPE),
+                ctx -> ctx.setReturnBool(true)
+        );
+        try {
+            runtime.registerExtensionFunction(InterfaceExtensionTargetStub.class, interfaceFunction);
+            runtime.registerExtensionFunction(UnrelatedExtensionTargetStub.class, unrelatedFunction);
+
+            Environment env = runtime.newEnvironment();
+            int index = getExtensionIndex(name);
+
+            assertSame(interfaceFunction, env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 0), "子类应能命中接口 target 的 0 参重载");
+            assertNull(env.getExtensionFunctionOrNull(DerivedExtensionTargetStub.class, index, 1), "不相关 target 的 1 参重载不能合入子类派发桶");
+            assertSame(unrelatedFunction, env.getExtensionFunctionOrNull(UnrelatedExtensionTargetStub.class, index, 1), "不相关 target 自身仍应命中自己的重载");
+        } finally {
+            runtime.unregisterExtensionFunction(InterfaceExtensionTargetStub.class, name, interfaceFunction);
+            runtime.unregisterExtensionFunction(UnrelatedExtensionTargetStub.class, name, unrelatedFunction);
+        }
+    }
+
+    interface InterfaceExtensionTargetStub {
+    }
+
+    static class BaseExtensionTargetStub implements InterfaceExtensionTargetStub {
+    }
+
+    static class DerivedExtensionTargetStub extends BaseExtensionTargetStub {
+    }
+
+    static class UnrelatedExtensionTargetStub {
+    }
+
     @Test
     void testUnrelatedCandidatesStillWork() {
         // Collection 和 Map 是不相关的接口，LinkedHashMap 只匹配 Map

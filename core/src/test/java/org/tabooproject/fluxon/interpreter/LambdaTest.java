@@ -10,7 +10,18 @@ import org.tabooproject.fluxon.parser.definition.FunctionDefinition;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContext;
+import org.tabooproject.fluxon.runtime.FunctionContextPool;
+import org.tabooproject.fluxon.runtime.Type;
+import org.tabooproject.fluxon.runtime.stdlib.Operations;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.tabooproject.fluxon.runtime.FunctionSignature.returns;
 
 public class LambdaTest {
 
@@ -234,8 +245,56 @@ public class LambdaTest {
     }
 
     /**
-     * 测试真正捕获父变量的 lambda 仍会标记父函数。
+     * 与 await ext(..., |_, entityId, sourceId| ...) 同形的 lambda：多参、忽略首参、多行 || 条件
      */
+    @Test
+    public void testAwaitStyleMultiParamLambdaParseAndPredicate() {
+        String lambdaBody =
+                "|_, entityId, sourceId|\n"
+                        + "    &sourceId == 'source_a_1' || &sourceId == 'source_a_2' ||\n"
+                        + "    &sourceId == 'source_a_3' || &sourceId == 'source_a_4' ||\n"
+                        + "    &sourceId == 'source_a_5' || &sourceId == 'source_a_6'";
+        ensureStubAsyncPredicateRegistered();
+        String snippet = "async def flow() = await stub_async_predicate(" + lambdaBody + ")";
+        assertNotNull(Fluxon.parse(snippet));
+        assertNotNull(Fluxon.parse("await stub_async_predicate(" + lambdaBody + ")"));
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "stub_async_predicate(" + lambdaBody + ")",
+                "TestAwaitStyleMultiParamLambda"
+        );
+        assertTrue(result.isMatch());
+        assertEquals(true, result.getInterpretResult());
+        assertEquals(true, result.getCompileResult());
+    }
+
+    private static final AtomicBoolean stubAsyncPredicateRegistered = new AtomicBoolean(false);
+
+    private static void ensureStubAsyncPredicateRegistered() {
+        if (!stubAsyncPredicateRegistered.compareAndSet(false, true)) {
+            return;
+        }
+        FluxonRuntime runtime = FluxonRuntime.getInstance();
+        runtime.registerFunction(
+                "stub_async_predicate",
+                returns(Type.Z).params(Function.TYPE),
+                context -> {
+                    Function predicate = (Function) context.getRef(0);
+                    FunctionContextPool pool = context.getPool();
+                    FunctionContext<?> seed = pool.borrow(
+                            context.getFunction(),
+                            null,
+                            0,
+                            context.getEnvironment()
+                    );
+                    try (FunctionContext<?> lambdaCtx = pool.borrowCopy(seed, null)) {
+                        lambdaCtx.updateRefs(0, "entity_placeholder", "source_a_3");
+                        predicate.call(lambdaCtx);
+                        context.setReturnBool(Operations.isTrue(lambdaCtx.getReturnRef()));
+                    }
+                }
+        );
+    }
+
     @Test
     public void testCapturingLambdaStillDisablesParentEnvFree() {
         ParsedScript script = Fluxon.parse("def apply(value) { callback = |it| &it + &value; &value + 1 }\napply(1)");

@@ -143,16 +143,35 @@ public class FluxonRuntime {
             int i = 0;
             for (Map.Entry<Class<?>, OverloadSet> entry2 : classOverloadSetMap.entrySet()) {
                 candidateClasses[i] = entry2.getKey();
-                candidateOverloadSets[i] = entry2.getValue();
                 // 为了兼容旧代码，将重载集合中的所有函数都添加到 candidatesList
                 for (Function f : entry2.getValue().getOverloads()) {
                     candidatesList.add(new KV<>(entry2.getKey(), f));
                 }
                 i++;
             }
+            for (i = 0; i < size; i++) {
+                OverloadSet mergedSet = new OverloadSet(entry.getKey());
+                // 派发表先选最具体 target，再在桶内按签名解析；这里预合并父接口/父类桶，避免子类命中具体桶后漏掉父类型上的同名重载。
+                for (Function f : classOverloadSetMap.get(candidateClasses[i]).getOverloads()) {
+                    mergedSet.add(f);
+                }
+                for (int j = 0; j < size; j++) {
+                    if (i == j || !candidateClasses[j].isAssignableFrom(candidateClasses[i])) {
+                        continue;
+                    }
+                    for (Function f : classOverloadSetMap.get(candidateClasses[j]).getOverloads()) {
+                        mergedSet.add(f);
+                    }
+                }
+                candidateOverloadSets[i] = mergedSet;
+            }
             systemExtensionFunctionsList.add(candidatesList.toArray(new KV[0]));
             // 构建派发表
-            dispatchTablesList.add(new ExtensionDispatchTable(classOverloadSetMap, candidateClasses, candidateOverloadSets));
+            Map<Class<?>, OverloadSet> dispatchOverloadSetMap = new LinkedHashMap<>();
+            for (i = 0; i < size; i++) {
+                dispatchOverloadSetMap.put(candidateClasses[i], candidateOverloadSets[i]);
+            }
+            dispatchTablesList.add(new ExtensionDispatchTable(dispatchOverloadSetMap, candidateClasses, candidateOverloadSets));
         }
         cachedSystemExtensionFunctions = systemExtensionFunctionsList.toArray(new KV[0][]);
         cachedDispatchTables = dispatchTablesList.toArray(new ExtensionDispatchTable[0]);

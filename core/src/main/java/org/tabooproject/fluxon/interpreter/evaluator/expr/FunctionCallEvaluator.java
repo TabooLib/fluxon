@@ -168,11 +168,15 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
         int savedLocalVar = ctx.getLocalVarIndex();
         TypeAnalyzer analyzer = ctx.getTypeAnalyzer();
         Type[] argTypes = inferArgTypes(args, analyzer);
+        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
+        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
         // DirectBinding 快速路径：跳过整个 prepareCall/finishCall 框架
-        Type directResult = DirectBindingEmitter.tryEmit(expr, args, argTypes, ctx, mv);
-        if (directResult != null) {
-            ctx.restoreLocalVarIndex(savedLocalVar);
-            return directResult;
+        if (!isDeferred) {
+            Type directResult = DirectBindingEmitter.tryEmit(expr, args, argTypes, ctx, mv);
+            if (directResult != null) {
+                ctx.restoreLocalVarIndex(savedLocalVar);
+                return directResult;
+            }
         }
         // 用户表达式函数快速路径：直接调用函数类上的 callDirect，保留复杂函数的框架路径。
         Type directFunctionResult = DirectFunctionHandler.tryEmitDirectInvoke(expr, args, ctx, mv);
@@ -181,8 +185,6 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
             return directFunctionResult;
         }
         // 框架路径：selectHandler → prepareCall → 参数求值 → finishCall
-        FunctionCallHandler handler = selectBytecodeHandler(expr, argTypes, analyzer, ctx);
-        boolean isDeferred = handler == DeferredOverloadHandler.INSTANCE || handler == DeferredExtensionHandler.INSTANCE;
         Type[] expectedTypes = isDeferred ? null : expr.resolveExpectedParameterTypes(argTypes);
         PrepareCallResult prepareResult = handler.generatePrepareCall(expr, ctx, mv, argCount);
         for (int i = 0; i < argCount; i++) {
@@ -206,15 +208,15 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
      * 编译模式 handler 选择：根据编译期类型信息选择最优路径
      */
     private FunctionCallHandler selectBytecodeHandler(FunctionCallExpression expr, Type[] argTypes, TypeAnalyzer analyzer, CodeContext ctx) {
-        // 扩展函数已在编译时解析
-        if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
-            return ResolvedExtensionHandler.INSTANCE;
-        }
         int argCount = argTypes != null ? argTypes.length : expr.getArguments().length;
         // 检查扩展函数重载
         ExtensionFunctionPosition extPos = expr.getExtensionPosition();
         if (extPos != null && needsDeferredExtensionResolution(extPos, argCount, analyzer)) {
             return DeferredExtensionHandler.INSTANCE;
+        }
+        // 扩展函数已在编译时解析
+        if (expr.getResolvedExtensionFunction() != null && expr.getResolvedTargetClass() != null) {
+            return ResolvedExtensionHandler.INSTANCE;
         }
         if (extPos != null && hasMatchingExtensionTarget(extPos, analyzer)) {
             return DynamicResolutionHandler.INSTANCE;
@@ -240,31 +242,25 @@ public class FunctionCallEvaluator extends ExpressionEvaluator<FunctionCallExpre
     private boolean needsDeferredExtensionResolution(ExtensionFunctionPosition extPos, int argCount, TypeAnalyzer analyzer) {
         Type targetType = analyzer != null ? analyzer.getCurrentTargetType() : null;
         boolean isUnknownTarget = targetType == null || targetType == Type.OBJECT;
-        // target 类型未知时，检查所有 OverloadSet
+        // target 类型未知时，也要按 bake 后的派发表检查每个已注册 target 的合并桶。
         if (isUnknownTarget) {
-            for (OverloadSet overloadSet : extPos.getOverloadSets().values()) {
+            ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
+            for (Class<?> targetClass : extPos.getOverloadSets().keySet()) {
+                OverloadSet overloadSet = dispatchTable.resolveOverloadSet(targetClass);
                 if (countMatchingOverloads(overloadSet, argCount) > 1) {
                     return true;
                 }
             }
             return false;
         }
-        // target 类型已知时，查找最具体的匹配 OverloadSet
+        // target 类型已知时必须按 bake 后的派发表判断；原始注册桶看不到合入的父接口/父类重载，会把同 arity 的动态参数调用错误固化到单一函数。
         Class<?> targetClass = targetType.getSource();
         if (targetClass == null) {
             return false;
         }
-        OverloadSet bestMatch = null;
-        Class<?> bestClass = null;
-        for (Map.Entry<Class<?>, OverloadSet> entry : extPos.getOverloadSets().entrySet()) {
-            if (entry.getKey().isAssignableFrom(targetClass)) {
-                if (bestClass == null || bestClass.isAssignableFrom(entry.getKey())) {
-                    bestMatch = entry.getValue();
-                    bestClass = entry.getKey();
-                }
-            }
-        }
-        return bestMatch != null && countMatchingOverloads(bestMatch, argCount) > 1;
+        ExtensionDispatchTable dispatchTable = FluxonRuntime.getInstance().getCachedDispatchTables()[extPos.getIndex()];
+        OverloadSet overloadSet = dispatchTable.resolveOverloadSet(targetClass);
+        return overloadSet != null && countMatchingOverloads(overloadSet, argCount) > 1;
     }
 
     private int countMatchingOverloads(OverloadSet overloadSet, int argCount) {

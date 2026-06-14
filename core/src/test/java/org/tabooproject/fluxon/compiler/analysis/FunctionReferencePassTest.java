@@ -44,40 +44,40 @@ public class FunctionReferencePassTest {
     @Test
     void resolvedCallLiteralArgs() {
         String source = ""
-                + "def mock_spawn(spawnerId, mobId) = { }\n"
+                + "def mock_action(resourceId, entityId) = { }\n"
                 + "@except\n"
-                + "async def stage_boss(ctx) = {\n"
-                + "    mock_spawn(\"spawner_a\", \"mob.alpha\")\n"
+                + "async def stage_task(ctx) = {\n"
+                + "    mock_action(\"resource_a\", \"entity.alpha\")\n"
                 + "}\n";
         ScriptAnalysis analysis = parseFlowSnippet(source);
         List<ResolvedCallSite> sites = analysis.getResolvedCallSites();
         assertTrue(sites.stream().anyMatch(site ->
-                "mock_spawn".equals(site.getFunctionName())
-                        && "stage_boss".equals(site.getEnclosingFunction())
+                "mock_action".equals(site.getFunctionName())
+                        && "stage_task".equals(site.getEnclosingFunction())
                         && site.getArgumentCount() >= 2
-                        && "spawner_a".equals(site.getResolvedStringArg(0))
-                        && "mob.alpha".equals(site.getResolvedStringArg(1))
+                        && "resource_a".equals(site.getResolvedStringArg(0))
+                        && "entity.alpha".equals(site.getResolvedStringArg(1))
         ));
     }
 
     @Test
     void localConstantPropagationForReferenceArg() {
         String source = ""
-                + "def mock_spawn(spawnerId, mobId) = { }\n"
+                + "def mock_action(resourceId, entityId) = { }\n"
                 + "@except\n"
-                + "async def spawn_mob(ctx) = {\n"
-                + "    mob_1 = \"mob.beta\"\n"
-                + "    mock_spawn(\"spawner_b\", &mob_1)\n"
+                + "async def run_action(ctx) = {\n"
+                + "    entity_1 = \"entity.beta\"\n"
+                + "    mock_action(\"resource_b\", &entity_1)\n"
                 + "}\n";
         ScriptAnalysis analysis = parseFlowSnippet(source);
         List<ResolvedCallSite> sites = analysis.getResolvedCallSites();
-        ResolvedCallSite spawn = sites.stream()
-                .filter(site -> "mock_spawn".equals(site.getFunctionName()))
+        ResolvedCallSite action = sites.stream()
+                .filter(site -> "mock_action".equals(site.getFunctionName()))
                 .findFirst()
                 .orElseThrow(NoSuchElementException::new);
-        assertEquals("spawn_mob", spawn.getEnclosingFunction());
-        assertEquals("spawner_b", spawn.getResolvedStringArg(0));
-        assertEquals("mob.beta", spawn.getResolvedStringArg(1));
+        assertEquals("run_action", action.getEnclosingFunction());
+        assertEquals("resource_b", action.getResolvedStringArg(0));
+        assertEquals("entity.beta", action.getResolvedStringArg(1));
     }
 
     private static ScriptAnalysis parseFlowSnippet(String source) {

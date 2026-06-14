@@ -2,9 +2,14 @@ package org.tabooproject.fluxon;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.tabooproject.fluxon.runtime.FluxonFunction;
+import org.tabooproject.fluxon.runtime.FluxonFunctionScanner;
 import org.tabooproject.fluxon.runtime.FluxonRuntime;
+import org.tabooproject.fluxon.runtime.Function;
+import org.tabooproject.fluxon.runtime.FunctionContext;
 import org.tabooproject.fluxon.runtime.Type;
 import org.tabooproject.fluxon.runtime.error.FunctionNotFoundError;
+import org.tabooproject.fluxon.runtime.java.Export;
 
 import java.util.UUID;
 
@@ -51,6 +56,66 @@ public class OverloadResolutionTest {
 
         public MockSubCenter(MockWorld world) {
             super(world);
+        }
+    }
+
+    // 模拟接口 target。
+    public interface MockInterfaceTarget {
+    }
+
+    // 模拟更具体的基类 target。
+    public static class MockBaseTarget implements MockInterfaceTarget {
+    }
+
+    // 模拟运行时实际传入的子类 target。
+    public static class MockDerivedTarget extends MockBaseTarget {
+    }
+
+    public static class MockExportInterfaceTarget {
+
+        @Export
+        public String sameMixedTargetName(String id) {
+            return "string:" + id;
+        }
+    }
+
+    public static class MockExportDerivedTarget extends MockExportInterfaceTarget {
+    }
+
+    public interface MockExportInterfaceApiTarget {
+
+        @Export
+        default String sameInterfaceBaseTargetName(String id) {
+            return "string:" + id;
+        }
+    }
+
+    public static class MockExportBaseContextTarget implements MockExportInterfaceApiTarget {
+    }
+
+    public static class MockExportDerivedContextTarget extends MockExportBaseContextTarget {
+    }
+
+    public static class MockScannedExtensions {
+
+        @FluxonFunction(value = "sameScannedTargetName", target = MockInterfaceTarget.class)
+        public static String sameScannedTargetName(MockInterfaceTarget target, String id) {
+            return "string:" + id;
+        }
+
+        @FluxonFunction(value = "sameScannedTargetName", target = MockBaseTarget.class)
+        public static String sameScannedTargetName(MockBaseTarget target, FunctionContext<?> context, Function predicate) {
+            return "function";
+        }
+
+        @FluxonFunction(value = "sameMixedTargetName", target = MockExportDerivedTarget.class)
+        public static String sameMixedTargetName(MockExportDerivedTarget target, FunctionContext<?> context, Function predicate) {
+            return "function";
+        }
+
+        @FluxonFunction(value = "sameInterfaceBaseTargetName", target = MockExportBaseContextTarget.class)
+        public static String sameInterfaceBaseTargetName(MockExportBaseContextTarget target, FunctionContext<?> context, Function predicate) {
+            return "function";
         }
     }
 
@@ -206,6 +271,19 @@ public class OverloadResolutionTest {
         runtime.registerFunction("compute", returns(Type.STRING).params(Type.STRING, Type.STRING), ctx -> {
             ctx.setReturnRef("ss:" + ctx.getString(0) + "," + ctx.getString(1));
         });
+        // 接口 target 上的 String 版，用于覆盖同参数数量跨 target 重载。
+        runtime.registerExtensionFunction(MockInterfaceTarget.class, null, "sameTargetName",
+                returns(Type.STRING).params(Type.STRING), ctx -> {
+            ctx.setReturnRef("string:" + ctx.getString(0));
+        }, false, false);
+        // 更具体 target 上的 Function 版，不能因为只按 argCount 解析而吞掉 String 调用。
+        runtime.registerExtensionFunction(MockBaseTarget.class, null, "sameTargetName",
+                returns(Type.STRING).params(Function.TYPE), ctx -> {
+            ctx.setReturnRef("function");
+        }, false, false);
+        FluxonFunctionScanner.register(runtime, MockScannedExtensions.class);
+        runtime.getExportRegistry().registerClass(MockExportInterfaceTarget.class);
+        runtime.getExportRegistry().registerClass(MockExportInterfaceApiTarget.class);
     }
 
     @Test
@@ -959,6 +1037,131 @@ public class OverloadResolutionTest {
         );
         assertEquals("center-marker:7", result.getInterpretResult());
         assertEquals("center-marker:7", result.getCompileResult());
+    }
+
+    @Test
+    void testMergedAssignableExtensionChoosesStringOverFunctionWithSameArity() {
+        // bake 合并接口与基类 target 后，同为 1 参时必须按实参类型选 String 版，不能只按 argCount 命中 Function 谓词版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameTargetName(\"id-1\")",
+                "MergedAssignableExtensionChoosesStringOverFunction",
+                ctx -> ctx.defineRootVariable("sender", MockDerivedTarget.class),
+                env -> env.defineRootVariable("sender", new MockDerivedTarget())
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testScannedContextAwareExtensionChoosesStringOverFunctionWithSameArity() {
+        // scanner 生成的 context-aware 谓词桥接也不能因为同为 1 参而吞掉接口 target 上的 String 版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameScannedTargetName(\"id-1\")",
+                "ScannedContextAwareExtensionChoosesStringOverFunction",
+                ctx -> ctx.defineRootVariable("sender", MockDerivedTarget.class),
+                env -> env.defineRootVariable("sender", new MockDerivedTarget())
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testScannedContextAwareExtensionChoosesFunctionOverStringWithSameArity() {
+        // 同名同 1 参时，lambda 实参必须命中基类 target 的 Function 谓词版，不能被接口 target 的 String 版抢走。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameScannedTargetName(|value| true)",
+                "ScannedContextAwareExtensionChoosesFunctionOverString",
+                ctx -> ctx.defineRootVariable("sender", MockDerivedTarget.class),
+                env -> env.defineRootVariable("sender", new MockDerivedTarget())
+        );
+        assertEquals("function", result.getInterpretResult());
+        assertEquals("function", result.getCompileResult());
+    }
+
+    @Test
+    void testMixedExportAndScannedExtensionChoosesStringOverFunctionWithSameArity() {
+        // @Export 的 String 版与 @FluxonFunction 的 Function 版混合注册时，String 实参不能被谓词版误接收。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameMixedTargetName(\"id-1\")",
+                "MixedExportAndScannedExtensionChoosesStringOverFunction",
+                ctx -> ctx.defineRootVariable("sender", MockExportDerivedTarget.class),
+                env -> env.defineRootVariable("sender", new MockExportDerivedTarget())
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testMixedExportAndScannedExtensionChoosesFunctionOverStringWithSameArity() {
+        // @Export 的 String 版与 @FluxonFunction 的 Function 版混合注册时，lambda 实参仍要命中谓词版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameMixedTargetName(|value| true)",
+                "MixedExportAndScannedExtensionChoosesFunctionOverString",
+                ctx -> ctx.defineRootVariable("sender", MockExportDerivedTarget.class),
+                env -> env.defineRootVariable("sender", new MockExportDerivedTarget())
+        );
+        assertEquals("function", result.getInterpretResult());
+        assertEquals("function", result.getCompileResult());
+    }
+
+    @Test
+    void testInterfaceExportAndBaseScannedExtensionChoosesStringOverFunctionWithSameArity() {
+        // 真实拓扑：接口 target 上是 @Export String 版，基类 target 上是 @FluxonFunction Function 版，运行时对象是子类。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameInterfaceBaseTargetName(\"id-1\")",
+                "InterfaceExportAndBaseScannedExtensionChoosesStringOverFunction",
+                ctx -> ctx.defineRootVariable("sender", MockExportDerivedContextTarget.class),
+                env -> env.defineRootVariable("sender", new MockExportDerivedContextTarget())
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testInterfaceExportAndBaseScannedExtensionChoosesRuntimeStringOverFunctionWithSameArity() {
+        // 编译期参数类型未知但运行时是 String 时，不能先按 argCount 固定到 Function 谓词版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameInterfaceBaseTargetName(&id)",
+                "InterfaceExportAndBaseScannedExtensionChoosesRuntimeStringOverFunction",
+                ctx -> {
+                    ctx.defineRootVariable("sender", MockExportDerivedContextTarget.class);
+                    ctx.defineRootVariable("id", Object.class);
+                },
+                env -> {
+                    env.defineRootVariable("sender", new MockExportDerivedContextTarget());
+                    env.defineRootVariable("id", "id-1");
+                }
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testRuntimeOnlyTargetTypeChoosesStringOverFunctionWithSameArity() {
+        // &ctx::foo("id") 这类调用左侧 target 编译期可能只有 Object；仍不能只按 argCount 固化到 Function 谓词版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameInterfaceBaseTargetName(\"id-1\")",
+                "RuntimeOnlyTargetTypeChoosesStringOverFunctionWithSameArity",
+                ctx -> ctx.defineRootVariable("sender", Object.class),
+                env -> {
+                    env.defineRootVariable("sender", new MockExportDerivedContextTarget());
+                }
+        );
+        assertEquals("string:id-1", result.getInterpretResult());
+        assertEquals("string:id-1", result.getCompileResult());
+    }
+
+    @Test
+    void testInterfaceExportAndBaseScannedExtensionChoosesFunctionOverStringWithSameArity() {
+        // 真实拓扑下 lambda 实参必须命中基类 target 的 Function 谓词版。
+        FluxonTestUtil.TestResult result = FluxonTestUtil.runSilent(
+                "&sender::sameInterfaceBaseTargetName(|value| true)",
+                "InterfaceExportAndBaseScannedExtensionChoosesFunctionOverString",
+                ctx -> ctx.defineRootVariable("sender", MockExportDerivedContextTarget.class),
+                env -> env.defineRootVariable("sender", new MockExportDerivedContextTarget())
+        );
+        assertEquals("function", result.getInterpretResult());
+        assertEquals("function", result.getCompileResult());
     }
 
     @Test
